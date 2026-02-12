@@ -3,7 +3,7 @@ export * from './Models/Core/constants';
 export * from './Models/Core/date';
 export * from './Models/Core/entity';
 export * from './Models/Core/error';
-export * from './Models/Core/filter';
+// filter.ts is a placeholder — no exports yet
 export * from './Models/Core/hashmap';
 export * from './Models/Core/hashtable';
 export * from './Models/Core/linkid';

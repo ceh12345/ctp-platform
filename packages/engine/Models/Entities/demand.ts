@@ -14,7 +14,7 @@ export class CTPDemand extends CTPKeyEntity {
   }
 }
 
-export class CTPProducts extends EntityHashMap<CTPDemand> {
+export class CTPDemands extends EntityHashMap<CTPDemand> {
   public constructor(t?: string, n?: string, k?: string) {
     super();
   }

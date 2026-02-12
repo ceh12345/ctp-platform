@@ -1,0 +1,100 @@
+{
+  "horizon": {
+    "startDate": "2025-06-02T00:00:00",
+    "endDate": "2025-06-09T00:00:00"
+  },
+  "resources": [
+    {
+      "key": "Machine-A",
+      "name": "Machine A",
+      "type": "Machines",
+      "resourceClass": "REUSABLE",
+      "availability": [
+        { "startTime": "2025-06-02T08:00:00", "endTime": "2025-06-02T16:00:00", "qty": 1 },
+        { "startTime": "2025-06-03T08:00:00", "endTime": "2025-06-03T16:00:00", "qty": 1 },
+        { "startTime": "2025-06-04T08:00:00", "endTime": "2025-06-04T16:00:00", "qty": 1 },
+        { "startTime": "2025-06-05T08:00:00", "endTime": "2025-06-05T16:00:00", "qty": 1 },
+        { "startTime": "2025-06-06T08:00:00", "endTime": "2025-06-06T16:00:00", "qty": 1 }
+      ]
+    },
+    {
+      "key": "Machine-B",
+      "name": "Machine B",
+      "type": "Machines",
+      "resourceClass": "REUSABLE",
+      "availability": [
+        { "startTime": "2025-06-02T08:00:00", "endTime": "2025-06-02T16:00:00", "qty": 1 },
+        { "startTime": "2025-06-03T08:00:00", "endTime": "2025-06-03T16:00:00", "qty": 1 },
+        { "startTime": "2025-06-04T08:00:00", "endTime": "2025-06-04T16:00:00", "qty": 1 },
+        { "startTime": "2025-06-05T08:00:00", "endTime": "2025-06-05T16:00:00", "qty": 1 },
+        { "startTime": "2025-06-06T08:00:00", "endTime": "2025-06-06T16:00:00", "qty": 1 }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "key": "JOB-100-OP10",
+      "name": "Job 100 Op 10",
+      "type": "PROCESS",
+      "sequence": 1,
+      "duration": { "seconds": 7200, "qty": 1.0, "durationType": 0 },
+      "capacityResources": [
+        {
+          "resourceType": "Machines",
+          "isPrimary": true,
+          "preferences": [
+            { "resourceKey": "Machine-A", "speedFactor": 1.0 },
+            { "resourceKey": "Machine-B", "speedFactor": 1.0 }
+          ]
+        }
+      ],
+      "linkId": { "name": "JOB-100", "prevLink": "" }
+    },
+    {
+      "key": "JOB-100-OP20",
+      "name": "Job 100 Op 20",
+      "type": "PROCESS",
+      "sequence": 2,
+      "duration": { "seconds": 3600, "qty": 1.0, "durationType": 0 },
+      "capacityResources": [
+        {
+          "resourceType": "Machines",
+          "isPrimary": true,
+          "preferences": [
+            { "resourceKey": "Machine-A", "speedFactor": 1.0 },
+            { "resourceKey": "Machine-B", "speedFactor": 1.0 }
+          ]
+        }
+      ],
+      "linkId": { "name": "JOB-100", "prevLink": "JOB-100-OP10" }
+    },
+    {
+      "key": "JOB-200-OP10",
+      "name": "Job 200 Op 10",
+      "type": "PROCESS",
+      "sequence": 3,
+      "duration": { "seconds": 10800, "qty": 1.0, "durationType": 0 },
+      "capacityResources": [
+        {
+          "resourceType": "Machines",
+          "isPrimary": true,
+          "preferences": [
+            { "resourceKey": "Machine-A", "speedFactor": 1.0 }
+          ]
+        }
+      ]
+    }
+  ],
+  "scoring": {
+    "name": "Default Scoring",
+    "key": "default-scoring",
+    "rules": [
+      { "ruleName": "EarliestStartTimeScoringRule", "weight": 0.3, "objective": 0 },
+      { "ruleName": "WhiteSpaceScoringRule", "weight": 0.7, "objective": 0 }
+    ]
+  },
+  "settings": {
+    "scheduleDirection": 1,
+    "requiresPreds": true
+  }
+}
