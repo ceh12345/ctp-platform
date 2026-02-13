@@ -4,6 +4,7 @@ import { CTPPersist } from "./date";
 import { CTPAttribute, CTPHierarchy } from "./namevalue";
 import { CTPAttributes, CTPHierarchies } from "../Lists/lists";
 import { CTPAssignmentConstants, CTPDurationConstants } from "./constants";
+import { CTPTypedAttributes } from "./typedattribute";
 export interface IEntity {
   id: number;
   key: string;
@@ -43,6 +44,7 @@ export class CTPEntity implements IEntity {
 export interface IKeyEntity extends IEntity {
   hierarchy: CTPHierarchies;
   attributes: CTPAttributes;
+  typedAttributes: CTPTypedAttributes;
   get activateTimeStamp(): CTPPersist;
 }
 
@@ -63,6 +65,7 @@ export class CTPEntityHashed extends CTPEntity {
 export class CTPKeyEntity extends CTPEntityHashed implements IKeyEntity {
   public hierarchy: CTPHierarchies;
   public attributes: CTPAttributes;
+  public typedAttributes: CTPTypedAttributes;
   public timeStamp: CTPPersist | null;
   public solverSequence: number = 0;
   public cost: number;
@@ -71,6 +74,7 @@ export class CTPKeyEntity extends CTPEntityHashed implements IKeyEntity {
     super(t, n, k);
     this.hierarchy = new CTPHierarchies();
     this.attributes = new CTPAttributes();
+    this.typedAttributes = new CTPTypedAttributes();
     this.timeStamp = null;
     this.cost = 0;
   }
