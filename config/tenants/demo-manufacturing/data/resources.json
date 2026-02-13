@@ -1,0 +1,35 @@
+[
+  {
+    "key": "CNC-01",
+    "name": "CNC Machine 01",
+    "type": "CNC",
+    "class": "REUSABLE",
+    "typedAttributes": [
+      { "name": "machineType", "dataType": "enum", "value": { "type": "enum", "value": "CNC" }, "category": "equipment", "sequence": 1 },
+      { "name": "maxSpeed", "dataType": "number", "value": { "type": "number", "value": 1200 }, "category": "performance", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["ISO-9001", "AS-9100"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "CNC-02",
+    "name": "CNC Machine 02",
+    "type": "CNC",
+    "class": "REUSABLE",
+    "typedAttributes": [
+      { "name": "machineType", "dataType": "enum", "value": { "type": "enum", "value": "CNC" }, "category": "equipment", "sequence": 1 },
+      { "name": "maxSpeed", "dataType": "number", "value": { "type": "number", "value": 1000 }, "category": "performance", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["ISO-9001"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "ASM-01",
+    "name": "Assembly Station 01",
+    "type": "Assembly",
+    "class": "REUSABLE",
+    "typedAttributes": [
+      { "name": "machineType", "dataType": "enum", "value": { "type": "enum", "value": "Assembly" }, "category": "equipment", "sequence": 1 },
+      { "name": "maxSpeed", "dataType": "number", "value": { "type": "number", "value": 800 }, "category": "performance", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["ISO-9001", "UL-508A"] }, "category": "compliance", "sequence": 3 }
+    ]
+  }
+]

@@ -1,0 +1,87 @@
+[
+  {
+    "key": "OP-001",
+    "name": "Machine Widget-A Batch 1",
+    "type": "PROCESS",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-24T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "CNC-01", "isPrimary": true, "qty": 1 }],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-A" }, "category": "product", "sequence": 1 },
+      { "name": "batchSize", "dataType": "integer", "value": { "type": "integer", "value": 50 }, "category": "production", "sequence": 2 },
+      { "name": "priority", "dataType": "enum", "value": { "type": "enum", "value": "HIGH" }, "category": "scheduling", "sequence": 3 },
+      { "name": "qualityHold", "dataType": "boolean", "value": { "type": "boolean", "value": false }, "category": "quality", "sequence": 4 }
+    ]
+  },
+  {
+    "key": "OP-002",
+    "name": "Machine Widget-B Batch 1",
+    "type": "PROCESS",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-24T00:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "CNC-02", "isPrimary": true, "qty": 1 }],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-B" }, "category": "product", "sequence": 1 },
+      { "name": "batchSize", "dataType": "integer", "value": { "type": "integer", "value": 100 }, "category": "production", "sequence": 2 },
+      { "name": "priority", "dataType": "enum", "value": { "type": "enum", "value": "MEDIUM" }, "category": "scheduling", "sequence": 3 },
+      { "name": "qualityHold", "dataType": "boolean", "value": { "type": "boolean", "value": false }, "category": "quality", "sequence": 4 }
+    ]
+  },
+  {
+    "key": "OP-003",
+    "name": "Machine Widget-A Batch 2",
+    "type": "PROCESS",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-24T00:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "CNC-01", "isPrimary": true, "qty": 1 }],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-A" }, "category": "product", "sequence": 1 },
+      { "name": "batchSize", "dataType": "integer", "value": { "type": "integer", "value": 75 }, "category": "production", "sequence": 2 },
+      { "name": "priority", "dataType": "enum", "value": { "type": "enum", "value": "CRITICAL" }, "category": "scheduling", "sequence": 3 },
+      { "name": "qualityHold", "dataType": "boolean", "value": { "type": "boolean", "value": true }, "category": "quality", "sequence": 4 }
+    ]
+  },
+  {
+    "key": "OP-004",
+    "name": "Assemble Widget-C",
+    "type": "PROCESS",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-24T00:00:00Z",
+    "durationSeconds": 1800,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1 }],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-C" }, "category": "product", "sequence": 1 },
+      { "name": "batchSize", "dataType": "integer", "value": { "type": "integer", "value": 30 }, "category": "production", "sequence": 2 },
+      { "name": "priority", "dataType": "enum", "value": { "type": "enum", "value": "LOW" }, "category": "scheduling", "sequence": 3 },
+      { "name": "qualityHold", "dataType": "boolean", "value": { "type": "boolean", "value": false }, "category": "quality", "sequence": 4 }
+    ]
+  },
+  {
+    "key": "OP-005",
+    "name": "Machine Widget-B Batch 2",
+    "type": "PROCESS",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-24T00:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "CNC-02", "isPrimary": true, "qty": 1 }],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-B" }, "category": "product", "sequence": 1 },
+      { "name": "batchSize", "dataType": "integer", "value": { "type": "integer", "value": 200 }, "category": "production", "sequence": 2 },
+      { "name": "priority", "dataType": "enum", "value": { "type": "enum", "value": "HIGH" }, "category": "scheduling", "sequence": 3 },
+      { "name": "qualityHold", "dataType": "boolean", "value": { "type": "boolean", "value": false }, "category": "quality", "sequence": 4 }
+    ]
+  }
+]

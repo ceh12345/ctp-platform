@@ -1,0 +1,67 @@
+{
+  "entityType": "task",
+  "version": 1,
+  "attributes": [
+    {
+      "name": "productType",
+      "displayName": "Product Type",
+      "dataType": "enum",
+      "required": true,
+      "validation": {
+        "allowedValues": ["Widget-A", "Widget-B", "Widget-C"]
+      },
+      "category": "product",
+      "sequence": 1,
+      "searchable": true,
+      "sortable": true,
+      "useInScheduling": true,
+      "useInScoring": false
+    },
+    {
+      "name": "batchSize",
+      "displayName": "Batch Size",
+      "dataType": "integer",
+      "required": true,
+      "defaultValue": 1,
+      "validation": {
+        "min": 1,
+        "max": 1000
+      },
+      "category": "production",
+      "sequence": 2,
+      "searchable": false,
+      "sortable": true,
+      "useInScheduling": true,
+      "useInScoring": false
+    },
+    {
+      "name": "priority",
+      "displayName": "Priority",
+      "dataType": "enum",
+      "required": true,
+      "defaultValue": "MEDIUM",
+      "validation": {
+        "allowedValues": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+      },
+      "category": "scheduling",
+      "sequence": 3,
+      "searchable": true,
+      "sortable": true,
+      "useInScheduling": false,
+      "useInScoring": true
+    },
+    {
+      "name": "qualityHold",
+      "displayName": "Quality Hold",
+      "dataType": "boolean",
+      "required": false,
+      "defaultValue": false,
+      "category": "quality",
+      "sequence": 4,
+      "searchable": true,
+      "sortable": false,
+      "useInScheduling": false,
+      "useInScoring": false
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "mappings": {
+    "resource": "Machine",
+    "task": "Operation",
+    "order": "Work Order",
+    "duration": "Run Time",
+    "stateChange": "Changeover"
+  }
+}

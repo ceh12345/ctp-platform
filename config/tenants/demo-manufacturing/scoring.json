@@ -1,0 +1,13 @@
+{
+  "name": "Default",
+  "key": "default",
+  "rules": [
+    {
+      "ruleName": "EarliestStartTimeScoringRule",
+      "weight": 1.0,
+      "objective": 0,
+      "includeInSolve": true,
+      "penaltyFactor": 0
+    }
+  ]
+}
