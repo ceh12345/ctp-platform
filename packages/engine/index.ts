@@ -18,7 +18,6 @@ export * from './Models/Core/window';
 // Models - Entities
 export * from './Models/Entities/appsettings';
 export * from './Models/Entities/candidate';
-export * from './Models/Entities/demand';
 export * from './Models/Entities/horizon';
 export * from './Models/Entities/landscape';
 export * from './Models/Entities/order';
