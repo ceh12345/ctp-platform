@@ -1,0 +1,64 @@
+[
+  {
+    "key": "PROD-WA",
+    "name": "Widget-A",
+    "productType": "FINISHED",
+    "unitOfMeasure": "pcs",
+    "outputScrapRate": 0.03,
+    "bomInputs": [
+      { "productKey": "PROD-HOUSING", "qtyPer": 1, "scrapRate": 0.0 },
+      { "productKey": "MAT-BEAR", "qtyPer": 2, "scrapRate": 0.01 },
+      { "productKey": "MAT-SEAL", "qtyPer": 1, "scrapRate": 0.0 }
+    ]
+  },
+  {
+    "key": "PROD-WB",
+    "name": "Widget-B",
+    "productType": "FINISHED",
+    "unitOfMeasure": "pcs",
+    "outputScrapRate": 0.02,
+    "bomInputs": [
+      { "productKey": "PROD-BRACKET", "qtyPer": 1, "scrapRate": 0.0 },
+      { "productKey": "MAT-BEAR", "qtyPer": 1, "scrapRate": 0.01 },
+      { "productKey": "MAT-FAST", "qtyPer": 2, "scrapRate": 0.0 }
+    ]
+  },
+  {
+    "key": "PROD-WC",
+    "name": "Widget-C",
+    "productType": "FINISHED",
+    "unitOfMeasure": "pcs",
+    "outputScrapRate": 0.04,
+    "bomInputs": [
+      { "productKey": "PROD-HOUSING", "qtyPer": 1, "scrapRate": 0.0 },
+      { "productKey": "PROD-BRACKET", "qtyPer": 1, "scrapRate": 0.0 },
+      { "productKey": "MAT-SEALKIT", "qtyPer": 1, "scrapRate": 0.0 }
+    ]
+  },
+  {
+    "key": "PROD-HOUSING",
+    "name": "Machined Housing",
+    "productType": "INTERMEDIATE",
+    "unitOfMeasure": "pcs",
+    "outputScrapRate": 0.05,
+    "bomInputs": [
+      { "productKey": "MAT-AL6061", "qtyPer": 2.5, "scrapRate": 0.02 }
+    ]
+  },
+  {
+    "key": "PROD-BRACKET",
+    "name": "Milled Bracket",
+    "productType": "INTERMEDIATE",
+    "unitOfMeasure": "pcs",
+    "outputScrapRate": 0.03,
+    "bomInputs": [
+      { "productKey": "MAT-SS304", "qtyPer": 1.8, "scrapRate": 0.02 }
+    ]
+  },
+  { "key": "MAT-AL6061", "name": "Aluminum 6061", "productType": "RAW", "unitOfMeasure": "kg", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "MAT-SS304", "name": "Stainless Steel 304", "productType": "RAW", "unitOfMeasure": "kg", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "MAT-BEAR", "name": "Bearing 608ZZ", "productType": "RAW", "unitOfMeasure": "pcs", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "MAT-SEAL", "name": "O-Ring Seal", "productType": "RAW", "unitOfMeasure": "pcs", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "MAT-FAST", "name": "Fastener Kit", "productType": "RAW", "unitOfMeasure": "pcs", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "MAT-SEALKIT", "name": "Seal Kit", "productType": "RAW", "unitOfMeasure": "pcs", "outputScrapRate": 0, "bomInputs": [] }
+]

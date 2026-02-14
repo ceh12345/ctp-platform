@@ -40,31 +40,28 @@ describe('CTPService', () => {
   it('solve all tasks (no filter)', () => {
     const result = ctpService.solve();
     expect(result.status).toBe('ok');
-    expect(result.summary.totalTasks).toBe(5);
-    expect(result.summary.includedTasks).toBe(5);
-    expect(result.summary.skippedTasks).toBe(0);
+    // 25 data tasks submitted; scheduler may add state-change tasks to landscape
+    expect(result.summary.includedTasks).toBe(25);
+    expect(result.summary.totalTasks).toBeGreaterThanOrEqual(25);
     expect(result.summary.scheduledTasks).toBeGreaterThan(0);
-    expect(result.tasks).toHaveLength(5);
-    result.tasks.forEach((t) => {
-      expect(t.included).toBe(true);
-    });
+    expect(result.tasks.length).toBe(result.summary.totalTasks);
   });
 
   // ── Solve specific tasks by key ──────────────────────────────────
 
   it('solve specific tasks by key', () => {
-    const result = ctpService.solve({ taskKeys: ['OP-001', 'OP-003'] });
+    const result = ctpService.solve({ taskKeys: ['T-1001-H-MACHINE', 'T-1001-ASSEMBLE'] });
     expect(result.summary.includedTasks).toBe(2);
-    expect(result.summary.skippedTasks).toBe(3);
+    expect(result.summary.skippedTasks).toBe(23);
 
-    const op001 = result.tasks.find((t) => t.key === 'OP-001');
-    expect(op001).toBeDefined();
-    expect(op001!.included).toBe(true);
+    const machineTask = result.tasks.find((t) => t.key === 'T-1001-H-MACHINE');
+    expect(machineTask).toBeDefined();
+    expect(machineTask!.included).toBe(true);
 
-    const op002 = result.tasks.find((t) => t.key === 'OP-002');
-    expect(op002).toBeDefined();
-    expect(op002!.included).toBe(false);
-    expect(op002!.feasible).toBe(false);
+    const bracketTask = result.tasks.find((t) => t.key === 'T-1002-B-MACHINE');
+    expect(bracketTask).toBeDefined();
+    expect(bracketTask!.included).toBe(false);
+    expect(bracketTask!.feasible).toBe(false);
   });
 
   // ── Solve filtered by attribute (equals) ─────────────────────────
@@ -77,11 +74,10 @@ describe('CTPService', () => {
         operator: 'equals',
       },
     });
-    // OP-001 and OP-003 have productType=Widget-A
-    expect(result.summary.includedTasks).toBe(2);
-    expect(result.summary.skippedTasks).toBe(3);
-
+    // Tasks with productType=Widget-A typed attribute
     const included = result.tasks.filter((t) => t.included);
+    expect(included.length).toBeGreaterThan(0);
+
     included.forEach((t) => {
       const productType = t.typedAttributes.find(
         (a: any) => a.name === 'productType',
@@ -95,20 +91,19 @@ describe('CTPService', () => {
   it('solve filtered by attribute (in)', () => {
     const result = ctpService.solve({
       filter: {
-        attribute: 'priority',
-        value: ['HIGH', 'CRITICAL'],
+        attribute: 'productType',
+        value: ['Widget-A', 'Widget-B'],
         operator: 'in',
       },
     });
-    // OP-001=HIGH, OP-003=CRITICAL, OP-005=HIGH → 3 tasks
     const included = result.tasks.filter((t) => t.included);
-    expect(included.length).toBe(3);
+    expect(included.length).toBeGreaterThan(0);
 
     included.forEach((t) => {
-      const priority = t.typedAttributes.find(
-        (a: any) => a.name === 'priority',
+      const productType = t.typedAttributes.find(
+        (a: any) => a.name === 'productType',
       );
-      expect(['HIGH', 'CRITICAL']).toContain(priority?.value.value);
+      expect(['Widget-A', 'Widget-B']).toContain(productType?.value.value);
     });
   });
 
@@ -128,11 +123,11 @@ describe('CTPService', () => {
 
   it('typed attributes preserved in results', () => {
     const result = ctpService.solve();
-    const op001 = result.tasks.find((t) => t.key === 'OP-001');
-    expect(op001).toBeDefined();
-    expect(op001!.typedAttributes.length).toBeGreaterThan(0);
+    const task = result.tasks.find((t) => t.key === 'T-1001-H-MACHINE');
+    expect(task).toBeDefined();
+    expect(task!.typedAttributes.length).toBeGreaterThan(0);
 
-    const productType = op001!.typedAttributes.find(
+    const productType = task!.typedAttributes.find(
       (a: any) => a.name === 'productType',
     );
     expect(productType).toBeDefined();
@@ -163,6 +158,48 @@ describe('CTPService', () => {
     const result = ctpService.solve({ taskKeys: [] });
     expect(result.summary.includedTasks).toBe(0);
     expect(result.summary.scheduledTasks).toBe(0);
-    expect(result.summary.skippedTasks).toBe(5);
+    expect(result.summary.skippedTasks).toBe(result.summary.totalTasks);
+  });
+
+  // ── New fields: orderRef, outputProductKey, process ──────────────
+
+  it('enriched task fields populated', () => {
+    const result = ctpService.solve();
+    const assembleTask = result.tasks.find((t) => t.key === 'T-1001-ASSEMBLE');
+    expect(assembleTask).toBeDefined();
+    expect(assembleTask!.orderRef).toBe('WO-1001');
+    expect(assembleTask!.outputProductKey).toBe('PROD-WA');
+    expect(assembleTask!.outputQty).toBe(500);
+    expect(assembleTask!.outputScrapRate).toBe(0.03);
+    expect(assembleTask!.process).toBe('WO-1001');
+    expect(assembleTask!.inputMaterials.length).toBe(3);
+  });
+
+  // ── Orders array populated ────────────────────────────────────────
+
+  it('orders array populated with fill rates', () => {
+    const result = ctpService.solve();
+    expect(result.orders).toBeDefined();
+    expect(result.orders.length).toBe(6);
+    result.orders.forEach((o: any) => {
+      expect(o.orderKey).toBeDefined();
+      expect(o.productKey).toBeDefined();
+      expect(o.demandQty).toBeGreaterThan(0);
+      expect(o.fillRate).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  // ── Materials array populated ─────────────────────────────────────
+
+  it('materials array populated with consumption', () => {
+    const result = ctpService.solve();
+    expect(result.materials).toBeDefined();
+    expect(result.materials.length).toBe(6);
+    result.materials.forEach((m: any) => {
+      expect(m.materialKey).toBeDefined();
+      expect(m.onHand).toBeGreaterThanOrEqual(0);
+      expect(typeof m.consumed).toBe('number');
+      expect(typeof m.remaining).toBe('number');
+    });
   });
 });

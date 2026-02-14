@@ -61,53 +61,75 @@ describe('StateHydratorService', () => {
   // ── Tasks ─────────────────────────────────────────────────────────
 
   describe('hydrateTasks (via buildLandscape)', () => {
-    it('creates 5 tasks from demo-manufacturing data', () => {
+    it('creates 25 tasks from demo-manufacturing data', () => {
       const landscape = hydrator.buildLandscape();
-      expect(landscape.tasks.size()).toBe(5);
+      expect(landscape.tasks.size()).toBe(25);
     });
 
-    it('OP-001 has window with non-zero startW and endW', () => {
+    it('T-1001-H-MACHINE has window with non-zero startW and endW', () => {
       const landscape = hydrator.buildLandscape();
-      const op001 = landscape.tasks.getEntity('OP-001');
-      expect(op001).toBeDefined();
-      expect(op001!.window).not.toBeNull();
-      expect(op001!.window!.startW).toBeGreaterThan(0);
-      expect(op001!.window!.endW).toBeGreaterThan(op001!.window!.startW);
+      const task = landscape.tasks.getEntity('T-1001-H-MACHINE');
+      expect(task).toBeDefined();
+      expect(task!.window).not.toBeNull();
+      expect(task!.window!.startW).toBeGreaterThan(0);
+      expect(task!.window!.endW).toBeGreaterThan(task!.window!.startW);
     });
 
-    it('OP-001 has duration set', () => {
+    it('T-1001-H-MACHINE has duration set', () => {
       const landscape = hydrator.buildLandscape();
-      const op001 = landscape.tasks.getEntity('OP-001');
-      expect(op001).toBeDefined();
-      expect(op001!.duration).not.toBeNull();
-      expect(op001!.duration!.endW).toBe(7200);
+      const task = landscape.tasks.getEntity('T-1001-H-MACHINE');
+      expect(task).toBeDefined();
+      expect(task!.duration).not.toBeNull();
+      expect(task!.duration!.endW).toBe(14400);
     });
 
-    it('OP-001 has capacityResources with CNC-01', () => {
+    it('T-1001-H-MACHINE has capacityResources with CNC-01', () => {
       const landscape = hydrator.buildLandscape();
-      const op001 = landscape.tasks.getEntity('OP-001');
-      expect(op001).toBeDefined();
-      expect(op001!.capacityResources).not.toBeNull();
-      expect(op001!.capacityResources!.length).toBe(1);
+      const task = landscape.tasks.getEntity('T-1001-H-MACHINE');
+      expect(task).toBeDefined();
+      expect(task!.capacityResources).not.toBeNull();
+      expect(task!.capacityResources!.length).toBe(1);
 
-      const first = op001!.capacityResources![0];
+      const first = task!.capacityResources![0];
       expect(first).toBeDefined();
       expect(first.resource).toBe('CNC-01');
       expect(first.isPrimary).toBe(true);
     });
 
-    it('OP-001 has typedAttributes with productType and batchSize', () => {
+    it('T-1001-H-MACHINE has typedAttributes with productType and batchSize', () => {
       const landscape = hydrator.buildLandscape();
-      const op001 = landscape.tasks.getEntity('OP-001');
-      expect(op001).toBeDefined();
+      const task = landscape.tasks.getEntity('T-1001-H-MACHINE');
+      expect(task).toBeDefined();
 
-      const productType = op001!.typedAttributes.get('productType');
+      const productType = task!.typedAttributes.get('productType');
       expect(productType).toBeDefined();
       expect(productType!.value.value).toBe('Widget-A');
 
-      const batchSize = op001!.typedAttributes.get('batchSize');
+      const batchSize = task!.typedAttributes.get('batchSize');
       expect(batchSize).toBeDefined();
-      expect(batchSize!.value.value).toBe(50);
+      expect(batchSize!.value.value).toBe(500);
+    });
+
+    it('T-1001-H-MACHINE has outputProductKey and inputMaterials', () => {
+      const landscape = hydrator.buildLandscape();
+      const task = landscape.tasks.getEntity('T-1001-H-MACHINE');
+      expect(task).toBeDefined();
+      expect(task!.outputProductKey).toBe('PROD-HOUSING');
+      expect(task!.outputQty).toBe(500);
+      expect(task!.outputScrapRate).toBe(0.05);
+      expect(task!.inputMaterials).not.toBeNull();
+      expect(task!.inputMaterials!.length).toBe(1);
+      expect(task!.inputMaterials![0].productKey).toBe('MAT-AL6061');
+      expect(task!.inputMaterials![0].requiredQty).toBe(1250);
+    });
+
+    it('T-1001-ASSEMBLE has linkId referencing WO-1001', () => {
+      const landscape = hydrator.buildLandscape();
+      const task = landscape.tasks.getEntity('T-1001-ASSEMBLE');
+      expect(task).toBeDefined();
+      expect(task!.linkId).toBeDefined();
+      expect(task!.linkId!.name).toBe('WO-1001');
+      expect(task!.process).toBe('WO-1001');
     });
   });
 
@@ -164,7 +186,7 @@ describe('StateHydratorService', () => {
     it('builds a complete landscape with correct counts', () => {
       const landscape = hydrator.buildLandscape();
       expect(landscape.resources.size()).toBe(3);
-      expect(landscape.tasks.size()).toBe(5);
+      expect(landscape.tasks.size()).toBe(25);
       expect(landscape.stateChanges.size()).toBe(2);
     });
 

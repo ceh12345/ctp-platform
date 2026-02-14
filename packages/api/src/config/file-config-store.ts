@@ -13,6 +13,9 @@ import {
   ITaskData,
   ICalendarData,
   IStateChangeData,
+  IProductData,
+  IOrderData,
+  IMaterialData,
 } from './interfaces/config-store.interface';
 
 const DEFAULT_SETTINGS: ISettingsConfig = {
@@ -194,6 +197,30 @@ export class FileConfigStore implements IConfigStore {
     return this.getCached('stateChanges', () =>
       this.readJsonFile<IStateChangeData[]>(
         path.join(this.tenantDir, 'data', 'state-changes.json'),
+      ) ?? [],
+    );
+  }
+
+  getProducts(): IProductData[] {
+    return this.getCached('products', () =>
+      this.readJsonFile<IProductData[]>(
+        path.join(this.tenantDir, 'data', 'products.json'),
+      ) ?? [],
+    );
+  }
+
+  getOrders(): IOrderData[] {
+    return this.getCached('orders', () =>
+      this.readJsonFile<IOrderData[]>(
+        path.join(this.tenantDir, 'data', 'orders.json'),
+      ) ?? [],
+    );
+  }
+
+  getMaterials(): IMaterialData[] {
+    return this.getCached('materials', () =>
+      this.readJsonFile<IMaterialData[]>(
+        path.join(this.tenantDir, 'data', 'materials.json'),
       ) ?? [],
     );
   }

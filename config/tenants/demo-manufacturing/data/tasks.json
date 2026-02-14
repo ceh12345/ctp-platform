@@ -1,87 +1,482 @@
 [
   {
-    "key": "OP-001",
-    "name": "Machine Widget-A Batch 1",
+    "key": "T-1001-H-MACHINE",
+    "name": "Machine Housing (WO-1001)",
     "type": "PROCESS",
+    "process": "WO-1001",
     "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-24T00:00:00Z",
-    "durationSeconds": 7200,
+    "windowEnd": "2026-02-14T00:00:00Z",
+    "durationSeconds": 14400,
     "durationQty": 1.0,
     "durationType": 0,
     "capacityResources": [{ "resource": "CNC-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1001", "type": "START", "prevLink": "" },
+    "outputProductKey": "PROD-HOUSING",
+    "outputQty": 500,
+    "outputScrapRate": 0.05,
+    "inputMaterials": [
+      { "productKey": "MAT-AL6061", "requiredQty": 1250, "scrapRate": 0.02, "unitOfMeasure": "kg" }
+    ],
     "typedAttributes": [
       { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-A" }, "category": "product", "sequence": 1 },
-      { "name": "batchSize", "dataType": "integer", "value": { "type": "integer", "value": 50 }, "category": "production", "sequence": 2 },
-      { "name": "priority", "dataType": "enum", "value": { "type": "enum", "value": "HIGH" }, "category": "scheduling", "sequence": 3 },
-      { "name": "qualityHold", "dataType": "boolean", "value": { "type": "boolean", "value": false }, "category": "quality", "sequence": 4 }
+      { "name": "batchSize", "dataType": "integer", "value": { "type": "integer", "value": 500 }, "category": "production", "sequence": 2 }
     ]
   },
   {
-    "key": "OP-002",
-    "name": "Machine Widget-B Batch 1",
+    "key": "T-1001-H-DEBURR",
+    "name": "Deburr Housing (WO-1001)",
     "type": "PROCESS",
+    "process": "WO-1001",
     "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-24T00:00:00Z",
+    "windowEnd": "2026-02-14T00:00:00Z",
     "durationSeconds": 3600,
     "durationQty": 1.0,
     "durationType": 0,
-    "capacityResources": [{ "resource": "CNC-02", "isPrimary": true, "qty": 1 }],
-    "typedAttributes": [
-      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-B" }, "category": "product", "sequence": 1 },
-      { "name": "batchSize", "dataType": "integer", "value": { "type": "integer", "value": 100 }, "category": "production", "sequence": 2 },
-      { "name": "priority", "dataType": "enum", "value": { "type": "enum", "value": "MEDIUM" }, "category": "scheduling", "sequence": 3 },
-      { "name": "qualityHold", "dataType": "boolean", "value": { "type": "boolean", "value": false }, "category": "quality", "sequence": 4 }
-    ]
+    "capacityResources": [{ "resource": "CNC-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1001", "type": "PROCESS", "prevLink": "T-1001-H-MACHINE" },
+    "typedAttributes": []
   },
   {
-    "key": "OP-003",
-    "name": "Machine Widget-A Batch 2",
+    "key": "T-1001-ASSEMBLE",
+    "name": "Assemble Widget-A (WO-1001)",
     "type": "PROCESS",
+    "process": "WO-1001",
     "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-24T00:00:00Z",
-    "durationSeconds": 5400,
+    "windowEnd": "2026-02-14T00:00:00Z",
+    "durationSeconds": 10800,
     "durationQty": 1.0,
     "durationType": 0,
-    "capacityResources": [{ "resource": "CNC-01", "isPrimary": true, "qty": 1 }],
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1001", "type": "PROCESS", "prevLink": "T-1001-H-DEBURR" },
+    "outputProductKey": "PROD-WA",
+    "outputQty": 500,
+    "outputScrapRate": 0.03,
+    "inputMaterials": [
+      { "productKey": "PROD-HOUSING", "requiredQty": 500, "scrapRate": 0.0, "unitOfMeasure": "pcs" },
+      { "productKey": "MAT-BEAR", "requiredQty": 1000, "scrapRate": 0.01, "unitOfMeasure": "pcs" },
+      { "productKey": "MAT-SEAL", "requiredQty": 500, "scrapRate": 0.0, "unitOfMeasure": "pcs" }
+    ],
     "typedAttributes": [
-      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-A" }, "category": "product", "sequence": 1 },
-      { "name": "batchSize", "dataType": "integer", "value": { "type": "integer", "value": 75 }, "category": "production", "sequence": 2 },
-      { "name": "priority", "dataType": "enum", "value": { "type": "enum", "value": "CRITICAL" }, "category": "scheduling", "sequence": 3 },
-      { "name": "qualityHold", "dataType": "boolean", "value": { "type": "boolean", "value": true }, "category": "quality", "sequence": 4 }
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-A" }, "category": "product", "sequence": 1 }
     ]
   },
   {
-    "key": "OP-004",
-    "name": "Assemble Widget-C",
+    "key": "T-1001-QC",
+    "name": "QC Widget-A (WO-1001)",
     "type": "PROCESS",
+    "process": "WO-1001",
     "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-24T00:00:00Z",
+    "windowEnd": "2026-02-14T00:00:00Z",
     "durationSeconds": 1800,
     "durationQty": 1.0,
     "durationType": 0,
     "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1 }],
-    "typedAttributes": [
-      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-C" }, "category": "product", "sequence": 1 },
-      { "name": "batchSize", "dataType": "integer", "value": { "type": "integer", "value": 30 }, "category": "production", "sequence": 2 },
-      { "name": "priority", "dataType": "enum", "value": { "type": "enum", "value": "LOW" }, "category": "scheduling", "sequence": 3 },
-      { "name": "qualityHold", "dataType": "boolean", "value": { "type": "boolean", "value": false }, "category": "quality", "sequence": 4 }
-    ]
+    "linkId": { "name": "WO-1001", "type": "END", "prevLink": "T-1001-ASSEMBLE" },
+    "typedAttributes": []
   },
+
   {
-    "key": "OP-005",
-    "name": "Machine Widget-B Batch 2",
+    "key": "T-1002-B-MACHINE",
+    "name": "Machine Bracket (WO-1002)",
     "type": "PROCESS",
+    "process": "WO-1002",
     "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-24T00:00:00Z",
-    "durationSeconds": 5400,
+    "windowEnd": "2026-02-16T00:00:00Z",
+    "durationSeconds": 9000,
     "durationQty": 1.0,
     "durationType": 0,
     "capacityResources": [{ "resource": "CNC-02", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1002", "type": "START", "prevLink": "" },
+    "outputProductKey": "PROD-BRACKET",
+    "outputQty": 300,
+    "outputScrapRate": 0.03,
+    "inputMaterials": [
+      { "productKey": "MAT-SS304", "requiredQty": 540, "scrapRate": 0.02, "unitOfMeasure": "kg" }
+    ],
     "typedAttributes": [
-      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-B" }, "category": "product", "sequence": 1 },
-      { "name": "batchSize", "dataType": "integer", "value": { "type": "integer", "value": 200 }, "category": "production", "sequence": 2 },
-      { "name": "priority", "dataType": "enum", "value": { "type": "enum", "value": "HIGH" }, "category": "scheduling", "sequence": 3 },
-      { "name": "qualityHold", "dataType": "boolean", "value": { "type": "boolean", "value": false }, "category": "quality", "sequence": 4 }
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-B" }, "category": "product", "sequence": 1 }
     ]
+  },
+  {
+    "key": "T-1002-ASSEMBLE",
+    "name": "Assemble Widget-B (WO-1002)",
+    "type": "PROCESS",
+    "process": "WO-1002",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-16T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1002", "type": "PROCESS", "prevLink": "T-1002-B-MACHINE" },
+    "outputProductKey": "PROD-WB",
+    "outputQty": 300,
+    "outputScrapRate": 0.02,
+    "inputMaterials": [
+      { "productKey": "PROD-BRACKET", "requiredQty": 300, "scrapRate": 0.0, "unitOfMeasure": "pcs" },
+      { "productKey": "MAT-BEAR", "requiredQty": 300, "scrapRate": 0.01, "unitOfMeasure": "pcs" },
+      { "productKey": "MAT-FAST", "requiredQty": 600, "scrapRate": 0.0, "unitOfMeasure": "pcs" }
+    ],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-B" }, "category": "product", "sequence": 1 }
+    ]
+  },
+  {
+    "key": "T-1002-QC",
+    "name": "QC Widget-B (WO-1002)",
+    "type": "PROCESS",
+    "process": "WO-1002",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-16T00:00:00Z",
+    "durationSeconds": 1800,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1002", "type": "END", "prevLink": "T-1002-ASSEMBLE" },
+    "typedAttributes": []
+  },
+
+  {
+    "key": "T-1003-H-MACHINE",
+    "name": "Machine Housing (WO-1003)",
+    "type": "PROCESS",
+    "process": "WO-1003",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-13T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "CNC-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1003", "type": "START", "prevLink": "" },
+    "outputProductKey": "PROD-HOUSING",
+    "outputQty": 200,
+    "outputScrapRate": 0.05,
+    "inputMaterials": [
+      { "productKey": "MAT-AL6061", "requiredQty": 500, "scrapRate": 0.02, "unitOfMeasure": "kg" }
+    ],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-C" }, "category": "product", "sequence": 1 }
+    ]
+  },
+  {
+    "key": "T-1003-B-MACHINE",
+    "name": "Machine Bracket (WO-1003)",
+    "type": "PROCESS",
+    "process": "WO-1003",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-13T00:00:00Z",
+    "durationSeconds": 6000,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "CNC-02", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1003", "type": "START", "prevLink": "" },
+    "outputProductKey": "PROD-BRACKET",
+    "outputQty": 200,
+    "outputScrapRate": 0.03,
+    "inputMaterials": [
+      { "productKey": "MAT-SS304", "requiredQty": 360, "scrapRate": 0.02, "unitOfMeasure": "kg" }
+    ],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-C" }, "category": "product", "sequence": 1 }
+    ]
+  },
+  {
+    "key": "T-1003-ASSEMBLE",
+    "name": "Assemble Widget-C (WO-1003)",
+    "type": "PROCESS",
+    "process": "WO-1003",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-13T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1003", "type": "PROCESS", "prevLink": "T-1003-H-MACHINE" },
+    "outputProductKey": "PROD-WC",
+    "outputQty": 200,
+    "outputScrapRate": 0.04,
+    "inputMaterials": [
+      { "productKey": "PROD-HOUSING", "requiredQty": 200, "scrapRate": 0.0, "unitOfMeasure": "pcs" },
+      { "productKey": "PROD-BRACKET", "requiredQty": 200, "scrapRate": 0.0, "unitOfMeasure": "pcs" },
+      { "productKey": "MAT-SEALKIT", "requiredQty": 200, "scrapRate": 0.0, "unitOfMeasure": "pcs" }
+    ],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-C" }, "category": "product", "sequence": 1 }
+    ]
+  },
+  {
+    "key": "T-1003-QC",
+    "name": "QC Widget-C (WO-1003)",
+    "type": "PROCESS",
+    "process": "WO-1003",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-13T00:00:00Z",
+    "durationSeconds": 1800,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1003", "type": "END", "prevLink": "T-1003-ASSEMBLE" },
+    "typedAttributes": []
+  },
+
+  {
+    "key": "T-1004-H-MACHINE",
+    "name": "Machine Housing (WO-1004)",
+    "type": "PROCESS",
+    "process": "WO-1004",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-18T00:00:00Z",
+    "durationSeconds": 12000,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "CNC-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1004", "type": "START", "prevLink": "" },
+    "outputProductKey": "PROD-HOUSING",
+    "outputQty": 400,
+    "outputScrapRate": 0.05,
+    "inputMaterials": [
+      { "productKey": "MAT-AL6061", "requiredQty": 1000, "scrapRate": 0.02, "unitOfMeasure": "kg" }
+    ],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-A" }, "category": "product", "sequence": 1 }
+    ]
+  },
+  {
+    "key": "T-1004-H-DEBURR",
+    "name": "Deburr Housing (WO-1004)",
+    "type": "PROCESS",
+    "process": "WO-1004",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-18T00:00:00Z",
+    "durationSeconds": 2700,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "CNC-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1004", "type": "PROCESS", "prevLink": "T-1004-H-MACHINE" },
+    "typedAttributes": []
+  },
+  {
+    "key": "T-1004-ASSEMBLE",
+    "name": "Assemble Widget-A (WO-1004)",
+    "type": "PROCESS",
+    "process": "WO-1004",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-18T00:00:00Z",
+    "durationSeconds": 9000,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1004", "type": "PROCESS", "prevLink": "T-1004-H-DEBURR" },
+    "outputProductKey": "PROD-WA",
+    "outputQty": 400,
+    "outputScrapRate": 0.03,
+    "inputMaterials": [
+      { "productKey": "PROD-HOUSING", "requiredQty": 400, "scrapRate": 0.0, "unitOfMeasure": "pcs" },
+      { "productKey": "MAT-BEAR", "requiredQty": 800, "scrapRate": 0.01, "unitOfMeasure": "pcs" },
+      { "productKey": "MAT-SEAL", "requiredQty": 400, "scrapRate": 0.0, "unitOfMeasure": "pcs" }
+    ],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-A" }, "category": "product", "sequence": 1 }
+    ]
+  },
+  {
+    "key": "T-1004-QC",
+    "name": "QC Widget-A (WO-1004)",
+    "type": "PROCESS",
+    "process": "WO-1004",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-18T00:00:00Z",
+    "durationSeconds": 1800,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1004", "type": "END", "prevLink": "T-1004-ASSEMBLE" },
+    "typedAttributes": []
+  },
+
+  {
+    "key": "T-1005-H-MACHINE",
+    "name": "Machine Housing (WO-1005)",
+    "type": "PROCESS",
+    "process": "WO-1005",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-12T00:00:00Z",
+    "durationSeconds": 9000,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "CNC-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1005", "type": "START", "prevLink": "" },
+    "outputProductKey": "PROD-HOUSING",
+    "outputQty": 250,
+    "outputScrapRate": 0.05,
+    "inputMaterials": [
+      { "productKey": "MAT-AL6061", "requiredQty": 625, "scrapRate": 0.02, "unitOfMeasure": "kg" }
+    ],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-C" }, "category": "product", "sequence": 1 }
+    ]
+  },
+  {
+    "key": "T-1005-B-MACHINE",
+    "name": "Machine Bracket (WO-1005)",
+    "type": "PROCESS",
+    "process": "WO-1005",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-12T00:00:00Z",
+    "durationSeconds": 7500,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "CNC-02", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1005", "type": "START", "prevLink": "" },
+    "outputProductKey": "PROD-BRACKET",
+    "outputQty": 250,
+    "outputScrapRate": 0.03,
+    "inputMaterials": [
+      { "productKey": "MAT-SS304", "requiredQty": 450, "scrapRate": 0.02, "unitOfMeasure": "kg" }
+    ],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-C" }, "category": "product", "sequence": 1 }
+    ]
+  },
+  {
+    "key": "T-1005-ASSEMBLE",
+    "name": "Assemble Widget-C (WO-1005)",
+    "type": "PROCESS",
+    "process": "WO-1005",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-12T00:00:00Z",
+    "durationSeconds": 9000,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1005", "type": "PROCESS", "prevLink": "T-1005-H-MACHINE" },
+    "outputProductKey": "PROD-WC",
+    "outputQty": 250,
+    "outputScrapRate": 0.04,
+    "inputMaterials": [
+      { "productKey": "PROD-HOUSING", "requiredQty": 250, "scrapRate": 0.0, "unitOfMeasure": "pcs" },
+      { "productKey": "PROD-BRACKET", "requiredQty": 250, "scrapRate": 0.0, "unitOfMeasure": "pcs" },
+      { "productKey": "MAT-SEALKIT", "requiredQty": 250, "scrapRate": 0.0, "unitOfMeasure": "pcs" }
+    ],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-C" }, "category": "product", "sequence": 1 }
+    ]
+  },
+  {
+    "key": "T-1005-QC",
+    "name": "QC Widget-C (WO-1005)",
+    "type": "PROCESS",
+    "process": "WO-1005",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-12T00:00:00Z",
+    "durationSeconds": 1800,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1005", "type": "END", "prevLink": "T-1005-ASSEMBLE" },
+    "typedAttributes": []
+  },
+
+  {
+    "key": "T-1006-B-MACHINE",
+    "name": "Machine Bracket (WO-1006)",
+    "type": "PROCESS",
+    "process": "WO-1006",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-20T00:00:00Z",
+    "durationSeconds": 4500,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "CNC-02", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1006", "type": "START", "prevLink": "" },
+    "outputProductKey": "PROD-BRACKET",
+    "outputQty": 150,
+    "outputScrapRate": 0.03,
+    "inputMaterials": [
+      { "productKey": "MAT-SS304", "requiredQty": 270, "scrapRate": 0.02, "unitOfMeasure": "kg" }
+    ],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-B" }, "category": "product", "sequence": 1 }
+    ]
+  },
+  {
+    "key": "T-1006-ASSEMBLE",
+    "name": "Assemble Widget-B (WO-1006)",
+    "type": "PROCESS",
+    "process": "WO-1006",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-20T00:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1006", "type": "PROCESS", "prevLink": "T-1006-B-MACHINE" },
+    "outputProductKey": "PROD-WB",
+    "outputQty": 150,
+    "outputScrapRate": 0.02,
+    "inputMaterials": [
+      { "productKey": "PROD-BRACKET", "requiredQty": 150, "scrapRate": 0.0, "unitOfMeasure": "pcs" },
+      { "productKey": "MAT-BEAR", "requiredQty": 150, "scrapRate": 0.01, "unitOfMeasure": "pcs" },
+      { "productKey": "MAT-FAST", "requiredQty": 300, "scrapRate": 0.0, "unitOfMeasure": "pcs" }
+    ],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-B" }, "category": "product", "sequence": 1 }
+    ]
+  },
+  {
+    "key": "T-1006-QC",
+    "name": "QC Widget-B (WO-1006)",
+    "type": "PROCESS",
+    "process": "WO-1006",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-20T00:00:00Z",
+    "durationSeconds": 1800,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1006", "type": "END", "prevLink": "T-1006-ASSEMBLE" },
+    "typedAttributes": []
+  },
+  {
+    "key": "T-1006-PACK",
+    "name": "Pack Widget-B (WO-1006)",
+    "type": "PROCESS",
+    "process": "WO-1006",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-20T00:00:00Z",
+    "durationSeconds": 1800,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1006", "type": "END", "prevLink": "T-1006-QC" },
+    "typedAttributes": []
+  },
+  {
+    "key": "T-1001-PACK",
+    "name": "Pack Widget-A (WO-1001)",
+    "type": "PROCESS",
+    "process": "WO-1001",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-14T00:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1001", "type": "END", "prevLink": "T-1001-QC" },
+    "typedAttributes": []
+  },
+  {
+    "key": "T-1005-PACK",
+    "name": "Pack Widget-C (WO-1005)",
+    "type": "PROCESS",
+    "process": "WO-1005",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-12T00:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1 }],
+    "linkId": { "name": "WO-1005", "type": "END", "prevLink": "T-1005-QC" },
+    "typedAttributes": []
   }
 ]

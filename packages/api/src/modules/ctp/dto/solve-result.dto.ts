@@ -19,6 +19,20 @@ export class TaskErrorDto {
   reason!: string;
 }
 
+export class TaskMaterialInputDto {
+  @ApiProperty({ description: 'Product/material key consumed' })
+  productKey!: string;
+
+  @ApiProperty({ description: 'Required quantity' })
+  requiredQty!: number;
+
+  @ApiProperty({ description: 'Scrap rate (0.02 = 2%)' })
+  scrapRate!: number;
+
+  @ApiProperty({ description: 'Unit of measure' })
+  unitOfMeasure!: string;
+}
+
 export class TaskResultDto {
   @ApiProperty({ description: 'Task key' })
   key!: string;
@@ -55,6 +69,24 @@ export class TaskResultDto {
 
   @ApiProperty({ description: 'Typed attributes on this task' })
   typedAttributes!: any[];
+
+  @ApiPropertyOptional({ description: 'Order reference (linkId name)' })
+  orderRef!: string | null;
+
+  @ApiPropertyOptional({ description: 'Output product key this task produces' })
+  outputProductKey!: string | null;
+
+  @ApiPropertyOptional({ description: 'Output quantity produced' })
+  outputQty!: number | null;
+
+  @ApiPropertyOptional({ description: 'Output scrap rate (0.03 = 3%)' })
+  outputScrapRate!: number | null;
+
+  @ApiProperty({ description: 'Material inputs consumed by this task', type: [TaskMaterialInputDto] })
+  inputMaterials!: TaskMaterialInputDto[];
+
+  @ApiPropertyOptional({ description: 'Process chain this task belongs to' })
+  process!: string | null;
 }
 
 export class ResourceUtilizationDto {
@@ -72,6 +104,55 @@ export class ResourceUtilizationDto {
 
   @ApiProperty({ description: 'Utilization percentage (0-100)' })
   utilization!: number;
+}
+
+export class OrderResultDto {
+  @ApiProperty({ description: 'Order key' })
+  orderKey!: string;
+
+  @ApiProperty({ description: 'Product key demanded' })
+  productKey!: string;
+
+  @ApiProperty({ description: 'Demand quantity' })
+  demandQty!: number;
+
+  @ApiProperty({ description: 'Scheduled output quantity' })
+  scheduledQty!: number;
+
+  @ApiProperty({ description: 'Fill rate (0-1)' })
+  fillRate!: number;
+
+  @ApiProperty({ description: 'Due date (ISO 8601)' })
+  dueDate!: string;
+
+  @ApiPropertyOptional({ description: 'Late due date (ISO 8601)' })
+  lateDueDate!: string | null;
+
+  @ApiProperty({ description: 'Order priority' })
+  priority!: number;
+}
+
+export class MaterialStatusDto {
+  @ApiProperty({ description: 'Material key' })
+  materialKey!: string;
+
+  @ApiProperty({ description: 'Material name' })
+  materialName!: string;
+
+  @ApiProperty({ description: 'Unit of measure' })
+  unit!: string;
+
+  @ApiProperty({ description: 'On-hand inventory' })
+  onHand!: number;
+
+  @ApiProperty({ description: 'Total consumed by scheduled tasks' })
+  consumed!: number;
+
+  @ApiProperty({ description: 'Remaining after consumption' })
+  remaining!: number;
+
+  @ApiPropertyOptional({ description: 'Incoming replenishment quantity' })
+  incoming!: number;
 }
 
 export class SolveSummaryDto {
@@ -115,4 +196,10 @@ export class CTPSolveResultDto {
 
   @ApiProperty({ description: 'Per-resource utilization', type: [ResourceUtilizationDto] })
   resourceUtilization!: ResourceUtilizationDto[];
+
+  @ApiProperty({ description: 'Order fill-rate results', type: [OrderResultDto] })
+  orders!: OrderResultDto[];
+
+  @ApiProperty({ description: 'Material consumption status', type: [MaterialStatusDto] })
+  materials!: MaterialStatusDto[];
 }

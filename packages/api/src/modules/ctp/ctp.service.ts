@@ -28,6 +28,8 @@ export interface CTPSolveResult {
   };
   tasks: any[];
   resourceUtilization: any[];
+  orders: any[];
+  materials: any[];
 }
 
 @Injectable()
@@ -159,6 +161,12 @@ export class CTPService {
     let minStartW = Number.MAX_VALUE;
     let maxEndW = 0;
 
+    // Track scheduled output per order (orderKey → scheduledQty)
+    const orderScheduledQty = new Map<string, number>();
+
+    // Track material consumption (materialKey → consumed qty)
+    const materialConsumed = new Map<string, number>();
+
     landscape.tasks.forEach((task) => {
       const isScheduled =
         task.state === CTPTaskStateConstants.SCHEDULED;
@@ -180,6 +188,38 @@ export class CTPService {
         }
       });
 
+      // Extract new fields
+      const orderRef = task.linkId?.name ?? null;
+      const outputProductKey = task.outputProductKey ?? null;
+      const outputQty = task.outputQty > 0 ? task.outputQty : null;
+      const outputScrapRate = task.outputScrapRate > 0 ? task.outputScrapRate : null;
+      const process = task.process ?? null;
+
+      // Build input materials array
+      const inputMaterials: any[] = [];
+      if (task.inputMaterials) {
+        task.inputMaterials.forEach((input) => {
+          inputMaterials.push({
+            productKey: input.productKey,
+            requiredQty: input.requiredQty,
+            scrapRate: input.scrapRate,
+            unitOfMeasure: input.unitOfMeasure,
+          });
+
+          // Track consumption for scheduled tasks
+          if (isScheduled) {
+            const existing = materialConsumed.get(input.productKey) ?? 0;
+            materialConsumed.set(input.productKey, existing + input.grossQty());
+          }
+        });
+      }
+
+      // Track order fill for scheduled finished-good tasks
+      if (isScheduled && orderRef && outputProductKey && task.outputQty > 0) {
+        const existing = orderScheduledQty.get(orderRef) ?? 0;
+        orderScheduledQty.set(orderRef, existing + task.netOutputQty());
+      }
+
       tasks.push({
         key: task.key,
         name: task.name,
@@ -198,6 +238,12 @@ export class CTPService {
         feasible: isScheduled,
         errors: task.errors ?? [],
         typedAttributes: task.typedAttributes.toArray(),
+        orderRef,
+        outputProductKey,
+        outputQty,
+        outputScrapRate,
+        inputMaterials,
+        process,
       });
     });
 
@@ -234,6 +280,40 @@ export class CTPService {
       });
     });
 
+    // Order fill rates
+    const orderData = this.configService.getOrders();
+    const orders = orderData.map((order) => {
+      const scheduledQty = orderScheduledQty.get(order.key) ?? 0;
+      return {
+        orderKey: order.key,
+        productKey: order.productKey,
+        demandQty: order.demandQty,
+        scheduledQty: Math.round(scheduledQty * 100) / 100,
+        fillRate:
+          order.demandQty > 0
+            ? Math.round((scheduledQty / order.demandQty) * 10000) / 10000
+            : 0,
+        dueDate: order.dueDate,
+        lateDueDate: order.lateDueDate ?? null,
+        priority: order.priority ?? 0,
+      };
+    });
+
+    // Material consumption status
+    const materialData = this.configService.getMaterials();
+    const materials = materialData.map((mat) => {
+      const consumed = materialConsumed.get(mat.key) ?? 0;
+      return {
+        materialKey: mat.key,
+        materialName: mat.name,
+        unit: mat.unit,
+        onHand: mat.onHand,
+        consumed: Math.round(consumed * 100) / 100,
+        remaining: Math.round((mat.onHand - consumed) * 100) / 100,
+        incoming: mat.incoming ?? 0,
+      };
+    });
+
     // Summary
     const totalTasks = landscape.tasks.size();
     const includedTasks = scheduledTasks.length;
@@ -262,6 +342,8 @@ export class CTPService {
       },
       tasks,
       resourceUtilization,
+      orders,
+      materials,
     };
   }
 }

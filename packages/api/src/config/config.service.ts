@@ -12,6 +12,9 @@ import {
   ITaskData,
   ICalendarData,
   IStateChangeData,
+  IProductData,
+  IOrderData,
+  IMaterialData,
 } from './interfaces/config-store.interface';
 import { FileConfigStore } from './file-config-store';
 
@@ -67,6 +70,18 @@ export class ConfigService {
 
   getStateChanges(): IStateChangeData[] {
     return this.store.getStateChanges();
+  }
+
+  getProducts(): IProductData[] {
+    return this.store.getProducts();
+  }
+
+  getOrders(): IOrderData[] {
+    return this.store.getOrders();
+  }
+
+  getMaterials(): IMaterialData[] {
+    return this.store.getMaterials();
   }
 
   reloadConfig(): void {

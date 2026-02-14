@@ -19,6 +19,8 @@ import {
   CTPAssignments,
   CTPLinkId,
   CTPResourcePreference,
+  CTPTaskMaterialInput,
+  CTPTaskMaterialInputList,
 } from '@ctp/engine';
 import { ConfigService } from '../../config/config.service';
 import {
@@ -176,6 +178,27 @@ export class StateHydratorService {
           item.linkId.type ?? '',
           item.linkId.prevLink,
         );
+      }
+
+      // Product output linkage
+      if (item.outputProductKey) task.outputProductKey = item.outputProductKey;
+      if (item.outputQty !== undefined) task.outputQty = item.outputQty;
+      if (item.outputScrapRate !== undefined) task.outputScrapRate = item.outputScrapRate;
+
+      // Material inputs
+      if (item.inputMaterials && Array.isArray(item.inputMaterials)) {
+        const matInputs = new CTPTaskMaterialInputList();
+        for (const mi of item.inputMaterials) {
+          matInputs.add(
+            new CTPTaskMaterialInput(
+              mi.productKey,
+              mi.requiredQty,
+              mi.scrapRate ?? 0,
+              mi.unitOfMeasure ?? 'pcs',
+            ),
+          );
+        }
+        task.inputMaterials = matInputs;
       }
 
       // Typed attributes

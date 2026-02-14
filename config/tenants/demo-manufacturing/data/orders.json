@@ -1,0 +1,8 @@
+[
+  { "key": "WO-1001", "name": "WO-1001", "productKey": "PROD-WA", "demandQty": 500, "dueDate": "2026-02-14T00:00:00Z", "lateDueDate": "2026-02-16T00:00:00Z", "priority": 1 },
+  { "key": "WO-1002", "name": "WO-1002", "productKey": "PROD-WB", "demandQty": 300, "dueDate": "2026-02-16T00:00:00Z", "lateDueDate": "2026-02-18T00:00:00Z", "priority": 2 },
+  { "key": "WO-1003", "name": "WO-1003", "productKey": "PROD-WC", "demandQty": 200, "dueDate": "2026-02-13T00:00:00Z", "lateDueDate": "2026-02-15T00:00:00Z", "priority": 1 },
+  { "key": "WO-1004", "name": "WO-1004", "productKey": "PROD-WA", "demandQty": 400, "dueDate": "2026-02-18T00:00:00Z", "lateDueDate": "2026-02-20T00:00:00Z", "priority": 3 },
+  { "key": "WO-1005", "name": "WO-1005", "productKey": "PROD-WC", "demandQty": 250, "dueDate": "2026-02-12T00:00:00Z", "lateDueDate": "2026-02-14T00:00:00Z", "priority": 1 },
+  { "key": "WO-1006", "name": "WO-1006", "productKey": "PROD-WB", "demandQty": 150, "dueDate": "2026-02-20T00:00:00Z", "lateDueDate": "2026-02-22T00:00:00Z", "priority": 4 }
+]

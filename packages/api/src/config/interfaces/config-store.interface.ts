@@ -90,6 +90,43 @@ export interface ITenantConfig {
   updatedAt: string;
 }
 
+// Product data
+export interface IBOMInputData {
+  productKey: string;
+  qtyPer: number;
+  scrapRate?: number;
+}
+
+export interface IProductData {
+  key: string;
+  name: string;
+  productType: string;
+  unitOfMeasure: string;
+  outputScrapRate?: number;
+  bomInputs?: IBOMInputData[];
+}
+
+// Order data
+export interface IOrderData {
+  key: string;
+  name: string;
+  productKey: string;
+  demandQty: number;
+  dueDate: string;
+  lateDueDate?: string;
+  priority?: number;
+}
+
+// Material inventory data
+export interface IMaterialData {
+  key: string;
+  name: string;
+  unit: string;
+  onHand: number;
+  incoming?: number;
+  incomingDate?: string | null;
+}
+
 // Raw entity data shapes
 export interface IResourceData {
   key: string;
@@ -170,6 +207,9 @@ export interface IConfigStore {
   getTasks(): ITaskData[];
   getCalendars(): ICalendarData[];
   getStateChanges(): IStateChangeData[];
+  getProducts(): IProductData[];
+  getOrders(): IOrderData[];
+  getMaterials(): IMaterialData[];
 
   // Save entity data
   saveResources(resources: IResourceData[]): void;

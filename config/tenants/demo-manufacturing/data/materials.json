@@ -1,0 +1,8 @@
+[
+  { "key": "MAT-AL6061", "name": "Aluminum 6061", "unit": "kg", "onHand": 4200, "incoming": 1000, "incomingDate": "2026-02-13T00:00:00Z" },
+  { "key": "MAT-SS304", "name": "Stainless Steel 304", "unit": "kg", "onHand": 1400, "incoming": 0, "incomingDate": null },
+  { "key": "MAT-BEAR", "name": "Bearing 608ZZ", "unit": "pcs", "onHand": 3000, "incoming": 0, "incomingDate": null },
+  { "key": "MAT-SEAL", "name": "O-Ring Seal", "unit": "pcs", "onHand": 1200, "incoming": 0, "incomingDate": null },
+  { "key": "MAT-FAST", "name": "Fastener Kit", "unit": "pcs", "onHand": 800, "incoming": 500, "incomingDate": "2026-02-12T00:00:00Z" },
+  { "key": "MAT-SEALKIT", "name": "Seal Kit", "unit": "pcs", "onHand": 300, "incoming": 0, "incomingDate": null }
+]
