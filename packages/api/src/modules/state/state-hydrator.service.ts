@@ -18,6 +18,7 @@ import {
   CTPAvailable,
   CTPAssignments,
   CTPLinkId,
+  CTPResourcePreference,
 } from '@ctp/engine';
 import { ConfigService } from '../../config/config.service';
 import {
@@ -143,6 +144,7 @@ export class StateHydratorService {
           const entry = item.capacityResources[i];
           const tr = new CTPTaskResource(entry.resource, entry.isPrimary, i);
           if (entry.qty !== undefined) tr.qty = entry.qty;
+          tr.preferences.push(new CTPResourcePreference(entry.resource));
           capList.add(tr);
         }
         capList.sortBySequence();
@@ -156,6 +158,7 @@ export class StateHydratorService {
           const entry = item.materialsResources[i];
           const tr = new CTPTaskResource(entry.resource, entry.isPrimary, i);
           if (entry.qty !== undefined) tr.qty = entry.qty;
+          tr.preferences.push(new CTPResourcePreference(entry.resource));
           matList.add(tr);
         }
         matList.sortBySequence();
