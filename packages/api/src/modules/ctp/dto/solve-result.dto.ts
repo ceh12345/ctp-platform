@@ -183,6 +183,21 @@ export class MaterialStatusDto {
 
   @ApiPropertyOptional({ description: 'Incoming replenishment quantity' })
   incoming!: number;
+
+  @ApiPropertyOptional({ description: 'Incoming stock arrival date (ISO 8601)' })
+  incomingDate?: string | null;
+
+  @ApiPropertyOptional({ description: 'Date when shortage first occurs (ISO 8601)' })
+  firstShortageDate?: string | null;
+
+  @ApiPropertyOptional({ description: 'Deficit quantity at shortage point' })
+  shortageQty?: number;
+
+  @ApiPropertyOptional({ description: 'Task key that triggers the shortage' })
+  firstNeedTaskKey?: string | null;
+
+  @ApiPropertyOptional({ description: 'Task name that triggers the shortage' })
+  firstNeedTaskName?: string | null;
 }
 
 export class SolveSummaryDto {
@@ -238,4 +253,10 @@ export class CTPSolveResultDto {
 
   @ApiPropertyOptional({ description: 'Tenant color configuration' })
   colors?: any;
+
+  @ApiPropertyOptional({ description: 'Tenant terminology configuration' })
+  terminology?: Record<string, string>;
+
+  @ApiPropertyOptional({ description: 'Tenant locale configuration' })
+  locale?: any;
 }

@@ -45,19 +45,44 @@ async function api(path: string, options?: RequestInit) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   UTILITIES
+   TERMINOLOGY / LOCALE / ACTION HELPERS
+   ═══════════════════════════════════════════════════════════════ */
+
+let _terminology: Record<string, string> = {};
+let _locale: any = {};
+
+/** Resolve a domain term from tenant terminology config */
+function t(key: string, fallback?: string): string {
+  return _terminology[key] || fallback || key;
+}
+
+/** Resolve an action label from locale config */
+function act(key: string, fallback?: string): string {
+  return _locale?.actions?.[key] || fallback || key;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILITIES — locale-aware formatting
    ═══════════════════════════════════════════════════════════════ */
 
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-US', {
+  const loc = _locale?.locale || 'en-US';
+  const tz = _locale?.timezone;
+  return new Date(iso).toLocaleDateString(loc, {
     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    ...(tz ? { timeZone: tz } : {}),
   });
 }
 
 function fmtDateShort(iso: string | null | undefined): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const loc = _locale?.locale || 'en-US';
+  const tz = _locale?.timezone;
+  return new Date(iso).toLocaleDateString(loc, {
+    month: 'short', day: 'numeric',
+    ...(tz ? { timeZone: tz } : {}),
+  });
 }
 
 function fmtDuration(seconds: number | null | undefined): string {
@@ -81,7 +106,8 @@ function fmtPctFromDecimal(v: number | null | undefined): string {
 
 function fmtNum(v: number | null | undefined): string {
   if (v == null) return '—';
-  return v.toLocaleString();
+  const loc = _locale?.locale || 'en-US';
+  return v.toLocaleString(loc);
 }
 
 function getProductColor(productKey: string | null | undefined, products: any[]): string {
@@ -100,15 +126,26 @@ function getProductColor(productKey: string | null | undefined, products: any[])
 function getTaskColor(task: any, colors: any): string {
   if (!colors?.taskColors) return '#3b82f6';
   const taskType = (task.type || '').toUpperCase();
+  // Process change / changeover / setup / teardown
+  if (taskType === 'PROCESS CHANGE' || taskType === 'CHANGEOVER') return colors.taskColors.processChange || colors.taskColors.changeover || '#eab308';
   if (taskType === 'SETUP' || taskType === 'SET_UP') return colors.taskColors.setup || '#eab308';
   if (taskType === 'TEARDOWN' || taskType === 'TEAR_DOWN') return colors.taskColors.teardown || '#eab308';
-  if (task.subType === 'CHANGEOVER' || task.subType === 'CHANGE_OVER') return colors.taskColors.changeover || '#eab308';
+  if (task.subType === 'CHANGEOVER' || task.subType === 'CHANGE_OVER' || task.subType === 'PROCESS CHANGE') return colors.taskColors.processChange || '#eab308';
+  // Match by task name pattern
+  const name = task.name || '';
+  if (colors.taskColors.byNamePattern) {
+    for (const [pattern, color] of Object.entries(colors.taskColors.byNamePattern)) {
+      if (name.includes(pattern)) return color as string;
+    }
+  }
+  // Legacy: match by process key
   const process = task.process || '';
   if (colors.taskColors.byProcess?.[process]) return colors.taskColors.byProcess[process];
   return colors.taskColors.default || '#3b82f6';
 }
 
 const ZOOM_LEVELS = [
+  { label: '3 Hr', days: 3 / 24 },
   { label: 'Day', days: 1 },
   { label: '3 Day', days: 3 },
   { label: 'Week', days: 7 },
@@ -506,32 +543,32 @@ function TaskDetailPanel({ task, tasks, products, onClose, onResourceClick }: {
     : [];
 
   return (
-    <SlidePanel open={true} onClose={onClose} title="Task Detail">
+    <SlidePanel open={true} onClose={onClose} title={`${t('task', 'Task')} Detail`}>
       {/* Header badges */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-        <Badge label={task.feasible ? 'scheduled' : 'infeasible'} color={task.feasible ? C.green : C.red} />
+        <Badge label={task.feasible ? t('scheduledStatus', 'Scheduled') : t('infeasibleStatus', 'Infeasible')} color={task.feasible ? C.green : C.red} />
         {task.orderRef && <Badge label={task.orderRef} color={C.purple} />}
         {task.process && <Badge label={task.process} color={C.accent} />}
       </div>
 
       {/* Task Info */}
-      <SectionLabel label="Task Info" />
+      <SectionLabel label={`${t('task', 'Task')} Info`} />
       <DetailRow label="Key" value={task.key} />
       <DetailRow label="Name" value={task.name} />
 
       {/* Schedule */}
-      <SectionLabel label="Schedule" />
+      <SectionLabel label={t('schedule', 'Schedule')} />
       <DetailRow label="Start" value={fmtDate(task.scheduledStart)} />
       <DetailRow label="End" value={fmtDate(task.scheduledEnd)} />
-      <DetailRow label="Duration" value={fmtDuration(task.durationSeconds)} />
-      <DetailRow label="Score" value={task.score != null ? task.score.toFixed(2) : '—'} />
+      <DetailRow label={t('duration', 'Duration')} value={fmtDuration(task.durationSeconds)} />
+      <DetailRow label={t('score', 'Score')} value={task.score != null ? task.score.toFixed(2) : '—'} />
 
       {/* Product Output */}
       {prodName && (
         <>
-          <SectionLabel label="Product Output" />
-          <DetailRow label="Product" value={<span style={{ color: prodColor }}>{prodName}</span>} />
-          <DetailRow label="Quantity" value={fmtNum(task.outputQty)} />
+          <SectionLabel label={`${t('product', 'Product')} Output`} />
+          <DetailRow label={t('product', 'Product')} value={<span style={{ color: prodColor }}>{prodName}</span>} />
+          <DetailRow label={t('quantity', 'Qty')} value={fmtNum(task.outputQty)} />
           <DetailRow label="Scrap Rate" value={task.outputScrapRate != null ? fmtPctFromDecimal(task.outputScrapRate) : '—'} />
         </>
       )}
@@ -539,7 +576,7 @@ function TaskDetailPanel({ task, tasks, products, onClose, onResourceClick }: {
       {/* Capacity Resources */}
       {task.assignedResources?.length > 0 && (
         <>
-          <SectionLabel label="Capacity Resources" />
+          <SectionLabel label={`Capacity ${t('resources', 'Resources')}`} />
           {task.assignedResources.map((r: any, i: number) => (
             <div
               key={i}
@@ -567,7 +604,7 @@ function TaskDetailPanel({ task, tasks, products, onClose, onResourceClick }: {
       {/* Material Resources */}
       {task.materialResources?.length > 0 && (
         <>
-          <SectionLabel label="Material Resources" />
+          <SectionLabel label={`${t('material', 'Material')} ${t('resources', 'Resources')}`} />
           {task.materialResources.map((r: any, i: number) => (
             <div
               key={i}
@@ -590,7 +627,7 @@ function TaskDetailPanel({ task, tasks, products, onClose, onResourceClick }: {
       {/* Input Materials */}
       {task.inputMaterials?.length > 0 && (
         <>
-          <SectionLabel label="Input Materials" />
+          <SectionLabel label={`Input ${t('materials', 'Materials')}`} />
           {task.inputMaterials.map((m: any, i: number) => (
             <div key={i} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -672,22 +709,22 @@ function ResourceDetailPanel({ resource, tasks, products, colors, onClose, onTas
   const assignedHrs = (resource.totalAssigned || 0) / 3600;
 
   return (
-    <SlidePanel open={true} onClose={onClose} title="Resource Detail">
+    <SlidePanel open={true} onClose={onClose} title={`${t('resource', 'Resource')} Detail`}>
       {/* Resource Info */}
-      <SectionLabel label="Resource Info" />
+      <SectionLabel label={`${t('resource', 'Resource')} Info`} />
       <DetailRow label="Key" value={resource.resourceKey} />
       <DetailRow label="Name" value={resource.resourceName} />
 
       {/* Utilization */}
-      <SectionLabel label="Utilization" />
+      <SectionLabel label={t('utilization', 'Utilization')} />
       <UtilBar pct={resource.utilization || 0} label={resource.resourceName} />
-      <DetailRow label="Available" value={`${totalHrs.toFixed(1)}h`} />
+      <DetailRow label={t('available', 'Available')} value={`${totalHrs.toFixed(1)}h`} />
       <DetailRow label="Assigned" value={`${assignedHrs.toFixed(1)}h`} />
 
       {/* Task Agenda */}
-      <SectionLabel label={`Task Agenda (${resTasks.length})`} />
+      <SectionLabel label={`${t('task', 'Task')} Agenda (${resTasks.length})`} />
       {resTasks.length === 0 && (
-        <div style={{ color: C.textDim, fontSize: 13, padding: '8px 0' }}>No tasks assigned</div>
+        <div style={{ color: C.textDim, fontSize: 13, padding: '8px 0' }}>No {t('tasks', 'tasks')} assigned</div>
       )}
       {resTasks.map((t: any) => {
         const prodColor = colors ? getTaskColor(t, colors) : getProductColor(t.outputProductKey, products);
@@ -747,14 +784,14 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
 }) {
   const [hovered, setHovered] = useState<any>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
-  const [zoomLevel, setZoomLevel] = useState('Fit');
+  const [zoomLevel, setZoomLevel] = useState('Day');
   const [scrollOffset, setScrollOffset] = useState(0);
 
   // Compute time range from actual scheduled task data
   const scheduled = tasks.filter((t: any) => t.feasible && t.scheduledStart && t.scheduledEnd);
 
   if (scheduled.length === 0) {
-    return <div style={{ color: C.textDim, padding: 20 }}>No scheduled tasks</div>;
+    return <div style={{ color: C.textDim, padding: 20 }}>No {t('scheduledStatus', 'scheduled').toLowerCase()} {t('tasks', 'tasks')}</div>;
   }
 
   const taskStarts = scheduled.map((t: any) => new Date(t.scheduledStart).getTime());
@@ -767,9 +804,16 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
 
   if (zoomConfig && zoomConfig.days > 0) {
     const viewStart = new Date(dataStart);
-    viewStart.setUTCHours(0, 0, 0, 0);
-    const scrolledStart = new Date(viewStart.getTime() + scrollOffset * 24 * 3600 * 1000);
-    const scrolledEnd = new Date(scrolledStart.getTime() + zoomConfig.days * 24 * 3600 * 1000);
+    if (zoomConfig.days < 1) {
+      // Sub-day zoom: snap to the hour of earliest task
+      viewStart.setUTCMinutes(0, 0, 0);
+    } else {
+      // Day+ zoom: snap to midnight
+      viewStart.setUTCHours(0, 0, 0, 0);
+    }
+    const stepMs = zoomConfig.days * 24 * 3600 * 1000;
+    const scrolledStart = new Date(viewStart.getTime() + scrollOffset * stepMs);
+    const scrolledEnd = new Date(scrolledStart.getTime() + stepMs);
     hStartMs = scrolledStart.getTime();
     hEndMs = scrolledEnd.getTime();
   } else {
@@ -791,17 +835,36 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   // Time axis labels
   const axisLabels: { date: Date; pct: number; label: string }[] = [];
   if (zoomConfig && zoomConfig.days > 0 && zoomConfig.days <= 1) {
-    // Hourly labels for Day zoom
+    // Sub-day labels: 30-min for ≤3hr, hourly for Day
+    const stepMin = zoomConfig.days <= 0.25 ? 30 : 60;
     const h = new Date(hStartMs);
-    h.setUTCMinutes(0, 0, 0);
-    h.setUTCHours(h.getUTCHours() + 1);
+    h.setUTCSeconds(0, 0);
+    // Snap to next step boundary
+    const mins = h.getUTCMinutes();
+    const nextSlot = Math.ceil(mins / stepMin) * stepMin;
+    if (nextSlot >= 60) { h.setUTCMinutes(0); h.setUTCHours(h.getUTCHours() + 1); }
+    else if (nextSlot > mins) { h.setUTCMinutes(nextSlot); }
+    else { h.setTime(h.getTime() + stepMin * 60000); h.setUTCSeconds(0, 0); }
     while (h.getTime() < hEndMs) {
+      const hr = h.getUTCHours();
+      const min = h.getUTCMinutes();
+      let label: string;
+      if (zoomConfig.days < 1) {
+        // 3 Hr view: full time on every tick
+        label = h.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+      } else {
+        // Day view: hour number only, am/pm at 6-hour marks
+        const isPeriodMark = hr % 6 === 0 && min === 0;
+        const period = hr < 12 ? 'am' : 'pm';
+        const hr12 = hr === 0 ? 12 : hr > 12 ? hr - 12 : hr;
+        label = isPeriodMark ? `${hr12}${period}` : `${hr12}`;
+      }
       axisLabels.push({
         date: new Date(h),
         pct: ((h.getTime() - hStartMs) / totalMs) * 100,
-        label: h.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }),
+        label,
       });
-      h.setUTCHours(h.getUTCHours() + 1);
+      h.setTime(h.getTime() + stepMin * 60000);
     }
   } else {
     // Daily labels
@@ -859,20 +922,20 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
             </button>
           ))}
         </div>
-        {zoomConfig && zoomConfig.days > 0 && zoomConfig.days <= 7 && (
+        {zoomConfig && zoomConfig.days > 0 && (
           <div style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
             <button onClick={() => setScrollOffset(s => s - 1)} style={{
               padding: '5px 10px', borderRadius: 6, border: `1px solid ${C.border}`,
               background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: 12, fontFamily: FONT,
-            }}>← Prev</button>
+            }}>← {act('prev', 'Prev')}</button>
             <button onClick={() => setScrollOffset(0)} style={{
               padding: '5px 10px', borderRadius: 6, border: `1px solid ${C.border}`,
               background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: 12, fontFamily: FONT,
-            }}>Reset</button>
+            }}>{act('today', 'Today')}</button>
             <button onClick={() => setScrollOffset(s => s + 1)} style={{
               padding: '5px 10px', borderRadius: 6, border: `1px solid ${C.border}`,
               background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: 12, fontFamily: FONT,
-            }}>Next →</button>
+            }}>{act('next', 'Next')} →</button>
           </div>
         )}
       </div>
@@ -881,7 +944,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
       <div style={{ marginLeft: LABEL_W, display: 'flex', position: 'relative', height: 24, overflow: 'hidden' }}>
         {axisLabels.map((lbl, i) => (
           <div key={i} style={{
-            position: 'absolute', left: `${lbl.pct}%`, fontSize: 10, color: C.textDim,
+            position: 'absolute', left: `${lbl.pct}%`, fontSize: 10, color: C.textMuted,
             transform: 'translateX(-50%)', whiteSpace: 'nowrap',
           }}>
             {lbl.label}
@@ -980,8 +1043,8 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
           <div style={{ color: C.textMuted }}>
             {fmtDate(hovered.scheduledStart)} → {fmtDate(hovered.scheduledEnd)}
           </div>
-          <div style={{ color: C.textMuted }}>Duration: {fmtDuration(hovered.durationSeconds)}</div>
-          {hovered.orderRef && <div style={{ color: C.textMuted }}>Order: {hovered.orderRef}</div>}
+          <div style={{ color: C.textMuted }}>{t('duration', 'Duration')}: {fmtDuration(hovered.durationSeconds)}</div>
+          {hovered.orderRef && <div style={{ color: C.textMuted }}>{t('order', 'Order')}: {hovered.orderRef}</div>}
           {hovered.outputProductKey && (
             <div style={{ color: C.textMuted }}>
               Output: {products.find((p: any) => p.key === hovered.outputProductKey)?.name || hovered.outputProductKey} × {fmtNum(hovered.outputQty)}
@@ -1008,55 +1071,55 @@ function TaskTable({ tasks, products, onTaskClick }: { tasks: any[]; products: a
       <table style={tableStyle}>
         <thead>
           <tr>
-            <SortHeader label="Task" k="key" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Order" k="orderRef" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Product" k="outputProductKey" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Qty" k="outputQty" current={sortKey} dir={sortDir} onSort={toggle} />
+            <SortHeader label={t('task', 'Task')} k="key" current={sortKey} dir={sortDir} onSort={toggle} />
+            <SortHeader label={t('order', 'Order')} k="orderRef" current={sortKey} dir={sortDir} onSort={toggle} />
+            <SortHeader label={t('product', 'Product')} k="outputProductKey" current={sortKey} dir={sortDir} onSort={toggle} />
+            <SortHeader label={t('quantity', 'Qty')} k="outputQty" current={sortKey} dir={sortDir} onSort={toggle} />
             <SortHeader label="Scrap%" k="outputScrapRate" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Resource" k="_resource" current={sortKey} dir={sortDir} onSort={toggle} />
+            <SortHeader label={t('resource', 'Resource')} k="_resource" current={sortKey} dir={sortDir} onSort={toggle} />
             <SortHeader label="Start" k="scheduledStart" current={sortKey} dir={sortDir} onSort={toggle} />
             <SortHeader label="End" k="scheduledEnd" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Duration" k="durationSeconds" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Score" k="score" current={sortKey} dir={sortDir} onSort={toggle} />
+            <SortHeader label={t('duration', 'Duration')} k="durationSeconds" current={sortKey} dir={sortDir} onSort={toggle} />
+            <SortHeader label={t('score', 'Score')} k="score" current={sortKey} dir={sortDir} onSort={toggle} />
             <SortHeader label="Status" k="feasible" current={sortKey} dir={sortDir} onSort={toggle} />
           </tr>
         </thead>
         <tbody>
-          {rows.map((t: any) => {
-            const resKey = t.assignedResources?.[0]?.resourceKey || '—';
-            const prodColor = getProductColor(t.outputProductKey, products);
+          {rows.map((tk: any) => {
+            const resKey = tk.assignedResources?.[0]?.resourceKey || '—';
+            const prodColor = getProductColor(tk.outputProductKey, products);
             return (
-              <tr key={t.key} style={{ transition: 'background 0.1s', cursor: onTaskClick ? 'pointer' : 'default' }}
-                onClick={() => onTaskClick?.(t)}
+              <tr key={tk.key} style={{ transition: 'background 0.1s', cursor: onTaskClick ? 'pointer' : 'default' }}
+                onClick={() => onTaskClick?.(tk)}
                 onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
                 <td style={cellStyle}>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{t.key}</div>
-                  <div style={{ fontSize: 11, color: C.textDim }}>{t.name}</div>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>{tk.key}</div>
+                  <div style={{ fontSize: 11, color: C.textDim }}>{tk.name}</div>
                 </td>
-                <td style={cellStyle}>{t.orderRef || '—'}</td>
+                <td style={cellStyle}>{tk.orderRef || '—'}</td>
                 <td style={cellStyle}>
-                  {t.outputProductKey ? (
+                  {tk.outputProductKey ? (
                     <span style={{ color: prodColor, fontWeight: 500 }}>
-                      {products.find((p: any) => p.key === t.outputProductKey)?.name || t.outputProductKey}
+                      {products.find((p: any) => p.key === tk.outputProductKey)?.name || tk.outputProductKey}
                     </span>
                   ) : '—'}
                 </td>
-                <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(t.outputQty)}</td>
+                <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(tk.outputQty)}</td>
                 <td style={{ ...cellStyle, textAlign: 'right' }}>
-                  {t.outputScrapRate != null ? fmtPctFromDecimal(t.outputScrapRate) : '—'}
+                  {tk.outputScrapRate != null ? fmtPctFromDecimal(tk.outputScrapRate) : '—'}
                 </td>
                 <td style={cellStyle}>{resKey}</td>
-                <td style={cellStyle}>{fmtDate(t.scheduledStart)}</td>
-                <td style={cellStyle}>{fmtDate(t.scheduledEnd)}</td>
-                <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtDuration(t.durationSeconds)}</td>
+                <td style={cellStyle}>{fmtDate(tk.scheduledStart)}</td>
+                <td style={cellStyle}>{fmtDate(tk.scheduledEnd)}</td>
+                <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtDuration(tk.durationSeconds)}</td>
                 <td style={{ ...cellStyle, textAlign: 'right' }}>
-                  {t.score != null ? t.score.toFixed(2) : '—'}
+                  {tk.score != null ? tk.score.toFixed(2) : '—'}
                 </td>
                 <td style={cellStyle}>
-                  <Badge label={t.feasible ? 'scheduled' : 'infeasible'}
-                    color={t.feasible ? C.green : C.red} />
+                  <Badge label={tk.feasible ? t('scheduledStatus', 'Scheduled') : t('infeasibleStatus', 'Infeasible')}
+                    color={tk.feasible ? C.green : C.red} />
                 </td>
               </tr>
             );
@@ -1073,25 +1136,26 @@ function TaskTable({ tasks, products, onTaskClick }: { tasks: any[]; products: a
 
 function OrderTable({ orders, products }: { orders: any[]; products: any[] }) {
   const { sortKey, sortDir, toggle, sorted } = useSort('priority');
-  const rows = sorted(orders);
+  const enriched = orders.map(o => ({ ...o, _status: deriveOrderStatus(o) }));
+  const rows = sorted(enriched);
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={tableStyle}>
         <thead>
           <tr>
-            <SortHeader label="Order" k="orderKey" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Product" k="productKey" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Demand" k="demandQty" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Scheduled" k="scheduledQty" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Due Date" k="dueDate" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Priority" k="priority" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Fill Rate" k="fillRate" current={sortKey} dir={sortDir} onSort={toggle} />
+            <SortHeader label={t('order', 'Order')} k="orderKey" current={sortKey} dir={sortDir} onSort={toggle} />
+            <SortHeader label={t('product', 'Product')} k="productKey" current={sortKey} dir={sortDir} onSort={toggle} />
+            <SortHeader label={t('demand', 'Demand')} k="demandQty" current={sortKey} dir={sortDir} onSort={toggle} />
+            <SortHeader label={t('scheduledStatus', 'Scheduled')} k="scheduledQty" current={sortKey} dir={sortDir} onSort={toggle} />
+            <SortHeader label={t('dueDate', 'Due Date')} k="dueDate" current={sortKey} dir={sortDir} onSort={toggle} />
+            <SortHeader label={t('priority', 'Priority')} k="priority" current={sortKey} dir={sortDir} onSort={toggle} />
+            <SortHeader label={t('fillRate', 'Fill Rate')} k="fillRate" current={sortKey} dir={sortDir} onSort={toggle} />
             <SortHeader label="Status" k="_status" current={sortKey} dir={sortDir} onSort={toggle} />
           </tr>
         </thead>
         <tbody>
           {rows.map((o: any) => {
-            const status = deriveOrderStatus(o);
+            const status = o._status;
             const prodColor = getProductColor(o.productKey, products);
             return (
               <tr key={o.orderKey}
@@ -1130,18 +1194,57 @@ function OrderTable({ orders, products }: { orders: any[]; products: any[] }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   HOVER TOOLTIP
+   ═══════════════════════════════════════════════════════════════ */
+
+function HoverTooltip({ children, content }: { children: ReactNode; content: ReactNode }) {
+  const [show, setShow] = useState(false);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+
+  if (!content) return <>{children}</>;
+
+  return (
+    <span
+      style={{ position: 'relative', cursor: 'help' }}
+      onMouseEnter={e => { setShow(true); setPos({ x: e.clientX, y: e.clientY }); }}
+      onMouseMove={e => setPos({ x: e.clientX, y: e.clientY })}
+      onMouseLeave={() => setShow(false)}
+    >
+      {children}
+      {show && (
+        <div style={{
+          position: 'fixed', left: pos.x + 12, top: pos.y - 10,
+          background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+          padding: '10px 14px', fontSize: 12, color: C.text, zIndex: 999,
+          pointerEvents: 'none', fontFamily: FONT, minWidth: 180,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        }}>
+          {content}
+        </div>
+      )}
+    </span>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    MATERIALS TABLE
    ═══════════════════════════════════════════════════════════════ */
 
 function MatTable({ materials }: { materials: any[] }) {
   const { sortKey, sortDir, toggle, sorted } = useSort('materialKey');
-  const rows = sorted(materials);
+  // Pre-compute derived fields so sorting works on them
+  const enriched = materials.map(m => ({
+    ...m,
+    _status: deriveMaterialStatus(m),
+    _net: (m.remaining ?? 0) + (m.incoming ?? 0),
+  }));
+  const rows = sorted(enriched);
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={tableStyle}>
         <thead>
           <tr>
-            <SortHeader label="Material" k="materialKey" current={sortKey} dir={sortDir} onSort={toggle} />
+            <SortHeader label={t('material', 'Material')} k="materialKey" current={sortKey} dir={sortDir} onSort={toggle} />
             <SortHeader label="Unit" k="unit" current={sortKey} dir={sortDir} onSort={toggle} />
             <SortHeader label="On Hand" k="onHand" current={sortKey} dir={sortDir} onSort={toggle} />
             <SortHeader label="Consumed" k="consumed" current={sortKey} dir={sortDir} onSort={toggle} />
@@ -1153,8 +1256,42 @@ function MatTable({ materials }: { materials: any[] }) {
         </thead>
         <tbody>
           {rows.map((m: any) => {
-            const status = deriveMaterialStatus(m);
-            const net = (m.remaining ?? 0) + (m.incoming ?? 0);
+            const status = m._status;
+            const net = m._net;
+
+            // Build shortage tooltip content
+            const shortageTooltip = m.firstShortageDate ? (
+              <div>
+                <div style={{ fontWeight: 700, color: C.red, marginBottom: 4 }}>{t('shortage', 'Shortage')} Detail</div>
+                <div style={{ color: C.textMuted, marginBottom: 2 }}>
+                  <strong>First {t('shortage', 'shortage')}:</strong> {fmtDate(m.firstShortageDate)}
+                </div>
+                <div style={{ color: C.textMuted, marginBottom: 2 }}>
+                  <strong>Deficit:</strong> {fmtNum(m.shortageQty)} {m.unit}
+                </div>
+                {m.firstNeedTaskName && (
+                  <div style={{ color: C.textMuted }}>
+                    <strong>Triggered by:</strong> {m.firstNeedTaskName} ({m.firstNeedTaskKey})
+                  </div>
+                )}
+              </div>
+            ) : null;
+
+            // Build incoming tooltip content
+            const incomingTooltip = (m.incoming ?? 0) > 0 ? (
+              <div>
+                <div style={{ fontWeight: 700, color: C.accent, marginBottom: 4 }}>Incoming Stock</div>
+                <div style={{ color: C.textMuted, marginBottom: 2 }}>
+                  <strong>{t('quantity', 'Qty')}:</strong> {fmtNum(m.incoming)} {m.unit}
+                </div>
+                {m.incomingDate && (
+                  <div style={{ color: C.textMuted }}>
+                    <strong>Arrival:</strong> {fmtDate(m.incomingDate)}
+                  </div>
+                )}
+              </div>
+            ) : null;
+
             return (
               <tr key={m.materialKey}
                 onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
@@ -1168,13 +1305,29 @@ function MatTable({ materials }: { materials: any[] }) {
                 <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(m.onHand)}</td>
                 <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(m.consumed)}</td>
                 <td style={{ ...cellStyle, textAlign: 'right', color: (m.remaining ?? 0) < 0 ? C.red : C.text }}>
-                  {fmtNum(m.remaining)}
+                  <HoverTooltip content={shortageTooltip}>
+                    <span style={{ borderBottom: shortageTooltip ? `1px dashed ${C.red}` : 'none' }}>
+                      {fmtNum(m.remaining)}
+                    </span>
+                  </HoverTooltip>
                 </td>
-                <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(m.incoming)}</td>
+                <td style={{ ...cellStyle, textAlign: 'right' }}>
+                  <HoverTooltip content={incomingTooltip}>
+                    <span style={{ borderBottom: incomingTooltip ? `1px dashed ${C.textDim}` : 'none' }}>
+                      {fmtNum(m.incoming)}
+                    </span>
+                  </HoverTooltip>
+                </td>
                 <td style={{ ...cellStyle, textAlign: 'right', fontWeight: 600, color: net < 0 ? C.red : C.green }}>
                   {net >= 0 ? '+' : ''}{fmtNum(net)}
                 </td>
-                <td style={cellStyle}><Badge label={status} /></td>
+                <td style={cellStyle}>
+                  <HoverTooltip content={shortageTooltip}>
+                    <span style={{ display: 'inline-block', borderBottom: shortageTooltip ? `1px dashed ${C.red}` : 'none' }}>
+                      <Badge label={status} />
+                    </span>
+                  </HoverTooltip>
+                </td>
               </tr>
             );
           })}
@@ -1201,7 +1354,7 @@ function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskCli
   if (conflicts.length === 0) {
     return (
       <div style={{ padding: 40, textAlign: 'center', color: C.textDim, fontFamily: FONT }}>
-        No conflicts detected
+        No {t('conflicts', 'conflicts')} detected
       </div>
     );
   }
@@ -1261,7 +1414,7 @@ function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskCli
                         padding: '4px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
                       }}
                     >
-                      View Task
+                      {act('viewDetails', 'View Details')}
                     </button>
                   )}
                 </div>
@@ -1294,28 +1447,28 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* KPI Row */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KPI icon="✓" label="Feasibility" value={fmtPctDirect(summary?.feasibilityRate)} color={
+        <KPI icon="✓" label={t('feasibility', 'Feasibility')} value={fmtPctDirect(summary?.feasibilityRate)} color={
           (summary?.feasibilityRate ?? 0) >= 90 ? C.green : (summary?.feasibilityRate ?? 0) >= 70 ? C.yellow : C.red
-        } sub={`${summary?.scheduledTasks ?? 0} of ${summary?.includedTasks ?? 0} tasks`
-          + (summary?.setupTasks ? ` + ${summary.setupTasks} setups` : '')} />
-        <KPI icon="⚡" label="Avg Utilization" value={fmtPctDirect(avgUtil)} color={
+        } sub={`${summary?.scheduledTasks ?? 0} of ${summary?.includedTasks ?? 0} ${t('tasks', 'tasks')}`
+          + (summary?.setupTasks ? ` + ${summary.setupTasks} ${t('setup', 'setup')}s` : '')} />
+        <KPI icon="⚡" label={`Avg ${t('utilization', 'Utilization')}`} value={fmtPctDirect(avgUtil)} color={
           avgUtil > 85 ? C.red : avgUtil > 60 ? C.yellow : C.green
-        } sub={`${resources.length} resources`} />
-        <KPI icon="⏰" label="Late Orders" value={lateOrders} color={lateOrders > 0 ? C.red : C.green}
+        } sub={`${resources.length} ${t('resources', 'resources')}`} />
+        <KPI icon="⏰" label={`Late ${t('orders', 'Orders')}`} value={lateOrders} color={lateOrders > 0 ? C.red : C.green}
           sub={`of ${orders.length} total`} />
-        <KPI icon="⚠" label="Conflicts" value={conflicts.length}
-          color={conflicts.length > 0 ? C.red : C.green} sub="task + material" />
-        <KPI icon="📦" label="Shortages" value={shortages} color={shortages > 0 ? C.red : C.green}
-          sub={`of ${materials.length} materials`} />
+        <KPI icon="⚠" label={t('conflicts', 'Conflicts')} value={conflicts.length}
+          color={conflicts.length > 0 ? C.red : C.green} sub={`${t('task', 'task')} + ${t('material', 'material')}`} />
+        <KPI icon="📦" label={`${t('shortage', 'Shortage')}s`} value={shortages} color={shortages > 0 ? C.red : C.green}
+          sub={`of ${materials.length} ${t('materials', 'materials')}`} />
       </div>
 
       {/* Gantt + Side panels */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16 }}>
-        <Card title="Schedule Overview">
+        <Card title={`${t('schedule', 'Schedule')} Overview`}>
           <GanttChart tasks={tasks} resources={resources} products={products} colors={colors} onTaskClick={onTaskClick} onResourceClick={onResourceClick} />
         </Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Card title="Resource Utilization">
+          <Card title={`${t('resource', 'Resource')} ${t('utilization', 'Utilization')}`}>
             {(() => {
               const wcGroups = new Map<string, any[]>();
               resources.forEach((r: any) => {
@@ -1336,7 +1489,7 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
               ));
             })()}
           </Card>
-          <Card title="Order Status">
+          <Card title={`${t('order', 'Order')} Status`}>
             {orders.map((o: any) => {
               const status = deriveOrderStatus(o);
               return (
@@ -1372,9 +1525,9 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
           }}
         >
           <span style={{ color: C.red, fontWeight: 600, fontSize: 13 }}>
-            ⚠ {conflicts.filter((c: any) => c.severity === 'critical').length} critical conflicts detected
+            ⚠ {conflicts.filter((c: any) => c.severity === 'critical').length} critical {t('conflicts', 'conflicts')} detected
           </span>
-          <span style={{ color: C.red, fontSize: 12 }}>View Conflicts →</span>
+          <span style={{ color: C.red, fontSize: 12 }}>View {t('conflicts', 'Conflicts')} →</span>
         </div>
       )}
       {shortages > 0 && (
@@ -1387,9 +1540,9 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
           }}
         >
           <span style={{ color: C.yellow, fontWeight: 600, fontSize: 13 }}>
-            📦 {shortages} material shortage{shortages > 1 ? 's' : ''} — review inventory
+            📦 {shortages} {t('material', 'material')} {t('shortage', 'shortage')}{shortages > 1 ? 's' : ''} — review inventory
           </span>
-          <span style={{ color: C.yellow, fontSize: 12 }}>View Materials →</span>
+          <span style={{ color: C.yellow, fontSize: 12 }}>View {t('materials', 'Materials')} →</span>
         </div>
       )}
     </div>
@@ -1404,11 +1557,11 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
 }) {
-  const [sub, setSub] = useState('Gantt Chart');
+  const [sub, setSub] = useState('Gantt');
   return (
     <div>
-      <SubTabs tabs={['Gantt Chart', 'Task List']} active={sub} onChange={setSub} />
-      {sub === 'Gantt Chart' ? (
+      <SubTabs tabs={['Gantt', `${t('task', 'Task')} List`]} active={sub} onChange={setSub} />
+      {sub === 'Gantt' ? (
         <Card>
           <GanttChart tasks={tasks} resources={resources} products={products} colors={colors} onTaskClick={onTaskClick} onResourceClick={onResourceClick} />
         </Card>
@@ -1432,10 +1585,10 @@ function OrdersTab({ orders, products }: { orders: any[]; products: any[] }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KPI label="Total Orders" value={orders.length} icon="📋" />
-        <KPI label="Total Demand" value={fmtNum(totalDemand)} icon="📦" />
-        <KPI label="Late" value={lateCount} icon="⏰" color={lateCount > 0 ? C.red : C.green} />
-        <KPI label="At Risk" value={atRiskCount} icon="⚠" color={atRiskCount > 0 ? C.yellow : C.green} />
+        <KPI label={`Total ${t('orders', 'Orders')}`} value={orders.length} icon="📋" />
+        <KPI label={`Total ${t('demand', 'Demand')}`} value={fmtNum(totalDemand)} icon="📦" />
+        <KPI label={t('late', 'Late')} value={lateCount} icon="⏰" color={lateCount > 0 ? C.red : C.green} />
+        <KPI label={t('atRisk', 'At Risk')} value={atRiskCount} icon="⚠" color={atRiskCount > 0 ? C.yellow : C.green} />
       </div>
       <Card>
         <OrderTable orders={orders} products={products} />
@@ -1458,11 +1611,11 @@ function ConflictsTab({ tasks, resources, materials, onTaskClick }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KPI label="Total Conflicts" value={conflicts.length} icon="⚠"
+        <KPI label={`Total ${t('conflicts', 'Conflicts')}`} value={conflicts.length} icon="⚠"
           color={conflicts.length > 0 ? C.red : C.green} />
         <KPI label="Critical" value={critical} icon="🔴"
           color={critical > 0 ? C.red : C.green} />
-        <KPI label="Infeasible Tasks" value={infeasible} icon="✕"
+        <KPI label={`${t('infeasibleStatus', 'Infeasible')} ${t('tasks', 'Tasks')}`} value={infeasible} icon="✕"
           color={infeasible > 0 ? C.red : C.green} />
       </div>
       <ConflictCards conflicts={conflicts} onTaskClick={onTaskClick} />
@@ -1481,9 +1634,9 @@ function MaterialsTab({ materials }: { materials: any[] }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KPI label="Materials Tracked" value={materials.length} icon="📦" />
-        <KPI label="Shortages" value={shortages} icon="🔴" color={shortages > 0 ? C.red : C.green} />
-        <KPI label="At Risk" value={atRisk} icon="⚠" color={atRisk > 0 ? C.yellow : C.green} />
+        <KPI label={`${t('materials', 'Materials')} Tracked`} value={materials.length} icon="📦" />
+        <KPI label={`${t('shortage', 'Shortage')}s`} value={shortages} icon="🔴" color={shortages > 0 ? C.red : C.green} />
+        <KPI label={t('atRisk', 'At Risk')} value={atRisk} icon="⚠" color={atRisk > 0 ? C.yellow : C.green} />
         <KPI label="Incoming" value={hasIncoming} icon="🚚" color={C.accent} />
       </div>
       <Card>
@@ -1565,7 +1718,7 @@ function UserProfileContent() {
       </div>
       <div style={row}>
         <span style={{ color: C.textMuted }}>Tenant</span>
-        <span style={{ color: C.text }}>Precision Parts Co.</span>
+        <span style={{ color: C.text }}>{t('tenantDisplayName', 'CTP Platform')}</span>
       </div>
       <div style={row}>
         <span style={{ color: C.textMuted }}>Role</span>
@@ -1603,14 +1756,18 @@ export default function App() {
   const loadData = useCallback(async () => {
     try {
       setError(null);
-      const [result, prods, colorsData] = await Promise.all([
+      const [result, prods, colorsData, termData, localeData] = await Promise.all([
         api('/ctp/solve-and-sync', { method: 'POST' }),
         api('/data/products'),
         api('/data/colors').catch(() => null),
+        api('/data/terminology').catch(() => ({})),
+        api('/data/locale').catch(() => ({})),
       ]);
       setSolveResult(result);
       setProducts(prods);
       setColors(result.colors || colorsData || {});
+      _terminology = result.terminology || termData || {};
+      _locale = result.locale || localeData || {};
     } catch (e: any) {
       setError(e.message || 'Failed to load data');
     }
@@ -1625,6 +1782,8 @@ export default function App() {
       const result = await api('/ctp/solve-and-sync', { method: 'POST' });
       setSolveResult(result);
       if (result.colors) setColors(result.colors);
+      if (result.terminology) _terminology = result.terminology;
+      if (result.locale) _locale = result.locale;
     } catch (e: any) {
       setError(e.message || 'Solve failed');
     } finally {
@@ -1677,7 +1836,7 @@ export default function App() {
           borderRadius: '50%', animation: 'spin 0.8s linear infinite',
         }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-        <div style={{ marginTop: 16, color: C.textMuted, fontSize: 14 }}>Loading CTP Platform...</div>
+        <div style={{ marginTop: 16, color: C.textMuted, fontSize: 14 }}>Loading {t('tenantDisplayName', 'CTP Platform')}...</div>
       </div>
     );
   }
@@ -1702,7 +1861,7 @@ export default function App() {
           </div>
           <div>
             <span style={{ fontWeight: 700, fontSize: 15 }}>CTP Platform</span>
-            <span style={{ color: C.textDim, fontSize: 13, marginLeft: 8 }}>Precision Parts Co.</span>
+            <span style={{ color: C.textDim, fontSize: 13, marginLeft: 8 }}>{t('tenantDisplayName', 'CTP Platform')}</span>
           </div>
           {summary && (
             <span style={{ color: C.textDim, fontSize: 12, marginLeft: 8 }}>
@@ -1715,9 +1874,9 @@ export default function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {summary && (
             <div style={{ display: 'flex', gap: 16, fontSize: 12, color: C.textMuted }}>
-              <span>{resources.length} resources</span>
-              <span>{summary.totalTasks} tasks</span>
-              <span>{orders.length} orders</span>
+              <span>{resources.length} {t('resources', 'resources')}</span>
+              <span>{summary.totalTasks} {t('tasks', 'tasks')}</span>
+              <span>{orders.length} {t('orders', 'orders')}</span>
             </div>
           )}
           <button
@@ -1741,7 +1900,7 @@ export default function App() {
                 Solving…
               </>
             ) : (
-              <>▶ Solve All</>
+              <>▶ {act('solveAll', 'Solve All')}</>
             )}
           </button>
           <button
@@ -1794,7 +1953,7 @@ export default function App() {
                 display: 'flex', alignItems: 'center', gap: 0,
               }}
             >
-              {tab}
+              {t(tab.toLowerCase(), tab)}
               {badge > 0 && (
                 <span style={{
                   marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 8,
@@ -1821,7 +1980,7 @@ export default function App() {
               padding: '5px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
             }}
           >
-            Retry
+            {act('retry', 'Retry')}
           </button>
         </div>
       )}

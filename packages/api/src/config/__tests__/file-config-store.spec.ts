@@ -88,7 +88,7 @@ function writeSampleTenant(tenantDir: string): void {
   fs.writeFileSync(path.join(tenantDir, 'settings.json'), JSON.stringify(settings));
 
   // Terminology
-  const terminology: ITerminologyMap = { mappings: { resource: 'Machine' } };
+  const terminology: ITerminologyMap = { resource: 'Machine' };
   fs.writeFileSync(path.join(tenantDir, 'terminology.json'), JSON.stringify(terminology));
 
   // KPIs
@@ -284,7 +284,7 @@ describe('FileConfigStore', () => {
     expect(emptyStore.getCalendars()).toEqual([]);
     expect(emptyStore.getStateChanges()).toEqual([]);
     expect(emptyStore.getKPIs()).toEqual([]);
-    expect(emptyStore.getTerminology()).toEqual({ mappings: {} });
+    expect(emptyStore.getTerminology()).toEqual({});
     expect(emptyStore.getScoring()).toBeNull();
     expect(emptyStore.getHorizon()).toBeNull();
   });
@@ -312,7 +312,7 @@ describe('FileConfigStore', () => {
 
   it('getTerminology() returns terminology map', () => {
     const term = store.getTerminology();
-    expect(term.mappings.resource).toBe('Machine');
+    expect(term.resource).toBe('Machine');
   });
 
   it('getScoring() returns scoring config', () => {
@@ -392,10 +392,10 @@ describe('FileConfigStore', () => {
   });
 
   it('saveTerminology() writes and re-reads correctly', () => {
-    const term: ITerminologyMap = { mappings: { task: 'Job' } };
+    const term: ITerminologyMap = { task: 'Job' };
     store.saveTerminology(term);
     store.reload();
-    expect(store.getTerminology().mappings.task).toBe('Job');
+    expect(store.getTerminology().task).toBe('Job');
   });
 
   it('saveScoring() writes and re-reads correctly', () => {

@@ -88,6 +88,10 @@ export class ConfigService {
     return this.store.getColors();
   }
 
+  getLocale(): any {
+    return this.store.getLocale();
+  }
+
   reloadConfig(): void {
     this.store.reload();
   }

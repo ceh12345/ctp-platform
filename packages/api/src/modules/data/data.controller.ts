@@ -37,4 +37,18 @@ export class DataController {
   getColors() {
     return this.dataService.getColors();
   }
+
+  @Get('terminology')
+  @ApiOperation({ summary: 'Get tenant terminology configuration' })
+  @ApiResponse({ status: 200, description: 'Terminology config' })
+  getTerminology() {
+    return this.dataService.getTerminology();
+  }
+
+  @Get('locale')
+  @ApiOperation({ summary: 'Get tenant locale configuration' })
+  @ApiResponse({ status: 200, description: 'Locale config' })
+  getLocale() {
+    return this.dataService.getLocale();
+  }
 }

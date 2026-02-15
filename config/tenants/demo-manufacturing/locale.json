@@ -1,0 +1,37 @@
+{
+  "locale": "en-US",
+  "dateFormat": "short",
+  "timeFormat": "short",
+  "numberLocale": "en-US",
+  "timezone": "America/Denver",
+  "formats": {
+    "date": "MMM d, yyyy",
+    "time": "h:mm a",
+    "dateTime": "MMM d, h:mm a",
+    "dateShort": "MMM d",
+    "durationHours": "{h}h {m}m",
+    "percentage": "{v}%"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "retry": "Retry",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "schedule": "Schedule",
+    "unschedule": "Unschedule",
+    "solveAll": "Solve All",
+    "viewDetails": "View Details",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "prev": "Prev",
+    "next": "Next",
+    "today": "Today",
+    "fitToData": "Fit",
+    "simulateDowntime": "Simulate Downtime",
+    "viewAllTasks": "View All Tasks",
+    "scheduleTask": "Schedule Task",
+    "scheduleOrder": "Schedule Order"
+  }
+}

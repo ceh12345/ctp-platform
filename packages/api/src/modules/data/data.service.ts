@@ -25,4 +25,12 @@ export class DataService {
   getColors(): any {
     return this.configService.getColors();
   }
+
+  getTerminology(): any {
+    return this.configService.getTerminology();
+  }
+
+  getLocale(): any {
+    return this.configService.getLocale();
+  }
 }

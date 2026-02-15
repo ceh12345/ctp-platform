@@ -52,10 +52,8 @@ export interface IKPIDefinition {
   sequence: number;
 }
 
-// Terminology
-export interface ITerminologyMap {
-  mappings: Record<string, string>;
-}
+// Terminology — flat key→label map
+export type ITerminologyMap = Record<string, string>;
 
 // Scoring config
 export interface IScoringConfig {
@@ -219,6 +217,9 @@ export interface IConfigStore {
 
   // Colors
   getColors(): any;
+
+  // Locale
+  getLocale(): any;
 
   // Reload from disk
   reload(): void;

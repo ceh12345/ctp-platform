@@ -1,14 +1,15 @@
 {
   "taskColors": {
-    "byProcess": {
-      "CNC_MACHINING": "#3b82f6",
-      "ASSEMBLY": "#8b5cf6",
+    "byNamePattern": {
+      "Machine": "#3b82f6",
+      "Deburr": "#60a5fa",
+      "Assemble": "#8b5cf6",
       "QC": "#06b6d4",
-      "PACKING": "#22c55e"
+      "Pack": "#22c55e"
     },
-    "changeover": "#eab308",
+    "processChange": "#eab308",
     "setup": "#eab308",
-    "teardown": "#eab308",
+    "teardown": "#f97316",
     "default": "#3b82f6"
   },
   "resourceColors": {

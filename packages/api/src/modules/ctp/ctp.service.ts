@@ -33,6 +33,8 @@ export interface CTPSolveResult {
   orders: any[];
   materials: any[];
   colors?: any;
+  terminology?: Record<string, string>;
+  locale?: any;
 }
 
 @Injectable()
@@ -329,18 +331,55 @@ export class CTPService {
       };
     });
 
-    // Material consumption status
+    // Material consumption status with shortage detail
     const materialData = this.configService.getMaterials();
     const materials = materialData.map((mat) => {
       const consumed = materialConsumed.get(mat.key) ?? 0;
+      const remaining = Math.round((mat.onHand - consumed) * 100) / 100;
+
+      // Find scheduled tasks consuming this material, sorted by start
+      let firstShortageDate: string | null = null;
+      let shortageQty: number | undefined;
+      let firstNeedTaskKey: string | null = null;
+      let firstNeedTaskName: string | null = null;
+
+      const consumingTasks = tasks
+        .filter((t: any) => t.feasible && t.inputMaterials?.some((m: any) => m.productKey === mat.key))
+        .sort((a: any, b: any) => {
+          const aT = a.scheduledStart ? new Date(a.scheduledStart).getTime() : Infinity;
+          const bT = b.scheduledStart ? new Date(b.scheduledStart).getTime() : Infinity;
+          return aT - bT;
+        });
+
+      let runningBalance = mat.onHand;
+      for (const ct of consumingTasks) {
+        const input = ct.inputMaterials.find((m: any) => m.productKey === mat.key);
+        if (input) {
+          const grossQty = input.requiredQty * (1 + (input.scrapRate || 0));
+          runningBalance -= grossQty;
+          if (runningBalance < 0) {
+            firstShortageDate = ct.scheduledStart;
+            shortageQty = Math.round(Math.abs(runningBalance) * 100) / 100;
+            firstNeedTaskKey = ct.key;
+            firstNeedTaskName = ct.name;
+            break;
+          }
+        }
+      }
+
       return {
         materialKey: mat.key,
         materialName: mat.name,
         unit: mat.unit,
         onHand: mat.onHand,
         consumed: Math.round(consumed * 100) / 100,
-        remaining: Math.round((mat.onHand - consumed) * 100) / 100,
+        remaining,
         incoming: mat.incoming ?? 0,
+        incomingDate: mat.incomingDate ?? null,
+        firstShortageDate,
+        shortageQty,
+        firstNeedTaskKey,
+        firstNeedTaskName,
       };
     });
 
@@ -359,8 +398,10 @@ export class CTPService {
     const makespan =
       scheduledCount > 0 && maxEndW > 0 ? maxEndW - minStartW : 0;
 
-    // Colors
+    // Colors, terminology, locale
     const colors = this.configService.getColors();
+    const terminology = this.configService.getTerminology();
+    const locale = this.configService.getLocale();
 
     return {
       status: 'ok',
@@ -388,6 +429,8 @@ export class CTPService {
       orders,
       materials,
       colors,
+      terminology,
+      locale,
     };
   }
 }

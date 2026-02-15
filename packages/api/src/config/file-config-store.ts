@@ -115,7 +115,7 @@ export class FileConfigStore implements IConfigStore {
     return this.getCached('terminology', () =>
       this.readJsonFile<ITerminologyMap>(
         path.join(this.tenantDir, 'terminology.json'),
-      ) ?? { mappings: {} },
+      ) ?? {},
     );
   }
 
@@ -172,6 +172,14 @@ export class FileConfigStore implements IConfigStore {
   getColors(): any {
     return this.getCached('colors', () =>
       this.readJsonFile<any>(path.join(this.tenantDir, 'colors.json')) ?? {},
+    );
+  }
+
+  // ── Locale ─────────────────────────────────────────────────────────
+
+  getLocale(): any {
+    return this.getCached('locale', () =>
+      this.readJsonFile<any>(path.join(this.tenantDir, 'locale.json')) ?? {},
     );
   }
 
