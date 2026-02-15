@@ -225,7 +225,9 @@ function deriveConflicts(tasks: any[], resources: any[], materials: any[]): any[
     const matRes = triggerTask?.materialResources?.find((r: any) =>
       r.resourceKey === matKey || r.resourceName === matName,
     );
-    const mode = (matRes?.mode || 'ON').toUpperCase();
+    // Default to TRACK: if no material resource is defined the engine
+    // scheduled the task regardless of stock, so it's informational.
+    const mode = (matRes?.mode || 'TRACK').toUpperCase();
     const isHardConstraint = mode === 'ON';
 
     let severity: string;
