@@ -911,8 +911,8 @@ function SolvePreview({ orders, tasks, materials, resources,
 
   // Compute deltas from last solve
   const MODE_LABELS: Record<string, { label: string; icon: string; color: string }> = {
-    INCLUDE: { label: 'Include', icon: '▶', color: C.green },
-    LOCKED: { label: 'Locked', icon: '\u{1F512}', color: C.yellow },
+    INCLUDE: { label: 'Include', icon: '\u25B6', color: C.green },
+    LOCKED: { label: 'Locked', icon: '\uD83D\uDD12', color: C.yellow },
     EXCLUDE: { label: 'Exclude', icon: '\u23F8', color: C.textDim },
     ON: { label: 'Required', icon: '\u25CF', color: C.green },
     TRACK: { label: 'Monitored', icon: '\u25CB', color: C.yellow },
@@ -1036,51 +1036,51 @@ function SolvePreview({ orders, tasks, materials, resources,
               <div style={{ fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 8 }}>
                 Ready to schedule
               </div>
-              <SummaryRow icon="\u{1F4CB}" color={C.text}
+              <SummaryRow icon={'\uD83D\uDCCB'} color={C.text}
                 text={`${orders.length} orders with ${tasks.length} tasks`} />
-              <SummaryRow icon="\u2699" color={C.text}
+              <SummaryRow icon={'\u2699'} color={C.text}
                 text={`${resources.length} capacity resources`} />
-              <SummaryRow icon="\u{1F4E6}" color={C.text}
+              <SummaryRow icon={'\uD83D\uDCE6'} color={C.text}
                 text={`${materials.length} materials tracked`} />
             </div>
           ) : (
             <>
               {/* Orders section */}
               <SectionLabel label="Orders" />
-              <SummaryRow icon="\u25B6" color={C.green}
+              <SummaryRow icon={'\u25B6'} color={C.green}
                 text={`${orderSummary.included} orders included (${orderSummary.includedTasks} tasks)`} />
               {orderSummary.locked > 0 && (
-                <SummaryRow icon="\u{1F512}" color={C.yellow}
-                  text={`${orderSummary.locked} orders locked (${orderSummary.lockedTasks} tasks \u2014 won't move)`} />
+                <SummaryRow icon={'\uD83D\uDD12'} color={C.yellow}
+                  text={`${orderSummary.locked} orders locked (${orderSummary.lockedTasks} tasks \u2014 won\u2019t move)`} />
               )}
               {orderSummary.excluded > 0 && (
-                <SummaryRow icon="\u23F8" color={C.textDim}
+                <SummaryRow icon={'\u23F8'} color={C.textDim}
                   text={`${orderSummary.excluded} orders excluded (${orderSummary.excludedTasks} tasks \u2014 ${orderSummary.excludedOrderKeys.join(', ')})`} />
               )}
 
               {/* Tasks section */}
               <SectionLabel label="Tasks" />
               {taskSummary.pinned.length > 0 && (
-                <SummaryRow icon="\u{1F4CC}" color={C.yellow}
+                <SummaryRow icon={'\uD83D\uDCCC'} color={C.yellow}
                   text={`${taskSummary.pinned.length} tasks pinned (${taskSummary.pinned.slice(0, 3).join(', ')}${taskSummary.pinned.length > 3 ? '\u2026' : ''})`} />
               )}
               {taskSummary.excluded.length > 0 && (
-                <SummaryRow icon="\u23F8" color={C.textDim}
+                <SummaryRow icon={'\u23F8'} color={C.textDim}
                   text={`${taskSummary.excluded.length} tasks excluded (${taskSummary.excluded.slice(0, 3).join(', ')}${taskSummary.excluded.length > 3 ? '\u2026' : ''})`} />
               )}
               {taskSummary.unschedule.length > 0 && (
-                <SummaryRow icon="\u2715" color={C.red}
+                <SummaryRow icon={'\u2715'} color={C.red}
                   text={`${taskSummary.unschedule.length} tasks to unschedule (${taskSummary.unschedule.slice(0, 3).join(', ')}${taskSummary.unschedule.length > 3 ? '\u2026' : ''})`} />
               )}
               {taskSummary.pinned.length === 0 && taskSummary.excluded.length === 0 && taskSummary.unschedule.length === 0 && (
-                <SummaryRow icon="\u2713" color={C.green} text="No task overrides" />
+                <SummaryRow icon={'\u2713'} color={C.green} text="No task overrides" />
               )}
 
               {/* Resources section */}
               <SectionLabel label="Resources & Materials" />
-              <SummaryRow icon="\u2699" color={C.text}
+              <SummaryRow icon={'\u2699'} color={C.text}
                 text={`${resourceSummary.active} capacity resources active`} />
-              <SummaryRow icon="\u{1F4E6}" color={C.text}
+              <SummaryRow icon={'\uD83D\uDCE6'} color={C.text}
                 text={`${resourceSummary.matMonitored} materials monitored${resourceSummary.matRequired > 0 ? `, ${resourceSummary.matRequired} required` : ''}${resourceSummary.matIgnored > 0 ? `, ${resourceSummary.matIgnored} ignored` : ''}`} />
 
               {/* Changes from last solve */}
