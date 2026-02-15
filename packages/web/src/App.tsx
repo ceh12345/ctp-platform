@@ -1215,6 +1215,9 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
           <input type="checkbox" checked={hideEmpty} onChange={e => setHideEmpty(e.target.checked)}
             style={{ accentColor: C.accent }} />
           Hide empty
+          <HoverTooltip content="Hide resources with no scheduled tasks in the current view">
+            <span style={{ color: C.textDim, fontSize: 12, cursor: 'help' }}>&#x24D8;</span>
+          </HoverTooltip>
         </label>
         {allWorkCenters.map(wc => (
           <button key={wc} onClick={() => {
