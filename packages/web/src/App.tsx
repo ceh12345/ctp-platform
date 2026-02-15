@@ -209,22 +209,53 @@ function deriveConflicts(tasks: any[], resources: any[], materials: any[]): any[
     if (status !== 'shortage' && status !== 'at-risk') return;
     const matKey = mat.materialKey || mat.key;
     const matName = mat.materialName || mat.name;
+    const deficit = Math.abs((mat.onHand ?? 0) - (mat.consumed ?? 0));
+    const net = (mat.onHand ?? 0) - (mat.consumed ?? 0) + (mat.incoming ?? 0);
+
+    // Find affected tasks and determine material resource mode
     const affected = tasks.filter((t: any) =>
       t.inputMaterials?.some((m: any) => m.productKey === matKey),
     );
     if (affected.length === 0) return;
+
+    // Check if material resource is ON (hard constraint) or TRACK (informational)
+    const triggerTask = mat.firstNeedTaskKey
+      ? tasks.find((t: any) => t.key === mat.firstNeedTaskKey) || affected[0]
+      : affected[0];
+    const matRes = triggerTask?.materialResources?.find((r: any) =>
+      r.resourceKey === matKey || r.resourceName === matName,
+    );
+    const mode = (matRes?.mode || 'ON').toUpperCase();
+    const isHardConstraint = mode === 'ON';
+
+    let severity: string;
+    let reasonDetail: string;
+
+    if (status === 'shortage' && isHardConstraint) {
+      severity = 'critical';
+      reasonDetail = `Cannot execute: short ${fmtNum(deficit)} ${mat.unit || 'units'} of ${matName} for ${triggerTask.name || triggerTask.key}`;
+    } else if (status === 'shortage') {
+      severity = 'warning';
+      reasonDetail = `Inventory alert: ${matName} will be short ${fmtNum(deficit)} ${mat.unit || 'units'} — schedule may proceed but stock insufficient`;
+    } else {
+      // at-risk
+      severity = 'warning';
+      reasonDetail = `${matName}: tight inventory — ${fmtNum(mat.onHand)} on hand, net ${fmtNum(net)} after incoming`;
+    }
+
     conflicts.push({
       id: `CFT-MAT-${matKey}`,
-      taskKey: affected[0].key,
-      taskName: affected[0].name,
-      orderRef: affected[0].orderRef,
-      severity: status === 'shortage' ? 'critical' : 'warning',
+      taskKey: triggerTask.key,
+      taskName: triggerTask.name,
+      orderRef: triggerTask.orderRef,
+      severity,
       reason: 'material',
-      reasonDetail: `${matName}: ${fmtNum(mat.onHand)} on hand, ${fmtNum(mat.consumed)} consumed, net ${fmtNum((mat.onHand ?? 0) - (mat.consumed ?? 0) + (mat.incoming ?? 0))}`,
+      reasonDetail,
       bottleneckResource: null,
       bottleneckUtilization: 0,
       materialKey: matKey,
       materialName: matName,
+      materialMode: mode,
     });
   });
   return conflicts;
