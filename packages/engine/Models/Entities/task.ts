@@ -21,6 +21,7 @@ export interface ITaskResource {
   isPrimary: boolean;
   scheduledResource: string | undefined;
   preferences: Array<IResourcePreference>;
+  mode: string;
 }
 export class CTPTaskResource implements ITaskResource {
   public resource: string | undefined;
@@ -29,14 +30,16 @@ export class CTPTaskResource implements ITaskResource {
   public preferences: Array<IResourcePreference>;
   public index: number;
   public qty: number;
+  public mode: string;
 
-  constructor(r?: string, prim?: boolean, i?: number, schedResource?: string) {
+  constructor(r?: string, prim?: boolean, i?: number, schedResource?: string, mode?: string) {
     this.resource = r ?? undefined;
     this.scheduledResource = schedResource ?? undefined;
     this.preferences = [];
     this.index = i ?? 0;
     this.isPrimary = prim ?? false;
     this.qty = 1.0;
+    this.mode = mode ?? "ON";
   }
 }
 

@@ -283,10 +283,10 @@ function Ring({ pct, size = 36, color }: { pct: number; size?: number; color?: s
   );
 }
 
-function UtilBar({ pct, label }: { pct: number; label: string }) {
+function UtilBar({ pct, label, onClick }: { pct: number; label: string; onClick?: () => void }) {
   const color = pct > 90 ? C.red : pct > 70 ? C.yellow : C.green;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0' }}>
+    <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0', cursor: onClick ? 'pointer' : 'default' }}>
       <span style={{ fontSize: 13, color: C.textMuted, minWidth: 120, fontFamily: FONT }}>{label}</span>
       <div style={{ flex: 1, height: 8, background: C.border, borderRadius: 4, overflow: 'hidden' }}>
         <div style={{
@@ -339,6 +339,66 @@ function Modal({ open, onClose, title, children }: {
   );
 }
 
+function SlidePanel({ open, onClose, title, children }: {
+  open: boolean; onClose: () => void; title: string; children: ReactNode;
+}) {
+  if (!open) return null;
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0, width: 520,
+          background: C.bg, borderLeft: `1px solid ${C.border}`,
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          boxShadow: '-8px 0 32px rgba(0,0,0,0.4)',
+        }}
+      >
+        <div style={{
+          padding: '16px 20px', borderBottom: `1px solid ${C.border}`,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          background: C.surface, position: 'sticky', top: 0, zIndex: 1,
+        }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.text, fontFamily: FONT }}>{title}</h3>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none', border: 'none', color: C.textMuted, fontSize: 20,
+              cursor: 'pointer', padding: '4px 8px', lineHeight: 1,
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 20, fontFamily: FONT }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModeBadge({ mode }: { mode: string }) {
+  const upper = (mode || 'ON').toUpperCase();
+  const color = upper === 'ON' ? C.green : upper === 'TRACK' ? C.cyan : C.textDim;
+  const bg = upper === 'ON' ? C.greenDim : upper === 'TRACK' ? 'rgba(6,182,212,0.15)' : 'rgba(71,85,105,0.15)';
+  return (
+    <span style={{
+      display: 'inline-block', padding: '1px 8px', borderRadius: 9999,
+      fontSize: 10, fontWeight: 700, color, background: bg,
+      border: `1px solid ${color}33`, fontFamily: FONT,
+    }}>
+      {upper}
+    </span>
+  );
+}
+
 function SubTabs({ tabs, active, onChange }: {
   tabs: string[]; active: string; onChange: (t: string) => void;
 }) {
@@ -382,6 +442,271 @@ function Card({ title, children, style: s }: {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   DETAIL PANELS
+   ═══════════════════════════════════════════════════════════════ */
+
+function SectionLabel({ label }: { label: string }) {
+  return (
+    <div style={{
+      fontSize: 11, fontWeight: 700, color: C.textDim, textTransform: 'uppercase',
+      letterSpacing: '0.05em', marginBottom: 8, marginTop: 20,
+    }}>
+      {label}
+    </div>
+  );
+}
+
+function DetailRow({ label, value, color }: { label: string; value: ReactNode; color?: string }) {
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', padding: '5px 0',
+      fontSize: 13,
+    }}>
+      <span style={{ color: C.textMuted }}>{label}</span>
+      <span style={{ color: color || C.text, fontWeight: 500 }}>{value}</span>
+    </div>
+  );
+}
+
+function TaskDetailPanel({ task, tasks, products, onClose, onResourceClick }: {
+  task: any; tasks: any[]; products: any[];
+  onClose: () => void; onResourceClick: (r: any) => void;
+}) {
+  const prodName = task.outputProductKey
+    ? (products.find((p: any) => p.key === task.outputProductKey)?.name || task.outputProductKey)
+    : null;
+  const prodColor = getProductColor(task.outputProductKey, products);
+
+  const orderChain = task.orderRef
+    ? tasks.filter((t: any) => t.orderRef === task.orderRef)
+        .sort((a: any, b: any) => {
+          const aT = a.scheduledStart ? new Date(a.scheduledStart).getTime() : Infinity;
+          const bT = b.scheduledStart ? new Date(b.scheduledStart).getTime() : Infinity;
+          return aT - bT;
+        })
+    : [];
+
+  return (
+    <SlidePanel open={true} onClose={onClose} title="Task Detail">
+      {/* Header badges */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+        <Badge label={task.feasible ? 'scheduled' : 'infeasible'} color={task.feasible ? C.green : C.red} />
+        {task.orderRef && <Badge label={task.orderRef} color={C.purple} />}
+        {task.process && <Badge label={task.process} color={C.accent} />}
+      </div>
+
+      {/* Task Info */}
+      <SectionLabel label="Task Info" />
+      <DetailRow label="Key" value={task.key} />
+      <DetailRow label="Name" value={task.name} />
+
+      {/* Schedule */}
+      <SectionLabel label="Schedule" />
+      <DetailRow label="Start" value={fmtDate(task.scheduledStart)} />
+      <DetailRow label="End" value={fmtDate(task.scheduledEnd)} />
+      <DetailRow label="Duration" value={fmtDuration(task.durationSeconds)} />
+      <DetailRow label="Score" value={task.score != null ? task.score.toFixed(2) : '—'} />
+
+      {/* Product Output */}
+      {prodName && (
+        <>
+          <SectionLabel label="Product Output" />
+          <DetailRow label="Product" value={<span style={{ color: prodColor }}>{prodName}</span>} />
+          <DetailRow label="Quantity" value={fmtNum(task.outputQty)} />
+          <DetailRow label="Scrap Rate" value={task.outputScrapRate != null ? fmtPctFromDecimal(task.outputScrapRate) : '—'} />
+        </>
+      )}
+
+      {/* Capacity Resources */}
+      {task.assignedResources?.length > 0 && (
+        <>
+          <SectionLabel label="Capacity Resources" />
+          {task.assignedResources.map((r: any, i: number) => (
+            <div
+              key={i}
+              onClick={() => onResourceClick(r)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '8px 10px', marginBottom: 4, borderRadius: 8,
+                background: C.surface, border: `1px solid ${C.border}`, cursor: 'pointer',
+                transition: 'background 0.1s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
+              onMouseLeave={e => (e.currentTarget.style.background = C.surface)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.resourceKey}</span>
+                {r.resourceName && <span style={{ fontSize: 12, color: C.textDim }}>{r.resourceName}</span>}
+                {r.isPrimary && <Badge label="primary" color={C.accent} />}
+              </div>
+              <ModeBadge mode={r.mode || 'ON'} />
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* Material Resources */}
+      {task.materialResources?.length > 0 && (
+        <>
+          <SectionLabel label="Material Resources" />
+          {task.materialResources.map((r: any, i: number) => (
+            <div
+              key={i}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '8px 10px', marginBottom: 4, borderRadius: 8,
+                background: C.surface, border: `1px solid ${C.border}`,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.resourceKey}</span>
+                {r.resourceName && <span style={{ fontSize: 12, color: C.textDim }}>{r.resourceName}</span>}
+              </div>
+              <ModeBadge mode={r.mode || 'ON'} />
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* Input Materials */}
+      {task.inputMaterials?.length > 0 && (
+        <>
+          <SectionLabel label="Input Materials" />
+          {task.inputMaterials.map((m: any, i: number) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '6px 0', borderBottom: `1px solid ${C.border}`, fontSize: 13,
+            }}>
+              <span style={{ color: C.text, fontWeight: 500 }}>{m.productKey}</span>
+              <span style={{ color: C.textMuted }}>
+                {fmtNum(m.requiredQty)} {m.unitOfMeasure}
+                {m.scrapRate > 0 && <span style={{ color: C.yellow, marginLeft: 6 }}>({fmtPctFromDecimal(m.scrapRate)} scrap)</span>}
+              </span>
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* Order Chain */}
+      {orderChain.length > 1 && (
+        <>
+          <SectionLabel label={`Order Chain (${task.orderRef})`} />
+          {orderChain.map((t: any, i: number) => {
+            const isCurrent = t.key === task.key;
+            return (
+              <div key={t.key} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '6px 10px', marginBottom: 2, borderRadius: 6,
+                background: isCurrent ? C.accentGlow : 'transparent',
+                border: isCurrent ? `1px solid ${C.accent}33` : '1px solid transparent',
+                fontSize: 12,
+              }}>
+                <span style={{
+                  width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: t.feasible ? C.greenDim : C.redDim,
+                  color: t.feasible ? C.green : C.red, fontSize: 10, fontWeight: 700,
+                }}>
+                  {i + 1}
+                </span>
+                <span style={{ color: isCurrent ? C.accent : C.text, fontWeight: isCurrent ? 700 : 400, flex: 1 }}>
+                  {t.name}
+                </span>
+                <span style={{ color: C.textDim, fontSize: 11 }}>{fmtDate(t.scheduledStart)}</span>
+              </div>
+            );
+          })}
+        </>
+      )}
+
+      {/* Errors */}
+      {task.errors?.length > 0 && (
+        <>
+          <SectionLabel label="Errors" />
+          {task.errors.map((err: any, i: number) => (
+            <div key={i} style={{
+              padding: '8px 10px', marginBottom: 4, borderRadius: 6,
+              background: C.redDim, border: `1px solid ${C.red}33`, fontSize: 12, color: C.red,
+            }}>
+              <strong>{err.agent}:</strong> {err.reason}
+            </div>
+          ))}
+        </>
+      )}
+    </SlidePanel>
+  );
+}
+
+function ResourceDetailPanel({ resource, tasks, products, onClose, onTaskClick }: {
+  resource: any; tasks: any[]; products: any[];
+  onClose: () => void; onTaskClick: (t: any) => void;
+}) {
+  const resTasks = tasks
+    .filter((t: any) => t.assignedResources?.some((r: any) => r.resourceKey === resource.resourceKey))
+    .sort((a: any, b: any) => {
+      const aT = a.scheduledStart ? new Date(a.scheduledStart).getTime() : Infinity;
+      const bT = b.scheduledStart ? new Date(b.scheduledStart).getTime() : Infinity;
+      return aT - bT;
+    });
+
+  const totalHrs = (resource.totalAvailable || 0) / 3600;
+  const assignedHrs = (resource.totalAssigned || 0) / 3600;
+
+  return (
+    <SlidePanel open={true} onClose={onClose} title="Resource Detail">
+      {/* Resource Info */}
+      <SectionLabel label="Resource Info" />
+      <DetailRow label="Key" value={resource.resourceKey} />
+      <DetailRow label="Name" value={resource.resourceName} />
+
+      {/* Utilization */}
+      <SectionLabel label="Utilization" />
+      <UtilBar pct={resource.utilization || 0} label={resource.resourceName} />
+      <DetailRow label="Available" value={`${totalHrs.toFixed(1)}h`} />
+      <DetailRow label="Assigned" value={`${assignedHrs.toFixed(1)}h`} />
+
+      {/* Task Agenda */}
+      <SectionLabel label={`Task Agenda (${resTasks.length})`} />
+      {resTasks.length === 0 && (
+        <div style={{ color: C.textDim, fontSize: 13, padding: '8px 0' }}>No tasks assigned</div>
+      )}
+      {resTasks.map((t: any) => {
+        const prodColor = getProductColor(t.outputProductKey, products);
+        const assignedRes = t.assignedResources?.find((r: any) => r.resourceKey === resource.resourceKey);
+        return (
+          <div
+            key={t.key}
+            onClick={() => onTaskClick(t)}
+            style={{
+              padding: '10px 12px', marginBottom: 4, borderRadius: 8,
+              background: C.surface, border: `1px solid ${C.border}`, cursor: 'pointer',
+              transition: 'background 0.1s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
+            onMouseLeave={e => (e.currentTarget.style.background = C.surface)}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 4, height: 24, borderRadius: 2, background: prodColor }} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{t.name}</div>
+                  <div style={{ fontSize: 11, color: C.textDim }}>{t.key}</div>
+                </div>
+              </div>
+              {assignedRes && <ModeBadge mode={assignedRes.mode || 'ON'} />}
+            </div>
+            <div style={{ display: 'flex', gap: 12, fontSize: 11, color: C.textMuted, marginLeft: 12 }}>
+              {t.orderRef && <span>{t.orderRef}</span>}
+              <span>{fmtDate(t.scheduledStart)} → {fmtDate(t.scheduledEnd)}</span>
+            </div>
+          </div>
+        );
+      })}
+    </SlidePanel>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    TABLE WRAPPER
    ═══════════════════════════════════════════════════════════════ */
 
@@ -397,8 +722,9 @@ const cellStyle: CSSProperties = {
    GANTT CHART
    ═══════════════════════════════════════════════════════════════ */
 
-function GanttChart({ tasks, resources, products }: {
+function GanttChart({ tasks, resources, products, onTaskClick, onResourceClick }: {
   tasks: any[]; resources: any[]; products: any[];
+  onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
 }) {
   const [hovered, setHovered] = useState<any>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
@@ -469,10 +795,17 @@ function GanttChart({ tasks, resources, products }: {
         const rTasks = resMap.get(res.resourceKey) || [];
         return (
           <div key={res.resourceKey} style={{ display: 'flex', borderTop: `1px solid ${C.border}` }}>
-            <div style={{
-              width: LABEL_W, minWidth: LABEL_W, padding: '10px 12px', fontSize: 12,
-              color: C.textMuted, fontWeight: 500, display: 'flex', alignItems: 'center',
-            }}>
+            <div
+              onClick={() => onResourceClick?.(res)}
+              style={{
+                width: LABEL_W, minWidth: LABEL_W, padding: '10px 12px', fontSize: 12,
+                color: C.textMuted, fontWeight: 500, display: 'flex', alignItems: 'center',
+                cursor: onResourceClick ? 'pointer' : 'default',
+                transition: 'color 0.1s',
+              }}
+              onMouseEnter={e => { if (onResourceClick) e.currentTarget.style.color = C.accent; }}
+              onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; }}
+            >
               {res.resourceName}
             </div>
             <div style={{ flex: 1, position: 'relative', height: LANE_H }}>
@@ -495,6 +828,7 @@ function GanttChart({ tasks, resources, products }: {
                     onMouseEnter={e => { setHovered(t); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
                     onMouseMove={e => setTooltipPos({ x: e.clientX, y: e.clientY })}
                     onMouseLeave={() => setHovered(null)}
+                    onClick={() => onTaskClick?.(t)}
                     style={{
                       position: 'absolute', left: `${left}%`, width: `${w}%`,
                       top: 6, height: LANE_H - 12, borderRadius: 4,
@@ -546,7 +880,7 @@ function GanttChart({ tasks, resources, products }: {
    TASK TABLE
    ═══════════════════════════════════════════════════════════════ */
 
-function TaskTable({ tasks, products }: { tasks: any[]; products: any[] }) {
+function TaskTable({ tasks, products, onTaskClick }: { tasks: any[]; products: any[]; onTaskClick?: (t: any) => void }) {
   const { sortKey, sortDir, toggle, sorted } = useSort('key');
   const rows = sorted(tasks);
   return (
@@ -572,7 +906,8 @@ function TaskTable({ tasks, products }: { tasks: any[]; products: any[] }) {
             const resKey = t.assignedResources?.[0]?.resourceKey || '—';
             const prodColor = getProductColor(t.outputProductKey, products);
             return (
-              <tr key={t.key} style={{ transition: 'background 0.1s' }}
+              <tr key={t.key} style={{ transition: 'background 0.1s', cursor: onTaskClick ? 'pointer' : 'default' }}
+                onClick={() => onTaskClick?.(t)}
                 onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
@@ -733,7 +1068,7 @@ function MatTable({ materials }: { materials: any[] }) {
    CONFLICT CARDS
    ═══════════════════════════════════════════════════════════════ */
 
-function ConflictCards({ conflicts }: { conflicts: any[] }) {
+function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskClick?: (taskKey: string) => void }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggleExpand = (id: string) => {
     setExpanded(prev => {
@@ -794,8 +1129,21 @@ function ConflictCards({ conflicts }: { conflicts: any[] }) {
                     <strong>Material:</strong> {c.materialName} ({c.materialKey})
                   </div>
                 )}
-                <div style={{ color: C.textDim, marginTop: 4 }}>
-                  <strong>Task Key:</strong> {c.taskKey}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                  <span style={{ color: C.textDim }}>
+                    <strong>Task Key:</strong> {c.taskKey}
+                  </span>
+                  {onTaskClick && (
+                    <button
+                      onClick={e => { e.stopPropagation(); onTaskClick(c.taskKey); }}
+                      style={{
+                        background: C.accent, color: '#fff', border: 'none', borderRadius: 6,
+                        padding: '4px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+                      }}
+                    >
+                      View Task
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -810,9 +1158,10 @@ function ConflictCards({ conflicts }: { conflicts: any[] }) {
    TAB CONTENT — OVERVIEW
    ═══════════════════════════════════════════════════════════════ */
 
-function OverviewTab({ summary, tasks, resources, orders, materials, products, onTabChange }: {
+function OverviewTab({ summary, tasks, resources, orders, materials, products, onTabChange, onTaskClick, onResourceClick }: {
   summary: any; tasks: any[]; resources: any[]; orders: any[]; materials: any[];
   products: any[]; onTabChange: (t: string) => void;
+  onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
 }) {
   const avgUtil = resources.length > 0
     ? resources.reduce((s: number, r: any) => s + r.utilization, 0) / resources.length
@@ -842,12 +1191,13 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, o
       {/* Gantt + Side panels */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16 }}>
         <Card title="Schedule Overview">
-          <GanttChart tasks={tasks} resources={resources} products={products} />
+          <GanttChart tasks={tasks} resources={resources} products={products} onTaskClick={onTaskClick} onResourceClick={onResourceClick} />
         </Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card title="Resource Utilization">
             {resources.map((r: any) => (
-              <UtilBar key={r.resourceKey} pct={r.utilization} label={r.resourceName} />
+              <UtilBar key={r.resourceKey} pct={r.utilization} label={r.resourceName}
+                onClick={() => onResourceClick?.(r)} />
             ))}
           </Card>
           <Card title="Order Status">
@@ -914,8 +1264,9 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, o
    TAB CONTENT — SCHEDULE
    ═══════════════════════════════════════════════════════════════ */
 
-function ScheduleTab({ tasks, resources, products }: {
+function ScheduleTab({ tasks, resources, products, onTaskClick, onResourceClick }: {
   tasks: any[]; resources: any[]; products: any[];
+  onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
 }) {
   const [sub, setSub] = useState('Gantt Chart');
   return (
@@ -923,11 +1274,11 @@ function ScheduleTab({ tasks, resources, products }: {
       <SubTabs tabs={['Gantt Chart', 'Task List']} active={sub} onChange={setSub} />
       {sub === 'Gantt Chart' ? (
         <Card>
-          <GanttChart tasks={tasks} resources={resources} products={products} />
+          <GanttChart tasks={tasks} resources={resources} products={products} onTaskClick={onTaskClick} onResourceClick={onResourceClick} />
         </Card>
       ) : (
         <Card>
-          <TaskTable tasks={tasks} products={products} />
+          <TaskTable tasks={tasks} products={products} onTaskClick={onTaskClick} />
         </Card>
       )}
     </div>
@@ -961,8 +1312,9 @@ function OrdersTab({ orders, products }: { orders: any[]; products: any[] }) {
    TAB CONTENT — CONFLICTS
    ═══════════════════════════════════════════════════════════════ */
 
-function ConflictsTab({ tasks, resources, materials }: {
+function ConflictsTab({ tasks, resources, materials, onTaskClick }: {
   tasks: any[]; resources: any[]; materials: any[];
+  onTaskClick?: (taskKey: string) => void;
 }) {
   const conflicts = deriveConflicts(tasks, resources, materials);
   const critical = conflicts.filter((c: any) => c.severity === 'critical').length;
@@ -977,7 +1329,7 @@ function ConflictsTab({ tasks, resources, materials }: {
         <KPI label="Infeasible Tasks" value={infeasible} icon="✕"
           color={infeasible > 0 ? C.red : C.green} />
       </div>
-      <ConflictCards conflicts={conflicts} />
+      <ConflictCards conflicts={conflicts} onTaskClick={onTaskClick} />
     </div>
   );
 }
@@ -1102,6 +1454,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [selectedResource, setSelectedResource] = useState<any>(null);
 
   const tasks = solveResult?.tasks || [];
   const resources = solveResult?.resourceUtilization || [];
@@ -1125,6 +1479,8 @@ export default function App() {
 
   const handleSolve = useCallback(async () => {
     setSolving(true);
+    setSelectedTask(null);
+    setSelectedResource(null);
     try {
       setError(null);
       const result = await api('/ctp/solve-and-sync', { method: 'POST' });
@@ -1134,6 +1490,22 @@ export default function App() {
     } finally {
       setSolving(false);
     }
+  }, []);
+
+  // Click handlers for detail panels
+  const handleTaskClick = useCallback((t: any) => {
+    setSelectedResource(null);
+    setSelectedTask(t);
+  }, []);
+
+  const handleTaskClickByKey = useCallback((key: string) => {
+    const t = tasks.find((task: any) => task.key === key);
+    if (t) { setSelectedResource(null); setSelectedTask(t); }
+  }, [tasks]);
+
+  const handleResourceClick = useCallback((r: any) => {
+    setSelectedTask(null);
+    setSelectedResource(r);
   }, []);
 
   // Initial load
@@ -1318,13 +1690,16 @@ export default function App() {
       <main style={{ padding: 24 }}>
         {activeTab === 'Overview' && (
           <OverviewTab summary={summary} tasks={tasks} resources={resources}
-            orders={orders} materials={materials} products={products} onTabChange={setActiveTab} />
+            orders={orders} materials={materials} products={products} onTabChange={setActiveTab}
+            onTaskClick={handleTaskClick} onResourceClick={handleResourceClick} />
         )}
         {activeTab === 'Schedule' && (
-          <ScheduleTab tasks={tasks} resources={resources} products={products} />
+          <ScheduleTab tasks={tasks} resources={resources} products={products}
+            onTaskClick={handleTaskClick} onResourceClick={handleResourceClick} />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} />}
-        {activeTab === 'Conflicts' && <ConflictsTab tasks={tasks} resources={resources} materials={materials} />}
+        {activeTab === 'Conflicts' && <ConflictsTab tasks={tasks} resources={resources} materials={materials}
+          onTaskClick={handleTaskClickByKey} />}
         {activeTab === 'Materials' && <MaterialsTab materials={materials} />}
       </main>
 
@@ -1335,6 +1710,26 @@ export default function App() {
       <Modal open={userOpen} onClose={() => setUserOpen(false)} title="User Profile">
         <UserProfileContent />
       </Modal>
+
+      {/* Detail Panels */}
+      {selectedTask && (
+        <TaskDetailPanel
+          task={selectedTask}
+          tasks={tasks}
+          products={products}
+          onClose={() => setSelectedTask(null)}
+          onResourceClick={handleResourceClick}
+        />
+      )}
+      {selectedResource && (
+        <ResourceDetailPanel
+          resource={selectedResource}
+          tasks={tasks}
+          products={products}
+          onClose={() => setSelectedResource(null)}
+          onTaskClick={handleTaskClick}
+        />
+      )}
 
       {/* Global animation keyframes */}
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>

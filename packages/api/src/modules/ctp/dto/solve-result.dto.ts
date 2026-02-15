@@ -6,6 +6,18 @@ export class AssignedResourceDto {
 
   @ApiProperty({ description: 'Whether this is the primary resource' })
   isPrimary!: boolean;
+
+  @ApiPropertyOptional({ description: 'Resource mode: ON, OFF, or TRACK' })
+  mode!: string;
+
+  @ApiPropertyOptional({ description: 'Originally requested resource key' })
+  requestedResource!: string | null;
+
+  @ApiPropertyOptional({ description: 'Resource display name' })
+  resourceName!: string | null;
+
+  @ApiPropertyOptional({ description: 'Resource class (e.g. CNC, Assembly)' })
+  resourceClass!: string | null;
 }
 
 export class TaskErrorDto {
@@ -87,6 +99,9 @@ export class TaskResultDto {
 
   @ApiPropertyOptional({ description: 'Process chain this task belongs to' })
   process!: string | null;
+
+  @ApiProperty({ description: 'Material resource assignments with mode', type: [AssignedResourceDto] })
+  materialResources!: AssignedResourceDto[];
 }
 
 export class ResourceUtilizationDto {

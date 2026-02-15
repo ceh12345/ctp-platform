@@ -181,11 +181,29 @@ export class CTPService {
       const assignedResources: any[] = [];
       task.capacityResources?.forEach((entry) => {
         if (entry.scheduledResource) {
+          const resEntity = landscape.resources.getEntity(entry.scheduledResource);
           assignedResources.push({
             resourceKey: entry.scheduledResource,
             isPrimary: entry.isPrimary,
+            mode: entry.mode ?? 'ON',
+            requestedResource: entry.resource ?? null,
+            resourceName: resEntity?.name ?? null,
+            resourceClass: resEntity?.type ?? null,
           });
         }
+      });
+
+      const materialResources: any[] = [];
+      task.materialsResources?.forEach((entry) => {
+        const resEntity = landscape.resources.getEntity(entry.resource ?? '');
+        materialResources.push({
+          resourceKey: entry.resource ?? '',
+          isPrimary: entry.isPrimary,
+          mode: entry.mode ?? 'ON',
+          requestedResource: entry.resource ?? null,
+          resourceName: resEntity?.name ?? null,
+          resourceClass: resEntity?.type ?? null,
+        });
       });
 
       // Extract new fields
@@ -244,6 +262,7 @@ export class CTPService {
         outputScrapRate,
         inputMaterials,
         process,
+        materialResources,
       });
     });
 

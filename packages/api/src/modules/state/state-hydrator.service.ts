@@ -146,6 +146,7 @@ export class StateHydratorService {
           const entry = item.capacityResources[i];
           const tr = new CTPTaskResource(entry.resource, entry.isPrimary, i);
           if (entry.qty !== undefined) tr.qty = entry.qty;
+          if (entry.mode) tr.mode = entry.mode;
           tr.preferences.push(new CTPResourcePreference(entry.resource));
           capList.add(tr);
         }
@@ -160,6 +161,7 @@ export class StateHydratorService {
           const entry = item.materialsResources[i];
           const tr = new CTPTaskResource(entry.resource, entry.isPrimary, i);
           if (entry.qty !== undefined) tr.qty = entry.qty;
+          if (entry.mode) tr.mode = entry.mode;
           tr.preferences.push(new CTPResourcePreference(entry.resource));
           matList.add(tr);
         }
