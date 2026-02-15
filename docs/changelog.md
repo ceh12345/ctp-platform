@@ -182,3 +182,26 @@ Audit trail of features, fixes, and design decisions made during development.
 - Severity toggles: All / Critical / Warning (with counts)
 - Reason toggles: All Reasons / Capacity / Dependency / Material
 - Result count ("4 of 7")
+
+---
+
+## Phase 10: Quick Fixes & Conflict Severity
+
+**Commits:** `232cf9d`, `6b4a8a4`, `6ed3fd9`
+
+### Color & Scale Fixes
+- Removed old `getProductColor()` — all task coloring now uses `getTaskColor()` from tenant colors config
+- Ring component auto-detects 0-1 vs 0-100 scale (`pct > 1 ? pct / 100 : pct`)
+- `deriveOrderStatus` normalizes fillRate to handle both scales
+- Gantt time axis uses tenant locale/timezone instead of hardcoded `'en-US'`/`'UTC'`
+
+### Gantt Info Tooltip
+- Added `HoverTooltip` info icon next to "Hide empty" checkbox explaining its behavior
+
+### Material Conflict Severity Refinement
+- Conflict severity now driven by material resource mode (ON vs TRACK)
+- Material mode ON + shortage → **Critical**: "Cannot execute: short X of Material for Task"
+- Material mode TRACK + shortage → **Warning**: "Inventory alert: Material will be short..."
+- At-risk materials → **Warning** with stock details (on hand, net after incoming)
+- Trigger task identified via `firstNeedTaskKey` or first affected task
+- `materialMode` field added to conflict objects for UI filtering
