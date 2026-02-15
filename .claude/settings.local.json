@@ -15,7 +15,17 @@
       "Bash(netstat:*)",
       "Bash(while read pid)",
       "Bash(do taskkill //F //PID $pid)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(gh repo create:*)",
+      "Bash(where:*)",
+      "Bash(where.exe:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(cd:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd POST /v1/state/sync endpoint for scheduling landscape hydration\n\nImplements the state sync module that accepts a full scheduling payload\n\\(horizon, resources, tasks, state changes, scoring, settings\\), transforms\nDTOs into engine objects, builds a SchedulingLandscape, and stores it\nkeyed by tenant ID. Also enables engine compilation with composite project\nreferences and fixes pre-existing build issues \\(ES2022 target, duplicate\nexport, empty module\\).\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

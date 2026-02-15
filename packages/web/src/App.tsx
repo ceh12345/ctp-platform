@@ -33,8 +33,11 @@ const FONT = "'DM Sans','Segoe UI',system-ui,sans-serif";
    ═══════════════════════════════════════════════════════════════ */
 
 async function api(path: string, options?: RequestInit) {
+  const method = options?.method?.toUpperCase() ?? 'GET';
+  const hasBody = method === 'POST' || method === 'PUT' || method === 'PATCH';
   const res = await fetch(`/api/v1${path}`, {
     headers: { 'Content-Type': 'application/json' },
+    ...(hasBody && !options?.body ? { body: '{}' } : {}),
     ...options,
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);

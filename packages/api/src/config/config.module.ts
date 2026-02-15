@@ -8,7 +8,7 @@ import { ConfigService } from './config.service';
     {
       provide: 'CONFIG_STORE',
       useFactory: () => {
-        const tenantId = process.env.TENANT_ID ?? 'default';
+        const tenantId = process.env.TENANT_ID ?? 'demo-manufacturing';
         const configRoot =
           process.env.CONFIG_ROOT ??
           path.join(process.cwd(), '..', '..', 'config');
