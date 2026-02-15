@@ -110,19 +110,6 @@ function fmtNum(v: number | null | undefined): string {
   return v.toLocaleString(loc);
 }
 
-function getProductColor(productKey: string | null | undefined, products: any[]): string {
-  if (!productKey) return C.textDim;
-  const product = products.find((p: any) => p.key === productKey);
-  if (!product) return C.accent;
-  const name: string = product.name || '';
-  if (name.includes('Widget-A')) return C.accent;
-  if (name.includes('Widget-B')) return C.purple;
-  if (name.includes('Widget-C')) return C.cyan;
-  if (name.includes('Housing')) return C.orange;
-  if (name.includes('Bracket')) return C.green;
-  return C.accent;
-}
-
 function getTaskColor(task: any, colors: any): string {
   if (!colors?.taskColors) return '#3b82f6';
   const taskType = (task.type || '').toUpperCase();
@@ -154,7 +141,8 @@ const ZOOM_LEVELS = [
 ];
 
 function deriveOrderStatus(order: any): string {
-  const fillRate = order.fillRate ?? 0;
+  const raw = order.fillRate ?? 0;
+  const fillRate = raw > 1 ? raw / 100 : raw;
   if (fillRate >= 0.99) return 'on-track';
   const now = Date.now();
   const due = new Date(order.dueDate).getTime();
@@ -612,10 +600,11 @@ function KPI({ label, value, sub, color, icon }: {
 }
 
 function Ring({ pct, size = 36, color }: { pct: number; size?: number; color?: string }) {
-  const c = color || (pct >= 0.9 ? C.green : pct >= 0.5 ? C.yellow : C.red);
+  const norm = pct > 1 ? pct / 100 : pct;
+  const c = color || (norm >= 0.9 ? C.green : norm >= 0.5 ? C.yellow : C.red);
   const r = (size - 4) / 2;
   const circ = 2 * Math.PI * r;
-  const offset = circ * (1 - Math.min(Math.max(pct, 0), 1));
+  const offset = circ * (1 - Math.min(Math.max(norm, 0), 1));
   return (
     <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={C.border} strokeWidth={3} />
@@ -810,14 +799,14 @@ function DetailRow({ label, value, color }: { label: string; value: ReactNode; c
   );
 }
 
-function TaskDetailPanel({ task, tasks, products, onClose, onResourceClick }: {
-  task: any; tasks: any[]; products: any[];
+function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceClick }: {
+  task: any; tasks: any[]; products: any[]; colors: any;
   onClose: () => void; onResourceClick: (r: any) => void;
 }) {
   const prodName = task.outputProductKey
     ? (products.find((p: any) => p.key === task.outputProductKey)?.name || task.outputProductKey)
     : null;
-  const prodColor = getProductColor(task.outputProductKey, products);
+  const prodColor = colors ? getTaskColor(task, colors) : C.accent;
 
   const orderChain = task.orderRef
     ? tasks.filter((t: any) => t.orderRef === task.orderRef)
@@ -979,8 +968,8 @@ function TaskDetailPanel({ task, tasks, products, onClose, onResourceClick }: {
   );
 }
 
-function ResourceDetailPanel({ resource, tasks, products, colors, onClose, onTaskClick }: {
-  resource: any; tasks: any[]; products: any[]; colors: any;
+function ResourceDetailPanel({ resource, tasks, colors, onClose, onTaskClick }: {
+  resource: any; tasks: any[]; colors: any;
   onClose: () => void; onTaskClick: (t: any) => void;
 }) {
   const resTasks = tasks
@@ -1013,7 +1002,7 @@ function ResourceDetailPanel({ resource, tasks, products, colors, onClose, onTas
         <div style={{ color: C.textDim, fontSize: 13, padding: '8px 0' }}>No {t('tasks', 'tasks')} assigned</div>
       )}
       {resTasks.map((t: any) => {
-        const prodColor = colors ? getTaskColor(t, colors) : getProductColor(t.outputProductKey, products);
+        const prodColor = colors ? getTaskColor(t, colors) : C.accent;
         const assignedRes = t.assignedResources?.find((r: any) => r.resourceKey === resource.resourceKey);
         return (
           <div
@@ -1140,7 +1129,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
       let label: string;
       if (zoomConfig.days < 1) {
         // 3 Hr view: full time on every tick
-        label = h.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+        label = h.toLocaleTimeString(_locale?.locale || 'en-US', { hour: '2-digit', minute: '2-digit', timeZone: _locale?.timezone || 'UTC' });
       } else {
         // Day view: hour number only, am/pm at 6-hour marks
         const isPeriodMark = hr % 6 === 0 && min === 0;
@@ -1167,7 +1156,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
         axisLabels.push({
           date: new Date(d),
           pct: ((d.getTime() - hStartMs) / totalMs) * 100,
-          label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }),
+          label: d.toLocaleDateString(_locale?.locale || 'en-US', { month: 'short', day: 'numeric', timeZone: _locale?.timezone || 'UTC' }),
         });
       }
       d.setUTCDate(d.getUTCDate() + 1);
@@ -1342,7 +1331,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                     const left = toPct(t.scheduledStart);
                     const right = toPct(t.scheduledEnd);
                     const w = Math.max(right - left, 0.3);
-                    const barColor = colors ? getTaskColor(t, colors) : getProductColor(t.outputProductKey, products);
+                    const barColor = colors ? getTaskColor(t, colors) : C.accent;
                     return (
                       <div
                         key={t.key}
@@ -1406,7 +1395,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
    TASK TABLE
    ═══════════════════════════════════════════════════════════════ */
 
-function TaskTable({ tasks, products, onTaskClick }: { tasks: any[]; products: any[]; onTaskClick?: (t: any) => void }) {
+function TaskTable({ tasks, products, colors, onTaskClick }: { tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void }) {
   const { sortKey, sortDir, toggle, sorted } = useSort('key');
 
   // Pre-compute flat resource field for filtering/sorting
@@ -1461,7 +1450,7 @@ function TaskTable({ tasks, products, onTaskClick }: { tasks: any[]; products: a
           <tbody>
             {rows.map((tk: any) => {
               const resKey = tk._resource || '—';
-              const prodColor = getProductColor(tk.outputProductKey, products);
+              const prodColor = colors ? getTaskColor(tk, colors) : C.accent;
               return (
                 <tr key={tk.key} style={{ transition: 'background 0.1s', cursor: onTaskClick ? 'pointer' : 'default' }}
                   onClick={() => onTaskClick?.(tk)}
@@ -1557,7 +1546,7 @@ function OrderTable({ orders, products }: { orders: any[]; products: any[] }) {
           <tbody>
             {rows.map((o: any) => {
               const status = o._status;
-              const prodColor = getProductColor(o.productKey, products);
+              const prodColor = C.accent;
               return (
                 <tr key={o.orderKey}
                   onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
@@ -1994,7 +1983,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
         </Card>
       ) : (
         <Card>
-          <TaskTable tasks={tasks} products={products} onTaskClick={onTaskClick} />
+          <TaskTable tasks={tasks} products={products} colors={colors} onTaskClick={onTaskClick} />
         </Card>
       )}
     </div>
@@ -2486,6 +2475,7 @@ export default function App() {
           task={selectedTask}
           tasks={tasks}
           products={products}
+          colors={colors}
           onClose={() => setSelectedTask(null)}
           onResourceClick={handleResourceClick}
         />
@@ -2494,7 +2484,6 @@ export default function App() {
         <ResourceDetailPanel
           resource={selectedResource}
           tasks={tasks}
-          products={products}
           colors={colors}
           onClose={() => setSelectedResource(null)}
           onTaskClick={handleTaskClick}
