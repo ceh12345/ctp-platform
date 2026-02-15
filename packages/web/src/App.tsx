@@ -832,6 +832,319 @@ function DetailRow({ label, value, color }: { label: string; value: ReactNode; c
   );
 }
 
+function SummaryRow({ icon, color, text }: { icon: string; color: string; text: string }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '5px 0', fontSize: 13,
+    }}>
+      <span style={{ fontSize: 13, minWidth: 20, color }}>{icon}</span>
+      <span style={{ color: C.text }}>{text}</span>
+    </div>
+  );
+}
+
+// ── Solve Preview Modal ────────────────────────────────────────────────
+function SolvePreview({ orders, tasks, materials, resources,
+  orderModes, taskPins, taskExcludes, taskUnschedules,
+  materialModes, modeOverrides,
+  previousOrderModes, previousTaskPins, previousTaskExcludes, previousMaterialModes,
+  onConfirm, onCancel }: {
+  orders: any[]; tasks: any[]; materials: any[]; resources: any[];
+  orderModes: Record<string, string>;
+  taskPins: Record<string, boolean>;
+  taskExcludes: Record<string, boolean>;
+  taskUnschedules: Set<string>;
+  materialModes?: Record<string, string>;
+  modeOverrides?: Record<string, string>;
+  previousOrderModes: Record<string, string>;
+  previousTaskPins: Record<string, boolean>;
+  previousTaskExcludes: Record<string, boolean>;
+  previousMaterialModes?: Record<string, string>;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  // Order counts
+  const orderSummary = useMemo(() => {
+    let included = 0, locked = 0, excluded = 0;
+    let includedTasks = 0, lockedTasks = 0, excludedTasks = 0;
+    const excludedOrderKeys: string[] = [];
+
+    orders.forEach(o => {
+      const mode = orderModes[o.orderKey] || 'INCLUDE';
+      const orderTasks = tasks.filter((tk: any) => tk.orderRef === o.orderKey);
+      const taskCount = orderTasks.length;
+
+      if (mode === 'INCLUDE') { included++; includedTasks += taskCount; }
+      else if (mode === 'LOCKED') { locked++; lockedTasks += taskCount; }
+      else if (mode === 'EXCLUDE') { excluded++; excludedTasks += taskCount; excludedOrderKeys.push(o.orderKey); }
+    });
+
+    return { included, locked, excluded, includedTasks, lockedTasks, excludedTasks, excludedOrderKeys };
+  }, [orders, tasks, orderModes]);
+
+  // Task counts
+  const taskSummary = useMemo(() => {
+    const pinnedKeys = Object.entries(taskPins).filter(([, v]) => v).map(([k]) => k);
+    const excludedKeys = Object.entries(taskExcludes).filter(([, v]) => v).map(([k]) => k);
+    const unscheduleKeys = Array.from(taskUnschedules);
+
+    const solvableTasks = tasks.filter((tk: any) => {
+      const orderMode = orderModes[tk.orderRef] || 'INCLUDE';
+      if (orderMode === 'EXCLUDE' || orderMode === 'LOCKED') return false;
+      if (taskExcludes[tk.key]) return false;
+      if (taskPins[tk.key]) return false;
+      return true;
+    });
+
+    return { pinned: pinnedKeys, excluded: excludedKeys, unschedule: unscheduleKeys, toSolve: solvableTasks.length };
+  }, [tasks, orderModes, taskPins, taskExcludes, taskUnschedules]);
+
+  // Resource counts
+  const resourceSummary = useMemo(() => {
+    const active = resources.length;
+    const matRequired = materials.filter((m: any) => (materialModes?.[(m.materialKey || m.key) as string] || m.mode || 'TRACK') === 'ON').length;
+    const matMonitored = materials.filter((m: any) => (materialModes?.[(m.materialKey || m.key) as string] || m.mode || 'TRACK') === 'TRACK').length;
+    const matIgnored = materials.filter((m: any) => (materialModes?.[(m.materialKey || m.key) as string] || m.mode || 'TRACK') === 'OFF').length;
+    return { active, matRequired, matMonitored, matIgnored };
+  }, [resources, materials, materialModes]);
+
+  // Compute deltas from last solve
+  const MODE_LABELS: Record<string, { label: string; icon: string; color: string }> = {
+    INCLUDE: { label: 'Include', icon: '▶', color: C.green },
+    LOCKED: { label: 'Locked', icon: '\u{1F512}', color: C.yellow },
+    EXCLUDE: { label: 'Exclude', icon: '\u23F8', color: C.textDim },
+    ON: { label: 'Required', icon: '\u25CF', color: C.green },
+    TRACK: { label: 'Monitored', icon: '\u25CB', color: C.yellow },
+    OFF: { label: 'Ignored', icon: '\u2013', color: C.textDim },
+  };
+
+  const changes = useMemo(() => {
+    const deltas: { icon: string; text: string; color: string }[] = [];
+
+    // Order mode changes
+    orders.forEach(o => {
+      const prev = previousOrderModes[o.orderKey] || 'INCLUDE';
+      const curr = orderModes[o.orderKey] || 'INCLUDE';
+      if (prev !== curr) {
+        const config = MODE_LABELS[curr] || MODE_LABELS.INCLUDE;
+        deltas.push({
+          icon: config.icon,
+          text: `${o.orderKey} changed: ${MODE_LABELS[prev]?.label || prev} \u2192 ${config.label}`,
+          color: config.color,
+        });
+      }
+    });
+
+    // Task pins
+    Object.entries(taskPins).forEach(([key, pinned]) => {
+      const wasPinned = previousTaskPins[key] || false;
+      if (pinned && !wasPinned) {
+        const task = tasks.find((tk: any) => tk.key === key);
+        const resKey = task?.assignedResources?.[0]?.resourceKey || '';
+        deltas.push({
+          icon: '\u{1F4CC}',
+          text: `${key} pinned${resKey ? ` to ${resKey}` : ''}${task?.scheduledStart ? ` at ${fmtDate(task.scheduledStart)}` : ''}`,
+          color: C.yellow,
+        });
+      } else if (!pinned && wasPinned) {
+        deltas.push({ icon: '\u{1F4CC}', text: `${key} unpinned`, color: C.textMuted });
+      }
+    });
+
+    // Task excludes
+    Object.entries(taskExcludes).forEach(([key, excl]) => {
+      const wasExcluded = previousTaskExcludes[key] || false;
+      if (excl && !wasExcluded) {
+        deltas.push({ icon: '\u23F8', text: `${key} excluded from solve`, color: C.textDim });
+      } else if (!excl && wasExcluded) {
+        deltas.push({ icon: '\u25B6', text: `${key} re-included in solve`, color: C.green });
+      }
+    });
+
+    // Unschedules
+    Array.from(taskUnschedules).forEach(key => {
+      deltas.push({ icon: '\u2715', text: `${key} will be unscheduled`, color: C.red });
+    });
+
+    // Material mode changes
+    if (materialModes && previousMaterialModes) {
+      materials.forEach((m: any) => {
+        const key = m.materialKey || m.key;
+        const prev = previousMaterialModes[key] || m.mode || 'TRACK';
+        const curr = materialModes[key] || m.mode || 'TRACK';
+        if (prev !== curr) {
+          deltas.push({
+            icon: MODE_LABELS[curr]?.icon || '\u25CF',
+            text: `${m.materialName || key} mode: ${MODE_LABELS[prev]?.label || prev} \u2192 ${MODE_LABELS[curr]?.label || curr}`,
+            color: MODE_LABELS[curr]?.color || C.textMuted,
+          });
+        }
+      });
+    }
+
+    // Resource mode changes
+    if (modeOverrides) {
+      Object.entries(modeOverrides).forEach(([compoundKey, newMode]) => {
+        const parts = compoundKey.split(':');
+        if (parts.length >= 3) {
+          deltas.push({
+            icon: MODE_LABELS[newMode]?.icon || '\u25CF',
+            text: `${parts[1]} on ${parts[0]} \u2192 ${MODE_LABELS[newMode]?.label || newMode}`,
+            color: MODE_LABELS[newMode]?.color || C.textMuted,
+          });
+        }
+      });
+    }
+
+    return deltas;
+  }, [orders, tasks, materials, orderModes, taskPins, taskExcludes, taskUnschedules,
+      materialModes, modeOverrides, previousOrderModes, previousTaskPins, previousTaskExcludes, previousMaterialModes]);
+
+  // Detect first solve
+  const isFirstSolve = changes.length === 0 && !tasks.some((tk: any) => tk.feasible);
+
+  return (
+    <div onClick={onCancel} style={{
+      position: 'fixed', inset: 0, zIndex: 1000, display: 'flex',
+      alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16,
+        padding: 0, width: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+        fontFamily: FONT, boxShadow: '0 16px 64px rgba(0,0,0,0.5)',
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}`,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.text }}>
+            Solve Preview
+          </h3>
+          <button onClick={onCancel} style={{
+            background: 'none', border: 'none', color: C.textMuted, fontSize: 20,
+            cursor: 'pointer', padding: '4px 8px', lineHeight: 1,
+          }}>{'\u2715'}</button>
+        </div>
+
+        {/* Scrollable content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
+          {isFirstSolve ? (
+            <div style={{ padding: '12px 0', fontSize: 13, color: C.textMuted, lineHeight: 1.6 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 8 }}>
+                Ready to schedule
+              </div>
+              <SummaryRow icon="\u{1F4CB}" color={C.text}
+                text={`${orders.length} orders with ${tasks.length} tasks`} />
+              <SummaryRow icon="\u2699" color={C.text}
+                text={`${resources.length} capacity resources`} />
+              <SummaryRow icon="\u{1F4E6}" color={C.text}
+                text={`${materials.length} materials tracked`} />
+            </div>
+          ) : (
+            <>
+              {/* Orders section */}
+              <SectionLabel label="Orders" />
+              <SummaryRow icon="\u25B6" color={C.green}
+                text={`${orderSummary.included} orders included (${orderSummary.includedTasks} tasks)`} />
+              {orderSummary.locked > 0 && (
+                <SummaryRow icon="\u{1F512}" color={C.yellow}
+                  text={`${orderSummary.locked} orders locked (${orderSummary.lockedTasks} tasks \u2014 won't move)`} />
+              )}
+              {orderSummary.excluded > 0 && (
+                <SummaryRow icon="\u23F8" color={C.textDim}
+                  text={`${orderSummary.excluded} orders excluded (${orderSummary.excludedTasks} tasks \u2014 ${orderSummary.excludedOrderKeys.join(', ')})`} />
+              )}
+
+              {/* Tasks section */}
+              <SectionLabel label="Tasks" />
+              {taskSummary.pinned.length > 0 && (
+                <SummaryRow icon="\u{1F4CC}" color={C.yellow}
+                  text={`${taskSummary.pinned.length} tasks pinned (${taskSummary.pinned.slice(0, 3).join(', ')}${taskSummary.pinned.length > 3 ? '\u2026' : ''})`} />
+              )}
+              {taskSummary.excluded.length > 0 && (
+                <SummaryRow icon="\u23F8" color={C.textDim}
+                  text={`${taskSummary.excluded.length} tasks excluded (${taskSummary.excluded.slice(0, 3).join(', ')}${taskSummary.excluded.length > 3 ? '\u2026' : ''})`} />
+              )}
+              {taskSummary.unschedule.length > 0 && (
+                <SummaryRow icon="\u2715" color={C.red}
+                  text={`${taskSummary.unschedule.length} tasks to unschedule (${taskSummary.unschedule.slice(0, 3).join(', ')}${taskSummary.unschedule.length > 3 ? '\u2026' : ''})`} />
+              )}
+              {taskSummary.pinned.length === 0 && taskSummary.excluded.length === 0 && taskSummary.unschedule.length === 0 && (
+                <SummaryRow icon="\u2713" color={C.green} text="No task overrides" />
+              )}
+
+              {/* Resources section */}
+              <SectionLabel label="Resources & Materials" />
+              <SummaryRow icon="\u2699" color={C.text}
+                text={`${resourceSummary.active} capacity resources active`} />
+              <SummaryRow icon="\u{1F4E6}" color={C.text}
+                text={`${resourceSummary.matMonitored} materials monitored${resourceSummary.matRequired > 0 ? `, ${resourceSummary.matRequired} required` : ''}${resourceSummary.matIgnored > 0 ? `, ${resourceSummary.matIgnored} ignored` : ''}`} />
+
+              {/* Changes from last solve */}
+              {changes.length > 0 && (
+                <>
+                  <SectionLabel label="Changes from Last Solve" />
+                  <div style={{
+                    background: C.bg, borderRadius: 8, padding: 12,
+                    border: `1px solid ${C.border}`,
+                  }}>
+                    {changes.map((delta, i) => (
+                      <div key={i} style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '4px 0', fontSize: 12, color: delta.color,
+                      }}>
+                        <span style={{ fontSize: 12, minWidth: 18 }}>{delta.icon}</span>
+                        <span>{delta.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '16px 24px 20px', borderTop: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 16, lineHeight: 1.5 }}>
+            Solver will process <strong style={{ color: C.text }}>{taskSummary.toSolve} tasks</strong> across{' '}
+            <strong style={{ color: C.text }}>{resourceSummary.active} resources</strong>
+            {taskSummary.pinned.length > 0 && (
+              <> with <strong style={{ color: C.yellow }}>{taskSummary.pinned.length} pinned</strong> positions</>
+            )}
+            {orderSummary.locked > 0 && (
+              <> and <strong style={{ color: C.yellow }}>{orderSummary.locked} locked</strong> orders</>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button onClick={onCancel} style={{
+              padding: '8px 20px', borderRadius: 8, border: `1px solid ${C.border}`,
+              background: 'transparent', color: C.textMuted,
+              fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+            }}>
+              Cancel
+            </button>
+            <button onClick={onConfirm} style={{
+              padding: '8px 20px', borderRadius: 8, border: 'none',
+              background: C.accent, color: '#fff',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              {'\u25B6'} Solve Now
+            </button>
+          </div>
+          <div style={{ fontSize: 11, color: C.textDim, marginTop: 8, textAlign: 'center' }}>
+            Tip: Shift+Click the Solve button to skip this preview
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceClick }: {
   task: any; tasks: any[]; products: any[]; colors: any;
   onClose: () => void; onResourceClick: (r: any) => void;
@@ -2242,6 +2555,26 @@ export default function App() {
   const [selectedResource, setSelectedResource] = useState<any>(null);
   const [colors, setColors] = useState<any>(null);
 
+  // Solve preview state
+  const [showSolvePreview, setShowSolvePreview] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [orderModes, _setOrderModes] = useState<Record<string, string>>({});
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [taskPins, _setTaskPins] = useState<Record<string, boolean>>({});
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [taskExcludes, _setTaskExcludes] = useState<Record<string, boolean>>({});
+  const [taskUnschedules, setTaskUnschedules] = useState<Set<string>>(new Set());
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [materialModeOverrides, _setMaterialModeOverrides] = useState<Record<string, string>>({});
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [resourceModeOverrides, _setResourceModeOverrides] = useState<Record<string, string>>({});
+  const [solveStale, setSolveStale] = useState(false);
+  // Previous state snapshots for delta computation
+  const [prevOrderModes, setPrevOrderModes] = useState<Record<string, string>>({});
+  const [prevTaskPins, setPrevTaskPins] = useState<Record<string, boolean>>({});
+  const [prevTaskExcludes, setPrevTaskExcludes] = useState<Record<string, boolean>>({});
+  const [prevMaterialModes, setPrevMaterialModes] = useState<Record<string, string>>({});
+
   const tasks = solveResult?.tasks || [];
   const resources = solveResult?.resourceUtilization || [];
   const orders = solveResult?.orders || [];
@@ -2268,7 +2601,8 @@ export default function App() {
     }
   }, []);
 
-  const handleSolve = useCallback(async () => {
+  const handleSolveConfirm = useCallback(async () => {
+    setShowSolvePreview(false);
     setSolving(true);
     setSelectedTask(null);
     setSelectedResource(null);
@@ -2276,6 +2610,17 @@ export default function App() {
       setError(null);
       const result = await api('/ctp/solve-and-sync', { method: 'POST' });
       setSolveResult(result);
+      setSolveStale(false);
+
+      // Snapshot current state as "previous" for next delta computation
+      setPrevOrderModes({ ...orderModes });
+      setPrevTaskPins({ ...taskPins });
+      setPrevTaskExcludes({ ...taskExcludes });
+      setPrevMaterialModes({ ...materialModeOverrides });
+
+      // Clear one-time actions
+      setTaskUnschedules(new Set());
+
       if (result.colors) setColors(result.colors);
       if (result.terminology) _terminology = result.terminology;
       if (result.locale) _locale = result.locale;
@@ -2284,6 +2629,10 @@ export default function App() {
     } finally {
       setSolving(false);
     }
+  }, [orderModes, taskPins, taskExcludes, materialModeOverrides]);
+
+  const handleSolveCancel = useCallback(() => {
+    setShowSolvePreview(false);
   }, []);
 
   // Click handlers for detail panels
@@ -2375,8 +2724,12 @@ export default function App() {
             </div>
           )}
           <button
-            onClick={handleSolve}
+            onClick={(e) => {
+              if (e.shiftKey) { handleSolveConfirm(); }
+              else { setShowSolvePreview(true); }
+            }}
             disabled={solving}
+            title="Click to preview, Shift+Click to solve immediately"
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '7px 16px', borderRadius: 8, border: 'none',
@@ -2394,8 +2747,10 @@ export default function App() {
                 }} />
                 Solving…
               </>
+            ) : solveStale ? (
+              <>{'\u25B6'} Review & Solve</>
             ) : (
-              <>▶ {act('solveAll', 'Solve All')}</>
+              <>{'\u25B6'} {act('solveAll', 'Solve All')}</>
             )}
           </button>
           <button
@@ -2523,6 +2878,28 @@ export default function App() {
           colors={colors}
           onClose={() => setSelectedResource(null)}
           onTaskClick={handleTaskClick}
+        />
+      )}
+
+      {/* Solve Preview */}
+      {showSolvePreview && (
+        <SolvePreview
+          orders={orders}
+          tasks={tasks}
+          materials={materials}
+          resources={resources}
+          orderModes={orderModes}
+          taskPins={taskPins}
+          taskExcludes={taskExcludes}
+          taskUnschedules={taskUnschedules}
+          materialModes={materialModeOverrides}
+          modeOverrides={resourceModeOverrides}
+          previousOrderModes={prevOrderModes}
+          previousTaskPins={prevTaskPins}
+          previousTaskExcludes={prevTaskExcludes}
+          previousMaterialModes={prevMaterialModes}
+          onConfirm={handleSolveConfirm}
+          onCancel={handleSolveCancel}
         />
       )}
 

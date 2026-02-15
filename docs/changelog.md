@@ -205,3 +205,30 @@ Audit trail of features, fixes, and design decisions made during development.
 - At-risk materials → **Warning** with stock details (on hand, net after incoming)
 - Trigger task identified via `firstNeedTaskKey` or first affected task
 - `materialMode` field added to conflict objects for UI filtering
+
+---
+
+## Phase 11: Solve Preview Panel
+
+**Commit:** *(pending)*
+
+### Solve Preview Modal
+- Clicking "Solve All" opens a preview panel before executing
+- Shows summary: orders (included/locked/excluded), tasks (pinned/excluded/unschedule), resources & materials
+- "Changes from Last Solve" delta section highlights what changed since the previous solve
+- Bottom line: "Solver will process N tasks across M resources"
+- Confirm ("Solve Now") or Cancel
+- Shift+Click the Solve button to skip preview and solve immediately
+
+### State Infrastructure
+- Added placeholder state for solve overrides: `orderModes`, `taskPins`, `taskExcludes`, `taskUnschedules`, `materialModeOverrides`, `resourceModeOverrides`
+- Added `solveStale` flag — button text changes to "Review & Solve" when overrides are pending
+- Previous state snapshots (`prevOrderModes`, `prevTaskPins`, etc.) for computing deltas between solves
+
+### First Solve Experience
+- Detects first solve (no previous results, no changes)
+- Shows simplified "Ready to schedule" summary with order/task/resource/material counts
+
+### Components Added
+- `SummaryRow` — icon + text row for preview sections
+- `SolvePreview` — full modal with computed summaries, delta tracking, and confirmation buttons
