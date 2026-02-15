@@ -133,3 +133,52 @@ Audit trail of features, fixes, and design decisions made during development.
 - Default view changed from Fit to Day
 - Day view: clean hour labels with am/pm only at 6-hour marks (12am, 6am, 12pm, 6pm)
 - Time scale text changed from `textDim` to `textMuted` for readability
+
+---
+
+## Phase 9: Table Filtering — Search, Status Toggles, and Column Filters
+
+**Commit:** *(pending)*
+
+### useFilter Hook
+- Reusable client-side filter hook that pairs with the existing `useSort` hook
+- Free text search across all string/number fields in a row
+- Status toggle filtering via configurable `statusDeriver` function
+- Per-column dropdown filters with distinct value checkboxes (multi-select)
+- `activeFilterCount` and `clearAll` for UX feedback
+- Returns `filtered` array that feeds into `useSort.sorted()`
+
+### Filter UI Components
+- `SearchBox` — text input with search icon, clear button, dark theme styling
+- `StatusToggles` — row of toggle buttons with optional counts and color coding
+- `ColumnFilter` — dropdown triggered from column header, shows distinct values with checkboxes, backdrop-close, clear button
+- `FilterBar` — combines SearchBox + StatusToggles + active filter count + "Clear all" button + result count
+- `SortHeader` updated to accept optional `filterProps` for inline column filter dropdowns
+
+### TaskTable (Operation List)
+- Search across all task fields (key, name, order, product, resource)
+- Status toggles: All / Scheduled / Infeasible (with counts)
+- Column filters on: Order, Product, Resource
+- Pre-computed `_resource` and `_status` fields for filtering/sorting
+
+### OrderTable
+- Search across order fields
+- Status toggles: All / On Track / At Risk / Late (with counts)
+- Column filters on: Product, Priority
+
+### MatTable (Materials)
+- Search across material fields
+- Status toggles: All / Covered / At Risk / Shortage (with counts)
+- Column filter on: Unit
+
+### GanttChart
+- Resource search box (filter by resource name or key)
+- Work Center toggle buttons (click to show/hide entire work centers, strike-through styling)
+- "Hide empty" checkbox (hides resources with no scheduled tasks in current view)
+- Resource count indicator ("3 of 5 resources")
+
+### ConflictsTab
+- Search conflicts (task name, key, order ref, detail text)
+- Severity toggles: All / Critical / Warning (with counts)
+- Reason toggles: All Reasons / Capacity / Dependency / Material
+- Result count ("4 of 7")

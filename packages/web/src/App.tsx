@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, CSSProperties, ReactNode } from 'react';
+import { useState, useEffect, useCallback, useMemo, CSSProperties, ReactNode } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════
    CONSTANTS
@@ -270,24 +270,310 @@ function useSort(defaultKey: string, defaultDir: 'asc' | 'desc' = 'asc') {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   useFilter HOOK
+   ═══════════════════════════════════════════════════════════════ */
+
+interface FilterConfig {
+  statusField?: string;
+  statusDeriver?: (row: any) => string;
+}
+
+function useFilter<T>(data: T[], config: FilterConfig) {
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('all');
+  const [columnFilters, setColumnFilters] = useState<Record<string, Set<string>>>({});
+
+  const distinctValues = useCallback((key: string): string[] => {
+    const values = new Set<string>();
+    data.forEach((row: any) => {
+      const v = row[key];
+      if (v != null && v !== '') values.add(String(v));
+    });
+    return Array.from(values).sort();
+  }, [data]);
+
+  const toggleColumnValue = useCallback((column: string, value: string) => {
+    setColumnFilters(prev => {
+      const next = { ...prev };
+      if (!next[column]) next[column] = new Set();
+      else next[column] = new Set(next[column]);
+      if (next[column].has(value)) next[column].delete(value);
+      else next[column].add(value);
+      if (next[column].size === 0) delete next[column];
+      return next;
+    });
+  }, []);
+
+  const clearColumnFilter = useCallback((column: string) => {
+    setColumnFilters(prev => {
+      const next = { ...prev };
+      delete next[column];
+      return next;
+    });
+  }, []);
+
+  const clearAll = useCallback(() => {
+    setSearch('');
+    setStatus('all');
+    setColumnFilters({});
+  }, []);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (search) count++;
+    if (status !== 'all') count++;
+    count += Object.keys(columnFilters).length;
+    return count;
+  }, [search, status, columnFilters]);
+
+  const filtered = useMemo(() => {
+    let result = data;
+
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter((row: any) =>
+        Object.values(row).some(v => {
+          if (v == null) return false;
+          if (typeof v === 'string') return v.toLowerCase().includes(q);
+          if (typeof v === 'number') return String(v).includes(q);
+          return false;
+        }),
+      );
+    }
+
+    if (status !== 'all' && (config.statusField || config.statusDeriver)) {
+      result = result.filter((row: any) => {
+        const rowStatus = config.statusDeriver
+          ? config.statusDeriver(row)
+          : row[config.statusField!];
+        return rowStatus === status;
+      });
+    }
+
+    for (const [column, values] of Object.entries(columnFilters)) {
+      if (values.size > 0) {
+        result = result.filter((row: any) => {
+          const v = row[column];
+          return v != null && values.has(String(v));
+        });
+      }
+    }
+
+    return result;
+  }, [data, search, status, columnFilters, config]);
+
+  return {
+    search, setSearch,
+    status, setStatus,
+    columnFilters, toggleColumnValue, clearColumnFilter,
+    clearAll,
+    activeFilterCount,
+    filtered,
+    distinctValues,
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════
    SMALL UI COMPONENTS
    ═══════════════════════════════════════════════════════════════ */
 
-function SortHeader({ label, k, current, dir, onSort }: {
+function SortHeader({ label, k, current, dir, onSort, filterProps }: {
   label: string; k: string; current: string; dir: string; onSort: (k: string) => void;
+  filterProps?: {
+    distinctValues: string[];
+    selected: Set<string>;
+    onToggle: (column: string, value: string) => void;
+    onClear: (column: string) => void;
+  };
 }) {
   const active = k === current;
   return (
     <th
-      onClick={() => onSort(k)}
       style={{
         padding: '10px 12px', textAlign: 'left', fontSize: 12, fontWeight: 600,
         color: active ? C.accent : C.textMuted, cursor: 'pointer', userSelect: 'none',
         borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap', fontFamily: FONT,
       }}
     >
-      {label} {active ? (dir === 'asc' ? '▲' : '▼') : ''}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span onClick={() => onSort(k)}>
+          {label} {active ? (dir === 'asc' ? '▲' : '▼') : ''}
+        </span>
+        {filterProps && (
+          <ColumnFilter
+            column={k}
+            distinctValues={filterProps.distinctValues}
+            selected={filterProps.selected}
+            onToggle={filterProps.onToggle}
+            onClear={filterProps.onClear}
+          />
+        )}
+      </div>
     </th>
+  );
+}
+
+/* ── Filter UI Components ──────────────────────────────────────── */
+
+function SearchBox({ value, onChange, placeholder }: {
+  value: string; onChange: (v: string) => void; placeholder?: string;
+}) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8,
+      background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8,
+      padding: '6px 12px', minWidth: 200,
+    }}>
+      <span style={{ color: C.textDim, fontSize: 14 }}>&#x1F50D;</span>
+      <input
+        type="text"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder || 'Search...'}
+        style={{
+          background: 'none', border: 'none', outline: 'none',
+          color: C.text, fontSize: 13, flex: 1, fontFamily: FONT,
+        }}
+      />
+      {value && (
+        <button onClick={() => onChange('')} style={{
+          background: 'none', border: 'none', color: C.textDim,
+          cursor: 'pointer', fontSize: 12, padding: '2px 4px',
+        }}>&#x2715;</button>
+      )}
+    </div>
+  );
+}
+
+function StatusToggles({ options, active, onChange }: {
+  options: { value: string; label: string; color?: string; count?: number }[];
+  active: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div style={{ display: 'flex', gap: 4 }}>
+      {options.map(opt => {
+        const isActive = opt.value === active;
+        const c = opt.color || C.accent;
+        return (
+          <button key={opt.value} onClick={() => onChange(opt.value)} style={{
+            padding: '4px 12px', borderRadius: 6, cursor: 'pointer',
+            fontSize: 12, fontWeight: 600, fontFamily: FONT,
+            background: isActive ? c + '22' : 'transparent',
+            color: isActive ? c : C.textMuted,
+            border: isActive ? `1px solid ${c}44` : '1px solid transparent',
+          }}>
+            {opt.label}
+            {opt.count != null && (
+              <span style={{ marginLeft: 4, opacity: 0.7 }}>({opt.count})</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ColumnFilter({ column, distinctValues, selected, onToggle, onClear }: {
+  column: string;
+  distinctValues: string[];
+  selected: Set<string>;
+  onToggle: (column: string, value: string) => void;
+  onClear: (column: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasFilter = selected.size > 0;
+
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }} onClick={e => e.stopPropagation()}>
+      <button onClick={() => setOpen(!open)} style={{
+        background: hasFilter ? C.accent + '22' : 'none',
+        border: hasFilter ? `1px solid ${C.accent}44` : '1px solid transparent',
+        borderRadius: 4, padding: '2px 6px', cursor: 'pointer',
+        fontSize: 11, color: hasFilter ? C.accent : C.textDim,
+        display: 'inline-flex', alignItems: 'center', gap: 2,
+      }}>
+        &#x25BC; {hasFilter && `(${selected.size})`}
+      </button>
+
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{
+            position: 'fixed', inset: 0, zIndex: 998,
+          }} />
+          <div style={{
+            position: 'absolute', top: '100%', left: 0, zIndex: 999,
+            background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+            padding: 8, minWidth: 180, maxHeight: 240, overflowY: 'auto',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          }}>
+            {hasFilter && (
+              <button onClick={() => onClear(column)} style={{
+                width: '100%', padding: '4px 8px', marginBottom: 4,
+                background: 'none', border: 'none', color: C.accent,
+                fontSize: 11, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
+              }}>
+                Clear filter
+              </button>
+            )}
+            {distinctValues.map(v => (
+              <label key={v} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '4px 8px', cursor: 'pointer', fontSize: 12,
+                color: C.text, borderRadius: 4,
+              }}>
+                <input
+                  type="checkbox"
+                  checked={selected.has(v)}
+                  onChange={() => onToggle(column, v)}
+                  style={{ accentColor: C.accent }}
+                />
+                {v}
+              </label>
+            ))}
+            {distinctValues.length === 0 && (
+              <div style={{ padding: 8, color: C.textDim, fontSize: 12 }}>No values</div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function FilterBar({ filter, statusOptions, children }: {
+  filter: ReturnType<typeof useFilter>;
+  statusOptions?: { value: string; label: string; color?: string; count?: number }[];
+  children?: ReactNode;
+}) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+      marginBottom: 12, padding: '8px 0',
+    }}>
+      <SearchBox value={filter.search} onChange={filter.setSearch} />
+
+      {statusOptions && (
+        <StatusToggles options={statusOptions} active={filter.status} onChange={filter.setStatus} />
+      )}
+
+      {children}
+
+      {filter.activeFilterCount > 0 && (
+        <button onClick={filter.clearAll} style={{
+          background: 'none', border: `1px solid ${C.border}`, borderRadius: 6,
+          padding: '4px 12px', color: C.textMuted, fontSize: 12, cursor: 'pointer',
+          fontFamily: FONT, display: 'flex', alignItems: 'center', gap: 4,
+        }}>
+          Clear all ({filter.activeFilterCount})
+          <span style={{ fontSize: 10 }}>&#x2715;</span>
+        </button>
+      )}
+
+      <span style={{ fontSize: 12, color: C.textDim, marginLeft: 'auto' }}>
+        {filter.filtered.length} results
+      </span>
+    </div>
   );
 }
 
@@ -786,6 +1072,9 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [zoomLevel, setZoomLevel] = useState('Day');
   const [scrollOffset, setScrollOffset] = useState(0);
+  const [ganttSearch, setGanttSearch] = useState('');
+  const [hideEmpty, setHideEmpty] = useState(false);
+  const [hiddenWorkCenters, setHiddenWorkCenters] = useState<Set<string>>(new Set());
 
   // Compute time range from actual scheduled task data
   const scheduled = tasks.filter((t: any) => t.feasible && t.scheduledStart && t.scheduledEnd);
@@ -894,9 +1183,32 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
     if (rk && resMap.has(rk)) resMap.get(rk)!.push(t);
   });
 
-  // Group resources by work center
+  // All work center names (for toggle buttons)
+  const allWorkCenters = Array.from(new Set(resources.map((r: any) => r.workCenter || 'Other')));
+
+  // Filter resources
+  let visibleResources = resources;
+  if (ganttSearch) {
+    const q = ganttSearch.toLowerCase();
+    visibleResources = visibleResources.filter((r: any) =>
+      (r.resourceName || '').toLowerCase().includes(q) ||
+      (r.resourceKey || '').toLowerCase().includes(q),
+    );
+  }
+  if (hiddenWorkCenters.size > 0) {
+    visibleResources = visibleResources.filter((r: any) =>
+      !hiddenWorkCenters.has(r.workCenter || 'Other'),
+    );
+  }
+  if (hideEmpty) {
+    visibleResources = visibleResources.filter((r: any) =>
+      (resMap.get(r.resourceKey) || []).length > 0,
+    );
+  }
+
+  // Group visible resources by work center
   const workCenters = new Map<string, any[]>();
-  resources.forEach((r: any) => {
+  visibleResources.forEach((r: any) => {
     const wc = r.workCenter || 'Other';
     if (!workCenters.has(wc)) workCenters.set(wc, []);
     workCenters.get(wc)!.push(r);
@@ -907,6 +1219,37 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
 
   return (
     <div style={{ position: 'relative' }}>
+      {/* Resource filter bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+        <SearchBox value={ganttSearch} onChange={setGanttSearch} placeholder="Filter resources..." />
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: C.textMuted, cursor: 'pointer' }}>
+          <input type="checkbox" checked={hideEmpty} onChange={e => setHideEmpty(e.target.checked)}
+            style={{ accentColor: C.accent }} />
+          Hide empty
+        </label>
+        {allWorkCenters.map(wc => (
+          <button key={wc} onClick={() => {
+            setHiddenWorkCenters(prev => {
+              const next = new Set(prev);
+              if (next.has(wc)) next.delete(wc); else next.add(wc);
+              return next;
+            });
+          }} style={{
+            padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            background: hiddenWorkCenters.has(wc) ? 'transparent' : C.accent + '22',
+            color: hiddenWorkCenters.has(wc) ? C.textDim : C.accent,
+            border: hiddenWorkCenters.has(wc) ? `1px solid ${C.border}` : `1px solid ${C.accent}44`,
+            textDecoration: hiddenWorkCenters.has(wc) ? 'line-through' : 'none',
+            fontFamily: FONT,
+          }}>
+            {wc}
+          </button>
+        ))}
+        <span style={{ fontSize: 12, color: C.textDim, marginLeft: 'auto' }}>
+          {visibleResources.length} of {resources.length} resources
+        </span>
+      </div>
+
       {/* Zoom controls */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
         <div style={{ display: 'flex', gap: 4 }}>
@@ -1065,67 +1408,99 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
 
 function TaskTable({ tasks, products, onTaskClick }: { tasks: any[]; products: any[]; onTaskClick?: (t: any) => void }) {
   const { sortKey, sortDir, toggle, sorted } = useSort('key');
-  const rows = sorted(tasks);
+
+  // Pre-compute flat resource field for filtering/sorting
+  const enriched = useMemo(() => tasks.map(tk => ({
+    ...tk,
+    _resource: tk.assignedResources?.[0]?.resourceKey || '',
+    _status: tk.feasible ? 'scheduled' : 'infeasible',
+  })), [tasks]);
+
+  const statusDeriver = useCallback((row: any) => row._status, []);
+  const filter = useFilter(enriched, { statusDeriver });
+
+  const scheduledCount = enriched.filter(tk => tk.feasible).length;
+  const infeasibleCount = enriched.length - scheduledCount;
+  const statusOptions = [
+    { value: 'all', label: 'All', count: enriched.length },
+    { value: 'scheduled', label: t('scheduledStatus', 'Scheduled'), color: C.green, count: scheduledCount },
+    { value: 'infeasible', label: t('infeasibleStatus', 'Infeasible'), color: C.red, count: infeasibleCount },
+  ];
+
+  const colFilter = (key: string) => ({
+    distinctValues: filter.distinctValues(key),
+    selected: filter.columnFilters[key] || new Set<string>(),
+    onToggle: filter.toggleColumnValue,
+    onClear: filter.clearColumnFilter,
+  });
+
+  const rows = sorted(filter.filtered);
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={tableStyle}>
-        <thead>
-          <tr>
-            <SortHeader label={t('task', 'Task')} k="key" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label={t('order', 'Order')} k="orderRef" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label={t('product', 'Product')} k="outputProductKey" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label={t('quantity', 'Qty')} k="outputQty" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Scrap%" k="outputScrapRate" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label={t('resource', 'Resource')} k="_resource" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Start" k="scheduledStart" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="End" k="scheduledEnd" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label={t('duration', 'Duration')} k="durationSeconds" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label={t('score', 'Score')} k="score" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Status" k="feasible" current={sortKey} dir={sortDir} onSort={toggle} />
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((tk: any) => {
-            const resKey = tk.assignedResources?.[0]?.resourceKey || '—';
-            const prodColor = getProductColor(tk.outputProductKey, products);
-            return (
-              <tr key={tk.key} style={{ transition: 'background 0.1s', cursor: onTaskClick ? 'pointer' : 'default' }}
-                onClick={() => onTaskClick?.(tk)}
-                onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-              >
-                <td style={cellStyle}>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{tk.key}</div>
-                  <div style={{ fontSize: 11, color: C.textDim }}>{tk.name}</div>
-                </td>
-                <td style={cellStyle}>{tk.orderRef || '—'}</td>
-                <td style={cellStyle}>
-                  {tk.outputProductKey ? (
-                    <span style={{ color: prodColor, fontWeight: 500 }}>
-                      {products.find((p: any) => p.key === tk.outputProductKey)?.name || tk.outputProductKey}
-                    </span>
-                  ) : '—'}
-                </td>
-                <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(tk.outputQty)}</td>
-                <td style={{ ...cellStyle, textAlign: 'right' }}>
-                  {tk.outputScrapRate != null ? fmtPctFromDecimal(tk.outputScrapRate) : '—'}
-                </td>
-                <td style={cellStyle}>{resKey}</td>
-                <td style={cellStyle}>{fmtDate(tk.scheduledStart)}</td>
-                <td style={cellStyle}>{fmtDate(tk.scheduledEnd)}</td>
-                <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtDuration(tk.durationSeconds)}</td>
-                <td style={{ ...cellStyle, textAlign: 'right' }}>
-                  {tk.score != null ? tk.score.toFixed(2) : '—'}
-                </td>
-                <td style={cellStyle}>
-                  <Badge label={tk.feasible ? t('scheduledStatus', 'Scheduled') : t('infeasibleStatus', 'Infeasible')}
-                    color={tk.feasible ? C.green : C.red} />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div>
+      <FilterBar filter={filter} statusOptions={statusOptions} />
+      <div style={{ overflowX: 'auto' }}>
+        <table style={tableStyle}>
+          <thead>
+            <tr>
+              <SortHeader label={t('task', 'Task')} k="key" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label={t('order', 'Order')} k="orderRef" current={sortKey} dir={sortDir} onSort={toggle}
+                filterProps={colFilter('orderRef')} />
+              <SortHeader label={t('product', 'Product')} k="outputProductKey" current={sortKey} dir={sortDir} onSort={toggle}
+                filterProps={colFilter('outputProductKey')} />
+              <SortHeader label={t('quantity', 'Qty')} k="outputQty" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label="Scrap%" k="outputScrapRate" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label={t('resource', 'Resource')} k="_resource" current={sortKey} dir={sortDir} onSort={toggle}
+                filterProps={colFilter('_resource')} />
+              <SortHeader label="Start" k="scheduledStart" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label="End" k="scheduledEnd" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label={t('duration', 'Duration')} k="durationSeconds" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label={t('score', 'Score')} k="score" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label="Status" k="feasible" current={sortKey} dir={sortDir} onSort={toggle} />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((tk: any) => {
+              const resKey = tk._resource || '—';
+              const prodColor = getProductColor(tk.outputProductKey, products);
+              return (
+                <tr key={tk.key} style={{ transition: 'background 0.1s', cursor: onTaskClick ? 'pointer' : 'default' }}
+                  onClick={() => onTaskClick?.(tk)}
+                  onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <td style={cellStyle}>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{tk.key}</div>
+                    <div style={{ fontSize: 11, color: C.textDim }}>{tk.name}</div>
+                  </td>
+                  <td style={cellStyle}>{tk.orderRef || '—'}</td>
+                  <td style={cellStyle}>
+                    {tk.outputProductKey ? (
+                      <span style={{ color: prodColor, fontWeight: 500 }}>
+                        {products.find((p: any) => p.key === tk.outputProductKey)?.name || tk.outputProductKey}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(tk.outputQty)}</td>
+                  <td style={{ ...cellStyle, textAlign: 'right' }}>
+                    {tk.outputScrapRate != null ? fmtPctFromDecimal(tk.outputScrapRate) : '—'}
+                  </td>
+                  <td style={cellStyle}>{resKey}</td>
+                  <td style={cellStyle}>{fmtDate(tk.scheduledStart)}</td>
+                  <td style={cellStyle}>{fmtDate(tk.scheduledEnd)}</td>
+                  <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtDuration(tk.durationSeconds)}</td>
+                  <td style={{ ...cellStyle, textAlign: 'right' }}>
+                    {tk.score != null ? tk.score.toFixed(2) : '—'}
+                  </td>
+                  <td style={cellStyle}>
+                    <Badge label={tk.feasible ? t('scheduledStatus', 'Scheduled') : t('infeasibleStatus', 'Infeasible')}
+                      color={tk.feasible ? C.green : C.red} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -1136,59 +1511,86 @@ function TaskTable({ tasks, products, onTaskClick }: { tasks: any[]; products: a
 
 function OrderTable({ orders, products }: { orders: any[]; products: any[] }) {
   const { sortKey, sortDir, toggle, sorted } = useSort('priority');
-  const enriched = orders.map(o => ({ ...o, _status: deriveOrderStatus(o) }));
-  const rows = sorted(enriched);
+
+  const enriched = useMemo(() => orders.map(o => ({ ...o, _status: deriveOrderStatus(o) })), [orders]);
+
+  const statusDeriver = useCallback((row: any) => row._status, []);
+  const filter = useFilter(enriched, { statusDeriver });
+
+  const onTrackCount = enriched.filter(o => o._status === 'on-track').length;
+  const atRiskCount = enriched.filter(o => o._status === 'at-risk').length;
+  const lateCount = enriched.filter(o => o._status === 'late').length;
+  const statusOptions = [
+    { value: 'all', label: 'All', count: enriched.length },
+    { value: 'on-track', label: t('onTrack', 'On Track'), color: C.green, count: onTrackCount },
+    { value: 'at-risk', label: t('atRisk', 'At Risk'), color: C.yellow, count: atRiskCount },
+    { value: 'late', label: t('late', 'Late'), color: C.red, count: lateCount },
+  ];
+
+  const colFilter = (key: string) => ({
+    distinctValues: filter.distinctValues(key),
+    selected: filter.columnFilters[key] || new Set<string>(),
+    onToggle: filter.toggleColumnValue,
+    onClear: filter.clearColumnFilter,
+  });
+
+  const rows = sorted(filter.filtered);
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={tableStyle}>
-        <thead>
-          <tr>
-            <SortHeader label={t('order', 'Order')} k="orderKey" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label={t('product', 'Product')} k="productKey" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label={t('demand', 'Demand')} k="demandQty" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label={t('scheduledStatus', 'Scheduled')} k="scheduledQty" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label={t('dueDate', 'Due Date')} k="dueDate" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label={t('priority', 'Priority')} k="priority" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label={t('fillRate', 'Fill Rate')} k="fillRate" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Status" k="_status" current={sortKey} dir={sortDir} onSort={toggle} />
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((o: any) => {
-            const status = o._status;
-            const prodColor = getProductColor(o.productKey, products);
-            return (
-              <tr key={o.orderKey}
-                onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-              >
-                <td style={{ ...cellStyle, fontWeight: 600 }}>{o.orderKey}</td>
-                <td style={cellStyle}>
-                  <span style={{ color: prodColor, fontWeight: 500 }}>
-                    {products.find((p: any) => p.key === o.productKey)?.name || o.productKey}
-                  </span>
-                </td>
-                <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(o.demandQty)}</td>
-                <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(o.scheduledQty)}</td>
-                <td style={cellStyle}>{fmtDateShort(o.dueDate)}</td>
-                <td style={cellStyle}>
-                  <Badge
-                    label={`P${o.priority}`}
-                    color={o.priority <= 1 ? C.red : o.priority <= 2 ? C.yellow : C.textMuted}
-                  />
-                </td>
-                <td style={cellStyle}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Ring pct={o.fillRate} size={28} />
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtPctFromDecimal(o.fillRate)}</span>
-                  </div>
-                </td>
-                <td style={cellStyle}><Badge label={status} /></td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div>
+      <FilterBar filter={filter} statusOptions={statusOptions} />
+      <div style={{ overflowX: 'auto' }}>
+        <table style={tableStyle}>
+          <thead>
+            <tr>
+              <SortHeader label={t('order', 'Order')} k="orderKey" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label={t('product', 'Product')} k="productKey" current={sortKey} dir={sortDir} onSort={toggle}
+                filterProps={colFilter('productKey')} />
+              <SortHeader label={t('demand', 'Demand')} k="demandQty" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label={t('scheduledStatus', 'Scheduled')} k="scheduledQty" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label={t('dueDate', 'Due Date')} k="dueDate" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label={t('priority', 'Priority')} k="priority" current={sortKey} dir={sortDir} onSort={toggle}
+                filterProps={colFilter('priority')} />
+              <SortHeader label={t('fillRate', 'Fill Rate')} k="fillRate" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label="Status" k="_status" current={sortKey} dir={sortDir} onSort={toggle} />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((o: any) => {
+              const status = o._status;
+              const prodColor = getProductColor(o.productKey, products);
+              return (
+                <tr key={o.orderKey}
+                  onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <td style={{ ...cellStyle, fontWeight: 600 }}>{o.orderKey}</td>
+                  <td style={cellStyle}>
+                    <span style={{ color: prodColor, fontWeight: 500 }}>
+                      {products.find((p: any) => p.key === o.productKey)?.name || o.productKey}
+                    </span>
+                  </td>
+                  <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(o.demandQty)}</td>
+                  <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(o.scheduledQty)}</td>
+                  <td style={cellStyle}>{fmtDateShort(o.dueDate)}</td>
+                  <td style={cellStyle}>
+                    <Badge
+                      label={`P${o.priority}`}
+                      color={o.priority <= 1 ? C.red : o.priority <= 2 ? C.yellow : C.textMuted}
+                    />
+                  </td>
+                  <td style={cellStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Ring pct={o.fillRate} size={28} />
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtPctFromDecimal(o.fillRate)}</span>
+                    </div>
+                  </td>
+                  <td style={cellStyle}><Badge label={status} /></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -1232,28 +1634,52 @@ function HoverTooltip({ children, content }: { children: ReactNode; content: Rea
 
 function MatTable({ materials }: { materials: any[] }) {
   const { sortKey, sortDir, toggle, sorted } = useSort('materialKey');
-  // Pre-compute derived fields so sorting works on them
-  const enriched = materials.map(m => ({
+
+  const enriched = useMemo(() => materials.map(m => ({
     ...m,
     _status: deriveMaterialStatus(m),
     _net: (m.remaining ?? 0) + (m.incoming ?? 0),
-  }));
-  const rows = sorted(enriched);
+  })), [materials]);
+
+  const statusDeriver = useCallback((row: any) => row._status, []);
+  const filter = useFilter(enriched, { statusDeriver });
+
+  const coveredCount = enriched.filter(m => m._status === 'covered').length;
+  const atRiskCount = enriched.filter(m => m._status === 'at-risk').length;
+  const shortageCount = enriched.filter(m => m._status === 'shortage').length;
+  const statusOptions = [
+    { value: 'all', label: 'All', count: enriched.length },
+    { value: 'covered', label: t('available', 'Covered'), color: C.green, count: coveredCount },
+    { value: 'at-risk', label: t('atRisk', 'At Risk'), color: C.yellow, count: atRiskCount },
+    { value: 'shortage', label: t('shortage', 'Shortage'), color: C.red, count: shortageCount },
+  ];
+
+  const colFilter = (key: string) => ({
+    distinctValues: filter.distinctValues(key),
+    selected: filter.columnFilters[key] || new Set<string>(),
+    onToggle: filter.toggleColumnValue,
+    onClear: filter.clearColumnFilter,
+  });
+
+  const rows = sorted(filter.filtered);
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={tableStyle}>
-        <thead>
-          <tr>
-            <SortHeader label={t('material', 'Material')} k="materialKey" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Unit" k="unit" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="On Hand" k="onHand" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Consumed" k="consumed" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Remaining" k="remaining" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Incoming" k="incoming" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Net Position" k="_net" current={sortKey} dir={sortDir} onSort={toggle} />
-            <SortHeader label="Status" k="_status" current={sortKey} dir={sortDir} onSort={toggle} />
-          </tr>
-        </thead>
+    <div>
+      <FilterBar filter={filter} statusOptions={statusOptions} />
+      <div style={{ overflowX: 'auto' }}>
+        <table style={tableStyle}>
+          <thead>
+            <tr>
+              <SortHeader label={t('material', 'Material')} k="materialKey" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label="Unit" k="unit" current={sortKey} dir={sortDir} onSort={toggle}
+                filterProps={colFilter('unit')} />
+              <SortHeader label="On Hand" k="onHand" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label="Consumed" k="consumed" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label="Remaining" k="remaining" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label="Incoming" k="incoming" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label="Net Position" k="_net" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label="Status" k="_status" current={sortKey} dir={sortDir} onSort={toggle} />
+            </tr>
+          </thead>
         <tbody>
           {rows.map((m: any) => {
             const status = m._status;
@@ -1333,6 +1759,7 @@ function MatTable({ materials }: { materials: any[] }) {
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
@@ -1606,19 +2033,62 @@ function ConflictsTab({ tasks, resources, materials, onTaskClick }: {
   onTaskClick?: (taskKey: string) => void;
 }) {
   const conflicts = deriveConflicts(tasks, resources, materials);
-  const critical = conflicts.filter((c: any) => c.severity === 'critical').length;
-  const infeasible = tasks.filter((t: any) => t.included && !t.feasible).length;
+  const [cfSearch, setCfSearch] = useState('');
+  const [severity, setSeverity] = useState('all');
+  const [reason, setReason] = useState('all');
+
+  const criticalCount = conflicts.filter((c: any) => c.severity === 'critical').length;
+  const warningCount = conflicts.filter((c: any) => c.severity === 'warning').length;
+  const infeasible = tasks.filter((tk: any) => tk.included && !tk.feasible).length;
+
+  let filtered = conflicts;
+  if (cfSearch) {
+    const q = cfSearch.toLowerCase();
+    filtered = filtered.filter((c: any) =>
+      (c.taskName || '').toLowerCase().includes(q) ||
+      (c.taskKey || '').toLowerCase().includes(q) ||
+      (c.orderRef || '').toLowerCase().includes(q) ||
+      (c.reasonDetail || '').toLowerCase().includes(q),
+    );
+  }
+  if (severity !== 'all') {
+    filtered = filtered.filter((c: any) => c.severity === severity);
+  }
+  if (reason !== 'all') {
+    filtered = filtered.filter((c: any) => c.reason === reason);
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KPI label={`Total ${t('conflicts', 'Conflicts')}`} value={conflicts.length} icon="⚠"
           color={conflicts.length > 0 ? C.red : C.green} />
-        <KPI label="Critical" value={critical} icon="🔴"
-          color={critical > 0 ? C.red : C.green} />
+        <KPI label="Critical" value={criticalCount} icon="🔴"
+          color={criticalCount > 0 ? C.red : C.green} />
         <KPI label={`${t('infeasibleStatus', 'Infeasible')} ${t('tasks', 'Tasks')}`} value={infeasible} icon="✕"
           color={infeasible > 0 ? C.red : C.green} />
       </div>
-      <ConflictCards conflicts={conflicts} onTaskClick={onTaskClick} />
+
+      {/* Filter bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <SearchBox value={cfSearch} onChange={setCfSearch} placeholder="Search conflicts..." />
+        <StatusToggles options={[
+          { value: 'all', label: 'All', count: conflicts.length },
+          { value: 'critical', label: 'Critical', color: C.red, count: criticalCount },
+          { value: 'warning', label: 'Warning', color: C.yellow, count: warningCount },
+        ]} active={severity} onChange={setSeverity} />
+        <StatusToggles options={[
+          { value: 'all', label: 'All Reasons' },
+          { value: 'capacity', label: 'Capacity', color: C.orange },
+          { value: 'dependency', label: 'Dependency', color: C.purple },
+          { value: 'material', label: t('material', 'Material'), color: C.cyan },
+        ]} active={reason} onChange={setReason} />
+        <span style={{ fontSize: 12, color: C.textDim, marginLeft: 'auto' }}>
+          {filtered.length} of {conflicts.length}
+        </span>
+      </div>
+
+      <ConflictCards conflicts={filtered} onTaskClick={onTaskClick} />
     </div>
   );
 }
