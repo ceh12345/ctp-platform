@@ -100,6 +100,12 @@ export class TaskResultDto {
   @ApiPropertyOptional({ description: 'Process chain this task belongs to' })
   process!: string | null;
 
+  @ApiPropertyOptional({ description: 'Task type: PROCESS, SETUP, TEARDOWN' })
+  type?: string;
+
+  @ApiPropertyOptional({ description: 'Task subtype: CHANGEOVER, etc.' })
+  subType?: string;
+
   @ApiProperty({ description: 'Material resource assignments with mode', type: [AssignedResourceDto] })
   materialResources!: AssignedResourceDto[];
 }
@@ -119,6 +125,15 @@ export class ResourceUtilizationDto {
 
   @ApiProperty({ description: 'Utilization percentage (0-100)' })
   utilization!: number;
+
+  @ApiPropertyOptional({ description: 'Work center (hierarchy level 1)' })
+  workCenter?: string;
+
+  @ApiPropertyOptional({ description: 'Line (hierarchy level 2)' })
+  line?: string;
+
+  @ApiPropertyOptional({ description: 'Resource class: REUSABLE or CONSUMABLE' })
+  resourceClass?: string;
 }
 
 export class OrderResultDto {
@@ -197,6 +212,9 @@ export class SolveSummaryDto {
 
   @ApiProperty({ description: 'Makespan in seconds (max endW - min startW of scheduled tasks)' })
   makespan!: number;
+
+  @ApiPropertyOptional({ description: 'Count of auto-generated setup/changeover tasks' })
+  setupTasks?: number;
 }
 
 export class CTPSolveResultDto {
@@ -217,4 +235,7 @@ export class CTPSolveResultDto {
 
   @ApiProperty({ description: 'Material consumption status', type: [MaterialStatusDto] })
   materials!: MaterialStatusDto[];
+
+  @ApiPropertyOptional({ description: 'Tenant color configuration' })
+  colors?: any;
 }

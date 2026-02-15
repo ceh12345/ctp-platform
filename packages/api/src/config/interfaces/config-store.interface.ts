@@ -217,6 +217,9 @@ export interface IConfigStore {
   saveCalendars(calendars: ICalendarData[]): void;
   saveStateChanges(stateChanges: IStateChangeData[]): void;
 
+  // Colors
+  getColors(): any;
+
   // Reload from disk
   reload(): void;
 }

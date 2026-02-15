@@ -97,6 +97,25 @@ function getProductColor(productKey: string | null | undefined, products: any[])
   return C.accent;
 }
 
+function getTaskColor(task: any, colors: any): string {
+  if (!colors?.taskColors) return '#3b82f6';
+  const taskType = (task.type || '').toUpperCase();
+  if (taskType === 'SETUP' || taskType === 'SET_UP') return colors.taskColors.setup || '#eab308';
+  if (taskType === 'TEARDOWN' || taskType === 'TEAR_DOWN') return colors.taskColors.teardown || '#eab308';
+  if (task.subType === 'CHANGEOVER' || task.subType === 'CHANGE_OVER') return colors.taskColors.changeover || '#eab308';
+  const process = task.process || '';
+  if (colors.taskColors.byProcess?.[process]) return colors.taskColors.byProcess[process];
+  return colors.taskColors.default || '#3b82f6';
+}
+
+const ZOOM_LEVELS = [
+  { label: 'Day', days: 1 },
+  { label: '3 Day', days: 3 },
+  { label: 'Week', days: 7 },
+  { label: '2 Week', days: 14 },
+  { label: 'Fit', days: 0 },
+];
+
 function deriveOrderStatus(order: any): string {
   const fillRate = order.fillRate ?? 0;
   if (fillRate >= 0.99) return 'on-track';
@@ -637,8 +656,8 @@ function TaskDetailPanel({ task, tasks, products, onClose, onResourceClick }: {
   );
 }
 
-function ResourceDetailPanel({ resource, tasks, products, onClose, onTaskClick }: {
-  resource: any; tasks: any[]; products: any[];
+function ResourceDetailPanel({ resource, tasks, products, colors, onClose, onTaskClick }: {
+  resource: any; tasks: any[]; products: any[]; colors: any;
   onClose: () => void; onTaskClick: (t: any) => void;
 }) {
   const resTasks = tasks
@@ -671,7 +690,7 @@ function ResourceDetailPanel({ resource, tasks, products, onClose, onTaskClick }
         <div style={{ color: C.textDim, fontSize: 13, padding: '8px 0' }}>No tasks assigned</div>
       )}
       {resTasks.map((t: any) => {
-        const prodColor = getProductColor(t.outputProductKey, products);
+        const prodColor = colors ? getTaskColor(t, colors) : getProductColor(t.outputProductKey, products);
         const assignedRes = t.assignedResources?.find((r: any) => r.resourceKey === resource.resourceKey);
         return (
           <div
@@ -722,14 +741,16 @@ const cellStyle: CSSProperties = {
    GANTT CHART
    ═══════════════════════════════════════════════════════════════ */
 
-function GanttChart({ tasks, resources, products, onTaskClick, onResourceClick }: {
-  tasks: any[]; resources: any[]; products: any[];
+function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourceClick }: {
+  tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
 }) {
   const [hovered, setHovered] = useState<any>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [zoomLevel, setZoomLevel] = useState('Fit');
+  const [scrollOffset, setScrollOffset] = useState(0);
 
-  // Compute time range from actual scheduled task data (zoom to fit)
+  // Compute time range from actual scheduled task data
   const scheduled = tasks.filter((t: any) => t.feasible && t.scheduledStart && t.scheduledEnd);
 
   if (scheduled.length === 0) {
@@ -741,28 +762,65 @@ function GanttChart({ tasks, resources, products, onTaskClick, onResourceClick }
   const dataStart = Math.min(...taskStarts);
   const dataEnd = Math.max(...taskEnds);
 
-  // Add buffer: round to day boundaries + 12h padding
-  const bufferMs = 12 * 3600 * 1000;
-  const hStartDate = new Date(dataStart - bufferMs);
-  hStartDate.setUTCHours(0, 0, 0, 0);
-  const hEndDate = new Date(dataEnd + bufferMs);
-  hEndDate.setUTCHours(23, 59, 59, 999);
+  const zoomConfig = ZOOM_LEVELS.find(z => z.label === zoomLevel);
+  let hStartMs: number, hEndMs: number;
 
-  const hStartMs = hStartDate.getTime();
-  const hEndMs = hEndDate.getTime();
+  if (zoomConfig && zoomConfig.days > 0) {
+    const viewStart = new Date(dataStart);
+    viewStart.setUTCHours(0, 0, 0, 0);
+    const scrolledStart = new Date(viewStart.getTime() + scrollOffset * 24 * 3600 * 1000);
+    const scrolledEnd = new Date(scrolledStart.getTime() + zoomConfig.days * 24 * 3600 * 1000);
+    hStartMs = scrolledStart.getTime();
+    hEndMs = scrolledEnd.getTime();
+  } else {
+    // Fit to data
+    const bufferMs = 12 * 3600 * 1000;
+    const hStartDate = new Date(dataStart - bufferMs);
+    hStartDate.setUTCHours(0, 0, 0, 0);
+    const hEndDate = new Date(dataEnd + bufferMs);
+    hEndDate.setUTCHours(23, 59, 59, 999);
+    hStartMs = hStartDate.getTime();
+    hEndMs = hEndDate.getTime();
+  }
+
   const totalMs = hEndMs - hStartMs;
   if (totalMs <= 0) return <div style={{ color: C.textDim }}>Invalid time range</div>;
 
   const toPct = (iso: string) => ((new Date(iso).getTime() - hStartMs) / totalMs) * 100;
 
-  // Day grid based on computed range
-  const days: { date: Date; pct: number }[] = [];
-  const d = new Date(hStartMs);
-  d.setUTCHours(0, 0, 0, 0);
-  d.setUTCDate(d.getUTCDate() + 1);
-  while (d.getTime() < hEndMs) {
-    days.push({ date: new Date(d), pct: ((d.getTime() - hStartMs) / totalMs) * 100 });
+  // Time axis labels
+  const axisLabels: { date: Date; pct: number; label: string }[] = [];
+  if (zoomConfig && zoomConfig.days > 0 && zoomConfig.days <= 1) {
+    // Hourly labels for Day zoom
+    const h = new Date(hStartMs);
+    h.setUTCMinutes(0, 0, 0);
+    h.setUTCHours(h.getUTCHours() + 1);
+    while (h.getTime() < hEndMs) {
+      axisLabels.push({
+        date: new Date(h),
+        pct: ((h.getTime() - hStartMs) / totalMs) * 100,
+        label: h.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }),
+      });
+      h.setUTCHours(h.getUTCHours() + 1);
+    }
+  } else {
+    // Daily labels
+    const step = zoomConfig && zoomConfig.days >= 14 ? 2 : 1;
+    const d = new Date(hStartMs);
+    d.setUTCHours(0, 0, 0, 0);
     d.setUTCDate(d.getUTCDate() + 1);
+    let count = 0;
+    while (d.getTime() < hEndMs) {
+      if (count % step === 0) {
+        axisLabels.push({
+          date: new Date(d),
+          pct: ((d.getTime() - hStartMs) / totalMs) * 100,
+          label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }),
+        });
+      }
+      d.setUTCDate(d.getUTCDate() + 1);
+      count++;
+    }
   }
 
   // Group tasks by primary resource
@@ -773,79 +831,138 @@ function GanttChart({ tasks, resources, products, onTaskClick, onResourceClick }
     if (rk && resMap.has(rk)) resMap.get(rk)!.push(t);
   });
 
+  // Group resources by work center
+  const workCenters = new Map<string, any[]>();
+  resources.forEach((r: any) => {
+    const wc = r.workCenter || 'Other';
+    if (!workCenters.has(wc)) workCenters.set(wc, []);
+    workCenters.get(wc)!.push(r);
+  });
+
   const LANE_H = 44;
   const LABEL_W = 140;
 
   return (
     <div style={{ position: 'relative' }}>
+      {/* Zoom controls */}
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {ZOOM_LEVELS.map(z => (
+            <button key={z.label} onClick={() => { setZoomLevel(z.label); setScrollOffset(0); }} style={{
+              padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+              fontSize: 12, fontWeight: 600,
+              background: z.label === zoomLevel ? '#3b82f6' : 'transparent',
+              color: z.label === zoomLevel ? '#fff' : '#94a3b8',
+              fontFamily: FONT,
+            }}>
+              {z.label}
+            </button>
+          ))}
+        </div>
+        {zoomConfig && zoomConfig.days > 0 && zoomConfig.days <= 7 && (
+          <div style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
+            <button onClick={() => setScrollOffset(s => s - 1)} style={{
+              padding: '5px 10px', borderRadius: 6, border: `1px solid ${C.border}`,
+              background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: 12, fontFamily: FONT,
+            }}>← Prev</button>
+            <button onClick={() => setScrollOffset(0)} style={{
+              padding: '5px 10px', borderRadius: 6, border: `1px solid ${C.border}`,
+              background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: 12, fontFamily: FONT,
+            }}>Reset</button>
+            <button onClick={() => setScrollOffset(s => s + 1)} style={{
+              padding: '5px 10px', borderRadius: 6, border: `1px solid ${C.border}`,
+              background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: 12, fontFamily: FONT,
+            }}>Next →</button>
+          </div>
+        )}
+      </div>
+
       {/* Time axis */}
-      <div style={{ marginLeft: LABEL_W, display: 'flex', position: 'relative', height: 24 }}>
-        {days.map((day, i) => (
+      <div style={{ marginLeft: LABEL_W, display: 'flex', position: 'relative', height: 24, overflow: 'hidden' }}>
+        {axisLabels.map((lbl, i) => (
           <div key={i} style={{
-            position: 'absolute', left: `${day.pct}%`, fontSize: 10, color: C.textDim,
+            position: 'absolute', left: `${lbl.pct}%`, fontSize: 10, color: C.textDim,
             transform: 'translateX(-50%)', whiteSpace: 'nowrap',
           }}>
-            {day.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
+            {lbl.label}
           </div>
         ))}
       </div>
 
-      {/* Lanes */}
-      {resources.map((res: any) => {
-        const rTasks = resMap.get(res.resourceKey) || [];
-        return (
-          <div key={res.resourceKey} style={{ display: 'flex', borderTop: `1px solid ${C.border}` }}>
-            <div
-              onClick={() => onResourceClick?.(res)}
-              style={{
-                width: LABEL_W, minWidth: LABEL_W, padding: '10px 12px', fontSize: 12,
-                color: C.textMuted, fontWeight: 500, display: 'flex', alignItems: 'center',
-                cursor: onResourceClick ? 'pointer' : 'default',
-                transition: 'color 0.1s',
-              }}
-              onMouseEnter={e => { if (onResourceClick) e.currentTarget.style.color = C.accent; }}
-              onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; }}
-            >
-              {res.resourceName}
-            </div>
-            <div style={{ flex: 1, position: 'relative', height: LANE_H }}>
-              {/* Day grid lines */}
-              {days.map((day, i) => (
-                <div key={i} style={{
-                  position: 'absolute', left: `${day.pct}%`, top: 0, bottom: 0,
-                  width: 1, background: C.border, opacity: 0.5,
-                }} />
-              ))}
-              {/* Task bars */}
-              {rTasks.map((t: any) => {
-                const left = toPct(t.scheduledStart);
-                const right = toPct(t.scheduledEnd);
-                const w = Math.max(right - left, 0.3);
-                const barColor = getProductColor(t.outputProductKey, products);
-                return (
-                  <div
-                    key={t.key}
-                    onMouseEnter={e => { setHovered(t); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
-                    onMouseMove={e => setTooltipPos({ x: e.clientX, y: e.clientY })}
-                    onMouseLeave={() => setHovered(null)}
-                    onClick={() => onTaskClick?.(t)}
-                    style={{
-                      position: 'absolute', left: `${left}%`, width: `${w}%`,
-                      top: 6, height: LANE_H - 12, borderRadius: 4,
-                      background: barColor, opacity: 0.85, cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', paddingLeft: 4,
-                      overflow: 'hidden', fontSize: 10, color: '#fff', fontWeight: 500,
-                      transition: 'opacity 0.15s',
-                    }}
-                  >
-                    {w > 3 && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>}
-                  </div>
-                );
-              })}
-            </div>
+      {/* Grouped Lanes */}
+      {Array.from(workCenters.entries()).map(([wcName, wcResources]) => (
+        <div key={wcName}>
+          {/* Work Center header row */}
+          <div style={{
+            display: 'flex', alignItems: 'center',
+            padding: '6px 12px', background: C.surface2,
+            borderTop: `1px solid ${C.border}`,
+            fontSize: 11, fontWeight: 700, color: C.textMuted,
+            textTransform: 'uppercase', letterSpacing: '0.06em',
+          }}>
+            {wcName}
+            <span style={{ marginLeft: 8, fontSize: 10, color: C.textDim }}>
+              {wcResources.length} resource{wcResources.length !== 1 ? 's' : ''}
+            </span>
           </div>
-        );
-      })}
+          {/* Resource lanes within this work center */}
+          {wcResources.map((res: any) => {
+            const rTasks = resMap.get(res.resourceKey) || [];
+            return (
+              <div key={res.resourceKey} style={{ display: 'flex', borderTop: `1px solid ${C.border}` }}>
+                <div
+                  onClick={() => onResourceClick?.(res)}
+                  style={{
+                    width: LABEL_W, minWidth: LABEL_W, padding: '10px 12px', fontSize: 12,
+                    color: C.textMuted, fontWeight: 500, display: 'flex', alignItems: 'center',
+                    cursor: onResourceClick ? 'pointer' : 'default',
+                    transition: 'color 0.1s',
+                  }}
+                  onMouseEnter={e => { if (onResourceClick) e.currentTarget.style.color = C.accent; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; }}
+                >
+                  {res.resourceName}
+                </div>
+                <div style={{ flex: 1, position: 'relative', height: LANE_H, overflow: 'hidden' }}>
+                  {/* Grid lines */}
+                  {axisLabels.map((lbl, i) => (
+                    <div key={i} style={{
+                      position: 'absolute', left: `${lbl.pct}%`, top: 0, bottom: 0,
+                      width: 1, background: C.border, opacity: 0.5,
+                    }} />
+                  ))}
+                  {/* Task bars */}
+                  {rTasks.map((t: any) => {
+                    const left = toPct(t.scheduledStart);
+                    const right = toPct(t.scheduledEnd);
+                    const w = Math.max(right - left, 0.3);
+                    const barColor = colors ? getTaskColor(t, colors) : getProductColor(t.outputProductKey, products);
+                    return (
+                      <div
+                        key={t.key}
+                        onMouseEnter={e => { setHovered(t); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
+                        onMouseMove={e => setTooltipPos({ x: e.clientX, y: e.clientY })}
+                        onMouseLeave={() => setHovered(null)}
+                        onClick={() => onTaskClick?.(t)}
+                        style={{
+                          position: 'absolute', left: `${left}%`, width: `${w}%`,
+                          top: 6, height: LANE_H - 12, borderRadius: 4,
+                          background: barColor, opacity: 0.85, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', paddingLeft: 4,
+                          overflow: 'hidden', fontSize: 10, color: '#fff', fontWeight: 500,
+                          transition: 'opacity 0.15s',
+                        }}
+                      >
+                        {w > 3 && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
 
       {/* Tooltip */}
       {hovered && (
@@ -857,6 +974,9 @@ function GanttChart({ tasks, resources, products, onTaskClick, onResourceClick }
           boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
         }}>
           <div style={{ fontWeight: 700, marginBottom: 4 }}>{hovered.name}</div>
+          {hovered.type && hovered.type !== 'PROCESS' && (
+            <div style={{ color: C.yellow, fontSize: 11, fontWeight: 600, marginBottom: 2 }}>{hovered.type}</div>
+          )}
           <div style={{ color: C.textMuted }}>
             {fmtDate(hovered.scheduledStart)} → {fmtDate(hovered.scheduledEnd)}
           </div>
@@ -1158,9 +1278,9 @@ function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskCli
    TAB CONTENT — OVERVIEW
    ═══════════════════════════════════════════════════════════════ */
 
-function OverviewTab({ summary, tasks, resources, orders, materials, products, onTabChange, onTaskClick, onResourceClick }: {
+function OverviewTab({ summary, tasks, resources, orders, materials, products, colors, onTabChange, onTaskClick, onResourceClick }: {
   summary: any; tasks: any[]; resources: any[]; orders: any[]; materials: any[];
-  products: any[]; onTabChange: (t: string) => void;
+  products: any[]; colors: any; onTabChange: (t: string) => void;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
 }) {
   const avgUtil = resources.length > 0
@@ -1176,7 +1296,8 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, o
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KPI icon="✓" label="Feasibility" value={fmtPctDirect(summary?.feasibilityRate)} color={
           (summary?.feasibilityRate ?? 0) >= 90 ? C.green : (summary?.feasibilityRate ?? 0) >= 70 ? C.yellow : C.red
-        } sub={`${summary?.scheduledTasks ?? 0} of ${summary?.includedTasks ?? 0} tasks`} />
+        } sub={`${summary?.scheduledTasks ?? 0} of ${summary?.includedTasks ?? 0} tasks`
+          + (summary?.setupTasks ? ` + ${summary.setupTasks} setups` : '')} />
         <KPI icon="⚡" label="Avg Utilization" value={fmtPctDirect(avgUtil)} color={
           avgUtil > 85 ? C.red : avgUtil > 60 ? C.yellow : C.green
         } sub={`${resources.length} resources`} />
@@ -1191,14 +1312,29 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, o
       {/* Gantt + Side panels */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16 }}>
         <Card title="Schedule Overview">
-          <GanttChart tasks={tasks} resources={resources} products={products} onTaskClick={onTaskClick} onResourceClick={onResourceClick} />
+          <GanttChart tasks={tasks} resources={resources} products={products} colors={colors} onTaskClick={onTaskClick} onResourceClick={onResourceClick} />
         </Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card title="Resource Utilization">
-            {resources.map((r: any) => (
-              <UtilBar key={r.resourceKey} pct={r.utilization} label={r.resourceName}
-                onClick={() => onResourceClick?.(r)} />
-            ))}
+            {(() => {
+              const wcGroups = new Map<string, any[]>();
+              resources.forEach((r: any) => {
+                const wc = r.workCenter || 'Other';
+                if (!wcGroups.has(wc)) wcGroups.set(wc, []);
+                wcGroups.get(wc)!.push(r);
+              });
+              return Array.from(wcGroups.entries()).map(([wcName, wcRes]) => (
+                <div key={wcName}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.textDim, marginTop: 12, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    {wcName}
+                  </div>
+                  {wcRes.map((r: any) => (
+                    <UtilBar key={r.resourceKey} pct={r.utilization} label={r.resourceName}
+                      onClick={() => onResourceClick?.(r)} />
+                  ))}
+                </div>
+              ));
+            })()}
           </Card>
           <Card title="Order Status">
             {orders.map((o: any) => {
@@ -1264,8 +1400,8 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, o
    TAB CONTENT — SCHEDULE
    ═══════════════════════════════════════════════════════════════ */
 
-function ScheduleTab({ tasks, resources, products, onTaskClick, onResourceClick }: {
-  tasks: any[]; resources: any[]; products: any[];
+function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResourceClick }: {
+  tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
 }) {
   const [sub, setSub] = useState('Gantt Chart');
@@ -1274,7 +1410,7 @@ function ScheduleTab({ tasks, resources, products, onTaskClick, onResourceClick 
       <SubTabs tabs={['Gantt Chart', 'Task List']} active={sub} onChange={setSub} />
       {sub === 'Gantt Chart' ? (
         <Card>
-          <GanttChart tasks={tasks} resources={resources} products={products} onTaskClick={onTaskClick} onResourceClick={onResourceClick} />
+          <GanttChart tasks={tasks} resources={resources} products={products} colors={colors} onTaskClick={onTaskClick} onResourceClick={onResourceClick} />
         </Card>
       ) : (
         <Card>
@@ -1456,6 +1592,7 @@ export default function App() {
   const [userOpen, setUserOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [selectedResource, setSelectedResource] = useState<any>(null);
+  const [colors, setColors] = useState<any>(null);
 
   const tasks = solveResult?.tasks || [];
   const resources = solveResult?.resourceUtilization || [];
@@ -1466,12 +1603,14 @@ export default function App() {
   const loadData = useCallback(async () => {
     try {
       setError(null);
-      const [result, prods] = await Promise.all([
+      const [result, prods, colorsData] = await Promise.all([
         api('/ctp/solve-and-sync', { method: 'POST' }),
         api('/data/products'),
+        api('/data/colors').catch(() => null),
       ]);
       setSolveResult(result);
       setProducts(prods);
+      setColors(result.colors || colorsData || {});
     } catch (e: any) {
       setError(e.message || 'Failed to load data');
     }
@@ -1485,6 +1624,7 @@ export default function App() {
       setError(null);
       const result = await api('/ctp/solve-and-sync', { method: 'POST' });
       setSolveResult(result);
+      if (result.colors) setColors(result.colors);
     } catch (e: any) {
       setError(e.message || 'Solve failed');
     } finally {
@@ -1690,11 +1830,11 @@ export default function App() {
       <main style={{ padding: 24 }}>
         {activeTab === 'Overview' && (
           <OverviewTab summary={summary} tasks={tasks} resources={resources}
-            orders={orders} materials={materials} products={products} onTabChange={setActiveTab}
+            orders={orders} materials={materials} products={products} colors={colors} onTabChange={setActiveTab}
             onTaskClick={handleTaskClick} onResourceClick={handleResourceClick} />
         )}
         {activeTab === 'Schedule' && (
-          <ScheduleTab tasks={tasks} resources={resources} products={products}
+          <ScheduleTab tasks={tasks} resources={resources} products={products} colors={colors}
             onTaskClick={handleTaskClick} onResourceClick={handleResourceClick} />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} />}
@@ -1726,6 +1866,7 @@ export default function App() {
           resource={selectedResource}
           tasks={tasks}
           products={products}
+          colors={colors}
           onClose={() => setSelectedResource(null)}
           onTaskClick={handleTaskClick}
         />

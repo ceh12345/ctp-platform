@@ -5,6 +5,7 @@ import {
   CTPScoringConfiguration,
   CTPDateTime,
   CTPTaskStateConstants,
+  CTPTaskTypeConstants,
   List,
   CTPTask,
   SchedulingLandscape,
@@ -25,11 +26,13 @@ export interface CTPSolveResult {
     horizonStart: string;
     horizonEnd: string;
     makespan: number;
+    setupTasks?: number;
   };
   tasks: any[];
   resourceUtilization: any[];
   orders: any[];
   materials: any[];
+  colors?: any;
 }
 
 @Injectable()
@@ -262,11 +265,15 @@ export class CTPService {
         outputScrapRate,
         inputMaterials,
         process,
+        type: task.type || CTPTaskTypeConstants.PROCESS,
+        subType: task.subType ?? null,
         materialResources,
       });
     });
 
     // Resource utilization
+    const resourceConfigs = this.configService.getResources();
+    const resourceConfigMap = new Map(resourceConfigs.map((r) => [r.key, r]));
     const resourceUtilization: any[] = [];
     landscape.resources.forEach((resource) => {
       let totalAvailable = 0;
@@ -287,6 +294,7 @@ export class CTPService {
         }
       }
 
+      const resConfig = resourceConfigMap.get(resource.key);
       resourceUtilization.push({
         resourceKey: resource.key,
         resourceName: resource.name,
@@ -296,6 +304,9 @@ export class CTPService {
           totalAvailable > 0
             ? Math.round((totalAssigned / totalAvailable) * 10000) / 100
             : 0,
+        workCenter: resConfig?.hierarchy?.level1 ?? '',
+        line: resConfig?.hierarchy?.level2 ?? '',
+        resourceClass: resConfig?.class ?? resource.class ?? 'REUSABLE',
       });
     });
 
@@ -333,36 +344,50 @@ export class CTPService {
       };
     });
 
+    // Feasibility: count only PROCESS tasks (exclude SETUP/TEARDOWN)
+    const processTasks = tasks.filter(
+      (t) => t.type === CTPTaskTypeConstants.PROCESS || !t.type,
+    );
+    const scheduledProcessTasks = processTasks.filter((t) => t.feasible);
+    const setupTaskCount = tasks.length - processTasks.length;
+
     // Summary
     const totalTasks = landscape.tasks.size();
+    const includedProcessTasks = processTasks.length;
     const includedTasks = scheduledTasks.length;
-    const unscheduledTasks = includedTasks - scheduledCount;
     const skippedTasks = totalTasks - includedTasks;
     const makespan =
       scheduledCount > 0 && maxEndW > 0 ? maxEndW - minStartW : 0;
+
+    // Colors
+    const colors = this.configService.getColors();
 
     return {
       status: 'ok',
       summary: {
         totalTasks,
-        includedTasks,
-        scheduledTasks: scheduledCount,
-        unscheduledTasks,
+        includedTasks: includedProcessTasks,
+        scheduledTasks: scheduledProcessTasks.length,
+        unscheduledTasks: includedProcessTasks - scheduledProcessTasks.length,
         skippedTasks,
         feasibilityRate:
-          includedTasks > 0
-            ? Math.round((scheduledCount / includedTasks) * 10000) / 100
+          includedProcessTasks > 0
+            ? Math.round(
+                (scheduledProcessTasks.length / includedProcessTasks) * 10000,
+              ) / 100
             : 0,
         horizonStart: CTPDateTime.toDateTime(
           landscape.horizon.startW,
         ).toISO()!,
         horizonEnd: CTPDateTime.toDateTime(landscape.horizon.endW).toISO()!,
         makespan,
+        setupTasks: setupTaskCount,
       },
       tasks,
       resourceUtilization,
       orders,
       materials,
+      colors,
     };
   }
 }

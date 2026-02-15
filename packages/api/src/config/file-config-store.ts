@@ -167,6 +167,14 @@ export class FileConfigStore implements IConfigStore {
     );
   }
 
+  // ── Colors ─────────────────────────────────────────────────────────
+
+  getColors(): any {
+    return this.getCached('colors', () =>
+      this.readJsonFile<any>(path.join(this.tenantDir, 'colors.json')) ?? {},
+    );
+  }
+
   // ── Entity data ─────────────────────────────────────────────────────
 
   getResources(): IResourceData[] {

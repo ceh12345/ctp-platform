@@ -4,6 +4,10 @@
     "name": "CNC Machine 01",
     "type": "CNC",
     "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "CNC Bay",
+      "level2": "Line A"
+    },
     "typedAttributes": [
       { "name": "machineType", "dataType": "enum", "value": { "type": "enum", "value": "CNC" }, "category": "equipment", "sequence": 1 },
       { "name": "maxSpeed", "dataType": "number", "value": { "type": "number", "value": 1200 }, "category": "performance", "sequence": 2 },
@@ -15,6 +19,10 @@
     "name": "CNC Machine 02",
     "type": "CNC",
     "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "CNC Bay",
+      "level2": "Line A"
+    },
     "typedAttributes": [
       { "name": "machineType", "dataType": "enum", "value": { "type": "enum", "value": "CNC" }, "category": "equipment", "sequence": 1 },
       { "name": "maxSpeed", "dataType": "number", "value": { "type": "number", "value": 1000 }, "category": "performance", "sequence": 2 },
@@ -26,6 +34,10 @@
     "name": "Assembly Station 01",
     "type": "Assembly",
     "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Assembly",
+      "level2": "Line A"
+    },
     "typedAttributes": [
       { "name": "machineType", "dataType": "enum", "value": { "type": "enum", "value": "Assembly" }, "category": "equipment", "sequence": 1 },
       { "name": "maxSpeed", "dataType": "number", "value": { "type": "number", "value": 800 }, "category": "performance", "sequence": 2 },

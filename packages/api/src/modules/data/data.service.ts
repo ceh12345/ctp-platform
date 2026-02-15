@@ -21,4 +21,8 @@ export class DataService {
   getMaterials(): IMaterialData[] {
     return this.configService.getMaterials();
   }
+
+  getColors(): any {
+    return this.configService.getColors();
+  }
 }

@@ -84,6 +84,10 @@ export class ConfigService {
     return this.store.getMaterials();
   }
 
+  getColors(): any {
+    return this.store.getColors();
+  }
+
   reloadConfig(): void {
     this.store.reload();
   }

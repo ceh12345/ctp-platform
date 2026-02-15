@@ -30,4 +30,11 @@ export class DataController {
   getMaterials() {
     return this.dataService.getMaterials();
   }
+
+  @Get('colors')
+  @ApiOperation({ summary: 'Get tenant color configuration' })
+  @ApiResponse({ status: 200, description: 'Color config' })
+  getColors() {
+    return this.dataService.getColors();
+  }
 }
