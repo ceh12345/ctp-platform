@@ -911,12 +911,12 @@ function SolvePreview({ orders, tasks, materials, resources,
 
   // Compute deltas from last solve
   const MODE_LABELS: Record<string, { label: string; icon: string; color: string }> = {
-    INCLUDE: { label: 'Include', icon: '\u25B6', color: C.green },
-    LOCKED: { label: 'Locked', icon: '\uD83D\uDD12', color: C.yellow },
-    EXCLUDE: { label: 'Exclude', icon: '\u23F8', color: C.textDim },
-    ON: { label: 'Required', icon: '\u25CF', color: C.green },
-    TRACK: { label: 'Monitored', icon: '\u25CB', color: C.yellow },
-    OFF: { label: 'Ignored', icon: '\u2013', color: C.textDim },
+    INCLUDE: { label: 'Include', icon: '▶', color: C.green },
+    LOCKED: { label: 'Locked', icon: '🔒', color: C.yellow },
+    EXCLUDE: { label: 'Exclude', icon: '⏸', color: C.textDim },
+    ON: { label: 'Required', icon: '●', color: C.green },
+    TRACK: { label: 'Monitored', icon: '○', color: C.yellow },
+    OFF: { label: 'Ignored', icon: '–', color: C.textDim },
   };
 
   const changes = useMemo(() => {
@@ -930,7 +930,7 @@ function SolvePreview({ orders, tasks, materials, resources,
         const config = MODE_LABELS[curr] || MODE_LABELS.INCLUDE;
         deltas.push({
           icon: config.icon,
-          text: `${o.orderKey} changed: ${MODE_LABELS[prev]?.label || prev} \u2192 ${config.label}`,
+          text: `${o.orderKey} changed: ${MODE_LABELS[prev]?.label || prev} → ${config.label}`,
           color: config.color,
         });
       }
@@ -943,12 +943,12 @@ function SolvePreview({ orders, tasks, materials, resources,
         const task = tasks.find((tk: any) => tk.key === key);
         const resKey = task?.assignedResources?.[0]?.resourceKey || '';
         deltas.push({
-          icon: '\u{1F4CC}',
+          icon: '📌',
           text: `${key} pinned${resKey ? ` to ${resKey}` : ''}${task?.scheduledStart ? ` at ${fmtDate(task.scheduledStart)}` : ''}`,
           color: C.yellow,
         });
       } else if (!pinned && wasPinned) {
-        deltas.push({ icon: '\u{1F4CC}', text: `${key} unpinned`, color: C.textMuted });
+        deltas.push({ icon: '📌', text: `${key} unpinned`, color: C.textMuted });
       }
     });
 
@@ -956,15 +956,15 @@ function SolvePreview({ orders, tasks, materials, resources,
     Object.entries(taskExcludes).forEach(([key, excl]) => {
       const wasExcluded = previousTaskExcludes[key] || false;
       if (excl && !wasExcluded) {
-        deltas.push({ icon: '\u23F8', text: `${key} excluded from solve`, color: C.textDim });
+        deltas.push({ icon: '⏸', text: `${key} excluded from solve`, color: C.textDim });
       } else if (!excl && wasExcluded) {
-        deltas.push({ icon: '\u25B6', text: `${key} re-included in solve`, color: C.green });
+        deltas.push({ icon: '▶', text: `${key} re-included in solve`, color: C.green });
       }
     });
 
     // Unschedules
     Array.from(taskUnschedules).forEach(key => {
-      deltas.push({ icon: '\u2715', text: `${key} will be unscheduled`, color: C.red });
+      deltas.push({ icon: '✕', text: `${key} will be unscheduled`, color: C.red });
     });
 
     // Material mode changes
@@ -975,8 +975,8 @@ function SolvePreview({ orders, tasks, materials, resources,
         const curr = materialModes[key] || m.mode || 'TRACK';
         if (prev !== curr) {
           deltas.push({
-            icon: MODE_LABELS[curr]?.icon || '\u25CF',
-            text: `${m.materialName || key} mode: ${MODE_LABELS[prev]?.label || prev} \u2192 ${MODE_LABELS[curr]?.label || curr}`,
+            icon: MODE_LABELS[curr]?.icon || '●',
+            text: `${m.materialName || key} mode: ${MODE_LABELS[prev]?.label || prev} → ${MODE_LABELS[curr]?.label || curr}`,
             color: MODE_LABELS[curr]?.color || C.textMuted,
           });
         }
@@ -989,8 +989,8 @@ function SolvePreview({ orders, tasks, materials, resources,
         const parts = compoundKey.split(':');
         if (parts.length >= 3) {
           deltas.push({
-            icon: MODE_LABELS[newMode]?.icon || '\u25CF',
-            text: `${parts[1]} on ${parts[0]} \u2192 ${MODE_LABELS[newMode]?.label || newMode}`,
+            icon: MODE_LABELS[newMode]?.icon || '●',
+            text: `${parts[1]} on ${parts[0]} → ${MODE_LABELS[newMode]?.label || newMode}`,
             color: MODE_LABELS[newMode]?.color || C.textMuted,
           });
         }
@@ -1026,7 +1026,7 @@ function SolvePreview({ orders, tasks, materials, resources,
           <button onClick={onCancel} style={{
             background: 'none', border: 'none', color: C.textMuted, fontSize: 20,
             cursor: 'pointer', padding: '4px 8px', lineHeight: 1,
-          }}>{'\u2715'}</button>
+          }}>✕</button>
         </div>
 
         {/* Scrollable content */}
@@ -1036,51 +1036,51 @@ function SolvePreview({ orders, tasks, materials, resources,
               <div style={{ fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 8 }}>
                 Ready to schedule
               </div>
-              <SummaryRow icon={'\uD83D\uDCCB'} color={C.text}
+              <SummaryRow icon="📋" color={C.text}
                 text={`${orders.length} orders with ${tasks.length} tasks`} />
-              <SummaryRow icon={'\u2699'} color={C.text}
+              <SummaryRow icon="⚙" color={C.text}
                 text={`${resources.length} capacity resources`} />
-              <SummaryRow icon={'\uD83D\uDCE6'} color={C.text}
+              <SummaryRow icon="📦" color={C.text}
                 text={`${materials.length} materials tracked`} />
             </div>
           ) : (
             <>
               {/* Orders section */}
               <SectionLabel label="Orders" />
-              <SummaryRow icon={'\u25B6'} color={C.green}
+              <SummaryRow icon="▶" color={C.green}
                 text={`${orderSummary.included} orders included (${orderSummary.includedTasks} tasks)`} />
               {orderSummary.locked > 0 && (
-                <SummaryRow icon={'\uD83D\uDD12'} color={C.yellow}
-                  text={`${orderSummary.locked} orders locked (${orderSummary.lockedTasks} tasks \u2014 won\u2019t move)`} />
+                <SummaryRow icon="🔒" color={C.yellow}
+                  text={`${orderSummary.locked} orders locked (${orderSummary.lockedTasks} tasks — won't move)`} />
               )}
               {orderSummary.excluded > 0 && (
-                <SummaryRow icon={'\u23F8'} color={C.textDim}
-                  text={`${orderSummary.excluded} orders excluded (${orderSummary.excludedTasks} tasks \u2014 ${orderSummary.excludedOrderKeys.join(', ')})`} />
+                <SummaryRow icon="⏸" color={C.textDim}
+                  text={`${orderSummary.excluded} orders excluded (${orderSummary.excludedTasks} tasks — ${orderSummary.excludedOrderKeys.join(', ')})`} />
               )}
 
               {/* Tasks section */}
               <SectionLabel label="Tasks" />
               {taskSummary.pinned.length > 0 && (
-                <SummaryRow icon={'\uD83D\uDCCC'} color={C.yellow}
-                  text={`${taskSummary.pinned.length} tasks pinned (${taskSummary.pinned.slice(0, 3).join(', ')}${taskSummary.pinned.length > 3 ? '\u2026' : ''})`} />
+                <SummaryRow icon="📌" color={C.yellow}
+                  text={`${taskSummary.pinned.length} tasks pinned (${taskSummary.pinned.slice(0, 3).join(', ')}${taskSummary.pinned.length > 3 ? '…' : ''})`} />
               )}
               {taskSummary.excluded.length > 0 && (
-                <SummaryRow icon={'\u23F8'} color={C.textDim}
-                  text={`${taskSummary.excluded.length} tasks excluded (${taskSummary.excluded.slice(0, 3).join(', ')}${taskSummary.excluded.length > 3 ? '\u2026' : ''})`} />
+                <SummaryRow icon="⏸" color={C.textDim}
+                  text={`${taskSummary.excluded.length} tasks excluded (${taskSummary.excluded.slice(0, 3).join(', ')}${taskSummary.excluded.length > 3 ? '…' : ''})`} />
               )}
               {taskSummary.unschedule.length > 0 && (
-                <SummaryRow icon={'\u2715'} color={C.red}
-                  text={`${taskSummary.unschedule.length} tasks to unschedule (${taskSummary.unschedule.slice(0, 3).join(', ')}${taskSummary.unschedule.length > 3 ? '\u2026' : ''})`} />
+                <SummaryRow icon="✕" color={C.red}
+                  text={`${taskSummary.unschedule.length} tasks to unschedule (${taskSummary.unschedule.slice(0, 3).join(', ')}${taskSummary.unschedule.length > 3 ? '…' : ''})`} />
               )}
               {taskSummary.pinned.length === 0 && taskSummary.excluded.length === 0 && taskSummary.unschedule.length === 0 && (
-                <SummaryRow icon={'\u2713'} color={C.green} text="No task overrides" />
+                <SummaryRow icon="✓" color={C.green} text="No task overrides" />
               )}
 
               {/* Resources section */}
               <SectionLabel label="Resources & Materials" />
-              <SummaryRow icon={'\u2699'} color={C.text}
+              <SummaryRow icon="⚙" color={C.text}
                 text={`${resourceSummary.active} capacity resources active`} />
-              <SummaryRow icon={'\uD83D\uDCE6'} color={C.text}
+              <SummaryRow icon="📦" color={C.text}
                 text={`${resourceSummary.matMonitored} materials monitored${resourceSummary.matRequired > 0 ? `, ${resourceSummary.matRequired} required` : ''}${resourceSummary.matIgnored > 0 ? `, ${resourceSummary.matIgnored} ignored` : ''}`} />
 
               {/* Changes from last solve */}
@@ -1133,7 +1133,7 @@ function SolvePreview({ orders, tasks, materials, resources,
               fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
               display: 'flex', alignItems: 'center', gap: 6,
             }}>
-              {'\u25B6'} Solve Now
+              ▶ Solve Now
             </button>
           </div>
           <div style={{ fontSize: 11, color: C.textDim, marginTop: 8, textAlign: 'center' }}>
@@ -2748,9 +2748,9 @@ export default function App() {
                 Solving…
               </>
             ) : solveStale ? (
-              <>{'\u25B6'} Review & Solve</>
+              <>▶ Review & Solve</>
             ) : (
-              <>{'\u25B6'} {act('solveAll', 'Solve All')}</>
+              <>▶ {act('solveAll', 'Solve All')}</>
             )}
           </button>
           <button
