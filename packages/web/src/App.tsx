@@ -67,9 +67,16 @@ function fmtDuration(seconds: number | null | undefined): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-function fmtPct(v: number | null | undefined, scale = 1): string {
+/** For values already in 0-100 range (feasibilityRate, utilization) */
+function fmtPctDirect(v: number | null | undefined): string {
   if (v == null) return '—';
-  return `${(v * scale).toFixed(1)}%`;
+  return `${v.toFixed(1)}%`;
+}
+
+/** For values in 0-1 range (fillRate, scrapRate) */
+function fmtPctFromDecimal(v: number | null | undefined): string {
+  if (v == null) return '—';
+  return `${(v * 100).toFixed(1)}%`;
 }
 
 function fmtNum(v: number | null | undefined): string {
@@ -101,9 +108,10 @@ function deriveOrderStatus(order: any): string {
 }
 
 function deriveMaterialStatus(mat: any): string {
-  const remaining = mat.remaining ?? (mat.onHand - (mat.consumed || 0));
-  if (remaining < 0) return 'shortage';
-  if (remaining < mat.onHand * 0.2) return 'at-risk';
+  const available = (mat.onHand ?? 0) - (mat.consumed ?? 0);
+  const net = available + (mat.incoming ?? 0);
+  if (net < 0) return 'shortage';
+  if (available < 0) return 'at-risk';
   return 'covered';
 }
 
@@ -168,7 +176,7 @@ function deriveConflicts(tasks: any[], resources: any[], materials: any[]): any[
       orderRef: affected[0].orderRef,
       severity: status === 'shortage' ? 'critical' : 'warning',
       reason: 'material',
-      reasonDetail: `${matName}: ${fmtNum(mat.onHand)} on hand, ${fmtNum(mat.consumed)} consumed, ${fmtNum(mat.remaining)} remaining`,
+      reasonDetail: `${matName}: ${fmtNum(mat.onHand)} on hand, ${fmtNum(mat.consumed)} consumed, net ${fmtNum((mat.onHand ?? 0) - (mat.consumed ?? 0) + (mat.incoming ?? 0))}`,
       bottleneckResource: null,
       bottleneckUtilization: 0,
       materialKey: matKey,
@@ -389,30 +397,45 @@ const cellStyle: CSSProperties = {
    GANTT CHART
    ═══════════════════════════════════════════════════════════════ */
 
-function GanttChart({ tasks, resources, summary, products }: {
-  tasks: any[]; resources: any[]; summary: any; products: any[];
+function GanttChart({ tasks, resources, products }: {
+  tasks: any[]; resources: any[]; products: any[];
 }) {
   const [hovered, setHovered] = useState<any>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
-  if (!summary?.horizonStart || !summary?.horizonEnd) {
-    return <div style={{ color: C.textDim, padding: 20 }}>No horizon data</div>;
+  // Compute time range from actual scheduled task data (zoom to fit)
+  const scheduled = tasks.filter((t: any) => t.feasible && t.scheduledStart && t.scheduledEnd);
+
+  if (scheduled.length === 0) {
+    return <div style={{ color: C.textDim, padding: 20 }}>No scheduled tasks</div>;
   }
 
-  const hStart = new Date(summary.horizonStart).getTime();
-  const hEnd = new Date(summary.horizonEnd).getTime();
-  const totalMs = hEnd - hStart;
-  if (totalMs <= 0) return <div style={{ color: C.textDim }}>Invalid horizon</div>;
+  const taskStarts = scheduled.map((t: any) => new Date(t.scheduledStart).getTime());
+  const taskEnds = scheduled.map((t: any) => new Date(t.scheduledEnd).getTime());
+  const dataStart = Math.min(...taskStarts);
+  const dataEnd = Math.max(...taskEnds);
 
-  const toPct = (iso: string) => ((new Date(iso).getTime() - hStart) / totalMs) * 100;
+  // Add buffer: round to day boundaries + 12h padding
+  const bufferMs = 12 * 3600 * 1000;
+  const hStartDate = new Date(dataStart - bufferMs);
+  hStartDate.setUTCHours(0, 0, 0, 0);
+  const hEndDate = new Date(dataEnd + bufferMs);
+  hEndDate.setUTCHours(23, 59, 59, 999);
 
-  // Day grid
+  const hStartMs = hStartDate.getTime();
+  const hEndMs = hEndDate.getTime();
+  const totalMs = hEndMs - hStartMs;
+  if (totalMs <= 0) return <div style={{ color: C.textDim }}>Invalid time range</div>;
+
+  const toPct = (iso: string) => ((new Date(iso).getTime() - hStartMs) / totalMs) * 100;
+
+  // Day grid based on computed range
   const days: { date: Date; pct: number }[] = [];
-  const d = new Date(hStart);
+  const d = new Date(hStartMs);
   d.setUTCHours(0, 0, 0, 0);
   d.setUTCDate(d.getUTCDate() + 1);
-  while (d.getTime() < hEnd) {
-    days.push({ date: new Date(d), pct: ((d.getTime() - hStart) / totalMs) * 100 });
+  while (d.getTime() < hEndMs) {
+    days.push({ date: new Date(d), pct: ((d.getTime() - hStartMs) / totalMs) * 100 });
     d.setUTCDate(d.getUTCDate() + 1);
   }
 
@@ -507,7 +530,7 @@ function GanttChart({ tasks, resources, summary, products }: {
           {hovered.orderRef && <div style={{ color: C.textMuted }}>Order: {hovered.orderRef}</div>}
           {hovered.outputProductKey && (
             <div style={{ color: C.textMuted }}>
-              Output: {hovered.outputProductKey} × {fmtNum(hovered.outputQty)}
+              Output: {products.find((p: any) => p.key === hovered.outputProductKey)?.name || hovered.outputProductKey} × {fmtNum(hovered.outputQty)}
             </div>
           )}
           {hovered.score != null && (
@@ -560,12 +583,14 @@ function TaskTable({ tasks, products }: { tasks: any[]; products: any[] }) {
                 <td style={cellStyle}>{t.orderRef || '—'}</td>
                 <td style={cellStyle}>
                   {t.outputProductKey ? (
-                    <span style={{ color: prodColor, fontWeight: 500 }}>{t.outputProductKey}</span>
+                    <span style={{ color: prodColor, fontWeight: 500 }}>
+                      {products.find((p: any) => p.key === t.outputProductKey)?.name || t.outputProductKey}
+                    </span>
                   ) : '—'}
                 </td>
                 <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(t.outputQty)}</td>
                 <td style={{ ...cellStyle, textAlign: 'right' }}>
-                  {t.outputScrapRate != null ? fmtPct(t.outputScrapRate, 100) : '—'}
+                  {t.outputScrapRate != null ? fmtPctFromDecimal(t.outputScrapRate) : '—'}
                 </td>
                 <td style={cellStyle}>{resKey}</td>
                 <td style={cellStyle}>{fmtDate(t.scheduledStart)}</td>
@@ -620,7 +645,9 @@ function OrderTable({ orders, products }: { orders: any[]; products: any[] }) {
               >
                 <td style={{ ...cellStyle, fontWeight: 600 }}>{o.orderKey}</td>
                 <td style={cellStyle}>
-                  <span style={{ color: prodColor, fontWeight: 500 }}>{o.productKey}</span>
+                  <span style={{ color: prodColor, fontWeight: 500 }}>
+                    {products.find((p: any) => p.key === o.productKey)?.name || o.productKey}
+                  </span>
                 </td>
                 <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(o.demandQty)}</td>
                 <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(o.scheduledQty)}</td>
@@ -634,7 +661,7 @@ function OrderTable({ orders, products }: { orders: any[]; products: any[] }) {
                 <td style={cellStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Ring pct={o.fillRate} size={28} />
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtPct(o.fillRate, 100)}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtPctFromDecimal(o.fillRate)}</span>
                   </div>
                 </td>
                 <td style={cellStyle}><Badge label={status} /></td>
@@ -798,10 +825,10 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, o
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* KPI Row */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KPI icon="✓" label="Feasibility" value={fmtPct(summary?.feasibilityRate)} color={
+        <KPI icon="✓" label="Feasibility" value={fmtPctDirect(summary?.feasibilityRate)} color={
           (summary?.feasibilityRate ?? 0) >= 90 ? C.green : (summary?.feasibilityRate ?? 0) >= 70 ? C.yellow : C.red
         } sub={`${summary?.scheduledTasks ?? 0} of ${summary?.includedTasks ?? 0} tasks`} />
-        <KPI icon="⚡" label="Avg Utilization" value={fmtPct(avgUtil)} color={
+        <KPI icon="⚡" label="Avg Utilization" value={fmtPctDirect(avgUtil)} color={
           avgUtil > 85 ? C.red : avgUtil > 60 ? C.yellow : C.green
         } sub={`${resources.length} resources`} />
         <KPI icon="⏰" label="Late Orders" value={lateOrders} color={lateOrders > 0 ? C.red : C.green}
@@ -815,7 +842,7 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, o
       {/* Gantt + Side panels */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16 }}>
         <Card title="Schedule Overview">
-          <GanttChart tasks={tasks} resources={resources} summary={summary} products={products} />
+          <GanttChart tasks={tasks} resources={resources} products={products} />
         </Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card title="Resource Utilization">
@@ -833,7 +860,9 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, o
                 }}>
                   <div>
                     <span style={{ fontWeight: 600, fontSize: 13 }}>{o.orderKey}</span>
-                    <span style={{ color: C.textDim, fontSize: 12, marginLeft: 8 }}>{o.productKey}</span>
+                    <span style={{ color: C.textDim, fontSize: 12, marginLeft: 8 }}>
+                      {products.find((p: any) => p.key === o.productKey)?.name || o.productKey}
+                    </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Ring pct={o.fillRate} size={24} />
@@ -885,8 +914,8 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, o
    TAB CONTENT — SCHEDULE
    ═══════════════════════════════════════════════════════════════ */
 
-function ScheduleTab({ tasks, resources, summary, products }: {
-  tasks: any[]; resources: any[]; summary: any; products: any[];
+function ScheduleTab({ tasks, resources, products }: {
+  tasks: any[]; resources: any[]; products: any[];
 }) {
   const [sub, setSub] = useState('Gantt Chart');
   return (
@@ -894,7 +923,7 @@ function ScheduleTab({ tasks, resources, summary, products }: {
       <SubTabs tabs={['Gantt Chart', 'Task List']} active={sub} onChange={setSub} />
       {sub === 'Gantt Chart' ? (
         <Card>
-          <GanttChart tasks={tasks} resources={resources} summary={summary} products={products} />
+          <GanttChart tasks={tasks} resources={resources} products={products} />
         </Card>
       ) : (
         <Card>
@@ -1236,21 +1265,33 @@ export default function App() {
         background: C.surface, borderBottom: `1px solid ${C.border}`,
         padding: '0 24px', display: 'flex', gap: 0,
       }}>
-        {TABS.map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              padding: '12px 20px', background: 'none', border: 'none',
-              borderBottom: tab === activeTab ? `2px solid ${C.accent}` : '2px solid transparent',
-              color: tab === activeTab ? C.text : C.textMuted,
-              fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
-              transition: 'color 0.15s, border-color 0.15s',
-            }}
-          >
-            {tab}
-          </button>
-        ))}
+        {TABS.map(tab => {
+          const conflictCount = tab === 'Conflicts' ? deriveConflicts(tasks, resources, materials).length : 0;
+          const shortageCount = tab === 'Materials' ? materials.filter((m: any) => deriveMaterialStatus(m) === 'shortage').length : 0;
+          const badge = tab === 'Conflicts' ? conflictCount : tab === 'Materials' ? shortageCount : 0;
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                padding: '12px 20px', background: 'none', border: 'none',
+                borderBottom: tab === activeTab ? `2px solid ${C.accent}` : '2px solid transparent',
+                color: tab === activeTab ? C.text : C.textMuted,
+                fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+                transition: 'color 0.15s, border-color 0.15s',
+                display: 'flex', alignItems: 'center', gap: 0,
+              }}
+            >
+              {tab}
+              {badge > 0 && (
+                <span style={{
+                  marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 8,
+                  background: C.redDim, color: C.red, fontWeight: 700,
+                }}>{badge}</span>
+              )}
+            </button>
+          );
+        })}
       </nav>
 
       {/* Error banner */}
@@ -1280,7 +1321,7 @@ export default function App() {
             orders={orders} materials={materials} products={products} onTabChange={setActiveTab} />
         )}
         {activeTab === 'Schedule' && (
-          <ScheduleTab tasks={tasks} resources={resources} summary={summary} products={products} />
+          <ScheduleTab tasks={tasks} resources={resources} products={products} />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} />}
         {activeTab === 'Conflicts' && <ConflictsTab tasks={tasks} resources={resources} materials={materials} />}
