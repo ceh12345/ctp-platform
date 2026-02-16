@@ -1,4 +1,5 @@
 import { ITypedAttribute } from '@ctp/engine';
+import { TenantStrategyOverride, TenantCustomStrategy } from './strategy.interface';
 
 // Schema types
 export interface IAttributeSchemaDefinition {
@@ -222,7 +223,8 @@ export interface IConfigStore {
   getLocale(): any;
 
   // Strategies
-  getStrategies(): any;
+  getStrategyOverrides(): TenantStrategyOverride[];
+  getCustomStrategies(): TenantCustomStrategy[];
 
   // Reload from disk
   reload(): void;

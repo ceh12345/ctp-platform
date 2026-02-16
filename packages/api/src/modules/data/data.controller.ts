@@ -53,8 +53,8 @@ export class DataController {
   }
 
   @Get('strategies')
-  @ApiOperation({ summary: 'Get solver strategy descriptions' })
-  @ApiResponse({ status: 200, description: 'Strategy config' })
+  @ApiOperation({ summary: 'Get solver strategies available to current tenant' })
+  @ApiResponse({ status: 200, description: 'Strategy list with default' })
   getStrategies() {
     return this.dataService.getStrategies();
   }

@@ -16,6 +16,7 @@ import {
   IOrderData,
   IMaterialData,
 } from './interfaces/config-store.interface';
+import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
 import { FileConfigStore } from './file-config-store';
 
 @Injectable()
@@ -92,8 +93,12 @@ export class ConfigService {
     return this.store.getLocale();
   }
 
-  getStrategies(): any {
-    return this.store.getStrategies();
+  getStrategyOverrides(): TenantStrategyOverride[] {
+    return this.store.getStrategyOverrides();
+  }
+
+  getCustomStrategies(): TenantCustomStrategy[] {
+    return this.store.getCustomStrategies();
   }
 
   reloadConfig(): void {

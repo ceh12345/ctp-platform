@@ -1,14 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '../../config/config.service';
+import { StrategyConfigService } from '../../config/strategy-config.service';
 import {
   IProductData,
   IOrderData,
   IMaterialData,
 } from '../../config/interfaces/config-store.interface';
+import { StrategyConfig } from '../../config/interfaces/strategy.interface';
 
 @Injectable()
 export class DataService {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly strategyConfigService: StrategyConfigService,
+  ) {}
 
   getProducts(): IProductData[] {
     return this.configService.getProducts();
@@ -34,7 +39,7 @@ export class DataService {
     return this.configService.getLocale();
   }
 
-  getStrategies(): any {
-    return this.configService.getStrategies();
+  getStrategies(): { strategies: StrategyConfig[]; defaultStrategy: string } {
+    return this.strategyConfigService.getStrategiesForTenant();
   }
 }

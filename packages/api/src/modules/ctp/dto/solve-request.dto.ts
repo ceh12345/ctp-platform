@@ -58,13 +58,11 @@ export class SolveRequestDto {
   // --- Override fields ---
 
   @ApiPropertyOptional({
-    description: 'Solver strategy',
-    enum: ['quick', 'balanced', 'thorough', 'best'],
+    description: 'Solver strategy key (validated against tenant config at runtime)',
     default: 'balanced',
   })
   @IsOptional()
   @IsString()
-  @IsIn(['quick', 'balanced', 'thorough', 'best'])
   strategy?: string;
 
   @ApiPropertyOptional({

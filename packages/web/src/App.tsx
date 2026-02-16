@@ -965,25 +965,17 @@ function SummaryRow({ icon, color, text }: { icon: string; color: string; text: 
 }
 
 // ── Solve Preview Modal ────────────────────────────────────────────────
-const DEFAULT_STRATEGIES: Record<string, { label: string; icon: string; short: string; detail: string; bestFor: string }> = {
-  quick: { label: 'Quick', icon: '⚡',
-    short: 'Fastest results — single pass, no rescheduling',
-    detail: 'Schedules each task once in priority order, picking the best available slot. Fast but won\'t resolve conflicts — if two tasks compete for the same resource, the first one wins.',
-    bestFor: 'Real-time CTP promises, simple schedules, low resource contention' },
-  balanced: { label: 'Balanced', icon: '🎯',
-    short: 'Smart scheduling with conflict resolution',
-    detail: 'Schedules tasks in priority order, then goes back to fix problems. When a task can\'t be placed, the solver identifies the bottleneck resource and bumps a lower-priority task to make room. Keeps the top 5 alternatives for each decision so it can recover quickly.',
-    bestFor: 'Daily production scheduling, moderate complexity, most use cases' },
-  thorough: { label: 'Thorough', icon: '🔬',
-    short: 'Explores alternatives systematically',
-    detail: 'After the initial schedule, the solver searches for improvements by swapping task assignments across resources and time slots. It maintains a memory of recent moves to avoid going in circles and evaluates neighboring alternatives to escape local optima.',
-    bestFor: 'Complex multi-resource scheduling, tight deadlines, high utilization targets' },
-  best: { label: 'Best', icon: '🏆',
-    short: 'Exhaustive search for optimal solution',
-    detail: 'Runs the thorough search with extended iteration limits and wider exploration. Considers more alternative slots per task and performs multiple restart rounds from different initial orderings to find the global optimum.',
-    bestFor: 'Final production plans, offline what-if analysis, when quality matters more than speed' },
-};
-const STRATEGY_KEYS = ['quick', 'balanced', 'thorough', 'best'];
+interface StrategyOption {
+  key: string; label: string; icon: string; short: string;
+  detail: string; bestFor: string; time: string; sortOrder: number;
+}
+
+const FALLBACK_STRATEGIES: StrategyOption[] = [
+  { key: 'quick', label: 'Quick', icon: '⚡', short: 'Fastest results', detail: '', bestFor: '', time: '< 1s', sortOrder: 10 },
+  { key: 'balanced', label: 'Balanced', icon: '🎯', short: 'Best for most situations', detail: '', bestFor: '', time: '1-5s', sortOrder: 20 },
+  { key: 'thorough', label: 'Thorough', icon: '🔬', short: 'More thorough, takes longer', detail: '', bestFor: '', time: '10-30s', sortOrder: 30 },
+  { key: 'best', label: 'Best', icon: '🏆', short: 'Best quality, slowest', detail: '', bestFor: '', time: '30-60s', sortOrder: 40 },
+];
 
 function SolvePreview({ orders, tasks, materials, resources,
   orderModes, taskPins, taskExcludes, taskUnschedules,
@@ -1004,7 +996,7 @@ function SolvePreview({ orders, tasks, materials, resources,
   previousMaterialModes?: Record<string, string>;
   strategy: string;
   onStrategyChange: (s: string) => void;
-  strategyOptions: Record<string, { label: string; icon: string; short: string; detail: string; bestFor: string }>;
+  strategyOptions: StrategyOption[];
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -1272,10 +1264,8 @@ function SolvePreview({ orders, tasks, materials, resources,
           }}>
             <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600, whiteSpace: 'nowrap' }}>Strategy:</span>
             <div style={{ display: 'flex', gap: 4, flex: 1, justifyContent: 'center' }}>
-              {STRATEGY_KEYS.map(key => {
-                const opt = strategyOptions[key] || DEFAULT_STRATEGIES[key];
-                if (!opt) return null;
-                const isActive = key === strategy;
+              {strategyOptions.map(opt => {
+                const isActive = opt.key === strategy;
                 const tooltip = (
                   <div style={{ maxWidth: 260 }}>
                     <div style={{ fontWeight: 700, marginBottom: 4, color: C.text }}>{opt.icon} {opt.label}</div>
@@ -1285,8 +1275,8 @@ function SolvePreview({ orders, tasks, materials, resources,
                   </div>
                 );
                 return (
-                  <HoverTooltip key={key} content={tooltip}>
-                    <button onClick={() => onStrategyChange(key)}
+                  <HoverTooltip key={opt.key} content={tooltip}>
+                    <button onClick={() => onStrategyChange(opt.key)}
                       style={{
                         padding: '5px 10px', borderRadius: 6, cursor: 'pointer',
                         fontSize: 11, fontWeight: 600, fontFamily: FONT,
@@ -3353,7 +3343,7 @@ export default function App() {
   const [materialModeOverrides, setMaterialModeOverrides] = useState<Record<string, string>>({});
   const [resourceModeOverrides, setResourceModeOverrides] = useState<Record<string, string>>({});
   const [solverStrategy, setSolverStrategy] = useState('balanced');
-  const [strategyOptions, setStrategyOptions] = useState(DEFAULT_STRATEGIES);
+  const [strategyOptions, setStrategyOptions] = useState<StrategyOption[]>(FALLBACK_STRATEGIES);
   const [solveStale, setSolveStale] = useState(false);
   // Previous state snapshots for delta computation
   const [prevOrderModes, setPrevOrderModes] = useState<Record<string, string>>({});
@@ -3391,8 +3381,8 @@ export default function App() {
       setColors(result.colors || colorsData || {});
       _terminology = result.terminology || termData || {};
       _locale = result.locale || localeData || {};
-      if (strategiesData && Object.keys(strategiesData).length > 0) {
-        setStrategyOptions(strategiesData);
+      if (strategiesData?.strategies?.length > 0) {
+        setStrategyOptions(strategiesData.strategies);
       }
     } catch (e: any) {
       setError(e.message || 'Failed to load data');
@@ -3429,7 +3419,7 @@ export default function App() {
       if (Object.keys(resourceModeOverrides).length > 0) body.resourceModes = resourceModeOverrides;
       if (Object.keys(materialModeOverrides).length > 0) body.materialModes = materialModeOverrides;
 
-      if (solverStrategy !== 'balanced') body.strategy = solverStrategy;
+      body.strategy = solverStrategy;
       body.detailLevel = experienceLevel;
 
       const result = await api('/ctp/solve', {

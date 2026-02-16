@@ -14,6 +14,7 @@ import {
 } from '@ctp/engine';
 import { StateService } from '../state/state.service';
 import { ConfigService } from '../../config/config.service';
+import { StrategyConfigService } from '../../config/strategy-config.service';
 import { SolveRequestDto } from './dto/solve-request.dto';
 
 export interface CTPSolveResult {
@@ -64,6 +65,7 @@ export class CTPService {
   constructor(
     private readonly stateService: StateService,
     private readonly configService: ConfigService,
+    private readonly strategyConfigService: StrategyConfigService,
   ) {}
 
   // ═══════════════════════════════════════
@@ -81,7 +83,20 @@ export class CTPService {
       throw new HttpException('State not loaded.', HttpStatus.BAD_REQUEST);
     }
 
-    const strategy = request?.strategy || landscape.appSettings?.solverStrategy || 'balanced';
+    const requestedStrategy = request?.strategy || landscape.appSettings?.solverStrategy || 'balanced';
+
+    // Validate strategy key against tenant config
+    if (request?.strategy && !this.strategyConfigService.validateStrategy(request.strategy)) {
+      const available = this.strategyConfigService.getStrategiesForTenant()
+        .strategies.map(s => s.key).join(', ');
+      throw new HttpException(
+        `Invalid strategy '${request.strategy}'. Available: ${available}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Map to engine strategy (handles custom strategy → engine handler mapping)
+    const strategy = this.strategyConfigService.getEngineStrategy(requestedStrategy);
     const stats = new SolveStatistics(strategy);
 
     // ─── 1. Apply overrides in order ───

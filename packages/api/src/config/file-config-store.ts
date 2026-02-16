@@ -17,6 +17,7 @@ import {
   IOrderData,
   IMaterialData,
 } from './interfaces/config-store.interface';
+import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
 
 const DEFAULT_SETTINGS: ISettingsConfig = {
   flowAround: false,
@@ -185,9 +186,19 @@ export class FileConfigStore implements IConfigStore {
 
   // ── Strategies ───────────────────────────────────────────────────────
 
-  getStrategies(): any {
-    return this.getCached('strategies', () =>
-      this.readJsonFile<any>(path.join(this.tenantDir, 'strategies.json')) ?? {},
+  getStrategyOverrides(): TenantStrategyOverride[] {
+    return this.getCached('strategyOverrides', () =>
+      this.readJsonFile<TenantStrategyOverride[]>(
+        path.join(this.tenantDir, 'strategy-overrides.json'),
+      ) ?? [],
+    );
+  }
+
+  getCustomStrategies(): TenantCustomStrategy[] {
+    return this.getCached('customStrategies', () =>
+      this.readJsonFile<TenantCustomStrategy[]>(
+        path.join(this.tenantDir, 'custom-strategies.json'),
+      ) ?? [],
     );
   }
 

@@ -5,6 +5,7 @@ import { StateService } from '../../state/state.service';
 import { StateHydratorService } from '../../state/state-hydrator.service';
 import { ConfigService } from '../../../config/config.service';
 import { FileConfigStore } from '../../../config/file-config-store';
+import { StrategyConfigService } from '../../../config/strategy-config.service';
 
 const CONFIG_ROOT = path.resolve(
   __dirname,
@@ -23,7 +24,8 @@ function createServices() {
   const configService = new ConfigService(store);
   const hydrator = new StateHydratorService(configService);
   const stateService = new StateService(hydrator, configService);
-  const ctpService = new CTPService(stateService, configService);
+  const strategyConfigService = new StrategyConfigService(configService);
+  const ctpService = new CTPService(stateService, configService, strategyConfigService);
   return { ctpService, stateService, configService };
 }
 
