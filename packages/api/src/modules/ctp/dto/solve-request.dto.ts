@@ -4,6 +4,8 @@ import {
   IsArray,
   IsString,
   IsIn,
+  IsObject,
+  IsBoolean,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -52,4 +54,138 @@ export class SolveRequestDto {
   @ValidateNested()
   @Type(() => SolveTaskFilterDto)
   filter?: SolveTaskFilterDto;
+
+  // --- Override fields ---
+
+  @ApiPropertyOptional({
+    description: 'Solver strategy',
+    enum: ['quick', 'balanced', 'thorough', 'best'],
+    default: 'balanced',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['quick', 'balanced', 'thorough', 'best'])
+  strategy?: string;
+
+  @ApiPropertyOptional({
+    description: 'Detail level for response',
+    enum: ['novice', 'intermediate', 'expert', 'diagnostic'],
+    default: 'novice',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['novice', 'intermediate', 'expert', 'diagnostic'])
+  detailLevel?: string;
+
+  @ApiPropertyOptional({
+    description: 'Order modes: { "WO-101": "LOCKED", "WO-103": "EXCLUDE" }',
+    example: { 'WO-101': 'LOCKED' },
+  })
+  @IsOptional()
+  @IsObject()
+  orderModes?: Record<string, string>;
+
+  @ApiPropertyOptional({
+    description: 'Task pins: { "OP-007": true }',
+    example: { 'OP-007': true },
+  })
+  @IsOptional()
+  @IsObject()
+  taskPins?: Record<string, boolean>;
+
+  @ApiPropertyOptional({
+    description: 'Task excludes: { "OP-012": true }',
+    example: { 'OP-012': true },
+  })
+  @IsOptional()
+  @IsObject()
+  taskExcludes?: Record<string, boolean>;
+
+  @ApiPropertyOptional({
+    description: 'Task keys to unschedule before solving',
+    example: ['OP-005'],
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  taskUnschedules?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Resource mode overrides: { "OP-007:CNC-01:capacity": "TRACK" }',
+    example: { 'OP-007:CNC-01:capacity': 'TRACK' },
+  })
+  @IsOptional()
+  @IsObject()
+  resourceModes?: Record<string, string>;
+
+  @ApiPropertyOptional({
+    description: 'Material mode overrides: { "STEEL-ROD": "OFF" }',
+    example: { 'STEEL-ROD': 'OFF' },
+  })
+  @IsOptional()
+  @IsObject()
+  materialModes?: Record<string, string>;
+}
+
+export class UnscheduleTaskDto {
+  @ApiPropertyOptional({ description: 'Reset task score', default: true })
+  @IsOptional()
+  @IsBoolean()
+  resetScore?: boolean;
+}
+
+export class ScheduleTaskDto {
+  @ApiPropertyOptional({
+    description: 'Detail level for response',
+    enum: ['novice', 'intermediate', 'expert', 'diagnostic'],
+    default: 'novice',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['novice', 'intermediate', 'expert', 'diagnostic'])
+  detailLevel?: string;
+
+  @ApiPropertyOptional({ description: 'Preferred resource key' })
+  @IsOptional()
+  @IsString()
+  preferredResource?: string;
+
+  @ApiPropertyOptional({ description: 'Preferred start after (ISO date)' })
+  @IsOptional()
+  @IsString()
+  preferredStartAfter?: string;
+}
+
+export class PinTaskDto {
+  @ApiPropertyOptional({ description: 'Whether to pin the task' })
+  @IsBoolean()
+  pinned!: boolean;
+}
+
+export class UpdateResourceModeDto {
+  @ApiPropertyOptional({
+    description: 'New mode',
+    enum: ['ON', 'TRACK', 'OFF'],
+  })
+  @IsString()
+  @IsIn(['ON', 'TRACK', 'OFF'])
+  mode!: string;
+
+  @ApiPropertyOptional({
+    description: 'Resource type',
+    enum: ['capacity', 'material'],
+  })
+  @IsString()
+  @IsIn(['capacity', 'material'])
+  type!: string;
+}
+
+export class UpdateMaterialModesDto {
+  @ApiPropertyOptional({
+    description: 'Material modes: { "STEEL-ROD": "OFF", "BEARINGS": "TRACK" }',
+    example: { 'STEEL-ROD': 'OFF' },
+  })
+  @IsObject()
+  modes!: Record<string, string>;
 }

@@ -33,4 +33,8 @@ export class DataService {
   getLocale(): any {
     return this.configService.getLocale();
   }
+
+  getStrategies(): any {
+    return this.configService.getStrategies();
+  }
 }

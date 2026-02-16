@@ -125,6 +125,7 @@ export abstract class CTPBaseScheduler {
       if (!found) {
         let resourceArr: any[] = [];
         task.capacityResources?.forEach((res) => {
+          if (res.isIgnored()) return;  // Skip ignored resources
           resourceArr.push(res.preferences);
         });
         const resourecombos = comboEngine.resourcecombinations(resourceArr);

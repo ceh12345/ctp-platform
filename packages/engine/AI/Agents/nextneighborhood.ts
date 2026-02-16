@@ -84,8 +84,7 @@ export class NextNeighborhoodAgent
 
     let i = 0;
     tasks.forEach((task) => {
-      if (
-        !task.processed &&
+      if (!task.processed && task.canSolve() &&
         task.state === CTPTaskStateConstants.NOT_SCHEDULED
       ) {
         if (i < numofNeighbors) context.add(task);

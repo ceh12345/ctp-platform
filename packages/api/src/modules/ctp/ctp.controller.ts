@@ -1,12 +1,21 @@
-import { Controller, Post, Get, Body } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, Query } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBody,
+  ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { CTPService } from './ctp.service';
-import { SolveRequestDto } from './dto/solve-request.dto';
+import {
+  SolveRequestDto,
+  UnscheduleTaskDto,
+  ScheduleTaskDto,
+  PinTaskDto,
+  UpdateResourceModeDto,
+  UpdateMaterialModesDto,
+} from './dto/solve-request.dto';
 import { CTPSolveResultDto } from './dto/solve-result.dto';
 
 @ApiTags('ctp')
@@ -14,21 +23,18 @@ import { CTPSolveResultDto } from './dto/solve-result.dto';
 export class CTPController {
   constructor(private readonly ctpService: CTPService) {}
 
+  // ─── Endpoint 1: Solve with Overrides ───
+
   @Post('solve')
   @ApiOperation({
-    summary:
-      'Run scheduler and return results. Optionally filter which tasks to schedule.',
+    summary: 'Run scheduler with optional overrides and return results.',
   })
   @ApiBody({
     type: SolveRequestDto,
     required: false,
-    description: 'Optional task filter. Omit to schedule all tasks.',
+    description: 'Optional overrides: order modes, task pins/excludes, resource modes, material modes.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Schedule results',
-    type: CTPSolveResultDto,
-  })
+  @ApiResponse({ status: 200, description: 'Schedule results', type: CTPSolveResultDto })
   @ApiResponse({ status: 400, description: 'State not loaded or scoring config missing' })
   solve(@Body() body?: SolveRequestDto) {
     return this.ctpService.solve(body);
@@ -46,20 +52,87 @@ export class CTPController {
   }
 
   @Post('solve-and-sync')
-  @ApiOperation({
-    summary: 'Reload config, solve, and return results (demo endpoint)',
-  })
-  @ApiBody({
-    type: SolveRequestDto,
-    required: false,
-    description: 'Optional task filter. Omit to schedule all tasks.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Schedule results',
-    type: CTPSolveResultDto,
-  })
+  @ApiOperation({ summary: 'Reload config, solve, and return results (demo endpoint)' })
+  @ApiBody({ type: SolveRequestDto, required: false })
+  @ApiResponse({ status: 200, description: 'Schedule results', type: CTPSolveResultDto })
   solveAndSync(@Body() body?: SolveRequestDto) {
     return this.ctpService.solve(body);
+  }
+
+  // ─── Endpoint 2: Unschedule Single Task ───
+
+  @Post('tasks/:taskKey/unschedule')
+  @ApiOperation({ summary: 'Unschedule a single task without re-solving' })
+  @ApiParam({ name: 'taskKey', description: 'Task key to unschedule' })
+  @ApiBody({ type: UnscheduleTaskDto, required: false })
+  @ApiResponse({ status: 200, description: 'Task unscheduled successfully' })
+  @ApiResponse({ status: 400, description: 'Task is not scheduled' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  @ApiResponse({ status: 409, description: 'Task is pinned' })
+  unscheduleTask(@Param('taskKey') taskKey: string, @Body() body?: UnscheduleTaskDto) {
+    return this.ctpService.unscheduleTask(taskKey, body?.resetScore ?? true);
+  }
+
+  // ─── Endpoint 3: Schedule Single Task ───
+
+  @Post('tasks/:taskKey/schedule')
+  @ApiOperation({ summary: 'Schedule a single task (find best slot)' })
+  @ApiParam({ name: 'taskKey', description: 'Task key to schedule' })
+  @ApiBody({ type: ScheduleTaskDto, required: false })
+  @ApiResponse({ status: 200, description: 'Task scheduled or errors returned' })
+  @ApiResponse({ status: 400, description: 'Task is already scheduled or pinned' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  scheduleTask(@Param('taskKey') taskKey: string, @Body() body?: ScheduleTaskDto) {
+    return this.ctpService.scheduleTask(taskKey, body);
+  }
+
+  // ─── Endpoint 4: Update Resource Mode ───
+
+  @Patch('tasks/:taskKey/resources/:resourceKey/mode')
+  @ApiOperation({ summary: 'Change mode of a task-resource relationship' })
+  @ApiParam({ name: 'taskKey', description: 'Task key' })
+  @ApiParam({ name: 'resourceKey', description: 'Resource key' })
+  @ApiBody({ type: UpdateResourceModeDto })
+  @ApiResponse({ status: 200, description: 'Mode updated' })
+  @ApiResponse({ status: 404, description: 'Task or resource not found' })
+  updateResourceMode(
+    @Param('taskKey') taskKey: string,
+    @Param('resourceKey') resourceKey: string,
+    @Body() body: UpdateResourceModeDto,
+  ) {
+    return this.ctpService.updateResourceMode(taskKey, resourceKey, body.mode, body.type);
+  }
+
+  // ─── Endpoint 5: Update Material Modes (Bulk) ───
+
+  @Patch('materials/modes')
+  @ApiOperation({ summary: 'Bulk update material modes' })
+  @ApiBody({ type: UpdateMaterialModesDto })
+  @ApiResponse({ status: 200, description: 'Material modes updated' })
+  updateMaterialModes(@Body() body: UpdateMaterialModesDto) {
+    return this.ctpService.updateMaterialModes(body.modes);
+  }
+
+  // ─── Endpoint 6: Pin/Unpin Task ───
+
+  @Patch('tasks/:taskKey/pin')
+  @ApiOperation({ summary: 'Pin or unpin a task' })
+  @ApiParam({ name: 'taskKey', description: 'Task key' })
+  @ApiBody({ type: PinTaskDto })
+  @ApiResponse({ status: 200, description: 'Pin state updated' })
+  @ApiResponse({ status: 400, description: 'Cannot pin unscheduled task' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  pinTask(@Param('taskKey') taskKey: string, @Body() body: PinTaskDto) {
+    return this.ctpService.pinTask(taskKey, body.pinned);
+  }
+
+  // ─── Endpoint 7: Get Solve State ───
+
+  @Get('state')
+  @ApiOperation({ summary: 'Get current landscape state without solving' })
+  @ApiQuery({ name: 'detailLevel', required: false, enum: ['novice', 'intermediate', 'expert', 'diagnostic'] })
+  @ApiResponse({ status: 200, description: 'Current state', type: CTPSolveResultDto })
+  getState(@Query('detailLevel') detailLevel?: string) {
+    return this.ctpService.getState(detailLevel || 'novice');
   }
 }

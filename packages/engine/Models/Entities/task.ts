@@ -4,6 +4,7 @@ import { List } from "../Core/list";
 import { IResourcePreference } from "../Entities/resource";
 import { CTPKeyEntity, IKeyEntity } from "../Core/entity";
 import {
+  CTPResourceModeConstants,
   CTPStateChangeConstants,
   CTPTaskStateConstants,
   CTPTaskTypeConstants,
@@ -39,7 +40,19 @@ export class CTPTaskResource implements ITaskResource {
     this.index = i ?? 0;
     this.isPrimary = prim ?? false;
     this.qty = 1.0;
-    this.mode = mode ?? "ON";
+    this.mode = mode ?? CTPResourceModeConstants.REQUIRED;
+  }
+
+  public isRequired(): boolean {
+    return this.mode === CTPResourceModeConstants.REQUIRED;
+  }
+
+  public isMonitored(): boolean {
+    return this.mode === CTPResourceModeConstants.MONITORED;
+  }
+
+  public isIgnored(): boolean {
+    return this.mode === CTPResourceModeConstants.IGNORED;
   }
 }
 
@@ -110,6 +123,7 @@ export interface ITask extends IKeyEntity {
   materialsResources: CTPTaskResourceList | null;
   score: number;
   requiresSetup: boolean;
+  pinned: boolean;
 
   // Product linkage
   outputProductKey: string | null;
@@ -138,6 +152,7 @@ export class CTPTask extends CTPKeyEntity implements ITask {
 
   public subType: string | null;
   public processed: boolean;
+  public pinned: boolean;
 
   public errors: IError[];
 
@@ -156,6 +171,13 @@ export class CTPTask extends CTPKeyEntity implements ITask {
 
   public canMove(): boolean {
     return this.wipstate == CTPWipStateConstants.NOT_STARTED;
+  }
+
+  public canSolve(): boolean {
+    if (this.pinned) return false;
+    if (!this.includeInSolve) return false;
+    if (this.wipstate !== CTPWipStateConstants.NOT_STARTED) return false;
+    return true;
   }
 
   public hasLinkId() {
@@ -212,6 +234,7 @@ export class CTPTask extends CTPKeyEntity implements ITask {
     this.linkId = undefined;
     this.errors = [];
     this.feasible = null;
+    this.pinned = false;
 
     // Product linkage defaults
     this.outputProductKey = null;

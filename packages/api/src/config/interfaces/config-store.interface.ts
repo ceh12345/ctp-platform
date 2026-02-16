@@ -221,6 +221,9 @@ export interface IConfigStore {
   // Locale
   getLocale(): any;
 
+  // Strategies
+  getStrategies(): any;
+
   // Reload from disk
   reload(): void;
 }

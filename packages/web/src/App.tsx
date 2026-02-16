@@ -131,6 +131,25 @@ function getTaskColor(task: any, colors: any): string {
   return colors.taskColors.default || '#3b82f6';
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   EXPERIENCE LEVELS
+   ═══════════════════════════════════════════════════════════════ */
+
+type ExperienceLevel = 'novice' | 'intermediate' | 'expert';
+
+const EXP_ORDER: ExperienceLevel[] = ['novice', 'intermediate', 'expert'];
+
+/** Returns true if currentLevel >= minLevel */
+function showAt(current: ExperienceLevel, min: ExperienceLevel): boolean {
+  return EXP_ORDER.indexOf(current) >= EXP_ORDER.indexOf(min);
+}
+
+const EXPERIENCE_LEVELS: { value: ExperienceLevel; label: string; icon: string; desc: string }[] = [
+  { value: 'novice', label: 'Planner', icon: '📋', desc: 'Clean dashboard with key metrics. Best for day-to-day scheduling.' },
+  { value: 'intermediate', label: 'Analyst', icon: '📊', desc: 'Scores, breakdowns, and resource modes. For deeper analysis.' },
+  { value: 'expert', label: 'Engineer', icon: '⚙', desc: 'Full diagnostic data, solver stats, and strategy tuning.' },
+];
+
 const ZOOM_LEVELS = [
   { label: '3 Hr', days: 3 / 24 },
   { label: 'Day', days: 1 },
@@ -763,6 +782,107 @@ function ModeBadge({ mode }: { mode: string }) {
   );
 }
 
+const ORDER_MODES = [
+  { value: 'INCLUDE', label: 'Include', color: C.green },
+  { value: 'LOCKED', label: 'Locked', color: C.yellow },
+  { value: 'EXCLUDE', label: 'Exclude', color: C.textDim },
+];
+const MATERIAL_MODES = [
+  { value: 'TRACK', label: 'Monitored', icon: '◐', color: C.cyan },
+  { value: 'ON', label: 'Required', icon: '●', color: C.green },
+  { value: 'OFF', label: 'Ignored', icon: '○', color: C.textDim },
+];
+const RESOURCE_MODES = [
+  { value: 'ON', label: 'Required', icon: '●', color: C.green },
+  { value: 'TRACK', label: 'Monitored', icon: '◐', color: C.cyan },
+  { value: 'OFF', label: 'Ignored', icon: '○', color: C.textDim },
+];
+
+function ClickableModeBadge({ mode, modes, onChange }: {
+  mode: string;
+  modes: { value: string; label: string; color: string }[];
+  onChange: (newMode: string) => void;
+}) {
+  const upper = (mode || modes[0].value).toUpperCase();
+  const current = modes.find(m => m.value === upper) || modes[0];
+  const nextIdx = (modes.findIndex(m => m.value === upper) + 1) % modes.length;
+  const color = current.color;
+  const bg = color + '22';
+  return (
+    <span
+      onClick={(e) => { e.stopPropagation(); onChange(modes[nextIdx].value); }}
+      title={`Click to change to ${modes[nextIdx].label}`}
+      style={{
+        display: 'inline-block', padding: '1px 8px', borderRadius: 9999,
+        fontSize: 10, fontWeight: 700, color, background: bg,
+        border: `1px solid ${color}33`, fontFamily: FONT,
+        cursor: 'pointer', userSelect: 'none',
+        transition: 'background 0.15s',
+      }}
+    >
+      {current.label}
+    </span>
+  );
+}
+
+function ModeToggle({ mode, modes, onChange }: {
+  mode: string;
+  modes: { value: string; label: string; icon: string; color: string }[];
+  onChange: (newMode: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const upper = (mode || modes[0].value).toUpperCase();
+  const current = modes.find(m => m.value === upper) || modes[0];
+  const color = current.color;
+  const bg = color + '22';
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }} onClick={e => e.stopPropagation()}>
+      <span
+        onClick={() => setOpen(!open)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          padding: '1px 8px', borderRadius: 9999,
+          fontSize: 10, fontWeight: 700, color, background: bg,
+          border: `1px solid ${color}33`, fontFamily: FONT,
+          cursor: 'pointer', userSelect: 'none',
+          transition: 'background 0.15s',
+        }}
+      >
+        <span style={{ fontSize: 11 }}>{current.icon}</span>
+        {current.label}
+        <span style={{ fontSize: 8, marginLeft: 2 }}>▼</span>
+      </span>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 998 }} />
+          <div style={{
+            position: 'absolute', top: '100%', left: 0, zIndex: 999, marginTop: 4,
+            background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+            padding: 4, minWidth: 130, boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          }}>
+            {modes.map(opt => {
+              const isActive = opt.value === upper;
+              return (
+                <button key={opt.value} onClick={() => { onChange(opt.value); setOpen(false); }} style={{
+                  width: '100%', padding: '6px 10px', background: isActive ? opt.color + '15' : 'none',
+                  border: 'none', color: opt.color, fontSize: 11, fontWeight: 600,
+                  cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
+                  borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6,
+                }} onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = C.bg; }}
+                   onMouseLeave={e => { e.currentTarget.style.background = isActive ? opt.color + '15' : 'none'; }}>
+                  <span style={{ fontSize: 12 }}>{opt.icon}</span>
+                  {opt.label}
+                  {isActive && <span style={{ marginLeft: 'auto', fontSize: 10 }}>✓</span>}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function SubTabs({ tabs, active, onChange }: {
   tabs: string[]; active: string; onChange: (t: string) => void;
 }) {
@@ -845,10 +965,31 @@ function SummaryRow({ icon, color, text }: { icon: string; color: string; text: 
 }
 
 // ── Solve Preview Modal ────────────────────────────────────────────────
+const DEFAULT_STRATEGIES: Record<string, { label: string; icon: string; short: string; detail: string; bestFor: string }> = {
+  quick: { label: 'Quick', icon: '⚡',
+    short: 'Fastest results — single pass, no rescheduling',
+    detail: 'Schedules each task once in priority order, picking the best available slot. Fast but won\'t resolve conflicts — if two tasks compete for the same resource, the first one wins.',
+    bestFor: 'Real-time CTP promises, simple schedules, low resource contention' },
+  balanced: { label: 'Balanced', icon: '🎯',
+    short: 'Smart scheduling with conflict resolution',
+    detail: 'Schedules tasks in priority order, then goes back to fix problems. When a task can\'t be placed, the solver identifies the bottleneck resource and bumps a lower-priority task to make room. Keeps the top 5 alternatives for each decision so it can recover quickly.',
+    bestFor: 'Daily production scheduling, moderate complexity, most use cases' },
+  thorough: { label: 'Thorough', icon: '🔬',
+    short: 'Explores alternatives systematically',
+    detail: 'After the initial schedule, the solver searches for improvements by swapping task assignments across resources and time slots. It maintains a memory of recent moves to avoid going in circles and evaluates neighboring alternatives to escape local optima.',
+    bestFor: 'Complex multi-resource scheduling, tight deadlines, high utilization targets' },
+  best: { label: 'Best', icon: '🏆',
+    short: 'Exhaustive search for optimal solution',
+    detail: 'Runs the thorough search with extended iteration limits and wider exploration. Considers more alternative slots per task and performs multiple restart rounds from different initial orderings to find the global optimum.',
+    bestFor: 'Final production plans, offline what-if analysis, when quality matters more than speed' },
+};
+const STRATEGY_KEYS = ['quick', 'balanced', 'thorough', 'best'];
+
 function SolvePreview({ orders, tasks, materials, resources,
   orderModes, taskPins, taskExcludes, taskUnschedules,
   materialModes, modeOverrides,
   previousOrderModes, previousTaskPins, previousTaskExcludes, previousMaterialModes,
+  strategy, onStrategyChange, strategyOptions,
   onConfirm, onCancel }: {
   orders: any[]; tasks: any[]; materials: any[]; resources: any[];
   orderModes: Record<string, string>;
@@ -861,6 +1002,9 @@ function SolvePreview({ orders, tasks, materials, resources,
   previousTaskPins: Record<string, boolean>;
   previousTaskExcludes: Record<string, boolean>;
   previousMaterialModes?: Record<string, string>;
+  strategy: string;
+  onStrategyChange: (s: string) => void;
+  strategyOptions: Record<string, { label: string; icon: string; short: string; detail: string; bestFor: string }>;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -1119,6 +1263,48 @@ function SolvePreview({ orders, tasks, materials, resources,
               <> and <strong style={{ color: C.yellow }}>{orderSummary.locked} locked</strong> orders</>
             )}
           </div>
+
+          {/* Strategy selector */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16,
+            padding: '10px 12px', background: C.bg, borderRadius: 8,
+            border: `1px solid ${C.border}`,
+          }}>
+            <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600, whiteSpace: 'nowrap' }}>Strategy:</span>
+            <div style={{ display: 'flex', gap: 4, flex: 1 }}>
+              {STRATEGY_KEYS.map(key => {
+                const opt = strategyOptions[key] || DEFAULT_STRATEGIES[key];
+                if (!opt) return null;
+                const isActive = key === strategy;
+                const tooltip = (
+                  <div style={{ maxWidth: 260 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 4, color: C.text }}>{opt.icon} {opt.label}</div>
+                    <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 6 }}>{opt.short}</div>
+                    <div style={{ fontSize: 11, color: C.textDim, lineHeight: 1.4, marginBottom: 6 }}>{opt.detail}</div>
+                    <div style={{ fontSize: 11, color: C.accent }}>Best for: {opt.bestFor}</div>
+                  </div>
+                );
+                return (
+                  <HoverTooltip key={key} content={tooltip}>
+                    <button onClick={() => onStrategyChange(key)}
+                      style={{
+                        padding: '5px 8px', borderRadius: 6, cursor: 'pointer',
+                        fontSize: 11, fontWeight: 600, fontFamily: FONT,
+                        background: isActive ? C.accent + '22' : 'transparent',
+                        color: isActive ? C.accent : C.textMuted,
+                        border: isActive ? `1px solid ${C.accent}44` : `1px solid transparent`,
+                        display: 'flex', alignItems: 'center', gap: 4,
+                      }}
+                    >
+                      <span style={{ fontSize: 12 }}>{opt.icon}</span>
+                      {opt.label}
+                    </button>
+                  </HoverTooltip>
+                );
+              })}
+            </div>
+          </div>
+
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button onClick={onCancel} style={{
               padding: '8px 20px', borderRadius: 8, border: `1px solid ${C.border}`,
@@ -1145,14 +1331,32 @@ function SolvePreview({ orders, tasks, materials, resources,
   );
 }
 
-function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceClick }: {
+function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceClick,
+  taskPins, taskExcludes, taskUnschedules, orderModes,
+  onPinTask, onExcludeTask, onUnscheduleTask, onCancelUnschedule,
+  resourceModeOverrides, onResourceModeChange, experienceLevel = 'novice' }: {
   task: any; tasks: any[]; products: any[]; colors: any;
   onClose: () => void; onResourceClick: (r: any) => void;
+  taskPins?: Record<string, boolean>;
+  taskExcludes?: Record<string, boolean>;
+  taskUnschedules?: Set<string>;
+  orderModes?: Record<string, string>;
+  onPinTask?: (key: string, pinned: boolean) => void;
+  onExcludeTask?: (key: string, excluded: boolean) => void;
+  onUnscheduleTask?: (key: string) => void;
+  onCancelUnschedule?: (key: string) => void;
+  resourceModeOverrides?: Record<string, string>;
+  onResourceModeChange?: (compoundKey: string, mode: string) => void;
+  experienceLevel?: ExperienceLevel;
 }) {
   const prodName = task.outputProductKey
     ? (products.find((p: any) => p.key === task.outputProductKey)?.name || task.outputProductKey)
     : null;
   const prodColor = colors ? getTaskColor(task, colors) : C.accent;
+
+  const isPinned = taskPins?.[task.key] || false;
+  const isExcluded = taskExcludes?.[task.key] || false;
+  const willUnschedule = taskUnschedules?.has(task.key) || false;
 
   const orderChain = task.orderRef
     ? tasks.filter((t: any) => t.orderRef === task.orderRef)
@@ -1163,14 +1367,51 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
         })
     : [];
 
+  const actionBtnBase: React.CSSProperties = {
+    padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+    cursor: 'pointer', fontFamily: FONT, display: 'flex', alignItems: 'center', gap: 4,
+    transition: 'background 0.15s',
+  };
+
   return (
     <SlidePanel open={true} onClose={onClose} title={`${t('task', 'Task')} Detail`}>
       {/* Header badges */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-        <Badge label={task.feasible ? t('scheduledStatus', 'Scheduled') : t('infeasibleStatus', 'Infeasible')} color={task.feasible ? C.green : C.red} />
+        {taskStatusBadge(deriveTaskStatus(task, taskPins, taskExcludes, taskUnschedules, orderModes))}
         {task.orderRef && <Badge label={task.orderRef} color={C.purple} />}
         {task.process && <Badge label={task.process} color={C.accent} />}
       </div>
+
+      {/* Action buttons */}
+      {onPinTask && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          <button onClick={() => onPinTask(task.key, !isPinned)} style={{
+            ...actionBtnBase,
+            background: isPinned ? C.yellowDim : 'transparent',
+            border: `1px solid ${isPinned ? C.yellow : C.border}`,
+            color: isPinned ? C.yellow : C.textMuted,
+          }}>📌 {isPinned ? 'Pinned' : 'Pin'}</button>
+
+          <button onClick={() => onExcludeTask?.(task.key, !isExcluded)} style={{
+            ...actionBtnBase,
+            background: isExcluded ? 'rgba(71,85,105,0.15)' : 'transparent',
+            border: `1px solid ${isExcluded ? C.textDim : C.border}`,
+            color: isExcluded ? C.textDim : C.textMuted,
+          }}>⏸ {isExcluded ? 'Excluded' : 'Exclude'}</button>
+
+          {willUnschedule ? (
+            <button onClick={() => onCancelUnschedule?.(task.key)} style={{
+              ...actionBtnBase,
+              background: C.redDim, border: `1px solid ${C.red}`, color: C.red,
+            }}>✕ Will unschedule (undo)</button>
+          ) : (
+            <button onClick={() => onUnscheduleTask?.(task.key)} style={{
+              ...actionBtnBase,
+              background: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted,
+            }}>✕ Unschedule</button>
+          )}
+        </div>
+      )}
 
       {/* Task Info */}
       <SectionLabel label={`${t('task', 'Task')} Info`} />
@@ -1182,7 +1423,9 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
       <DetailRow label="Start" value={fmtDate(task.scheduledStart)} />
       <DetailRow label="End" value={fmtDate(task.scheduledEnd)} />
       <DetailRow label={t('duration', 'Duration')} value={fmtDuration(task.durationSeconds)} />
-      <DetailRow label={t('score', 'Score')} value={task.score != null ? task.score.toFixed(2) : '—'} />
+      {showAt(experienceLevel, 'intermediate') && (
+        <DetailRow label={t('score', 'Score')} value={task.score != null ? task.score.toFixed(2) : '—'} />
+      )}
 
       {/* Product Output */}
       {prodName && (
@@ -1190,7 +1433,9 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
           <SectionLabel label={`${t('product', 'Product')} Output`} />
           <DetailRow label={t('product', 'Product')} value={<span style={{ color: prodColor }}>{prodName}</span>} />
           <DetailRow label={t('quantity', 'Qty')} value={fmtNum(task.outputQty)} />
-          <DetailRow label="Scrap Rate" value={task.outputScrapRate != null ? fmtPctFromDecimal(task.outputScrapRate) : '—'} />
+          {showAt(experienceLevel, 'intermediate') && (
+            <DetailRow label="Scrap Rate" value={task.outputScrapRate != null ? fmtPctFromDecimal(task.outputScrapRate) : '—'} />
+          )}
         </>
       )}
 
@@ -1198,27 +1443,36 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
       {task.assignedResources?.length > 0 && (
         <>
           <SectionLabel label={`Capacity ${t('resources', 'Resources')}`} />
-          {task.assignedResources.map((r: any, i: number) => (
-            <div
-              key={i}
-              onClick={() => onResourceClick(r)}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '8px 10px', marginBottom: 4, borderRadius: 8,
-                background: C.surface, border: `1px solid ${C.border}`, cursor: 'pointer',
-                transition: 'background 0.1s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
-              onMouseLeave={e => (e.currentTarget.style.background = C.surface)}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.resourceKey}</span>
-                {r.resourceName && <span style={{ fontSize: 12, color: C.textDim }}>{r.resourceName}</span>}
-                {r.isPrimary && <Badge label="primary" color={C.accent} />}
+          {task.assignedResources.map((r: any, i: number) => {
+            const capKey = `${task.key}:${r.resourceKey}:capacity`;
+            const displayMode = resourceModeOverrides?.[capKey] || r.mode || 'ON';
+            return (
+              <div
+                key={i}
+                onClick={() => onResourceClick(r)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '8px 10px', marginBottom: 4, borderRadius: 8,
+                  background: C.surface, border: `1px solid ${C.border}`, cursor: 'pointer',
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
+                onMouseLeave={e => (e.currentTarget.style.background = C.surface)}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.resourceKey}</span>
+                  {r.resourceName && <span style={{ fontSize: 12, color: C.textDim }}>{r.resourceName}</span>}
+                  {r.isPrimary && <Badge label="primary" color={C.accent} />}
+                </div>
+                {onResourceModeChange && showAt(experienceLevel, 'intermediate') ? (
+                  <ModeToggle mode={displayMode} modes={RESOURCE_MODES}
+                    onChange={(m) => onResourceModeChange(capKey, m)} />
+                ) : (
+                  showAt(experienceLevel, 'intermediate') ? <ModeBadge mode={displayMode} /> : null
+                )}
               </div>
-              <ModeBadge mode={r.mode || 'ON'} />
-            </div>
-          ))}
+            );
+          })}
         </>
       )}
 
@@ -1226,22 +1480,31 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
       {task.materialResources?.length > 0 && (
         <>
           <SectionLabel label={`${t('material', 'Material')} ${t('resources', 'Resources')}`} />
-          {task.materialResources.map((r: any, i: number) => (
-            <div
-              key={i}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '8px 10px', marginBottom: 4, borderRadius: 8,
-                background: C.surface, border: `1px solid ${C.border}`,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.resourceKey}</span>
-                {r.resourceName && <span style={{ fontSize: 12, color: C.textDim }}>{r.resourceName}</span>}
+          {task.materialResources.map((r: any, i: number) => {
+            const matKey = `${task.key}:${r.resourceKey}:material`;
+            const displayMode = resourceModeOverrides?.[matKey] || r.mode || 'TRACK';
+            return (
+              <div
+                key={i}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '8px 10px', marginBottom: 4, borderRadius: 8,
+                  background: C.surface, border: `1px solid ${C.border}`,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.resourceKey}</span>
+                  {r.resourceName && <span style={{ fontSize: 12, color: C.textDim }}>{r.resourceName}</span>}
+                </div>
+                {onResourceModeChange && showAt(experienceLevel, 'intermediate') ? (
+                  <ModeToggle mode={displayMode} modes={RESOURCE_MODES}
+                    onChange={(m) => onResourceModeChange(matKey, m)} />
+                ) : (
+                  showAt(experienceLevel, 'intermediate') ? <ModeBadge mode={displayMode} /> : null
+                )}
               </div>
-              <ModeBadge mode={r.mode || 'ON'} />
-            </div>
-          ))}
+            );
+          })}
         </>
       )}
 
@@ -1257,7 +1520,7 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
               <span style={{ color: C.text, fontWeight: 500 }}>{m.productKey}</span>
               <span style={{ color: C.textMuted }}>
                 {fmtNum(m.requiredQty)} {m.unitOfMeasure}
-                {m.scrapRate > 0 && <span style={{ color: C.yellow, marginLeft: 6 }}>({fmtPctFromDecimal(m.scrapRate)} scrap)</span>}
+                {m.scrapRate > 0 && showAt(experienceLevel, 'intermediate') && <span style={{ color: C.yellow, marginLeft: 6 }}>({fmtPctFromDecimal(m.scrapRate)} scrap)</span>}
               </span>
             </div>
           ))}
@@ -1399,20 +1662,34 @@ const cellStyle: CSSProperties = {
    GANTT CHART
    ═══════════════════════════════════════════════════════════════ */
 
-function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourceClick }: {
+function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourceClick,
+  taskPins, taskExcludes, taskUnschedules, orderModes,
+  onPinTask, onExcludeTask, onUnscheduleTask }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
+  taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
+  orderModes?: Record<string, string>;
+  onPinTask?: (key: string, pinned: boolean) => void;
+  onExcludeTask?: (key: string, excluded: boolean) => void;
+  onUnscheduleTask?: (key: string) => void;
 }) {
   const [hovered, setHovered] = useState<any>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [contextMenu, setContextMenu] = useState<{ task: any; x: number; y: number } | null>(null);
   const [zoomLevel, setZoomLevel] = useState('Day');
   const [scrollOffset, setScrollOffset] = useState(0);
   const [ganttSearch, setGanttSearch] = useState('');
   const [hideEmpty, setHideEmpty] = useState(false);
   const [hiddenWorkCenters, setHiddenWorkCenters] = useState<Set<string>>(new Set());
 
-  // Compute time range from actual scheduled task data
-  const scheduled = tasks.filter((t: any) => t.feasible && t.scheduledStart && t.scheduledEnd);
+  // Compute time range from actual scheduled task data (exclude excluded tasks/orders)
+  const scheduled = tasks.filter((t: any) => {
+    if (!t.feasible || !t.scheduledStart || !t.scheduledEnd) return false;
+    if (taskExcludes?.[t.key]) return false;
+    const om = orderModes?.[t.orderRef] || 'INCLUDE';
+    if (om === 'EXCLUDE') return false;
+    return true;
+  });
 
   if (scheduled.length === 0) {
     return <div style={{ color: C.textDim, padding: 20 }}>No {t('scheduledStatus', 'scheduled').toLowerCase()} {t('tasks', 'tasks')}</div>;
@@ -1510,10 +1787,10 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
     }
   }
 
-  // Group tasks by primary resource
+  // Group tasks by primary resource (reuse same exclusion logic)
   const resMap = new Map<string, any[]>();
   resources.forEach((r: any) => resMap.set(r.resourceKey, []));
-  tasks.filter((t: any) => t.feasible && t.scheduledStart && t.scheduledEnd).forEach((t: any) => {
+  scheduled.forEach((t: any) => {
     const rk = t.assignedResources?.[0]?.resourceKey;
     if (rk && resMap.has(rk)) resMap.get(rk)!.push(t);
   });
@@ -1681,6 +1958,9 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                     const right = toPct(t.scheduledEnd);
                     const w = Math.max(right - left, 0.3);
                     const barColor = colors ? getTaskColor(t, colors) : C.accent;
+                    const isPinned = taskPins?.[t.key];
+                    const isExcluded = taskExcludes?.[t.key];
+                    const willUnsched = taskUnschedules?.has(t.key);
                     return (
                       <div
                         key={t.key}
@@ -1688,15 +1968,26 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                         onMouseMove={e => setTooltipPos({ x: e.clientX, y: e.clientY })}
                         onMouseLeave={() => setHovered(null)}
                         onClick={() => onTaskClick?.(t)}
+                        onContextMenu={e => {
+                          if (onPinTask || onExcludeTask || onUnscheduleTask) {
+                            e.preventDefault();
+                            setHovered(null);
+                            setContextMenu({ task: t, x: e.clientX, y: e.clientY });
+                          }
+                        }}
                         style={{
                           position: 'absolute', left: `${left}%`, width: `${w}%`,
                           top: 6, height: LANE_H - 12, borderRadius: 4,
-                          background: barColor, opacity: 0.85, cursor: 'pointer',
+                          background: barColor,
+                          opacity: isExcluded ? 0.3 : 0.85,
+                          cursor: 'pointer',
                           display: 'flex', alignItems: 'center', paddingLeft: 4,
                           overflow: 'hidden', fontSize: 10, color: '#fff', fontWeight: 500,
                           transition: 'opacity 0.15s',
+                          border: willUnsched ? `2px dashed ${C.red}` : 'none',
                         }}
                       >
+                        {isPinned && <span style={{ marginRight: 2, fontSize: 9 }}>📌</span>}
                         {w > 3 && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>}
                       </div>
                     );
@@ -1707,6 +1998,78 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
           })}
         </div>
       ))}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <>
+          <div onClick={() => setContextMenu(null)} style={{
+            position: 'fixed', inset: 0, zIndex: 998,
+          }} />
+          <div style={{
+            position: 'fixed', left: contextMenu.x, top: contextMenu.y, zIndex: 999,
+            background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+            padding: 4, minWidth: 160, boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            fontFamily: FONT,
+          }}>
+            <div style={{ padding: '6px 10px', fontSize: 11, color: C.textDim, fontWeight: 600, borderBottom: `1px solid ${C.border}` }}>
+              {contextMenu.task.name}
+            </div>
+            {onTaskClick && (
+              <button onClick={() => { onTaskClick(contextMenu.task); setContextMenu(null); }} style={{
+                width: '100%', padding: '7px 10px', background: 'none', border: 'none',
+                color: C.text, fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
+                borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
+              }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
+                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                🔍 View Details
+              </button>
+            )}
+            {onPinTask && (
+              <button onClick={() => {
+                const isPinned = taskPins?.[contextMenu.task.key] || false;
+                onPinTask(contextMenu.task.key, !isPinned);
+                setContextMenu(null);
+              }} style={{
+                width: '100%', padding: '7px 10px', background: 'none', border: 'none',
+                color: taskPins?.[contextMenu.task.key] ? C.yellow : C.text,
+                fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
+                borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
+              }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
+                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                📌 {taskPins?.[contextMenu.task.key] ? 'Unpin' : 'Pin'}
+              </button>
+            )}
+            {onExcludeTask && (
+              <button onClick={() => {
+                const isExcluded = taskExcludes?.[contextMenu.task.key] || false;
+                onExcludeTask(contextMenu.task.key, !isExcluded);
+                setContextMenu(null);
+              }} style={{
+                width: '100%', padding: '7px 10px', background: 'none', border: 'none',
+                color: taskExcludes?.[contextMenu.task.key] ? C.textDim : C.text,
+                fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
+                borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
+              }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
+                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                ⏸ {taskExcludes?.[contextMenu.task.key] ? 'Re-include' : 'Exclude'}
+              </button>
+            )}
+            {onUnscheduleTask && contextMenu.task.feasible && (
+              <button onClick={() => {
+                onUnscheduleTask(contextMenu.task.key);
+                setContextMenu(null);
+              }} style={{
+                width: '100%', padding: '7px 10px', background: 'none', border: 'none',
+                color: C.red, fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
+                borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
+              }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
+                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                ✕ Unschedule
+              </button>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Tooltip */}
       {hovered && (
@@ -1741,29 +2104,220 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   TASK STATUS HELPERS
+   ═══════════════════════════════════════════════════════════════ */
+
+function deriveTaskStatus(tk: any, taskPins?: Record<string, boolean>, taskExcludes?: Record<string, boolean>,
+  taskUnschedules?: Set<string>, orderModes?: Record<string, string>): string {
+  const isExcluded = taskExcludes?.[tk.key] || false;
+  const orderMode = orderModes?.[tk.orderRef] || 'INCLUDE';
+  if (isExcluded || orderMode === 'EXCLUDE') return 'excluded';
+  const isPinned = taskPins?.[tk.key] || false;
+  if (isPinned || orderMode === 'LOCKED') return 'pinned';
+  if (taskUnschedules?.has?.(tk.key)) return 'unscheduled';
+  if (tk.feasible && tk.scheduledStart) return 'scheduled';
+  if (tk.errors?.length > 0) return 'infeasible';
+  return 'unscheduled';
+}
+
+const TASK_STATUS_CONFIG: Record<string, { label: string; color: string; icon?: string }> = {
+  scheduled:   { label: 'Scheduled',   color: C.green },
+  unscheduled: { label: 'Unscheduled', color: C.yellow },
+  pinned:      { label: 'Pinned',      color: C.yellow, icon: '📌' },
+  infeasible:  { label: 'Infeasible',  color: C.red },
+  excluded:    { label: 'Excluded',    color: C.textDim, icon: '⏸' },
+};
+
+function taskStatusBadge(status: string) {
+  const c = TASK_STATUS_CONFIG[status] || TASK_STATUS_CONFIG.scheduled;
+  const label = t(status + 'Status', c.label);
+  return <Badge label={`${c.icon ? c.icon + ' ' : ''}${label}`} color={c.color} />;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TASK TABLE — INLINE & BULK ACTIONS
+   ═══════════════════════════════════════════════════════════════ */
+
+function IconBtn({ icon, title, active, activeColor, onClick }: {
+  icon: string; title: string; active?: boolean; activeColor?: string; onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const color = active ? (activeColor || C.accent) : hovered ? C.text : C.textDim;
+  const bg = active ? `${activeColor || C.accent}20` : hovered ? `${C.text}10` : 'transparent';
+  return (
+    <button onClick={(e) => { e.stopPropagation(); onClick(); }}
+      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+      title={title}
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: 26, height: 26, borderRadius: 6,
+        border: active ? `1px solid ${activeColor}40` : '1px solid transparent',
+        background: bg, color, cursor: 'pointer',
+        fontSize: 12, padding: 0, fontFamily: FONT, transition: 'all 0.1s',
+      }}>{icon}</button>
+  );
+}
+
+function BulkBtn({ icon, label, color, onClick }: {
+  icon: string; label: string; color: string; onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button onClick={onClick}
+      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 4,
+        padding: '3px 10px', borderRadius: 6,
+        border: `1px solid ${hovered ? color : C.border}`,
+        background: hovered ? `${color}15` : 'transparent',
+        color: hovered ? color : C.textMuted,
+        fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+        transition: 'all 0.15s',
+      }}>
+      <span style={{ fontSize: 10 }}>{icon}</span>
+      {label}
+    </button>
+  );
+}
+
+function TaskRowActions({ task, taskPins, taskExcludes, orderModes,
+  onPin, onExclude, onUnschedule }: {
+  task: any;
+  taskPins: Record<string, boolean>; taskExcludes: Record<string, boolean>;
+  orderModes: Record<string, string>;
+  onPin: (taskKey: string) => void; onExclude: (taskKey: string) => void;
+  onUnschedule: (taskKey: string) => void;
+}) {
+  const isPinned = taskPins[task.key] || false;
+  const isExcluded = taskExcludes[task.key] || false;
+  const isScheduled = task.feasible && task.scheduledStart;
+  const orderMode = orderModes[task.orderRef] || 'INCLUDE';
+  const isLocked = orderMode === 'LOCKED';
+
+  if (isLocked) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+        <span style={{ fontSize: 10, color: C.yellow }} title="Order is locked">🔒</span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', gap: 2 }}
+      onClick={(e) => e.stopPropagation()}>
+      {isScheduled && (
+        <IconBtn icon="📌" title={isPinned ? 'Unpin' : 'Pin to position'}
+          active={isPinned} activeColor={C.yellow} onClick={() => onPin(task.key)} />
+      )}
+      <IconBtn icon={isExcluded ? '▶' : '⏸'}
+        title={isExcluded ? 'Include in solve' : 'Exclude from solve'}
+        active={isExcluded} activeColor={C.textDim} onClick={() => onExclude(task.key)} />
+      {isScheduled && !isPinned && (
+        <IconBtn icon="✕" title="Unschedule" activeColor={C.red}
+          onClick={() => onUnschedule(task.key)} />
+      )}
+    </div>
+  );
+}
+
+function TaskBulkActions({ filteredTasks, taskPins, taskExcludes, orderModes,
+  onPinAll, onUnpinAll, onExcludeAll, onIncludeAll, onUnscheduleAll }: {
+  filteredTasks: any[];
+  taskPins: Record<string, boolean>; taskExcludes: Record<string, boolean>;
+  orderModes: Record<string, string>;
+  onPinAll: (keys: string[]) => void; onUnpinAll: (keys: string[]) => void;
+  onExcludeAll: (keys: string[]) => void; onIncludeAll: (keys: string[]) => void;
+  onUnscheduleAll: (keys: string[]) => void;
+}) {
+  const actionable = filteredTasks.filter(t => {
+    const orderMode = orderModes[t.orderRef] || 'INCLUDE';
+    return orderMode !== 'LOCKED';
+  });
+  const scheduled = actionable.filter(t => t.feasible && t.scheduledStart);
+  const pinnedCount = actionable.filter(t => taskPins[t.key]).length;
+  const excludedCount = actionable.filter(t => taskExcludes[t.key]).length;
+  const scheduledKeys = scheduled.map(t => t.key);
+  const actionableKeys = actionable.map(t => t.key);
+
+  if (filteredTasks.length <= 1) return null;
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0',
+      fontSize: 11, color: C.textMuted, flexWrap: 'wrap',
+      borderBottom: `1px solid ${C.border}`, marginBottom: 8,
+    }}>
+      <span style={{ fontWeight: 700, fontSize: 11, color: C.textDim, marginRight: 4 }}>
+        Bulk ({filteredTasks.length} shown):
+      </span>
+      {scheduled.length > 0 && (
+        <BulkBtn icon="✕" label={`Unschedule ${scheduled.length}`} color={C.red}
+          onClick={() => onUnscheduleAll(scheduledKeys)} />
+      )}
+      {scheduled.length > 0 && pinnedCount < scheduled.length && (
+        <BulkBtn icon="📌" label={`Pin ${scheduled.length - pinnedCount}`} color={C.yellow}
+          onClick={() => onPinAll(scheduledKeys)} />
+      )}
+      {pinnedCount > 0 && (
+        <BulkBtn icon="📌" label={`Unpin ${pinnedCount}`} color={C.textDim}
+          onClick={() => onUnpinAll(scheduledKeys)} />
+      )}
+      {excludedCount < actionable.length && (
+        <BulkBtn icon="⏸" label={`Exclude ${actionable.length - excludedCount}`} color={C.textDim}
+          onClick={() => onExcludeAll(actionableKeys)} />
+      )}
+      {excludedCount > 0 && (
+        <BulkBtn icon="▶" label={`Include ${excludedCount}`} color={C.green}
+          onClick={() => onIncludeAll(actionableKeys)} />
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    TASK TABLE
    ═══════════════════════════════════════════════════════════════ */
 
-function TaskTable({ tasks, products, colors, onTaskClick }: { tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void }) {
+function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExcludes, taskUnschedules, orderModes,
+  onPinTask, onExcludeTask, onUnscheduleTask, experienceLevel = 'novice' }: {
+  tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void;
+  taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
+  orderModes?: Record<string, string>;
+  onPinTask?: (key: string, pinned: boolean) => void;
+  onExcludeTask?: (key: string, excluded: boolean) => void;
+  onUnscheduleTask?: (key: string) => void;
+  experienceLevel?: ExperienceLevel;
+}) {
   const { sortKey, sortDir, toggle, sorted } = useSort('key');
 
-  // Pre-compute flat resource field for filtering/sorting
-  const enriched = useMemo(() => tasks.map(tk => ({
-    ...tk,
-    _resource: tk.assignedResources?.[0]?.resourceKey || '',
-    _status: tk.feasible ? 'scheduled' : 'infeasible',
-  })), [tasks]);
+  const enriched = useMemo(() => tasks.map(tk => {
+    const _status = deriveTaskStatus(tk, taskPins, taskExcludes, taskUnschedules, orderModes);
+    const _orderMode = orderModes?.[tk.orderRef] || 'INCLUDE';
+    return {
+      ...tk,
+      _resource: tk.assignedResources?.[0]?.resourceKey || '',
+      _status,
+      _orderMode,
+    };
+  }), [tasks, taskPins, taskExcludes, taskUnschedules, orderModes]);
 
   const statusDeriver = useCallback((row: any) => row._status, []);
   const filter = useFilter(enriched, { statusDeriver });
 
-  const scheduledCount = enriched.filter(tk => tk.feasible).length;
-  const infeasibleCount = enriched.length - scheduledCount;
+  const scheduledCount = enriched.filter(tk => tk._status === 'scheduled').length;
+  const unscheduledCount = enriched.filter(tk => tk._status === 'unscheduled').length;
+  const pinnedCount = enriched.filter(tk => tk._status === 'pinned').length;
+  const infeasibleCount = enriched.filter(tk => tk._status === 'infeasible').length;
+  const excludedCount = enriched.filter(tk => tk._status === 'excluded').length;
+
   const statusOptions = [
     { value: 'all', label: 'All', count: enriched.length },
     { value: 'scheduled', label: t('scheduledStatus', 'Scheduled'), color: C.green, count: scheduledCount },
+    { value: 'unscheduled', label: t('unscheduledStatus', 'Unscheduled'), color: C.yellow, count: unscheduledCount },
+    { value: 'pinned', label: t('pinnedStatus', 'Pinned'), color: C.yellow, count: pinnedCount },
     { value: 'infeasible', label: t('infeasibleStatus', 'Infeasible'), color: C.red, count: infeasibleCount },
-  ];
+    { value: 'excluded', label: t('excludedStatus', 'Excluded'), color: C.textDim, count: excludedCount },
+  ].filter(opt => opt.value === 'all' || opt.count > 0);
 
   const colFilter = (key: string) => ({
     distinctValues: filter.distinctValues(key),
@@ -1772,10 +2326,62 @@ function TaskTable({ tasks, products, colors, onTaskClick }: { tasks: any[]; pro
     onClear: filter.clearColumnFilter,
   });
 
+  const hasActions = !!(onPinTask || onExcludeTask || onUnscheduleTask);
+  const safePins = taskPins || {};
+  const safeExcludes = taskExcludes || {};
+  const safeOrderModes = orderModes || {};
+
+  const handlePin = useCallback((key: string) => {
+    const pinned = !safePins[key];
+    onPinTask?.(key, pinned);
+  }, [safePins, onPinTask]);
+
+  const handleExclude = useCallback((key: string) => {
+    const excluded = !safeExcludes[key];
+    onExcludeTask?.(key, excluded);
+  }, [safeExcludes, onExcludeTask]);
+
+  const handleUnschedule = useCallback((key: string) => {
+    onUnscheduleTask?.(key);
+  }, [onUnscheduleTask]);
+
+  const handlePinAll = useCallback((keys: string[]) => {
+    keys.forEach(k => onPinTask?.(k, true));
+  }, [onPinTask]);
+
+  const handleUnpinAll = useCallback((keys: string[]) => {
+    keys.forEach(k => onPinTask?.(k, false));
+  }, [onPinTask]);
+
+  const handleExcludeAll = useCallback((keys: string[]) => {
+    keys.forEach(k => onExcludeTask?.(k, true));
+  }, [onExcludeTask]);
+
+  const handleIncludeAll = useCallback((keys: string[]) => {
+    keys.forEach(k => onExcludeTask?.(k, false));
+  }, [onExcludeTask]);
+
+  const handleUnscheduleAll = useCallback((keys: string[]) => {
+    if (keys.length > 5) {
+      const confirmed = window.confirm(
+        `Unschedule ${keys.length} tasks? This will remove their current assignments.`
+      );
+      if (!confirmed) return;
+    }
+    keys.forEach(k => onUnscheduleTask?.(k));
+  }, [onUnscheduleTask]);
+
   const rows = sorted(filter.filtered);
   return (
     <div>
       <FilterBar filter={filter} statusOptions={statusOptions} />
+      {hasActions && (
+        <TaskBulkActions filteredTasks={filter.filtered}
+          taskPins={safePins} taskExcludes={safeExcludes} orderModes={safeOrderModes}
+          onPinAll={handlePinAll} onUnpinAll={handleUnpinAll}
+          onExcludeAll={handleExcludeAll} onIncludeAll={handleIncludeAll}
+          onUnscheduleAll={handleUnscheduleAll} />
+      )}
       <div style={{ overflowX: 'auto' }}>
         <table style={tableStyle}>
           <thead>
@@ -1786,14 +2392,19 @@ function TaskTable({ tasks, products, colors, onTaskClick }: { tasks: any[]; pro
               <SortHeader label={t('product', 'Product')} k="outputProductKey" current={sortKey} dir={sortDir} onSort={toggle}
                 filterProps={colFilter('outputProductKey')} />
               <SortHeader label={t('quantity', 'Qty')} k="outputQty" current={sortKey} dir={sortDir} onSort={toggle} />
-              <SortHeader label="Scrap%" k="outputScrapRate" current={sortKey} dir={sortDir} onSort={toggle} />
+              {showAt(experienceLevel, 'intermediate') && <SortHeader label="Scrap%" k="outputScrapRate" current={sortKey} dir={sortDir} onSort={toggle} />}
               <SortHeader label={t('resource', 'Resource')} k="_resource" current={sortKey} dir={sortDir} onSort={toggle}
                 filterProps={colFilter('_resource')} />
               <SortHeader label="Start" k="scheduledStart" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label="End" k="scheduledEnd" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label={t('duration', 'Duration')} k="durationSeconds" current={sortKey} dir={sortDir} onSort={toggle} />
-              <SortHeader label={t('score', 'Score')} k="score" current={sortKey} dir={sortDir} onSort={toggle} />
-              <SortHeader label="Status" k="feasible" current={sortKey} dir={sortDir} onSort={toggle} />
+              {showAt(experienceLevel, 'intermediate') && <SortHeader label={t('score', 'Score')} k="score" current={sortKey} dir={sortDir} onSort={toggle} />}
+              <SortHeader label="Status" k="_status" current={sortKey} dir={sortDir} onSort={toggle} />
+              {hasActions && <th style={{
+                padding: '10px 12px', textAlign: 'center', fontSize: 12, fontWeight: 600,
+                color: C.textMuted, borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap',
+                fontFamily: FONT, width: 90,
+              }}>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -1801,7 +2412,14 @@ function TaskTable({ tasks, products, colors, onTaskClick }: { tasks: any[]; pro
               const resKey = tk._resource || '—';
               const prodColor = colors ? getTaskColor(tk, colors) : C.accent;
               return (
-                <tr key={tk.key} style={{ transition: 'background 0.1s', cursor: onTaskClick ? 'pointer' : 'default' }}
+                <tr key={tk.key} style={{
+                  transition: 'background 0.1s, opacity 0.2s',
+                  cursor: onTaskClick ? 'pointer' : 'default',
+                  opacity: tk._status === 'excluded' ? 0.4 : 1,
+                  borderLeft: tk._status === 'pinned' ? `3px solid ${C.yellow}` :
+                              tk._orderMode === 'LOCKED' ? `3px solid ${C.yellow}` :
+                              '3px solid transparent',
+                }}
                   onClick={() => onTaskClick?.(tk)}
                   onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -1819,20 +2437,26 @@ function TaskTable({ tasks, products, colors, onTaskClick }: { tasks: any[]; pro
                     ) : '—'}
                   </td>
                   <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(tk.outputQty)}</td>
-                  <td style={{ ...cellStyle, textAlign: 'right' }}>
+                  {showAt(experienceLevel, 'intermediate') && <td style={{ ...cellStyle, textAlign: 'right' }}>
                     {tk.outputScrapRate != null ? fmtPctFromDecimal(tk.outputScrapRate) : '—'}
-                  </td>
+                  </td>}
                   <td style={cellStyle}>{resKey}</td>
                   <td style={cellStyle}>{fmtDate(tk.scheduledStart)}</td>
                   <td style={cellStyle}>{fmtDate(tk.scheduledEnd)}</td>
                   <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtDuration(tk.durationSeconds)}</td>
-                  <td style={{ ...cellStyle, textAlign: 'right' }}>
+                  {showAt(experienceLevel, 'intermediate') && <td style={{ ...cellStyle, textAlign: 'right' }}>
                     {tk.score != null ? tk.score.toFixed(2) : '—'}
-                  </td>
+                  </td>}
                   <td style={cellStyle}>
-                    <Badge label={tk.feasible ? t('scheduledStatus', 'Scheduled') : t('infeasibleStatus', 'Infeasible')}
-                      color={tk.feasible ? C.green : C.red} />
+                    {taskStatusBadge(tk._status)}
                   </td>
+                  {hasActions && (
+                    <td style={{ ...cellStyle, textAlign: 'center', padding: '4px 6px' }}>
+                      <TaskRowActions task={tk}
+                        taskPins={safePins} taskExcludes={safeExcludes} orderModes={safeOrderModes}
+                        onPin={handlePin} onExclude={handleExclude} onUnschedule={handleUnschedule} />
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -1844,13 +2468,70 @@ function TaskTable({ tasks, products, colors, onTaskClick }: { tasks: any[]; pro
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   SCHEDULE PROGRESS
+   ═══════════════════════════════════════════════════════════════ */
+
+function ScheduleProgress({ placed, total, infeasible }: {
+  placed: number; total: number; infeasible: number;
+}) {
+  if (total === 0) return <span style={{ color: C.textDim, fontSize: 12 }}>—</span>;
+  const pct = (placed / total) * 100;
+  const color = pct === 100 ? C.green : pct > 0 ? C.yellow : C.red;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color, minWidth: 36 }}>
+        {placed}/{total}
+      </span>
+      <div style={{
+        flex: 1, height: 4, background: C.border, borderRadius: 2,
+        overflow: 'hidden', maxWidth: 60,
+      }}>
+        <div style={{
+          width: `${pct}%`, height: '100%', background: color, borderRadius: 2,
+          transition: 'width 0.3s',
+        }} />
+      </div>
+      {infeasible > 0 && (
+        <span style={{ fontSize: 10, color: C.red }} title={`${infeasible} infeasible`}>
+          ⚠{infeasible}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    ORDER TABLE
    ═══════════════════════════════════════════════════════════════ */
 
-function OrderTable({ orders, products }: { orders: any[]; products: any[] }) {
+function OrderTable({ orders, products, tasks, orderModes, taskPins, taskExcludes, onOrderModeChange }: {
+  orders: any[]; products: any[]; tasks?: any[];
+  orderModes?: Record<string, string>;
+  taskPins?: Record<string, boolean>;
+  taskExcludes?: Record<string, boolean>;
+  onOrderModeChange?: (key: string, mode: string) => void;
+}) {
   const { sortKey, sortDir, toggle, sorted } = useSort('priority');
 
-  const enriched = useMemo(() => orders.map(o => ({ ...o, _status: deriveOrderStatus(o) })), [orders]);
+  const enriched = useMemo(() => orders.map(o => {
+    const orderTasks = (tasks || []).filter((tk: any) => tk.orderRef === o.orderKey);
+    const total = orderTasks.length;
+    const scheduled = orderTasks.filter((tk: any) => tk.feasible && tk.scheduledStart).length;
+    const pinned = orderTasks.filter((tk: any) => taskPins?.[tk.key]).length;
+    const excluded = orderTasks.filter((tk: any) => taskExcludes?.[tk.key]).length;
+    const infeasible = orderTasks.filter((tk: any) => !tk.feasible && tk.errors?.length > 0).length;
+    const placed = scheduled + pinned;
+
+    return {
+      ...o,
+      _status: deriveOrderStatus(o),
+      _totalTasks: total,
+      _scheduledTasks: placed,
+      _infeasibleTasks: infeasible,
+      _excludedTasks: excluded,
+      _scheduleProgress: total > 0 ? placed / total : 0,
+    };
+  }), [orders, tasks, taskPins, taskExcludes]);
 
   const statusDeriver = useCallback((row: any) => row._status, []);
   const filter = useFilter(enriched, { statusDeriver });
@@ -1880,11 +2561,17 @@ function OrderTable({ orders, products }: { orders: any[]; products: any[] }) {
         <table style={tableStyle}>
           <thead>
             <tr>
+              {onOrderModeChange && <th style={{
+                padding: '10px 12px', textAlign: 'left', fontSize: 12, fontWeight: 600,
+                color: C.textMuted, borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap',
+                fontFamily: FONT, width: 80,
+              }}>Mode</th>}
               <SortHeader label={t('order', 'Order')} k="orderKey" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label={t('product', 'Product')} k="productKey" current={sortKey} dir={sortDir} onSort={toggle}
                 filterProps={colFilter('productKey')} />
               <SortHeader label={t('demand', 'Demand')} k="demandQty" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label={t('scheduledStatus', 'Scheduled')} k="scheduledQty" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label="Progress" k="_scheduleProgress" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label={t('dueDate', 'Due Date')} k="dueDate" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label={t('priority', 'Priority')} k="priority" current={sortKey} dir={sortDir} onSort={toggle}
                 filterProps={colFilter('priority')} />
@@ -1901,6 +2588,15 @@ function OrderTable({ orders, products }: { orders: any[]; products: any[] }) {
                   onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
+                  {onOrderModeChange && (
+                    <td style={cellStyle}>
+                      <ClickableModeBadge
+                        mode={orderModes?.[o.orderKey] || 'INCLUDE'}
+                        modes={ORDER_MODES}
+                        onChange={(m) => onOrderModeChange(o.orderKey, m)}
+                      />
+                    </td>
+                  )}
                   <td style={{ ...cellStyle, fontWeight: 600 }}>{o.orderKey}</td>
                   <td style={cellStyle}>
                     <span style={{ color: prodColor, fontWeight: 500 }}>
@@ -1909,6 +2605,9 @@ function OrderTable({ orders, products }: { orders: any[]; products: any[] }) {
                   </td>
                   <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(o.demandQty)}</td>
                   <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(o.scheduledQty)}</td>
+                  <td style={cellStyle}>
+                    <ScheduleProgress placed={o._scheduledTasks} total={o._totalTasks} infeasible={o._infeasibleTasks} />
+                  </td>
                   <td style={cellStyle}>{fmtDateShort(o.dueDate)}</td>
                   <td style={cellStyle}>
                     <Badge
@@ -1919,7 +2618,9 @@ function OrderTable({ orders, products }: { orders: any[]; products: any[] }) {
                   <td style={cellStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Ring pct={o.fillRate} size={28} />
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtPctFromDecimal(o.fillRate)}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>{
+                        (o.fillRate ?? 0) > 1 ? fmtPctDirect(o.fillRate) : fmtPctFromDecimal(o.fillRate)
+                      }</span>
                     </div>
                   </td>
                   <td style={cellStyle}><Badge label={status} /></td>
@@ -1970,7 +2671,11 @@ function HoverTooltip({ children, content }: { children: ReactNode; content: Rea
    MATERIALS TABLE
    ═══════════════════════════════════════════════════════════════ */
 
-function MatTable({ materials }: { materials: any[] }) {
+function MatTable({ materials, materialModes, onMaterialModeChange }: {
+  materials: any[];
+  materialModes?: Record<string, string>;
+  onMaterialModeChange?: (key: string, mode: string) => void;
+}) {
   const { sortKey, sortDir, toggle, sorted } = useSort('materialKey');
 
   const enriched = useMemo(() => materials.map(m => ({
@@ -2007,6 +2712,11 @@ function MatTable({ materials }: { materials: any[] }) {
         <table style={tableStyle}>
           <thead>
             <tr>
+              {onMaterialModeChange && <th style={{
+                padding: '10px 12px', textAlign: 'left', fontSize: 12, fontWeight: 600,
+                color: C.textMuted, borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap',
+                fontFamily: FONT, width: 110,
+              }}>Mode</th>}
               <SortHeader label={t('material', 'Material')} k="materialKey" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label="Unit" k="unit" current={sortKey} dir={sortDir} onSort={toggle}
                 filterProps={colFilter('unit')} />
@@ -2061,6 +2771,13 @@ function MatTable({ materials }: { materials: any[] }) {
                 onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
+                {onMaterialModeChange && <td style={cellStyle}>
+                  <ModeToggle
+                    mode={(materialModes?.[m.materialKey] || m.mode || 'TRACK').toUpperCase()}
+                    modes={MATERIAL_MODES}
+                    onChange={(mode) => onMaterialModeChange(m.materialKey, mode)}
+                  />
+                </td>}
                 <td style={cellStyle}>
                   <div style={{ fontWeight: 600 }}>{m.materialKey}</div>
                   <div style={{ fontSize: 11, color: C.textDim }}>{m.materialName}</div>
@@ -2196,10 +2913,18 @@ function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskCli
    TAB CONTENT — OVERVIEW
    ═══════════════════════════════════════════════════════════════ */
 
-function OverviewTab({ summary, tasks, resources, orders, materials, products, colors, onTabChange, onTaskClick, onResourceClick }: {
+function OverviewTab({ summary, tasks, resources, orders, materials, products, colors, onTabChange, onTaskClick, onResourceClick, experienceLevel = 'novice',
+  taskPins, taskExcludes, taskUnschedules, orderModes,
+  onPinTask, onExcludeTask, onUnscheduleTask }: {
   summary: any; tasks: any[]; resources: any[]; orders: any[]; materials: any[];
   products: any[]; colors: any; onTabChange: (t: string) => void;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
+  experienceLevel?: ExperienceLevel;
+  taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
+  orderModes?: Record<string, string>;
+  onPinTask?: (key: string, pinned: boolean) => void;
+  onExcludeTask?: (key: string, excluded: boolean) => void;
+  onUnscheduleTask?: (key: string) => void;
 }) {
   const avgUtil = resources.length > 0
     ? resources.reduce((s: number, r: any) => s + r.utilization, 0) / resources.length
@@ -2215,7 +2940,7 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
         <KPI icon="✓" label={t('feasibility', 'Feasibility')} value={fmtPctDirect(summary?.feasibilityRate)} color={
           (summary?.feasibilityRate ?? 0) >= 90 ? C.green : (summary?.feasibilityRate ?? 0) >= 70 ? C.yellow : C.red
         } sub={`${summary?.scheduledTasks ?? 0} of ${summary?.includedTasks ?? 0} ${t('tasks', 'tasks')}`
-          + (summary?.setupTasks ? ` + ${summary.setupTasks} ${t('setup', 'setup')}s` : '')} />
+          + (summary?.setupTasks && showAt(experienceLevel, 'intermediate') ? ` + ${summary.setupTasks} ${t('setup', 'setup')}s` : '')} />
         <KPI icon="⚡" label={`Avg ${t('utilization', 'Utilization')}`} value={fmtPctDirect(avgUtil)} color={
           avgUtil > 85 ? C.red : avgUtil > 60 ? C.yellow : C.green
         } sub={`${resources.length} ${t('resources', 'resources')}`} />
@@ -2225,12 +2950,20 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
           color={conflicts.length > 0 ? C.red : C.green} sub={`${t('task', 'task')} + ${t('material', 'material')}`} />
         <KPI icon="📦" label={`${t('shortage', 'Shortage')}s`} value={shortages} color={shortages > 0 ? C.red : C.green}
           sub={`of ${materials.length} ${t('materials', 'materials')}`} />
+        {showAt(experienceLevel, 'expert') && summary?.makespan != null && (
+          <KPI icon="⏱" label={t('makespan', 'Makespan')} value={fmtDuration(summary.makespan)} color={C.text}
+            sub={`${fmtDateShort(summary.horizonStart)} – ${fmtDateShort(summary.horizonEnd)}`} />
+        )}
       </div>
 
       {/* Gantt + Side panels */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16 }}>
         <Card title={`${t('schedule', 'Schedule')} Overview`}>
-          <GanttChart tasks={tasks} resources={resources} products={products} colors={colors} onTaskClick={onTaskClick} onResourceClick={onResourceClick} />
+          <GanttChart tasks={tasks} resources={resources} products={products} colors={colors}
+            onTaskClick={onTaskClick} onResourceClick={onResourceClick}
+            taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
+            orderModes={orderModes}
+            onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask} />
         </Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card title={`${t('resource', 'Resource')} ${t('utilization', 'Utilization')}`}>
@@ -2318,9 +3051,17 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
    TAB CONTENT — SCHEDULE
    ═══════════════════════════════════════════════════════════════ */
 
-function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResourceClick }: {
+function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResourceClick,
+  taskPins, taskExcludes, taskUnschedules, orderModes,
+  onPinTask, onExcludeTask, onUnscheduleTask, experienceLevel = 'novice' }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
+  taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
+  orderModes?: Record<string, string>;
+  onPinTask?: (key: string, pinned: boolean) => void;
+  onExcludeTask?: (key: string, excluded: boolean) => void;
+  onUnscheduleTask?: (key: string) => void;
+  experienceLevel?: ExperienceLevel;
 }) {
   const [sub, setSub] = useState('Gantt');
   return (
@@ -2328,11 +3069,18 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
       <SubTabs tabs={['Gantt', `${t('task', 'Task')} List`]} active={sub} onChange={setSub} />
       {sub === 'Gantt' ? (
         <Card>
-          <GanttChart tasks={tasks} resources={resources} products={products} colors={colors} onTaskClick={onTaskClick} onResourceClick={onResourceClick} />
+          <GanttChart tasks={tasks} resources={resources} products={products} colors={colors}
+            onTaskClick={onTaskClick} onResourceClick={onResourceClick}
+            taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
+            orderModes={orderModes}
+            onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask} />
         </Card>
       ) : (
         <Card>
-          <TaskTable tasks={tasks} products={products} colors={colors} onTaskClick={onTaskClick} />
+          <TaskTable tasks={tasks} products={products} colors={colors} onTaskClick={onTaskClick}
+            taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
+            orderModes={orderModes} experienceLevel={experienceLevel}
+            onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask} />
         </Card>
       )}
     </div>
@@ -2343,7 +3091,13 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
    TAB CONTENT — ORDERS
    ═══════════════════════════════════════════════════════════════ */
 
-function OrdersTab({ orders, products }: { orders: any[]; products: any[] }) {
+function OrdersTab({ orders, products, tasks, orderModes, taskPins, taskExcludes, onOrderModeChange }: {
+  orders: any[]; products: any[]; tasks?: any[];
+  orderModes?: Record<string, string>;
+  taskPins?: Record<string, boolean>;
+  taskExcludes?: Record<string, boolean>;
+  onOrderModeChange?: (key: string, mode: string) => void;
+}) {
   const totalDemand = orders.reduce((s: number, o: any) => s + (o.demandQty || 0), 0);
   const lateCount = orders.filter((o: any) => deriveOrderStatus(o) === 'late').length;
   const atRiskCount = orders.filter((o: any) => deriveOrderStatus(o) === 'at-risk').length;
@@ -2356,7 +3110,9 @@ function OrdersTab({ orders, products }: { orders: any[]; products: any[] }) {
         <KPI label={t('atRisk', 'At Risk')} value={atRiskCount} icon="⚠" color={atRiskCount > 0 ? C.yellow : C.green} />
       </div>
       <Card>
-        <OrderTable orders={orders} products={products} />
+        <OrderTable orders={orders} products={products} tasks={tasks}
+          orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}
+          onOrderModeChange={onOrderModeChange} />
       </Card>
     </div>
   );
@@ -2435,7 +3191,11 @@ function ConflictsTab({ tasks, resources, materials, onTaskClick }: {
    TAB CONTENT — MATERIALS
    ═══════════════════════════════════════════════════════════════ */
 
-function MaterialsTab({ materials }: { materials: any[] }) {
+function MaterialsTab({ materials, materialModes, onMaterialModeChange }: {
+  materials: any[];
+  materialModes?: Record<string, string>;
+  onMaterialModeChange?: (key: string, mode: string) => void;
+}) {
   const shortages = materials.filter((m: any) => deriveMaterialStatus(m) === 'shortage').length;
   const atRisk = materials.filter((m: any) => deriveMaterialStatus(m) === 'at-risk').length;
   const hasIncoming = materials.filter((m: any) => (m.incoming ?? 0) > 0).length;
@@ -2448,7 +3208,7 @@ function MaterialsTab({ materials }: { materials: any[] }) {
         <KPI label="Incoming" value={hasIncoming} icon="🚚" color={C.accent} />
       </div>
       <Card>
-        <MatTable materials={materials} />
+        <MatTable materials={materials} materialModes={materialModes} onMaterialModeChange={onMaterialModeChange} />
       </Card>
     </div>
   );
@@ -2458,40 +3218,64 @@ function MaterialsTab({ materials }: { materials: any[] }) {
    SETTINGS MODAL CONTENT
    ═══════════════════════════════════════════════════════════════ */
 
-function SettingsContent() {
-  const row: CSSProperties = {
-    display: 'flex', justifyContent: 'space-between', padding: '8px 0',
-    borderBottom: `1px solid ${C.border}`, fontSize: 13,
-  };
+function SettingsContent({ experienceLevel, onExperienceChange, stats }: {
+  experienceLevel: ExperienceLevel;
+  onExperienceChange: (level: ExperienceLevel) => void;
+  stats?: any;
+}) {
   return (
     <div style={{ fontFamily: FONT }}>
-      <div style={row}>
-        <span style={{ color: C.textMuted }}>Direction</span>
-        <span style={{ color: C.text, fontWeight: 600 }}>Forward</span>
+      <SectionLabel label="Experience Level" />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+        {EXPERIENCE_LEVELS.map(lvl => {
+          const isActive = lvl.value === experienceLevel;
+          return (
+            <div
+              key={lvl.value}
+              onClick={() => onExperienceChange(lvl.value)}
+              style={{
+                padding: '14px 16px', borderRadius: 10, cursor: 'pointer',
+                background: isActive ? C.accentGlow : C.bg,
+                border: isActive ? `2px solid ${C.accent}` : `1px solid ${C.border}`,
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = C.surface2; }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = isActive ? C.accentGlow : C.bg; }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 20 }}>{lvl.icon}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontWeight: 700, fontSize: 14, color: isActive ? C.accent : C.text,
+                  }}>
+                    {lvl.label}
+                  </div>
+                  <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{lvl.desc}</div>
+                </div>
+                {isActive && <span style={{ color: C.accent, fontSize: 16 }}>✓</span>}
+              </div>
+            </div>
+          );
+        })}
       </div>
-      <div style={row}>
-        <span style={{ color: C.textMuted }}>Max Lateness</span>
-        <span style={{ color: C.text, fontWeight: 600 }}>0 hours</span>
-      </div>
-      <div style={row}>
-        <span style={{ color: C.textMuted }}>Tasks Per Loop</span>
-        <span style={{ color: C.text, fontWeight: 600 }}>50</span>
-      </div>
-      <div style={row}>
-        <span style={{ color: C.textMuted }}>Top Tasks To Schedule</span>
-        <span style={{ color: C.text, fontWeight: 600 }}>2</span>
-      </div>
-      <div style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 12, color: C.textMuted, fontWeight: 600, marginBottom: 8 }}>Scoring Rules</div>
-        <div style={{ ...row, borderBottom: 'none' }}>
-          <span style={{ color: C.textMuted }}>EarliestStartTimeRule</span>
-          <span style={{ color: C.text }}>Weight: 1.0 · Minimize</span>
-        </div>
-        <div style={{ ...row, borderBottom: 'none' }}>
-          <span style={{ color: C.textMuted }}>ResourceUtilizationRule</span>
-          <span style={{ color: C.text }}>Weight: 0.5 · Maximize</span>
-        </div>
-      </div>
+
+      {/* Engine stats (expert only) */}
+      {showAt(experienceLevel, 'expert') && stats && (
+        <>
+          <SectionLabel label="Solver Statistics" />
+          <div style={{ fontSize: 13 }}>
+            {typeof stats === 'object' && Object.entries(stats).map(([k, v]) => (
+              <div key={k} style={{
+                display: 'flex', justifyContent: 'space-between', padding: '4px 0',
+                borderBottom: `1px solid ${C.border}`,
+              }}>
+                <span style={{ color: C.textMuted }}>{k}</span>
+                <span style={{ color: C.text, fontWeight: 500 }}>{String(v)}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -2550,30 +3334,36 @@ export default function App() {
   const [products, setProducts] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('Overview');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>(() => {
+    const saved = localStorage.getItem('ctp-experience-level');
+    return (saved === 'novice' || saved === 'intermediate' || saved === 'expert') ? saved : 'novice';
+  });
   const [userOpen, setUserOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [selectedResource, setSelectedResource] = useState<any>(null);
   const [colors, setColors] = useState<any>(null);
 
-  // Solve preview state
+  // Solve preview & override state
   const [showSolvePreview, setShowSolvePreview] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [orderModes, _setOrderModes] = useState<Record<string, string>>({});
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [taskPins, _setTaskPins] = useState<Record<string, boolean>>({});
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [taskExcludes, _setTaskExcludes] = useState<Record<string, boolean>>({});
+  const [orderModes, setOrderModes] = useState<Record<string, string>>({});
+  const [taskPins, setTaskPins] = useState<Record<string, boolean>>({});
+  const [taskExcludes, setTaskExcludes] = useState<Record<string, boolean>>({});
   const [taskUnschedules, setTaskUnschedules] = useState<Set<string>>(new Set());
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [materialModeOverrides, _setMaterialModeOverrides] = useState<Record<string, string>>({});
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [resourceModeOverrides, _setResourceModeOverrides] = useState<Record<string, string>>({});
+  const [materialModeOverrides, setMaterialModeOverrides] = useState<Record<string, string>>({});
+  const [resourceModeOverrides, setResourceModeOverrides] = useState<Record<string, string>>({});
+  const [solverStrategy, setSolverStrategy] = useState('balanced');
+  const [strategyOptions, setStrategyOptions] = useState(DEFAULT_STRATEGIES);
   const [solveStale, setSolveStale] = useState(false);
   // Previous state snapshots for delta computation
   const [prevOrderModes, setPrevOrderModes] = useState<Record<string, string>>({});
   const [prevTaskPins, setPrevTaskPins] = useState<Record<string, boolean>>({});
   const [prevTaskExcludes, setPrevTaskExcludes] = useState<Record<string, boolean>>({});
   const [prevMaterialModes, setPrevMaterialModes] = useState<Record<string, string>>({});
+
+  const handleExperienceChange = useCallback((level: ExperienceLevel) => {
+    setExperienceLevel(level);
+    localStorage.setItem('ctp-experience-level', level);
+  }, []);
 
   const tasks = solveResult?.tasks || [];
   const resources = solveResult?.resourceUtilization || [];
@@ -2584,22 +3374,29 @@ export default function App() {
   const loadData = useCallback(async () => {
     try {
       setError(null);
-      const [result, prods, colorsData, termData, localeData] = await Promise.all([
-        api('/ctp/solve-and-sync', { method: 'POST' }),
+      const [result, prods, colorsData, termData, localeData, strategiesData] = await Promise.all([
+        api('/ctp/solve-and-sync', {
+          method: 'POST',
+          body: JSON.stringify({ detailLevel: experienceLevel }),
+        }),
         api('/data/products'),
         api('/data/colors').catch(() => null),
         api('/data/terminology').catch(() => ({})),
         api('/data/locale').catch(() => ({})),
+        api('/data/strategies').catch(() => null),
       ]);
       setSolveResult(result);
       setProducts(prods);
       setColors(result.colors || colorsData || {});
       _terminology = result.terminology || termData || {};
       _locale = result.locale || localeData || {};
+      if (strategiesData && Object.keys(strategiesData).length > 0) {
+        setStrategyOptions(strategiesData);
+      }
     } catch (e: any) {
       setError(e.message || 'Failed to load data');
     }
-  }, []);
+  }, [experienceLevel]);
 
   const handleSolveConfirm = useCallback(async () => {
     setShowSolvePreview(false);
@@ -2608,7 +3405,36 @@ export default function App() {
     setSelectedResource(null);
     try {
       setError(null);
-      const result = await api('/ctp/solve-and-sync', { method: 'POST' });
+
+      // Build request body with all overrides
+      const body: any = {};
+      const activeOrderModes = Object.fromEntries(
+        Object.entries(orderModes).filter(([, v]) => v !== 'INCLUDE'),
+      );
+      if (Object.keys(activeOrderModes).length > 0) body.orderModes = activeOrderModes;
+
+      const activePins = Object.fromEntries(
+        Object.entries(taskPins).filter(([, v]) => v),
+      );
+      if (Object.keys(activePins).length > 0) body.taskPins = activePins;
+
+      const activeExcludes = Object.fromEntries(
+        Object.entries(taskExcludes).filter(([, v]) => v),
+      );
+      if (Object.keys(activeExcludes).length > 0) body.taskExcludes = activeExcludes;
+
+      if (taskUnschedules.size > 0) body.taskUnschedules = Array.from(taskUnschedules);
+
+      if (Object.keys(resourceModeOverrides).length > 0) body.resourceModes = resourceModeOverrides;
+      if (Object.keys(materialModeOverrides).length > 0) body.materialModes = materialModeOverrides;
+
+      if (solverStrategy !== 'balanced') body.strategy = solverStrategy;
+      body.detailLevel = experienceLevel;
+
+      const result = await api('/ctp/solve', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
       setSolveResult(result);
       setSolveStale(false);
 
@@ -2629,7 +3455,7 @@ export default function App() {
     } finally {
       setSolving(false);
     }
-  }, [orderModes, taskPins, taskExcludes, materialModeOverrides]);
+  }, [orderModes, taskPins, taskExcludes, taskUnschedules, materialModeOverrides, resourceModeOverrides, solverStrategy, experienceLevel]);
 
   const handleSolveCancel = useCallback(() => {
     setShowSolvePreview(false);
@@ -2650,6 +3476,36 @@ export default function App() {
     setSelectedTask(null);
     setSelectedResource(r);
   }, []);
+
+  // Direct API actions (immediate server-side, no solve)
+  const handleApiUnschedule = useCallback(async (taskKey: string) => {
+    try {
+      setError(null);
+      await api(`/ctp/tasks/${encodeURIComponent(taskKey)}/unschedule`, { method: 'POST' });
+      const result = await api('/ctp/results');
+      if (result.status !== 'not_solved') setSolveResult(result);
+    } catch (e: any) {
+      setError(e.message || 'Unschedule failed');
+    }
+  }, []);
+
+  const handleApiPin = useCallback(async (taskKey: string, pinned: boolean) => {
+    try {
+      setError(null);
+      await api(`/ctp/tasks/${encodeURIComponent(taskKey)}/pin`, {
+        method: 'PATCH',
+        body: JSON.stringify({ pinned }),
+      });
+      const result = await api('/ctp/results');
+      if (result.status !== 'not_solved') setSolveResult(result);
+    } catch (e: any) {
+      setError(e.message || 'Pin failed');
+    }
+  }, []);
+
+  // Expose API handlers for direct task actions (suppress unused until wired to more UI)
+  void handleApiUnschedule;
+  void handleApiPin;
 
   // Initial load
   useEffect(() => {
@@ -2756,12 +3612,18 @@ export default function App() {
           <button
             onClick={() => setSettingsOpen(true)}
             style={{
-              background: 'none', border: 'none', color: C.textMuted, fontSize: 18,
-              cursor: 'pointer', padding: '4px 6px', lineHeight: 1,
+              background: 'none', border: 'none', color: C.textMuted, fontSize: 12,
+              cursor: 'pointer', padding: '4px 8px', lineHeight: 1, fontFamily: FONT,
+              display: 'flex', alignItems: 'center', gap: 4,
             }}
-            title="Settings"
+            title="Settings — change experience level"
           >
-            ⚙
+            <span style={{ fontSize: 14 }}>
+              {EXPERIENCE_LEVELS.find(l => l.value === experienceLevel)?.icon || '⚙'}
+            </span>
+            <span style={{ fontWeight: 600 }}>
+              {EXPERIENCE_LEVELS.find(l => l.value === experienceLevel)?.label || 'Settings'}
+            </span>
           </button>
           <div style={{
             width: 8, height: 8, borderRadius: '50%',
@@ -2835,26 +3697,128 @@ export default function App() {
         </div>
       )}
 
+      {/* Stale override banner */}
+      {solveStale && (
+        <div style={{
+          margin: '0 24px', padding: '8px 16px', borderRadius: 8,
+          background: C.yellowDim, borderLeft: `3px solid ${C.yellow}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          fontFamily: FONT, fontSize: 13, color: C.text,
+        }}>
+          <span>
+            ⚠ Changes pending
+            {(() => {
+              const parts: string[] = [];
+              const om = Object.values(orderModes).filter(v => v !== 'INCLUDE').length;
+              if (om > 0) parts.push(`${om} order mode${om > 1 ? 's' : ''}`);
+              const tp = Object.values(taskPins).filter(Boolean).length;
+              if (tp > 0) parts.push(`${tp} pinned`);
+              const te = Object.values(taskExcludes).filter(Boolean).length;
+              if (te > 0) parts.push(`${te} excluded`);
+              const tu = taskUnschedules.size;
+              if (tu > 0) parts.push(`${tu} unschedule`);
+              const mm = Object.keys(materialModeOverrides).length;
+              if (mm > 0) parts.push(`${mm} material mode${mm > 1 ? 's' : ''}`);
+              const rm = Object.keys(resourceModeOverrides).length;
+              if (rm > 0) parts.push(`${rm} resource mode${rm > 1 ? 's' : ''}`);
+              return parts.length > 0 ? ` · ${parts.join(' · ')}` : '';
+            })()}
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => {
+                setOrderModes({});
+                setTaskPins({});
+                setTaskExcludes({});
+                setTaskUnschedules(new Set());
+                setMaterialModeOverrides({});
+                setResourceModeOverrides({});
+                setSolveStale(false);
+              }}
+              style={{
+                background: 'none', color: C.textMuted, border: `1px solid ${C.border}`, borderRadius: 6,
+                padding: '5px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                fontFamily: FONT, whiteSpace: 'nowrap',
+              }}
+            >
+              Reset
+            </button>
+            <button
+              onClick={() => setShowSolvePreview(true)}
+              style={{
+                background: C.yellow, color: C.bg, border: 'none', borderRadius: 6,
+                padding: '5px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                fontFamily: FONT, whiteSpace: 'nowrap',
+              }}
+            >
+              Review & Solve
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Tab content */}
       <main style={{ padding: 24 }}>
         {activeTab === 'Overview' && (
           <OverviewTab summary={summary} tasks={tasks} resources={resources}
             orders={orders} materials={materials} products={products} colors={colors} onTabChange={setActiveTab}
-            onTaskClick={handleTaskClick} onResourceClick={handleResourceClick} />
+            onTaskClick={handleTaskClick} onResourceClick={handleResourceClick}
+            experienceLevel={experienceLevel}
+            taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
+            orderModes={orderModes}
+            onPinTask={(key, pinned) => {
+              setTaskPins(prev => ({ ...prev, [key]: pinned }));
+              if (pinned) setTaskExcludes(prev => ({ ...prev, [key]: false }));
+              setSolveStale(true);
+            }}
+            onExcludeTask={(key, excluded) => {
+              setTaskExcludes(prev => ({ ...prev, [key]: excluded }));
+              if (excluded) setTaskPins(prev => ({ ...prev, [key]: false }));
+              setSolveStale(true);
+            }}
+            onUnscheduleTask={(key) => {
+              setTaskUnschedules(prev => new Set(prev).add(key));
+              setSolveStale(true);
+            }} />
         )}
         {activeTab === 'Schedule' && (
           <ScheduleTab tasks={tasks} resources={resources} products={products} colors={colors}
-            onTaskClick={handleTaskClick} onResourceClick={handleResourceClick} />
+            onTaskClick={handleTaskClick} onResourceClick={handleResourceClick}
+            taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
+            orderModes={orderModes}
+            experienceLevel={experienceLevel}
+            onPinTask={(key, pinned) => {
+              setTaskPins(prev => ({ ...prev, [key]: pinned }));
+              if (pinned) setTaskExcludes(prev => ({ ...prev, [key]: false }));
+              setSolveStale(true);
+            }}
+            onExcludeTask={(key, excluded) => {
+              setTaskExcludes(prev => ({ ...prev, [key]: excluded }));
+              if (excluded) setTaskPins(prev => ({ ...prev, [key]: false }));
+              setSolveStale(true);
+            }}
+            onUnscheduleTask={(key) => {
+              setTaskUnschedules(prev => new Set(prev).add(key));
+              setSolveStale(true);
+            }} />
         )}
-        {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} />}
+        {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} tasks={tasks}
+          orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}
+          onOrderModeChange={(key, mode) => { setOrderModes(prev => ({ ...prev, [key]: mode })); setSolveStale(true); }} />}
         {activeTab === 'Conflicts' && <ConflictsTab tasks={tasks} resources={resources} materials={materials}
           onTaskClick={handleTaskClickByKey} />}
-        {activeTab === 'Materials' && <MaterialsTab materials={materials} />}
+        {activeTab === 'Materials' && <MaterialsTab materials={materials}
+          materialModes={materialModeOverrides}
+          onMaterialModeChange={(key, mode) => { setMaterialModeOverrides(prev => ({ ...prev, [key]: mode })); setSolveStale(true); }} />}
       </main>
 
       {/* Modals */}
-      <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Engine Settings">
-        <SettingsContent />
+      <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Settings">
+        <SettingsContent
+          experienceLevel={experienceLevel}
+          onExperienceChange={handleExperienceChange}
+          stats={solveResult?.stats}
+        />
       </Modal>
       <Modal open={userOpen} onClose={() => setUserOpen(false)} title="User Profile">
         <UserProfileContent />
@@ -2869,6 +3833,33 @@ export default function App() {
           colors={colors}
           onClose={() => setSelectedTask(null)}
           onResourceClick={handleResourceClick}
+          taskPins={taskPins}
+          taskExcludes={taskExcludes}
+          taskUnschedules={taskUnschedules}
+          orderModes={orderModes}
+          onPinTask={(key, pinned) => {
+            setTaskPins(prev => ({ ...prev, [key]: pinned }));
+            if (pinned) setTaskExcludes(prev => ({ ...prev, [key]: false }));
+            setSolveStale(true);
+          }}
+          onExcludeTask={(key, excluded) => {
+            setTaskExcludes(prev => ({ ...prev, [key]: excluded }));
+            if (excluded) setTaskPins(prev => ({ ...prev, [key]: false }));
+            setSolveStale(true);
+          }}
+          onUnscheduleTask={(key) => {
+            setTaskUnschedules(prev => new Set(prev).add(key));
+            setSolveStale(true);
+          }}
+          onCancelUnschedule={(key) => {
+            setTaskUnschedules(prev => { const s = new Set(prev); s.delete(key); return s; });
+          }}
+          resourceModeOverrides={resourceModeOverrides}
+          onResourceModeChange={(compoundKey, mode) => {
+            setResourceModeOverrides(prev => ({ ...prev, [compoundKey]: mode }));
+            setSolveStale(true);
+          }}
+          experienceLevel={experienceLevel}
         />
       )}
       {selectedResource && (
@@ -2898,6 +3889,9 @@ export default function App() {
           previousTaskPins={prevTaskPins}
           previousTaskExcludes={prevTaskExcludes}
           previousMaterialModes={prevMaterialModes}
+          strategy={solverStrategy}
+          onStrategyChange={setSolverStrategy}
+          strategyOptions={strategyOptions}
           onConfirm={handleSolveConfirm}
           onCancel={handleSolveCancel}
         />

@@ -92,6 +92,10 @@ export class ConfigService {
     return this.store.getLocale();
   }
 
+  getStrategies(): any {
+    return this.store.getStrategies();
+  }
+
   reloadConfig(): void {
     this.store.reload();
   }

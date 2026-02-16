@@ -60,7 +60,7 @@ export class ScheduleEngine implements IScheduleEngine {
   }
 
   public unschedule(landscape: ILandscape, task: CTPTask): void {
-   
+
     console.log("UNSCHEDULED " + task.name);
     task.scheduled?.debug(true);
 
@@ -68,6 +68,7 @@ export class ScheduleEngine implements IScheduleEngine {
     task.scheduled = null;
     if (task.capacityResources) {
       task.capacityResources.forEach((res) => {
+        if (res.isIgnored()) { res.scheduledResource = ""; return; }
         const r = this.findResource(res.scheduledResource, landscape);
         if (r) this.removeTaskFromResource(r, task);
         res.scheduledResource = "";
@@ -75,12 +76,13 @@ export class ScheduleEngine implements IScheduleEngine {
     }
     if (task.materialsResources) {
       task.materialsResources.forEach((res) => {
+        if (res.isIgnored()) { res.scheduledResource = ""; return; }
         const r = this.findResource(res.scheduledResource, landscape);
         if (r) this.removeTaskFromResource(r, task);
         res.scheduledResource = "";
       });
     }
-    
+
   }
 
   

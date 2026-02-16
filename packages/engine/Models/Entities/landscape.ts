@@ -1,9 +1,10 @@
 "strict";
 import { DateTime } from "luxon";
 import { CTPInterval } from "../Core/window";
+import { CTPResourceModeConstants, CTPTaskStateConstants } from "../Core/constants";
 import { CTPAppSettings, IAppSettings } from "./appsettings";
 import { CTPHorizon } from "./horizon";
-import { CTPTasks } from "./task";
+import { CTPTask, CTPTasks } from "./task";
 import { CTPResource, CTPResources } from "./resource";
 import { CTPProcess, CTPProcesses } from "./process";
 import { CTPStateChanges } from "./statechange";
@@ -65,6 +66,220 @@ export class SchedulingLandscape implements ILandscape {
 
       }
   }
+  /**
+   * Remove all assignments for a task from a resource's assignment list.
+   */
+  private removeTaskFromResource(resource: CTPResource, task: CTPTask): void {
+    if (!resource.assignments) return;
+    let node = resource.assignments.head;
+    while (node) {
+      if (node.data && node.data.name === task.key) {
+        const toDelete = node;
+        node = node.next;
+        resource.assignments.deleteNode(toDelete);
+      } else {
+        node = node.next;
+      }
+    }
+    resource.recompute = true;
+  }
+
+  /**
+   * Unschedule a single task: clear its assignment, restore resource availability.
+   * Returns true if the task was successfully unscheduled.
+   */
+  public unscheduleTask(taskKey: string, resetScore: boolean = true): boolean {
+    const task = this.tasks?.getEntity(taskKey);
+    if (!task) return false;
+    if (task.state !== CTPTaskStateConstants.SCHEDULED) return false;
+    if (task.pinned) return false;
+
+    // Remove assignments from capacity resources
+    if (task.capacityResources) {
+      task.capacityResources.forEach(tr => {
+        if (tr.isIgnored()) return;
+        const resKey = tr.scheduledResource || tr.resource;
+        if (!resKey) return;
+        const resource = this.resources?.getEntity(resKey);
+        if (resource) this.removeTaskFromResource(resource, task);
+      });
+    }
+
+    // Remove assignments from material resources
+    if (task.materialsResources) {
+      task.materialsResources.forEach(tr => {
+        const resKey = tr.scheduledResource || tr.resource;
+        if (!resKey) return;
+        const resource = this.resources?.getEntity(resKey);
+        if (resource) this.removeTaskFromResource(resource, task);
+      });
+    }
+
+    // Clear task state
+    task.state = CTPTaskStateConstants.NOT_SCHEDULED;
+    task.scheduled = null;
+    task.feasible = null;
+    task.processed = false;
+    if (resetScore) task.resetScore();
+
+    // Clear scheduled resource on each task resource
+    if (task.capacityResources) {
+      task.capacityResources.forEach(tr => { tr.scheduledResource = undefined; });
+    }
+    if (task.materialsResources) {
+      task.materialsResources.forEach(tr => { tr.scheduledResource = undefined; });
+    }
+
+    return true;
+  }
+
+  /**
+   * Unschedule all tasks for a given order.
+   * Returns the count of tasks unscheduled.
+   */
+  public unscheduleOrder(orderKey: string): number {
+    let count = 0;
+    this.tasks?.forEach(task => {
+      if (task.linkId?.name === orderKey) {
+        if (this.unscheduleTask(task.key)) count++;
+      }
+    });
+    return count;
+  }
+
+  /**
+   * Apply order modes: INCLUDE / EXCLUDE / LOCKED
+   */
+  public applyOrderModes(orderModes: Record<string, string>): void {
+    for (const [orderKey, mode] of Object.entries(orderModes)) {
+      this.tasks?.forEach(task => {
+        const taskOrder = task.linkId?.name;
+        if (taskOrder !== orderKey) return;
+
+        switch (mode) {
+          case 'EXCLUDE':
+            task.includeInSolve = false;
+            if (task.state === CTPTaskStateConstants.SCHEDULED) {
+              this.unscheduleTask(task.key, false);
+            }
+            break;
+          case 'LOCKED':
+            task.includeInSolve = false;
+            task.pinned = true;
+            break;
+          case 'INCLUDE':
+          default:
+            task.includeInSolve = true;
+            break;
+        }
+      });
+    }
+  }
+
+  /**
+   * Apply task-level pins
+   */
+  public applyTaskPins(taskPins: Record<string, boolean>): void {
+    for (const [taskKey, pinned] of Object.entries(taskPins)) {
+      const task = this.tasks?.getEntity(taskKey);
+      if (task) {
+        task.pinned = pinned;
+        if (pinned) task.includeInSolve = false;
+      }
+    }
+  }
+
+  /**
+   * Apply task-level excludes
+   */
+  public applyTaskExcludes(taskExcludes: Record<string, boolean>): void {
+    for (const [taskKey, excluded] of Object.entries(taskExcludes)) {
+      const task = this.tasks?.getEntity(taskKey);
+      if (task) {
+        task.includeInSolve = !excluded;
+        if (excluded && task.state === CTPTaskStateConstants.SCHEDULED) {
+          this.unscheduleTask(taskKey, false);
+        }
+      }
+    }
+  }
+
+  /**
+   * Apply resource mode overrides on specific task-resource relationships.
+   * Keys are "taskKey:resourceKey:type" format.
+   */
+  public applyResourceModes(modeOverrides: Record<string, string>): void {
+    for (const [compoundKey, newMode] of Object.entries(modeOverrides)) {
+      const parts = compoundKey.split(':');
+      if (parts.length < 3) continue;
+
+      const [taskKey, resourceKey, type] = parts;
+      const task = this.tasks?.getEntity(taskKey);
+      if (!task) continue;
+
+      const resourceList = type === 'capacity' ? task.capacityResources : task.materialsResources;
+      if (!resourceList) continue;
+
+      resourceList.forEach(tr => {
+        if (tr.resource === resourceKey || tr.scheduledResource === resourceKey) {
+          tr.mode = newMode;
+        }
+      });
+    }
+  }
+
+  /**
+   * Constraint propagation — tighten task windows based on predecessor relationships.
+   * Call after applying overrides, before running the solver.
+   * Returns the number of windows tightened.
+   */
+  public propagateConstraints(): number {
+    let changed = true;
+    let iterations = 0;
+    let tightenCount = 0;
+    const maxIterations = 100;
+
+    while (changed && iterations < maxIterations) {
+      changed = false;
+      iterations++;
+
+      this.tasks?.forEach(task => {
+        if (!task.window || !task.includeInSolve) return;
+        if (!task.linkId?.prevLink) return;
+
+        const pred = this.tasks?.getEntity(task.linkId.prevLink);
+        if (!pred || !pred.window || !pred.duration) return;
+
+        // Forward: tighten successor's earliest start
+        const earliestStart = pred.window.startW + pred.duration.duration();
+        if (earliestStart > task.window.startW) {
+          task.window.startW = earliestStart;
+          changed = true;
+          tightenCount++;
+        }
+
+        // Backward: tighten predecessor's latest end
+        if (task.duration) {
+          const latestEnd = task.window.endW - task.duration.duration();
+          if (latestEnd < pred.window.endW) {
+            pred.window.endW = latestEnd;
+            changed = true;
+            tightenCount++;
+          }
+        }
+
+        // Detect collapsed window — infeasible
+        if (task.window.startW >= task.window.endW) {
+          task.addError('ConstraintPropagation',
+            `Window collapsed: earliest start ${task.window.startW} >= latest end ${task.window.endW}`);
+          task.includeInSolve = false;
+        }
+      });
+    }
+
+    return tightenCount;
+  }
+
   constructor(s?: DateTime, e?: DateTime, a?: CTPAppSettings) {
     this.horizon = new CTPHorizon(s, e);
     this.tasks = new CTPTasks();

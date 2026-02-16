@@ -51,4 +51,11 @@ export class DataController {
   getLocale() {
     return this.dataService.getLocale();
   }
+
+  @Get('strategies')
+  @ApiOperation({ summary: 'Get solver strategy descriptions' })
+  @ApiResponse({ status: 200, description: 'Strategy config' })
+  getStrategies() {
+    return this.dataService.getStrategies();
+  }
 }

@@ -183,6 +183,14 @@ export class FileConfigStore implements IConfigStore {
     );
   }
 
+  // ── Strategies ───────────────────────────────────────────────────────
+
+  getStrategies(): any {
+    return this.getCached('strategies', () =>
+      this.readJsonFile<any>(path.join(this.tenantDir, 'strategies.json')) ?? {},
+    );
+  }
+
   // ── Entity data ─────────────────────────────────────────────────────
 
   getResources(): IResourceData[] {

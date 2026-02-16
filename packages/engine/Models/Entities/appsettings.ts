@@ -9,7 +9,9 @@ export interface IAppSettings {
   resetUageAfterProcessChange: boolean;
   scheduleDirection: number,
   requiresPreds: boolean;
-  
+  solverStrategy: string;
+  maxBacktrackAttempts: number;
+  topNContexts: number;
 }
 
 export class CTPAppSettings implements IAppSettings {
@@ -20,6 +22,9 @@ export class CTPAppSettings implements IAppSettings {
   public resetUageAfterProcessChange: boolean = true;
   public scheduleDirection: number = CTPScheduleDirectionConstants.FORWARD;
   public requiresPreds: boolean = false;
+  public solverStrategy: string = 'balanced';
+  public maxBacktrackAttempts: number = 3;
+  public topNContexts: number = 5;
 }
 
 export interface ITimingSetting {

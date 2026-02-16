@@ -6,6 +6,8 @@ import {
   CTPDateTime,
   CTPTaskStateConstants,
   CTPTaskTypeConstants,
+  CTPResourceModeConstants,
+  SolveStatistics,
   List,
   CTPTask,
   SchedulingLandscape,
@@ -27,11 +29,29 @@ export interface CTPSolveResult {
     horizonEnd: string;
     makespan: number;
     setupTasks?: number;
+    pinnedTasks?: number;
+    excludedTasks?: number;
+  };
+  stats?: {
+    strategy: string;
+    totalTimeMs: number;
+    propagationTimeMs?: number;
+    windowsTightened?: number;
+    backtrackAttempts?: number;
+    backtrackSuccesses?: number;
+    bumpsPerformed?: number;
+    iterations?: number;
+    bestIterationFound?: number;
+    contextsEvaluated?: number;
+    contextsPerTask?: number;
+    totalScore?: number;
+    scoreBreakdown?: Record<string, number>;
   };
   tasks: any[];
   resourceUtilization: any[];
   orders: any[];
   materials: any[];
+  products?: any[];
   colors?: any;
   terminology?: Record<string, string>;
   locale?: any;
@@ -46,7 +66,13 @@ export class CTPService {
     private readonly configService: ConfigService,
   ) {}
 
+  // ═══════════════════════════════════════
+  // Endpoint 1: Solve with Overrides
+  // ═══════════════════════════════════════
+
   solve(request?: SolveRequestDto): CTPSolveResult {
+    const startTime = Date.now();
+
     // Reload fresh landscape before each solve
     this.stateService.syncFromConfig();
 
@@ -55,6 +81,49 @@ export class CTPService {
       throw new HttpException('State not loaded.', HttpStatus.BAD_REQUEST);
     }
 
+    const strategy = request?.strategy || landscape.appSettings?.solverStrategy || 'balanced';
+    const stats = new SolveStatistics(strategy);
+
+    // ─── 1. Apply overrides in order ───
+
+    // 1a. Unschedules first — free up capacity
+    if (request?.taskUnschedules) {
+      for (const taskKey of request.taskUnschedules) {
+        landscape.unscheduleTask(taskKey, true);
+      }
+    }
+
+    // 1b. Order modes (INCLUDE / EXCLUDE / LOCKED)
+    if (request?.orderModes) {
+      landscape.applyOrderModes(request.orderModes);
+    }
+
+    // 1c. Task-level pins
+    if (request?.taskPins) {
+      landscape.applyTaskPins(request.taskPins);
+    }
+
+    // 1d. Task-level excludes
+    if (request?.taskExcludes) {
+      landscape.applyTaskExcludes(request.taskExcludes);
+    }
+
+    // 1e. Resource mode overrides
+    if (request?.resourceModes) {
+      landscape.applyResourceModes(request.resourceModes);
+    }
+
+    // 1f. Material mode overrides (applies to all task-material relationships)
+    if (request?.materialModes) {
+      this.applyMaterialModes(landscape, request.materialModes);
+    }
+
+    // ─── 2. Constraint propagation ───
+    const propStart = Date.now();
+    stats.windowsTightened = landscape.propagateConstraints();
+    stats.propagationTimeMs = Date.now() - propStart;
+
+    // ─── 3. Build scoring ───
     const scoringConfig = this.configService.getScoring();
     if (!scoringConfig) {
       throw new HttpException(
@@ -63,7 +132,6 @@ export class CTPService {
       );
     }
 
-    // Build scoring
     const scoring = new CTPScoring(scoringConfig.name, scoringConfig.key);
     for (const rule of scoringConfig.rules) {
       const config = new CTPScoringConfiguration(
@@ -76,7 +144,7 @@ export class CTPService {
       scoring.addConfig(config);
     }
 
-    // Create and initialize scheduler
+    // ─── 4. Run solver ───
     const scheduler = new CTPScheduler();
     scheduler.initLandscape(
       landscape.horizon,
@@ -88,22 +156,308 @@ export class CTPService {
     scheduler.initSettings(landscape.appSettings);
     scheduler.initScoring(scoring);
 
-    // Build task list based on filter
     const taskList = this.buildTaskList(landscape, request);
 
-    // Run scheduler
     if (taskList.length > 0) {
       scheduler.schedule(taskList);
     }
 
-    // Extract results
-    const result = this.extractResults(landscape, taskList);
+    // ─── 5. Collect stats ───
+    landscape.tasks?.forEach(task => {
+      if (task.pinned) { stats.tasksPinned++; return; }
+      if (!task.includeInSolve) { stats.tasksExcluded++; return; }
+      stats.tasksProcessed++;
+      if (task.state === CTPTaskStateConstants.SCHEDULED) {
+        stats.tasksFeasible++;
+      } else {
+        stats.tasksInfeasible++;
+      }
+    });
+
+    stats.totalTimeMs = Date.now() - startTime;
+    stats.finalize();
+
+    // ─── 6. Build response ───
+    const detailLevel = request?.detailLevel || 'novice';
+    const result = this.extractResults(landscape, taskList, stats, detailLevel);
     this.lastResult = result;
     return result;
   }
 
   getLastResult(): CTPSolveResult | null {
     return this.lastResult;
+  }
+
+  // ═══════════════════════════════════════
+  // Endpoint 2: Unschedule Single Task
+  // ═══════════════════════════════════════
+
+  unscheduleTask(taskKey: string, resetScore: boolean = true): any {
+    const landscape = this.ensureLandscape();
+    const task = landscape.tasks?.getEntity(taskKey);
+
+    if (!task) {
+      throw new HttpException(`Task ${taskKey} not found`, HttpStatus.NOT_FOUND);
+    }
+    if (task.pinned) {
+      throw new HttpException(`Task ${taskKey} is pinned and cannot be unscheduled`, HttpStatus.CONFLICT);
+    }
+    if (task.state !== CTPTaskStateConstants.SCHEDULED) {
+      throw new HttpException(`Task ${taskKey} is not currently scheduled`, HttpStatus.BAD_REQUEST);
+    }
+
+    const previousStart = task.scheduled?.startW;
+    const previousEnd = task.scheduled?.endW;
+    const previousResources = task.capacityResources
+      ?.map(tr => tr.scheduledResource)
+      .filter(Boolean) as string[] || [];
+
+    const success = landscape.unscheduleTask(taskKey, resetScore);
+
+    if (!success) {
+      throw new HttpException(`Failed to unschedule task ${taskKey}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    return {
+      taskKey,
+      success: true,
+      previousSchedule: {
+        start: previousStart ? CTPDateTime.toDateTime(previousStart).toISO() : null,
+        end: previousEnd ? CTPDateTime.toDateTime(previousEnd).toISO() : null,
+        resources: previousResources,
+      },
+      affectedResources: this.getAffectedResourceUtils(landscape, previousResources),
+    };
+  }
+
+  // ═══════════════════════════════════════
+  // Endpoint 3: Schedule Single Task
+  // ═══════════════════════════════════════
+
+  scheduleTask(taskKey: string, request?: any): any {
+    const landscape = this.ensureLandscape();
+    const task = landscape.tasks?.getEntity(taskKey);
+
+    if (!task) {
+      throw new HttpException(`Task ${taskKey} not found`, HttpStatus.NOT_FOUND);
+    }
+    if (task.state === CTPTaskStateConstants.SCHEDULED) {
+      throw new HttpException(`Task ${taskKey} is already scheduled. Unschedule first.`, HttpStatus.BAD_REQUEST);
+    }
+    if (task.pinned) {
+      throw new HttpException(`Task ${taskKey} is pinned`, HttpStatus.BAD_REQUEST);
+    }
+
+    // Propagate constraints
+    landscape.propagateConstraints();
+
+    // Build scoring
+    const scoringConfig = this.configService.getScoring();
+    if (!scoringConfig) {
+      throw new HttpException('Scoring configuration not found.', HttpStatus.BAD_REQUEST);
+    }
+    const scoring = new CTPScoring(scoringConfig.name, scoringConfig.key);
+    for (const rule of scoringConfig.rules) {
+      const config = new CTPScoringConfiguration(rule.ruleName, rule.weight, rule.objective);
+      config.includeInSolve = rule.includeInSolve;
+      config.penaltyFactor = rule.penaltyFactor;
+      scoring.addConfig(config);
+    }
+
+    // Use existing scheduler to solve just this task
+    const scheduler = new CTPScheduler();
+    scheduler.initLandscape(
+      landscape.horizon, landscape.tasks, landscape.resources,
+      landscape.stateChanges, landscape.processes,
+    );
+    scheduler.initSettings(landscape.appSettings);
+    scheduler.initScoring(scoring);
+
+    const taskList = new List<CTPTask>();
+    taskList.add(task);
+    scheduler.schedule(taskList);
+
+    const isScheduled = task.state === CTPTaskStateConstants.SCHEDULED;
+
+    return {
+      taskKey,
+      success: isScheduled,
+      scheduledStart: task.scheduled ? CTPDateTime.toDateTime(task.scheduled.startW).toISO() : null,
+      scheduledEnd: task.scheduled ? CTPDateTime.toDateTime(task.scheduled.endW).toISO() : null,
+      assignedResources: task.capacityResources?.map(tr => ({
+        resourceKey: tr.scheduledResource || tr.resource || '',
+        mode: tr.mode,
+      })) || [],
+      blendedScore: task.score !== Number.MAX_VALUE ? task.score : null,
+      errors: task.errors.map(e => ({ agent: e.agent, reason: e.reason })),
+    };
+  }
+
+  // ═══════════════════════════════════════
+  // Endpoint 4: Update Resource Mode
+  // ═══════════════════════════════════════
+
+  updateResourceMode(taskKey: string, resourceKey: string, mode: string, type: string): any {
+    const landscape = this.ensureLandscape();
+    const task = landscape.tasks?.getEntity(taskKey);
+    if (!task) {
+      throw new HttpException(`Task ${taskKey} not found`, HttpStatus.NOT_FOUND);
+    }
+
+    const resourceList = type === 'capacity' ? task.capacityResources : task.materialsResources;
+    if (!resourceList) {
+      throw new HttpException(`No ${type} resources on task ${taskKey}`, HttpStatus.NOT_FOUND);
+    }
+
+    let found = false;
+    let previousMode = '';
+    resourceList.forEach(tr => {
+      if (tr.resource === resourceKey || tr.scheduledResource === resourceKey) {
+        previousMode = tr.mode;
+        tr.mode = mode;
+        found = true;
+      }
+    });
+
+    if (!found) {
+      throw new HttpException(`Resource ${resourceKey} not found on task ${taskKey}`, HttpStatus.NOT_FOUND);
+    }
+
+    const requiresResolve = previousMode !== mode &&
+      (previousMode === CTPResourceModeConstants.REQUIRED || mode === CTPResourceModeConstants.REQUIRED);
+
+    return { taskKey, resourceKey, mode, requiresResolve };
+  }
+
+  // ═══════════════════════════════════════
+  // Endpoint 5: Update Material Modes (Bulk)
+  // ═══════════════════════════════════════
+
+  updateMaterialModes(modes: Record<string, string>): any {
+    const landscape = this.ensureLandscape();
+    let requiresResolve = false;
+    const updated: { materialKey: string; mode: string }[] = [];
+
+    for (const [materialKey, mode] of Object.entries(modes)) {
+      let found = false;
+      landscape.tasks?.forEach(task => {
+        task.materialsResources?.forEach(tr => {
+          if (tr.resource === materialKey) {
+            const wasRequired = tr.mode === CTPResourceModeConstants.REQUIRED;
+            const nowRequired = mode === CTPResourceModeConstants.REQUIRED;
+            if (wasRequired || nowRequired) requiresResolve = true;
+            tr.mode = mode;
+            found = true;
+          }
+        });
+      });
+      if (found) updated.push({ materialKey, mode });
+    }
+
+    return { updated, requiresResolve };
+  }
+
+  // ═══════════════════════════════════════
+  // Endpoint 6: Pin/Unpin Task
+  // ═══════════════════════════════════════
+
+  pinTask(taskKey: string, pinned: boolean): any {
+    const landscape = this.ensureLandscape();
+    const task = landscape.tasks?.getEntity(taskKey);
+    if (!task) {
+      throw new HttpException(`Task ${taskKey} not found`, HttpStatus.NOT_FOUND);
+    }
+
+    if (pinned && task.state !== CTPTaskStateConstants.SCHEDULED) {
+      throw new HttpException(`Cannot pin task ${taskKey} — it is not currently scheduled`, HttpStatus.BAD_REQUEST);
+    }
+
+    task.pinned = pinned;
+    task.includeInSolve = !pinned;
+
+    return { taskKey, pinned, requiresResolve: true };
+  }
+
+  // ═══════════════════════════════════════
+  // Endpoint 7: Get Solve State
+  // ═══════════════════════════════════════
+
+  getState(detailLevel: string = 'novice'): CTPSolveResult {
+    const landscape = this.ensureLandscape();
+
+    const stats = new SolveStatistics('none');
+    stats.totalTimeMs = 0;
+
+    landscape.tasks?.forEach(task => {
+      if (task.pinned) stats.tasksPinned++;
+      else if (!task.includeInSolve) stats.tasksExcluded++;
+      else if (task.state === CTPTaskStateConstants.SCHEDULED) stats.tasksFeasible++;
+      else stats.tasksInfeasible++;
+      stats.tasksProcessed++;
+    });
+    stats.finalize();
+
+    // Build a dummy task list covering all tasks for extractResults
+    const taskList = new List<CTPTask>();
+    landscape.tasks?.forEach(t => taskList.add(t));
+
+    return this.extractResults(landscape, taskList, stats, detailLevel);
+  }
+
+  // ═══════════════════════════════════════
+  // Private helpers
+  // ═══════════════════════════════════════
+
+  private ensureLandscape(): SchedulingLandscape {
+    const landscape = this.stateService.getLandscape();
+    if (!landscape) {
+      // Auto-sync if not loaded
+      this.stateService.syncFromConfig();
+      const ls = this.stateService.getLandscape();
+      if (!ls) throw new HttpException('State not loaded.', HttpStatus.BAD_REQUEST);
+      return ls;
+    }
+    return landscape;
+  }
+
+  private applyMaterialModes(landscape: SchedulingLandscape, materialModes: Record<string, string>): void {
+    for (const [materialKey, mode] of Object.entries(materialModes)) {
+      landscape.tasks?.forEach(task => {
+        task.materialsResources?.forEach(tr => {
+          if (tr.resource === materialKey) {
+            tr.mode = mode;
+          }
+        });
+      });
+    }
+  }
+
+  private getAffectedResourceUtils(landscape: SchedulingLandscape, resourceKeys: string[]): any[] {
+    const resourceConfigs = this.configService.getResources();
+    const resourceConfigMap = new Map(resourceConfigs.map((r) => [r.key, r]));
+
+    return resourceKeys.map(key => {
+      const resource = landscape.resources.getEntity(key);
+      if (!resource) return { resourceKey: key, utilization: 0 };
+
+      let totalAvailable = 0;
+      if (resource.original) {
+        let node = resource.original.head;
+        while (node) { totalAvailable += node.data.duration(); node = node.next; }
+      }
+      let totalAssigned = 0;
+      if (resource.assignments) {
+        let node = resource.assignments.head;
+        while (node) { totalAssigned += node.data.duration(); node = node.next; }
+      }
+
+      return {
+        resourceKey: key,
+        utilization: totalAvailable > 0
+          ? Math.round((totalAssigned / totalAvailable) * 10000) / 100
+          : 0,
+      };
+    });
   }
 
   private buildTaskList(
@@ -155,6 +509,8 @@ export class CTPService {
   private extractResults(
     landscape: SchedulingLandscape,
     scheduledTasks: List<CTPTask>,
+    stats: SolveStatistics,
+    detailLevel: string = 'novice',
   ): CTPSolveResult {
     // Build a set of included task keys for quick lookup
     const includedKeys = new Set<string>();
@@ -165,6 +521,8 @@ export class CTPService {
     let scheduledCount = 0;
     let minStartW = Number.MAX_VALUE;
     let maxEndW = 0;
+    let pinnedCount = 0;
+    let excludedCount = 0;
 
     // Track scheduled output per order (orderKey → scheduledQty)
     const orderScheduledQty = new Map<string, number>();
@@ -173,13 +531,13 @@ export class CTPService {
     const materialConsumed = new Map<string, number>();
 
     landscape.tasks.forEach((task) => {
-      const isScheduled =
-        task.state === CTPTaskStateConstants.SCHEDULED;
+      const isScheduled = task.state === CTPTaskStateConstants.SCHEDULED;
       if (isScheduled) scheduledCount++;
+      if (task.pinned) pinnedCount++;
+      if (!task.includeInSolve && !task.pinned) excludedCount++;
 
       if (isScheduled && task.scheduled) {
-        if (task.scheduled.startW < minStartW)
-          minStartW = task.scheduled.startW;
+        if (task.scheduled.startW < minStartW) minStartW = task.scheduled.startW;
         if (task.scheduled.endW > maxEndW) maxEndW = task.scheduled.endW;
       }
 
@@ -211,7 +569,6 @@ export class CTPService {
         });
       });
 
-      // Extract new fields
       const orderRef = task.linkId?.name ?? null;
       const outputProductKey = task.outputProductKey ?? null;
       const outputQty = task.outputQty > 0 ? task.outputQty : null;
@@ -229,7 +586,6 @@ export class CTPService {
             unitOfMeasure: input.unitOfMeasure,
           });
 
-          // Track consumption for scheduled tasks
           if (isScheduled) {
             const existing = materialConsumed.get(input.productKey) ?? 0;
             materialConsumed.set(input.productKey, existing + input.grossQty());
@@ -243,11 +599,12 @@ export class CTPService {
         orderScheduledQty.set(orderRef, existing + task.netOutputQty());
       }
 
-      tasks.push({
+      const taskResult: any = {
         key: task.key,
         name: task.name,
         state: task.state,
         included: includedKeys.has(task.key),
+        pinned: task.pinned,
         scheduledStart: task.scheduled
           ? CTPDateTime.toDateTime(task.scheduled.startW).toISO()
           : null,
@@ -256,8 +613,7 @@ export class CTPService {
           : null,
         durationSeconds: task.scheduled ? task.scheduled.duration() : null,
         assignedResources,
-        score:
-          task.score === Number.MAX_VALUE ? null : task.score,
+        score: task.score === Number.MAX_VALUE ? null : task.score,
         feasible: isScheduled,
         errors: task.errors ?? [],
         typedAttributes: task.typedAttributes.toArray(),
@@ -270,7 +626,16 @@ export class CTPService {
         type: task.type || CTPTaskTypeConstants.PROCESS,
         subType: task.subType ?? null,
         materialResources,
-      });
+      };
+
+      // Add detail fields for intermediate+
+      if (detailLevel !== 'novice') {
+        taskResult.blendedScore = task.score !== Number.MAX_VALUE ? task.score : null;
+        taskResult.windowStart = task.window ? CTPDateTime.toDateTime(task.window.startW).toISO() : null;
+        taskResult.windowEnd = task.window ? CTPDateTime.toDateTime(task.window.endW).toISO() : null;
+      }
+
+      tasks.push(taskResult);
     });
 
     // Resource utilization
@@ -281,19 +646,12 @@ export class CTPService {
       let totalAvailable = 0;
       if (resource.original) {
         let node = resource.original.head;
-        while (node) {
-          totalAvailable += node.data.duration();
-          node = node.next;
-        }
+        while (node) { totalAvailable += node.data.duration(); node = node.next; }
       }
-
       let totalAssigned = 0;
       if (resource.assignments) {
         let node = resource.assignments.head;
-        while (node) {
-          totalAssigned += node.data.duration();
-          node = node.next;
-        }
+        while (node) { totalAssigned += node.data.duration(); node = node.next; }
       }
 
       const resConfig = resourceConfigMap.get(resource.key);
@@ -302,10 +660,9 @@ export class CTPService {
         resourceName: resource.name,
         totalAvailable,
         totalAssigned,
-        utilization:
-          totalAvailable > 0
-            ? Math.round((totalAssigned / totalAvailable) * 10000) / 100
-            : 0,
+        utilization: totalAvailable > 0
+          ? Math.round((totalAssigned / totalAvailable) * 10000) / 100
+          : 0,
         workCenter: resConfig?.hierarchy?.level1 ?? '',
         line: resConfig?.hierarchy?.level2 ?? '',
         resourceClass: resConfig?.class ?? resource.class ?? 'REUSABLE',
@@ -321,10 +678,9 @@ export class CTPService {
         productKey: order.productKey,
         demandQty: order.demandQty,
         scheduledQty: Math.round(scheduledQty * 100) / 100,
-        fillRate:
-          order.demandQty > 0
-            ? Math.round((scheduledQty / order.demandQty) * 10000) / 10000
-            : 0,
+        fillRate: order.demandQty > 0
+          ? Math.round((scheduledQty / order.demandQty) * 10000) / 10000
+          : 0,
         dueDate: order.dueDate,
         lateDueDate: order.lateDueDate ?? null,
         priority: order.priority ?? 0,
@@ -337,7 +693,6 @@ export class CTPService {
       const consumed = materialConsumed.get(mat.key) ?? 0;
       const remaining = Math.round((mat.onHand - consumed) * 100) / 100;
 
-      // Find scheduled tasks consuming this material, sorted by start
       let firstShortageDate: string | null = null;
       let shortageQty: number | undefined;
       let firstNeedTaskKey: string | null = null;
@@ -383,6 +738,10 @@ export class CTPService {
       };
     });
 
+    // Products
+    const productData = this.configService.getProducts();
+    const products = productData.map((p) => ({ key: p.key, name: p.name }));
+
     // Feasibility: count only PROCESS tasks (exclude SETUP/TEARDOWN)
     const processTasks = tasks.filter(
       (t) => t.type === CTPTaskTypeConstants.PROCESS || !t.type,
@@ -395,13 +754,33 @@ export class CTPService {
     const includedProcessTasks = processTasks.length;
     const includedTasks = scheduledTasks.length;
     const skippedTasks = totalTasks - includedTasks;
-    const makespan =
-      scheduledCount > 0 && maxEndW > 0 ? maxEndW - minStartW : 0;
+    const makespan = scheduledCount > 0 && maxEndW > 0 ? maxEndW - minStartW : 0;
 
     // Colors, terminology, locale
     const colors = this.configService.getColors();
     const terminology = this.configService.getTerminology();
     const locale = this.configService.getLocale();
+
+    // Build stats object for response based on detail level
+    const responseStats: any = {
+      strategy: stats.strategy,
+      totalTimeMs: stats.totalTimeMs,
+    };
+    if (detailLevel !== 'novice') {
+      responseStats.propagationTimeMs = stats.propagationTimeMs;
+      responseStats.windowsTightened = stats.windowsTightened;
+      responseStats.backtrackAttempts = stats.backtrackAttempts;
+      responseStats.backtrackSuccesses = stats.backtrackSuccesses;
+      responseStats.bumpsPerformed = stats.bumpsPerformed;
+    }
+    if (detailLevel === 'expert' || detailLevel === 'diagnostic') {
+      responseStats.iterations = stats.iterations;
+      responseStats.bestIterationFound = stats.bestIterationFound;
+      responseStats.contextsEvaluated = stats.contextsEvaluated;
+      responseStats.contextsPerTask = stats.contextsPerTask;
+      responseStats.totalScore = stats.totalScore;
+      responseStats.scoreBreakdown = stats.scoreBreakdown;
+    }
 
     return {
       status: 'ok',
@@ -411,23 +790,22 @@ export class CTPService {
         scheduledTasks: scheduledProcessTasks.length,
         unscheduledTasks: includedProcessTasks - scheduledProcessTasks.length,
         skippedTasks,
-        feasibilityRate:
-          includedProcessTasks > 0
-            ? Math.round(
-                (scheduledProcessTasks.length / includedProcessTasks) * 10000,
-              ) / 100
-            : 0,
-        horizonStart: CTPDateTime.toDateTime(
-          landscape.horizon.startW,
-        ).toISO()!,
+        feasibilityRate: includedProcessTasks > 0
+          ? Math.round((scheduledProcessTasks.length / includedProcessTasks) * 10000) / 100
+          : 0,
+        horizonStart: CTPDateTime.toDateTime(landscape.horizon.startW).toISO()!,
         horizonEnd: CTPDateTime.toDateTime(landscape.horizon.endW).toISO()!,
         makespan,
         setupTasks: setupTaskCount,
+        pinnedTasks: pinnedCount,
+        excludedTasks: excludedCount,
       },
+      stats: responseStats,
       tasks,
       resourceUtilization,
       orders,
       materials,
+      products,
       colors,
       terminology,
       locale,

@@ -94,3 +94,10 @@ export class CTPScheduleDirectionConstants {
   public static FORWARD = 1;
   public static BACKWARD = 2;
 }
+
+// Resource requirement modes
+export class CTPResourceModeConstants {
+  public static REQUIRED = 'ON';      // Hard constraint — solver won't schedule without it
+  public static MONITORED = 'TRACK';  // Track usage for reporting, don't constrain solver
+  public static IGNORED = 'OFF';      // Skip entirely
+}

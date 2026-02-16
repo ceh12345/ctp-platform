@@ -58,6 +58,9 @@ export class TaskResultDto {
   @ApiProperty({ description: 'Whether this task was submitted to the solver' })
   included!: boolean;
 
+  @ApiPropertyOptional({ description: 'Whether this task is pinned (locked in place)' })
+  pinned?: boolean;
+
   @ApiPropertyOptional({ description: 'Scheduled start time (ISO 8601)' })
   scheduledStart!: string | null;
 
@@ -230,6 +233,12 @@ export class SolveSummaryDto {
 
   @ApiPropertyOptional({ description: 'Count of auto-generated setup/changeover tasks' })
   setupTasks?: number;
+
+  @ApiPropertyOptional({ description: 'Count of pinned tasks' })
+  pinnedTasks?: number;
+
+  @ApiPropertyOptional({ description: 'Count of excluded tasks' })
+  excludedTasks?: number;
 }
 
 export class CTPSolveResultDto {
@@ -250,6 +259,12 @@ export class CTPSolveResultDto {
 
   @ApiProperty({ description: 'Material consumption status', type: [MaterialStatusDto] })
   materials!: MaterialStatusDto[];
+
+  @ApiPropertyOptional({ description: 'Solve statistics (depth varies by detailLevel)' })
+  stats?: any;
+
+  @ApiPropertyOptional({ description: 'Product list' })
+  products?: any[];
 
   @ApiPropertyOptional({ description: 'Tenant color configuration' })
   colors?: any;
