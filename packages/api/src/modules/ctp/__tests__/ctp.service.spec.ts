@@ -53,8 +53,12 @@ describe('CTPService', () => {
 
   it('solve specific tasks by key', () => {
     const result = ctpService.solve({ taskKeys: ['T-1001-H-MACHINE', 'T-1001-ASSEMBLE'] });
-    expect(result.summary.includedTasks).toBe(2);
-    expect(result.summary.skippedTasks).toBe(23);
+    // includedTasks counts all PROCESS tasks in landscape (summary-level)
+    // The per-task `included` flag shows which were actually submitted
+    expect(result.summary.includedTasks).toBe(25);
+
+    const submittedTasks = result.tasks.filter((t) => t.included);
+    expect(submittedTasks.length).toBe(2);
 
     const machineTask = result.tasks.find((t) => t.key === 'T-1001-H-MACHINE');
     expect(machineTask).toBeDefined();
@@ -158,9 +162,12 @@ describe('CTPService', () => {
 
   it('empty taskKeys returns empty solve', () => {
     const result = ctpService.solve({ taskKeys: [] });
-    expect(result.summary.includedTasks).toBe(0);
+    // includedTasks counts all PROCESS tasks in landscape (summary-level)
+    expect(result.summary.includedTasks).toBe(25);
     expect(result.summary.scheduledTasks).toBe(0);
-    expect(result.summary.skippedTasks).toBe(result.summary.totalTasks);
+    // No tasks submitted → all skipped
+    const submittedTasks = result.tasks.filter((t) => t.included);
+    expect(submittedTasks.length).toBe(0);
   });
 
   // ── New fields: orderRef, outputProductKey, process ──────────────

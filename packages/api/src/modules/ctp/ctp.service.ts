@@ -11,11 +11,18 @@ import {
   List,
   CTPTask,
   SchedulingLandscape,
+  ScheduleEvaluator,
+  WhereToConstraints,
+  WhereToResult,
+  BestScheduleContext,
+  ScheduleEngine,
+  CTPStartTime,
 } from '@ctp/engine';
 import { StateService } from '../state/state.service';
 import { ConfigService } from '../../config/config.service';
 import { StrategyConfigService } from '../../config/strategy-config.service';
 import { SolveRequestDto } from './dto/solve-request.dto';
+import { WhereToRequestDto, WhereToResponseDto, MoveToRequestDto, MoveToResponseDto } from './dto/whereto.dto';
 
 export interface CTPSolveResult {
   status: string;
@@ -420,6 +427,132 @@ export class CTPService {
   }
 
   // ═══════════════════════════════════════
+  // Endpoint 8: Where-To (Read-Only Evaluation)
+  // ═══════════════════════════════════════
+
+  whereTo(taskKey: string, request?: WhereToRequestDto): WhereToResponseDto {
+    const landscape = this.ensureLandscape();
+    const task = landscape.tasks?.getEntity(taskKey);
+
+    if (!task) {
+      throw new HttpException(`Task ${taskKey} not found`, HttpStatus.NOT_FOUND);
+    }
+
+    const scoring = this.buildScoring();
+
+    // Convert date constraints to engine time
+    const constraints: WhereToConstraints | undefined = request?.constraints ? {
+      onlyResources: request.constraints.onlyResources,
+      startAfter: request.constraints.startAfter
+        ? CTPDateTime.fromDateTime(request.constraints.startAfter)
+        : undefined,
+      startBefore: request.constraints.startBefore
+        ? CTPDateTime.fromDateTime(request.constraints.startBefore)
+        : undefined,
+      maxResults: request.constraints.maxResults,
+    } : undefined;
+
+    const evaluator = new ScheduleEvaluator();
+    const result = evaluator.whereTo(task, landscape, scoring, constraints);
+
+    return this.formatWhereToResponse(result);
+  }
+
+  // ═══════════════════════════════════════
+  // Endpoint 9: Move-To (Commit Assignment)
+  // ═══════════════════════════════════════
+
+  moveTo(taskKey: string, request: MoveToRequestDto): MoveToResponseDto {
+    const landscape = this.ensureLandscape();
+    const task = landscape.tasks?.getEntity(taskKey);
+
+    if (!task) {
+      throw new HttpException(`Task ${taskKey} not found`, HttpStatus.NOT_FOUND);
+    }
+
+    // Re-evaluate to confirm option is still feasible
+    const scoring = this.buildScoring();
+    const evaluator = new ScheduleEvaluator();
+    const freshResult = evaluator.whereTo(task, landscape, scoring);
+    const chosenOption = freshResult.options.find(o => o.contextHash === request.contextHash);
+
+    if (!chosenOption) {
+      return {
+        taskKey,
+        success: false,
+        reason: 'Position no longer available — resource state has changed since your query',
+        suggestRefresh: true,
+      };
+    }
+
+    // Unschedule from current position if scheduled
+    if (task.state === CTPTaskStateConstants.SCHEDULED) {
+      landscape.unscheduleTask(taskKey, true);
+    }
+
+    // Find the matching context from a fresh evaluation to get the ScheduleContext object
+    const contexts = evaluator.buildContexts(task, landscape);
+    const matchingCtx = contexts.find(c => c.hashKey === request.contextHash);
+
+    if (!matchingCtx) {
+      return {
+        taskKey,
+        success: false,
+        reason: 'Context no longer available after unschedule',
+        suggestRefresh: true,
+      };
+    }
+
+    // Compute start times for the matching context
+    const startTimes = evaluator.computeStartTimes(matchingCtx, landscape);
+    if (!startTimes || !startTimes.atleastOne()) {
+      return {
+        taskKey,
+        success: false,
+        reason: 'Start times no longer feasible after unschedule',
+        suggestRefresh: true,
+      };
+    }
+
+    // Build BestScheduleContext and assign
+    const requestedStartW = CTPDateTime.fromDateTime(request.startTime);
+    const startTimeNode = startTimes.head!.data;
+    const bestSchedule = new BestScheduleContext(matchingCtx, startTimeNode, requestedStartW);
+
+    const scheduleEngine = new ScheduleEngine();
+    scheduleEngine.schedule(landscape, task, bestSchedule);
+
+    // Find affected tasks (tasks sharing resources with the new assignment)
+    const affectedTasks: string[] = [];
+    const assignedResourceKeys = chosenOption.resources.map(r => r.resourceKey);
+    landscape.tasks?.forEach(t => {
+      if (t.key === taskKey) return;
+      t.capacityResources?.forEach(tr => {
+        if (tr.scheduledResource && assignedResourceKeys.includes(tr.scheduledResource)) {
+          affectedTasks.push(t.key);
+        }
+      });
+    });
+
+    const endTime = task.scheduled
+      ? CTPDateTime.toDateTime(task.scheduled.endW).toISO()!
+      : CTPDateTime.toDateTime(requestedStartW + (task.duration?.duration() ?? 0)).toISO()!;
+
+    return {
+      taskKey,
+      success: true,
+      assignment: {
+        resources: assignedResourceKeys,
+        start: request.startTime,
+        end: endTime,
+      },
+      changeover: chosenOption.changeover,
+      affectedTasks,
+      requiresResolve: affectedTasks.length > 0,
+    };
+  }
+
+  // ═══════════════════════════════════════
   // Private helpers
   // ═══════════════════════════════════════
 
@@ -519,6 +652,48 @@ export class CTPService {
     // Default: all tasks
     landscape.tasks.forEach((t) => taskList.add(t));
     return taskList;
+  }
+
+  private buildScoring(): CTPScoring {
+    const scoringConfig = this.configService.getScoring();
+    if (!scoringConfig) {
+      throw new HttpException('Scoring configuration not found.', HttpStatus.BAD_REQUEST);
+    }
+    const scoring = new CTPScoring(scoringConfig.name, scoringConfig.key);
+    for (const rule of scoringConfig.rules) {
+      const config = new CTPScoringConfiguration(rule.ruleName, rule.weight, rule.objective);
+      config.includeInSolve = rule.includeInSolve;
+      config.penaltyFactor = rule.penaltyFactor;
+      scoring.addConfig(config);
+    }
+    return scoring;
+  }
+
+  private formatWhereToResponse(result: WhereToResult): WhereToResponseDto {
+    return {
+      taskKey: result.taskKey,
+      taskName: result.taskName,
+      currentAssignment: result.currentAssignment ? {
+        resources: result.currentAssignment.resources,
+        start: CTPDateTime.toDateTime(result.currentAssignment.start).toISO()!,
+        end: CTPDateTime.toDateTime(result.currentAssignment.end).toISO()!,
+      } : null,
+      options: result.options.map(o => ({
+        rank: o.rank,
+        resources: o.resources,
+        start: CTPDateTime.toDateTime(o.startTime).toISO()!,
+        end: CTPDateTime.toDateTime(o.endTime).toISO()!,
+        latestStart: CTPDateTime.toDateTime(o.latestStart).toISO()!,
+        latestEnd: CTPDateTime.toDateTime(o.latestEnd).toISO()!,
+        duration: o.duration,
+        score: o.score,
+        scoreBreakdown: o.scoreBreakdown,
+        changeover: o.changeover,
+        impact: o.impact,
+        contextHash: o.contextHash,
+      })),
+      stats: result.stats,
+    };
   }
 
   private extractResults(

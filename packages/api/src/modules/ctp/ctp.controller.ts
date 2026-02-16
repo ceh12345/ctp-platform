@@ -17,6 +17,12 @@ import {
   UpdateMaterialModesDto,
 } from './dto/solve-request.dto';
 import { CTPSolveResultDto } from './dto/solve-result.dto';
+import {
+  WhereToRequestDto,
+  WhereToResponseDto,
+  MoveToRequestDto,
+  MoveToResponseDto,
+} from './dto/whereto.dto';
 
 @ApiTags('ctp')
 @Controller('ctp')
@@ -134,5 +140,30 @@ export class CTPController {
   @ApiResponse({ status: 200, description: 'Current state', type: CTPSolveResultDto })
   getState(@Query('detailLevel') detailLevel?: string) {
     return this.ctpService.getState(detailLevel || 'novice');
+  }
+
+  // ─── Endpoint 8: Where-To ───
+
+  @Post('tasks/:taskKey/where-to')
+  @ApiOperation({ summary: 'Evaluate all scheduling options for a task (read-only)' })
+  @ApiParam({ name: 'taskKey', description: 'Task key to evaluate' })
+  @ApiBody({ type: WhereToRequestDto, required: false })
+  @ApiResponse({ status: 200, description: 'Where-to options', type: WhereToResponseDto })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  whereTo(@Param('taskKey') taskKey: string, @Body() body?: WhereToRequestDto) {
+    return this.ctpService.whereTo(taskKey, body);
+  }
+
+  // ─── Endpoint 9: Move-To ───
+
+  @Post('tasks/:taskKey/move-to')
+  @ApiOperation({ summary: 'Move a task to a specific scheduling option' })
+  @ApiParam({ name: 'taskKey', description: 'Task key to move' })
+  @ApiBody({ type: MoveToRequestDto })
+  @ApiResponse({ status: 200, description: 'Task moved', type: MoveToResponseDto })
+  @ApiResponse({ status: 400, description: 'Option not feasible' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  moveTo(@Param('taskKey') taskKey: string, @Body() body: MoveToRequestDto) {
+    return this.ctpService.moveTo(taskKey, body);
   }
 }

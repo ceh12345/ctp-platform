@@ -80,6 +80,9 @@ export * from './Factories/scorefactory';
 export * from './Factories/taskfactory';
 export * from './Factories/uniqueidfactory';
 
+// Solvers
+export * from './Solvers/evaluator';
+
 // Services
 export * from './Services/apiService';
 export * from './Services/getdatafromfile';
