@@ -1271,7 +1271,7 @@ function SolvePreview({ orders, tasks, materials, resources,
             border: `1px solid ${C.border}`,
           }}>
             <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600, whiteSpace: 'nowrap' }}>Strategy:</span>
-            <div style={{ display: 'flex', gap: 4, flex: 1 }}>
+            <div style={{ display: 'flex', gap: 4, flex: 1, justifyContent: 'center' }}>
               {STRATEGY_KEYS.map(key => {
                 const opt = strategyOptions[key] || DEFAULT_STRATEGIES[key];
                 if (!opt) return null;
@@ -1288,12 +1288,13 @@ function SolvePreview({ orders, tasks, materials, resources,
                   <HoverTooltip key={key} content={tooltip}>
                     <button onClick={() => onStrategyChange(key)}
                       style={{
-                        padding: '5px 8px', borderRadius: 6, cursor: 'pointer',
+                        padding: '5px 10px', borderRadius: 6, cursor: 'pointer',
                         fontSize: 11, fontWeight: 600, fontFamily: FONT,
                         background: isActive ? C.accent + '22' : 'transparent',
                         color: isActive ? C.accent : C.textMuted,
                         border: isActive ? `1px solid ${C.accent}44` : `1px solid transparent`,
                         display: 'flex', alignItems: 'center', gap: 4,
+                        whiteSpace: 'nowrap',
                       }}
                     >
                       <span style={{ fontSize: 12 }}>{opt.icon}</span>

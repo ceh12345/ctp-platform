@@ -24,7 +24,7 @@
     "time": "10-30s"
   },
   "best": {
-    "label": "Best Quality",
+    "label": "Best",
     "icon": "🏆",
     "short": "Multiple passes for the best possible schedule",
     "detail": "Builds a complete schedule, then selectively tears apart the weakest sections and rebuilds them. For smaller problems, it runs several complete schedules with different weightings and keeps the best result. Takes significantly longer but finds solutions other strategies miss.",
