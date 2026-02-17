@@ -1,0 +1,121 @@
+[
+  {
+    "key": "OR-01",
+    "name": "Operating Room 1",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Operating Rooms" },
+    "typedAttributes": { "resourceType": "Room", "roomSize": "Large", "specialty": ["Orthopedic", "General", "Pain"] }
+  },
+  {
+    "key": "OR-02",
+    "name": "Operating Room 2",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Operating Rooms" },
+    "typedAttributes": { "resourceType": "Room", "roomSize": "Large", "specialty": ["General", "Orthopedic"] }
+  },
+  {
+    "key": "OR-03",
+    "name": "Operating Room 3",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Operating Rooms" },
+    "typedAttributes": { "resourceType": "Room", "roomSize": "Minor", "specialty": ["Pain", "Eye", "Minor"] }
+  },
+  {
+    "key": "DR-SMITH",
+    "name": "Dr. Smith",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Surgeons" },
+    "typedAttributes": { "resourceType": "Surgeon", "specialty": ["Orthopedic"] }
+  },
+  {
+    "key": "DR-PATEL",
+    "name": "Dr. Patel",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Surgeons" },
+    "typedAttributes": { "resourceType": "Surgeon", "specialty": ["General", "Laparoscopic"] }
+  },
+  {
+    "key": "DR-CHEN",
+    "name": "Dr. Chen",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Surgeons" },
+    "typedAttributes": { "resourceType": "Surgeon", "specialty": ["Pain", "Eye"] }
+  },
+  {
+    "key": "AN-JONES",
+    "name": "Jones, CRNA",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Anesthesia" },
+    "typedAttributes": { "resourceType": "Anesthesiologist", "shiftPattern": "Early" }
+  },
+  {
+    "key": "AN-GARCIA",
+    "name": "Garcia, CRNA",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Anesthesia" },
+    "typedAttributes": { "resourceType": "Anesthesiologist", "shiftPattern": "Late" }
+  },
+  {
+    "key": "RN-01",
+    "name": "Nurse Team Alpha",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Nursing" },
+    "typedAttributes": { "resourceType": "Nursing", "shiftPattern": "Day" }
+  },
+  {
+    "key": "RN-02",
+    "name": "Nurse Team Bravo",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Nursing" },
+    "typedAttributes": { "resourceType": "Nursing", "shiftPattern": "Day" }
+  },
+  {
+    "key": "RN-03",
+    "name": "Nurse Team Charlie",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Nursing" },
+    "typedAttributes": { "resourceType": "Nursing", "shiftPattern": "Day" }
+  },
+  {
+    "key": "EQ-FLUORO",
+    "name": "Fluoroscopy Unit",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Equipment" },
+    "typedAttributes": { "resourceType": "Equipment", "shiftPattern": "24/7" }
+  },
+  {
+    "key": "EQ-LASER",
+    "name": "Surgical Laser",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Equipment" },
+    "typedAttributes": { "resourceType": "Equipment", "shiftPattern": "24/7" }
+  },
+  {
+    "key": "REC-01",
+    "name": "Recovery Bay 1",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Recovery" },
+    "typedAttributes": { "resourceType": "Recovery", "shiftPattern": "Extended" }
+  },
+  {
+    "key": "REC-02",
+    "name": "Recovery Bay 2",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Recovery" },
+    "typedAttributes": { "resourceType": "Recovery", "shiftPattern": "Extended" }
+  },
+  {
+    "key": "REC-03",
+    "name": "Recovery Bay 3",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Recovery" },
+    "typedAttributes": { "resourceType": "Recovery", "shiftPattern": "Extended" }
+  },
+  {
+    "key": "REC-04",
+    "name": "Recovery Bay 4",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Recovery" },
+    "typedAttributes": { "resourceType": "Recovery", "shiftPattern": "Extended" }
+  }
+]

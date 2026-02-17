@@ -5,7 +5,7 @@ import { ConfigService } from '../../config/config.service';
 
 @Injectable()
 export class StateService {
-  private landscape: SchedulingLandscape | null = null;
+  private landscapes = new Map<string, SchedulingLandscape>();
 
   constructor(
     private readonly hydrator: StateHydratorService,
@@ -13,8 +13,10 @@ export class StateService {
   ) {}
 
   syncFromConfig() {
-    this.landscape = this.hydrator.buildLandscape();
-    return this.buildSummaryResponse();
+    const tenantId = this.configService.getTenantId();
+    const landscape = this.hydrator.buildLandscape();
+    this.landscapes.set(tenantId, landscape);
+    return this.buildSummaryResponse(landscape);
   }
 
   reloadAndSync() {
@@ -23,22 +25,23 @@ export class StateService {
   }
 
   getLandscape(): SchedulingLandscape | null {
-    return this.landscape;
+    const tenantId = this.configService.getTenantId();
+    return this.landscapes.get(tenantId) ?? null;
   }
 
   getSummary() {
-    if (!this.landscape) {
+    const landscape = this.getLandscape();
+    if (!landscape) {
       return { status: 'not_loaded' };
     }
-    return this.buildSummaryResponse();
+    return this.buildSummaryResponse(landscape);
   }
 
   isLoaded(): boolean {
-    return this.landscape !== null;
+    return this.getLandscape() !== null;
   }
 
-  private buildSummaryResponse() {
-    const ls = this.landscape!;
+  private buildSummaryResponse(ls: SchedulingLandscape) {
     return {
       status: 'ok',
       summary: {

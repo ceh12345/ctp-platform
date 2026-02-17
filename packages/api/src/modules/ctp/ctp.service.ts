@@ -1,4 +1,5 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { DateTime } from 'luxon';
 import {
   CTPScheduler,
   CTPScoring,
@@ -67,7 +68,7 @@ export interface CTPSolveResult {
 
 @Injectable()
 export class CTPService {
-  private lastResult: CTPSolveResult | null = null;
+  private results = new Map<string, CTPSolveResult>();
 
   constructor(
     private readonly stateService: StateService,
@@ -202,12 +203,12 @@ export class CTPService {
     // ─── 6. Build response ───
     const detailLevel = request?.detailLevel || 'novice';
     const result = this.extractResults(landscape, taskList, stats, detailLevel);
-    this.lastResult = result;
+    this.results.set(this.configService.getTenantId(), result);
     return result;
   }
 
   getLastResult(): CTPSolveResult | null {
-    return this.lastResult;
+    return this.results.get(this.configService.getTenantId()) ?? null;
   }
 
   // ═══════════════════════════════════════
@@ -861,6 +862,53 @@ export class CTPService {
         while (node) { totalAssigned += node.data.duration(); node = node.next; }
       }
 
+      // Extract interval linked list → array of { start, end, durationSec }
+      type IvOut = { start: string; end: string; durationSec: number };
+      const extractIntervals = (list: any): IvOut[] => {
+        const out: IvOut[] = [];
+        if (!list) return out;
+        let node = list.head;
+        while (node) {
+          out.push({
+            start: node.data.AbsoluteStartTime.toISO()!,
+            end: node.data.AbsoluteEndTime.toISO()!,
+            durationSec: node.data.duration(),
+          });
+          node = node.next;
+        }
+        return out;
+      };
+
+      const availability = extractIntervals(resource.original);
+      const assignments = extractIntervals(resource.available.staticAssignments);
+
+      // Compute netAvailable = availability minus assignments (engine's staticAvailable can be stale)
+      const netAvailable: IvOut[] = [];
+      for (const orig of availability) {
+        let slices = [{ s: new Date(orig.start).getTime(), e: new Date(orig.end).getTime() }];
+        for (const asgn of assignments) {
+          const as = new Date(asgn.start).getTime();
+          const ae = new Date(asgn.end).getTime();
+          const next: { s: number; e: number }[] = [];
+          for (const sl of slices) {
+            if (ae <= sl.s || as >= sl.e) { next.push(sl); continue; } // no overlap
+            if (as > sl.s) next.push({ s: sl.s, e: as }); // left remainder
+            if (ae < sl.e) next.push({ s: ae, e: sl.e }); // right remainder
+          }
+          slices = next;
+        }
+        for (const sl of slices) {
+          const durSec = (sl.e - sl.s) / 1000;
+          if (durSec > 0) {
+            netAvailable.push({
+              start: DateTime.fromMillis(sl.s).toISO()!,
+              end: DateTime.fromMillis(sl.e).toISO()!,
+              durationSec: durSec,
+            });
+          }
+        }
+      }
+
       const resConfig = resourceConfigMap.get(resource.key);
       resourceUtilization.push({
         resourceKey: resource.key,
@@ -873,6 +921,9 @@ export class CTPService {
         workCenter: resConfig?.hierarchy?.level1 ?? '',
         line: resConfig?.hierarchy?.level2 ?? '',
         resourceClass: resConfig?.class ?? resource.class ?? 'REUSABLE',
+        availability,
+        assignments,
+        netAvailable,
       });
     });
 

@@ -1,0 +1,7 @@
+{
+  "tenantId": "acme-outpatient",
+  "name": "Acme Outpatient Surgery Center",
+  "vertical": "healthcare",
+  "createdAt": "2026-02-16T00:00:00Z",
+  "updatedAt": "2026-02-16T00:00:00Z"
+}

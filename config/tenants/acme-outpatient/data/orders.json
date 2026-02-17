@@ -1,0 +1,12 @@
+[
+  { "key": "CASE-001", "name": "Thompson - Knee Replacement", "productKey": "ORTHO-KR", "demandQty": 1, "dueDate": "2026-02-20T18:00:00Z", "priority": 2 },
+  { "key": "CASE-002", "name": "Rivera - Arthroscopy", "productKey": "ORTHO-AR", "demandQty": 1, "dueDate": "2026-02-18T18:00:00Z", "priority": 1 },
+  { "key": "CASE-003", "name": "Kim - Laparoscopic", "productKey": "GEN-LAP", "demandQty": 1, "dueDate": "2026-02-21T18:00:00Z", "priority": 2 },
+  { "key": "CASE-004", "name": "Davis - Hernia Repair", "productKey": "GEN-HERNIA", "demandQty": 1, "dueDate": "2026-02-20T18:00:00Z", "priority": 2 },
+  { "key": "CASE-005", "name": "Williams - Pain Injection", "productKey": "PAIN-INJ", "demandQty": 1, "dueDate": "2026-02-17T16:00:00Z", "priority": 1 },
+  { "key": "CASE-006", "name": "Johnson - Cataract", "productKey": "EYE-CAT", "demandQty": 1, "dueDate": "2026-02-21T16:00:00Z", "priority": 2 },
+  { "key": "CASE-007", "name": "Martinez - Knee Replacement", "productKey": "ORTHO-KR", "demandQty": 1, "dueDate": "2026-02-27T18:00:00Z", "priority": 2 },
+  { "key": "CASE-008", "name": "Brown - Hernia Repair", "productKey": "GEN-HERNIA", "demandQty": 1, "dueDate": "2026-02-26T18:00:00Z", "priority": 2 },
+  { "key": "CASE-009", "name": "Lee - Pain Injection", "productKey": "PAIN-INJ", "demandQty": 1, "dueDate": "2026-02-25T16:00:00Z", "priority": 1 },
+  { "key": "CASE-010", "name": "Garcia - Arthroscopy", "productKey": "ORTHO-AR", "demandQty": 1, "dueDate": "2026-02-27T18:00:00Z", "priority": 3 }
+]

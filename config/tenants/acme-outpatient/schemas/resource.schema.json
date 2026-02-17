@@ -1,0 +1,24 @@
+{
+  "type": "resource",
+  "attributes": {
+    "resourceType": {
+      "type": "enum",
+      "values": ["Room", "Surgeon", "Anesthesiologist", "Nursing", "Equipment", "Recovery"],
+      "required": true
+    },
+    "roomSize": {
+      "type": "enum",
+      "values": ["Large", "Standard", "Minor"],
+      "required": false
+    },
+    "specialty": {
+      "type": "list",
+      "required": false
+    },
+    "shiftPattern": {
+      "type": "enum",
+      "values": ["Day", "Early", "Late", "Extended", "24/7"],
+      "required": false
+    }
+  }
+}

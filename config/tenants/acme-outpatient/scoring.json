@@ -1,0 +1,8 @@
+{
+  "name": "Surgery Scheduling",
+  "key": "surgery-default",
+  "rules": [
+    { "ruleName": "EarliestStartTimeScoringRule", "weight": 0.6, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 },
+    { "ruleName": "ResourceUtilizationScoringRule", "weight": 0.4, "objective": 1, "includeInSolve": true, "penaltyFactor": 0 }
+  ]
+}

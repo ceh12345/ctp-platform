@@ -1,0 +1,22 @@
+{
+  "type": "task",
+  "attributes": {
+    "procedureType": {
+      "type": "enum",
+      "values": ["ORTHO-KR", "ORTHO-AR", "GEN-LAP", "GEN-HERNIA", "PAIN-INJ", "EYE-CAT"],
+      "required": false
+    },
+    "caseId": { "type": "string", "required": true },
+    "patientId": { "type": "string", "required": false },
+    "priority": {
+      "type": "enum",
+      "values": ["URGENT", "ELECTIVE", "ADD-ON"],
+      "required": true
+    },
+    "phase": {
+      "type": "enum",
+      "values": ["PRE-OP", "PROCEDURE", "TURNOVER", "RECOVERY"],
+      "required": true
+    }
+  }
+}

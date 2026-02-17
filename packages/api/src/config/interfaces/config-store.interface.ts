@@ -145,7 +145,13 @@ export interface ITaskData {
   durationSeconds?: number;
   durationType?: number;
   durationQty?: number;
-  capacityResources?: { resource: string; isPrimary: boolean; qty?: number; mode?: string; preferences?: string[] }[];
+  capacityResources?: {
+    resource?: string;
+    isPrimary: boolean;
+    qty?: number;
+    mode?: string;
+    preferences?: string[] | { resource: string; rank?: number }[];
+  }[];
   materialsResources?: { resource: string; isPrimary: boolean; qty?: number; mode?: string }[];
   process?: string;
   subType?: string;
@@ -154,9 +160,16 @@ export interface ITaskData {
   [key: string]: any;
 }
 
+export interface ICalendarShift {
+  days: string[];
+  start: string;
+  end: string;
+}
+
 export interface ICalendarData {
   resourceKey: string;
-  intervals: { start: string; end: string; qty: number; runRate?: number }[];
+  intervals?: { start: string; end: string; qty: number; runRate?: number }[];
+  shifts?: ICalendarShift[];
 }
 
 export interface IStateChangeData {

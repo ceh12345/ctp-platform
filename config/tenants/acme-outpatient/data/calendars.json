@@ -1,0 +1,70 @@
+[
+  {
+    "resourceKey": "OR-01",
+    "shifts": [{ "days": ["Mon","Tue","Wed","Thu","Fri"], "start": "06:00", "end": "18:00" }]
+  },
+  {
+    "resourceKey": "OR-02",
+    "shifts": [{ "days": ["Mon","Tue","Wed","Thu","Fri"], "start": "06:00", "end": "18:00" }]
+  },
+  {
+    "resourceKey": "OR-03",
+    "shifts": [{ "days": ["Mon","Tue","Wed","Thu","Fri"], "start": "07:00", "end": "16:00" }]
+  },
+  {
+    "resourceKey": "DR-SMITH",
+    "shifts": [{ "days": ["Mon","Tue","Thu"], "start": "07:00", "end": "17:00" }]
+  },
+  {
+    "resourceKey": "DR-PATEL",
+    "shifts": [{ "days": ["Mon","Wed","Fri"], "start": "07:00", "end": "17:00" }]
+  },
+  {
+    "resourceKey": "DR-CHEN",
+    "shifts": [{ "days": ["Tue","Wed","Thu","Fri"], "start": "07:00", "end": "15:00" }]
+  },
+  {
+    "resourceKey": "AN-JONES",
+    "shifts": [{ "days": ["Mon","Tue","Wed","Thu","Fri"], "start": "06:00", "end": "14:00" }]
+  },
+  {
+    "resourceKey": "AN-GARCIA",
+    "shifts": [{ "days": ["Mon","Tue","Wed","Thu","Fri"], "start": "10:00", "end": "18:00" }]
+  },
+  {
+    "resourceKey": "RN-01",
+    "shifts": [{ "days": ["Mon","Tue","Wed","Thu","Fri"], "start": "06:00", "end": "14:30" }]
+  },
+  {
+    "resourceKey": "RN-02",
+    "shifts": [{ "days": ["Mon","Tue","Wed","Thu","Fri"], "start": "06:00", "end": "14:30" }]
+  },
+  {
+    "resourceKey": "RN-03",
+    "shifts": [{ "days": ["Mon","Tue","Wed","Thu","Fri"], "start": "09:00", "end": "17:30" }]
+  },
+  {
+    "resourceKey": "EQ-FLUORO",
+    "shifts": [{ "days": ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"], "start": "00:00", "end": "23:59" }]
+  },
+  {
+    "resourceKey": "EQ-LASER",
+    "shifts": [{ "days": ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"], "start": "00:00", "end": "23:59" }]
+  },
+  {
+    "resourceKey": "REC-01",
+    "shifts": [{ "days": ["Mon","Tue","Wed","Thu","Fri"], "start": "06:00", "end": "20:00" }]
+  },
+  {
+    "resourceKey": "REC-02",
+    "shifts": [{ "days": ["Mon","Tue","Wed","Thu","Fri"], "start": "06:00", "end": "20:00" }]
+  },
+  {
+    "resourceKey": "REC-03",
+    "shifts": [{ "days": ["Mon","Tue","Wed","Thu","Fri"], "start": "06:00", "end": "20:00" }]
+  },
+  {
+    "resourceKey": "REC-04",
+    "shifts": [{ "days": ["Mon","Tue","Wed","Thu","Fri"], "start": "06:00", "end": "20:00" }]
+  }
+]

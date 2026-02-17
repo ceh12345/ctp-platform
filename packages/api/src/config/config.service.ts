@@ -23,10 +23,16 @@ import { FileConfigStore } from './file-config-store';
 export class ConfigService {
   private store: IConfigStore;
   private readonly configRootPath: string;
+  private currentTenantId: string;
 
   constructor(@Inject('CONFIG_STORE') store: IConfigStore) {
     this.store = store;
     this.configRootPath = (store as any).configRootPath ?? './config';
+    this.currentTenantId = (store as any).tenantId ?? 'demo-manufacturing';
+  }
+
+  getTenantId(): string {
+    return this.currentTenantId;
   }
 
   getTenantConfig(): ITenantConfig | null {
@@ -106,6 +112,9 @@ export class ConfigService {
   }
 
   switchTenant(tenantId: string): void {
-    this.store = new FileConfigStore(this.configRootPath, tenantId);
+    if (tenantId !== this.currentTenantId) {
+      this.store = new FileConfigStore(this.configRootPath, tenantId);
+      this.currentTenantId = tenantId;
+    }
   }
 }

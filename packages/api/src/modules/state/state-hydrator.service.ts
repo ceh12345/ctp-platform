@@ -49,7 +49,7 @@ export class StateHydratorService {
     const resources = this.hydrateResources(resourceData);
     const tasks = this.hydrateTasks(taskData, horizon);
 
-    this.hydrateCalendars(calendarData, resources);
+    this.hydrateCalendars(calendarData, resources, horizon);
 
     const stateChanges = this.hydrateStateChanges(stateChangeData);
 
@@ -95,6 +95,36 @@ export class StateHydratorService {
     return settings;
   }
 
+  /**
+   * Convert typedAttributes from either format:
+   * - Array format (manufacturing): [{ name, dataType, value: { type, value }, category, sequence }]
+   * - Object format (healthcare): { key: value, key2: [v1, v2] }
+   * Returns the array format expected by CTPTypedAttributes.fromArray()
+   */
+  private normalizeTypedAttributes(attrs: any): any[] | null {
+    if (!attrs) return null;
+    if (Array.isArray(attrs)) return attrs;
+    // Convert plain object to array format
+    const result: any[] = [];
+    let seq = 0;
+    for (const [key, val] of Object.entries(attrs)) {
+      let dataType: string;
+      let value: any;
+      if (Array.isArray(val)) {
+        dataType = 'list';
+        value = { type: 'list', value: val };
+      } else if (typeof val === 'number') {
+        dataType = 'number';
+        value = { type: 'number', value: val };
+      } else {
+        dataType = 'enum';
+        value = { type: 'enum', value: String(val) };
+      }
+      result.push({ name: key, dataType, value, category: '', sequence: seq++ });
+    }
+    return result;
+  }
+
   private hydrateResources(data: IResourceData[]): CTPResources {
     const resources = new CTPResources();
     for (const item of data) {
@@ -104,8 +134,11 @@ export class StateHydratorService {
         item.name,
         item.key,
       );
-      if (item.typedAttributes) {
-        resource.typedAttributes.fromArray(item.typedAttributes);
+      if (item.hierarchy?.level1) resource.hierarchy.first = item.hierarchy.level1;
+      if (item.hierarchy?.level2) resource.hierarchy.second = item.hierarchy.level2;
+      const resAttrs = this.normalizeTypedAttributes(item.typedAttributes);
+      if (resAttrs) {
+        resource.typedAttributes.fromArray(resAttrs);
       }
       resources.addEntity(resource);
     }
@@ -139,21 +172,43 @@ export class StateHydratorService {
         );
       }
 
-      // Capacity resources
+      // Capacity resources — supports two formats:
+      // FLAT (manufacturing):   { resource: "CNC-01", isPrimary: true, preferences?: ["CNC-01","CNC-02"] }
+      // GROUPED (healthcare):   { isPrimary: true, preferences: [{ resource: "OR-01", rank: 1 }, ...] }
       if (item.capacityResources && item.capacityResources.length > 0) {
         const capList = new CTPTaskResourceList();
         for (let i = 0; i < item.capacityResources.length; i++) {
-          const entry = item.capacityResources[i];
-          const tr = new CTPTaskResource(entry.resource, entry.isPrimary, i);
-          if (entry.qty !== undefined) tr.qty = entry.qty;
-          if (entry.mode) tr.mode = entry.mode;
-          // Support multi-resource OR: if preferences array given, add each;
-          // otherwise fall back to single preference from resource key
-          const prefs: string[] = entry.preferences ?? [entry.resource];
-          for (let p = 0; p < prefs.length; p++) {
-            tr.preferences.push(new CTPResourcePreference(prefs[p], p + 1));
+          const entry: any = item.capacityResources[i];
+          const isGrouped = Array.isArray(entry.preferences) &&
+            entry.preferences.length > 0 &&
+            typeof entry.preferences[0] === 'object';
+
+          if (isGrouped) {
+            // Grouped format: preferences are { resource, rank } objects
+            const tr = new CTPTaskResource(
+              entry.preferences[0].resource,
+              entry.isPrimary ?? (i === 0),
+              i,
+            );
+            if (entry.qty !== undefined) tr.qty = entry.qty;
+            if (entry.mode) tr.mode = entry.mode;
+            for (const pref of entry.preferences) {
+              tr.preferences.push(
+                new CTPResourcePreference(pref.resource, pref.rank ?? 0),
+              );
+            }
+            capList.add(tr);
+          } else {
+            // Flat format: resource is a string, preferences are optional string[]
+            const tr = new CTPTaskResource(entry.resource, entry.isPrimary, i);
+            if (entry.qty !== undefined) tr.qty = entry.qty;
+            if (entry.mode) tr.mode = entry.mode;
+            const prefs: string[] = entry.preferences ?? [entry.resource];
+            for (let p = 0; p < prefs.length; p++) {
+              tr.preferences.push(new CTPResourcePreference(prefs[p], p + 1));
+            }
+            capList.add(tr);
           }
-          capList.add(tr);
         }
         capList.sortBySequence();
         task.capacityResources = capList;
@@ -209,8 +264,9 @@ export class StateHydratorService {
       }
 
       // Typed attributes
-      if (item.typedAttributes) {
-        task.typedAttributes.fromArray(item.typedAttributes);
+      const taskAttrs = this.normalizeTypedAttributes(item.typedAttributes);
+      if (taskAttrs) {
+        task.typedAttributes.fromArray(taskAttrs);
       }
 
       tasks.addEntity(task);
@@ -218,21 +274,53 @@ export class StateHydratorService {
     return tasks;
   }
 
+  private static readonly DAY_MAP: Record<string, number> = {
+    Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7,
+  };
+
   private hydrateCalendars(
     data: ICalendarData[],
     resources: CTPResources,
+    horizon: CTPHorizon,
   ): void {
     for (const cal of data) {
       const resource = resources.getEntity(cal.resourceKey);
       if (!resource) continue;
 
       const available = new CTPAvailable();
-      for (const iv of cal.intervals) {
-        const startW = CTPDateTime.fromDateTime(DateTime.fromISO(iv.start));
-        const endW = CTPDateTime.fromDateTime(DateTime.fromISO(iv.end));
-        const interval = new CTPInterval(startW, endW, iv.qty);
-        if (iv.runRate !== undefined) interval.runRate = iv.runRate;
-        available.add(interval);
+
+      // Explicit intervals format
+      if (cal.intervals) {
+        for (const iv of cal.intervals) {
+          const startW = CTPDateTime.fromDateTime(DateTime.fromISO(iv.start));
+          const endW = CTPDateTime.fromDateTime(DateTime.fromISO(iv.end));
+          const interval = new CTPInterval(startW, endW, iv.qty);
+          if (iv.runRate !== undefined) interval.runRate = iv.runRate;
+          available.add(interval);
+        }
+      }
+
+      // Shift-based format — expand across horizon
+      if (cal.shifts) {
+        const hStart = horizon.startDate;
+        const hEnd = horizon.endDate;
+        for (const shift of cal.shifts) {
+          const dayNums = shift.days.map(d => StateHydratorService.DAY_MAP[d]).filter(Boolean);
+          const [startH, startM] = shift.start.split(':').map(Number);
+          const [endH, endM] = shift.end.split(':').map(Number);
+
+          let day = hStart.startOf('day');
+          while (day < hEnd) {
+            if (dayNums.includes(day.weekday)) {
+              const intervalStart = day.set({ hour: startH, minute: startM, second: 0 });
+              const intervalEnd = day.set({ hour: endH, minute: endM, second: 0 });
+              const startW = CTPDateTime.fromDateTime(intervalStart);
+              const endW = CTPDateTime.fromDateTime(intervalEnd);
+              available.add(new CTPInterval(startW, endW, 1));
+            }
+            day = day.plus({ days: 1 });
+          }
+        }
       }
 
       resource.original = available;

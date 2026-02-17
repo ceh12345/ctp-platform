@@ -1,0 +1,8 @@
+[
+  { "key": "ORTHO-KR", "name": "Knee Replacement", "unitOfMeasure": "case" },
+  { "key": "ORTHO-AR", "name": "Arthroscopy", "unitOfMeasure": "case" },
+  { "key": "GEN-LAP", "name": "Laparoscopic Surgery", "unitOfMeasure": "case" },
+  { "key": "GEN-HERNIA", "name": "Hernia Repair", "unitOfMeasure": "case" },
+  { "key": "PAIN-INJ", "name": "Pain Injection", "unitOfMeasure": "case" },
+  { "key": "EYE-CAT", "name": "Cataract Surgery", "unitOfMeasure": "case" }
+]

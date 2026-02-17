@@ -1,0 +1,545 @@
+[
+  {
+    "key": "C001-SETUP",
+    "name": "Thompson - Pre-Op Setup",
+    "type": "SETUP",
+    "windowStart": "2026-02-16T06:00:00Z",
+    "windowEnd": "2026-02-20T18:00:00Z",
+    "durationSeconds": 1800,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [
+        { "resource": "OR-01", "rank": 1 },
+        { "resource": "OR-02", "rank": 2 }
+      ]},
+      { "isPrimary": false, "preferences": [
+        { "resource": "RN-01", "rank": 1 },
+        { "resource": "RN-02", "rank": 2 },
+        { "resource": "RN-03", "rank": 3 }
+      ]}
+    ],
+    "typedAttributes": { "procedureType": "ORTHO-KR", "caseId": "CASE-001", "patientId": "PAT-Thompson", "priority": "ELECTIVE", "phase": "PRE-OP" },
+    "orderKey": "CASE-001",
+    "orderName": "CASE-001: Thompson - Knee Replacement",
+    "process": "ORTHO-KR"
+  },
+  {
+    "key": "C001-PROC",
+    "name": "Thompson - Knee Replacement",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T06:00:00Z",
+    "windowEnd": "2026-02-20T18:00:00Z",
+    "durationSeconds": 9000,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [
+        { "resource": "OR-01", "rank": 1 },
+        { "resource": "OR-02", "rank": 2 }
+      ]},
+      { "isPrimary": false, "preferences": [
+        { "resource": "DR-SMITH", "rank": 1 }
+      ]},
+      { "isPrimary": false, "preferences": [
+        { "resource": "AN-JONES", "rank": 1 },
+        { "resource": "AN-GARCIA", "rank": 2 }
+      ]},
+      { "isPrimary": false, "preferences": [
+        { "resource": "RN-01", "rank": 1 },
+        { "resource": "RN-02", "rank": 2 },
+        { "resource": "RN-03", "rank": 3 }
+      ]},
+      { "isPrimary": false, "preferences": [
+        { "resource": "EQ-FLUORO", "rank": 1 }
+      ]}
+    ],
+    "typedAttributes": { "procedureType": "ORTHO-KR", "caseId": "CASE-001", "patientId": "PAT-Thompson", "priority": "ELECTIVE", "phase": "PROCEDURE" },
+    "orderKey": "CASE-001",
+    "orderName": "CASE-001: Thompson - Knee Replacement",
+    "linkId": { "name": "CASE-001", "type": "ES", "prevLink": "C001-SETUP" },
+    "process": "ORTHO-KR"
+  },
+  {
+    "key": "C001-REC",
+    "name": "Thompson - Recovery",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T06:00:00Z",
+    "windowEnd": "2026-02-21T20:00:00Z",
+    "durationSeconds": 10800,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [
+        { "resource": "REC-01", "rank": 1 },
+        { "resource": "REC-02", "rank": 2 },
+        { "resource": "REC-03", "rank": 3 },
+        { "resource": "REC-04", "rank": 4 }
+      ]},
+      { "isPrimary": false, "preferences": [
+        { "resource": "RN-01", "rank": 1 },
+        { "resource": "RN-02", "rank": 2 },
+        { "resource": "RN-03", "rank": 3 }
+      ]}
+    ],
+    "typedAttributes": { "procedureType": "ORTHO-KR", "caseId": "CASE-001", "patientId": "PAT-Thompson", "priority": "ELECTIVE", "phase": "RECOVERY" },
+    "orderKey": "CASE-001",
+    "orderName": "CASE-001: Thompson - Knee Replacement",
+    "linkId": { "name": "CASE-001", "type": "ES", "prevLink": "C001-PROC" },
+    "process": "RECOVERY"
+  },
+
+  {
+    "key": "C002-SETUP",
+    "name": "Rivera - Pre-Op Setup",
+    "type": "SETUP",
+    "windowStart": "2026-02-16T06:00:00Z",
+    "windowEnd": "2026-02-18T18:00:00Z",
+    "durationSeconds": 900,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [
+        { "resource": "OR-01", "rank": 1 },
+        { "resource": "OR-02", "rank": 2 },
+        { "resource": "OR-03", "rank": 3 }
+      ]},
+      { "isPrimary": false, "preferences": [
+        { "resource": "RN-01", "rank": 1 },
+        { "resource": "RN-02", "rank": 2 },
+        { "resource": "RN-03", "rank": 3 }
+      ]}
+    ],
+    "typedAttributes": { "procedureType": "ORTHO-AR", "caseId": "CASE-002", "patientId": "PAT-Rivera", "priority": "URGENT", "phase": "PRE-OP" },
+    "orderKey": "CASE-002",
+    "orderName": "CASE-002: Rivera - Arthroscopy",
+    "process": "ORTHO-AR"
+  },
+  {
+    "key": "C002-PROC",
+    "name": "Rivera - Arthroscopy",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T06:00:00Z",
+    "windowEnd": "2026-02-18T18:00:00Z",
+    "durationSeconds": 3600,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [
+        { "resource": "OR-01", "rank": 1 },
+        { "resource": "OR-02", "rank": 2 },
+        { "resource": "OR-03", "rank": 3 }
+      ]},
+      { "isPrimary": false, "preferences": [
+        { "resource": "DR-SMITH", "rank": 1 }
+      ]},
+      { "isPrimary": false, "preferences": [
+        { "resource": "AN-JONES", "rank": 1 },
+        { "resource": "AN-GARCIA", "rank": 2 }
+      ]},
+      { "isPrimary": false, "preferences": [
+        { "resource": "RN-01", "rank": 1 },
+        { "resource": "RN-02", "rank": 2 },
+        { "resource": "RN-03", "rank": 3 }
+      ]}
+    ],
+    "typedAttributes": { "procedureType": "ORTHO-AR", "caseId": "CASE-002", "patientId": "PAT-Rivera", "priority": "URGENT", "phase": "PROCEDURE" },
+    "orderKey": "CASE-002",
+    "orderName": "CASE-002: Rivera - Arthroscopy",
+    "linkId": { "name": "CASE-002", "type": "ES", "prevLink": "C002-SETUP" },
+    "process": "ORTHO-AR"
+  },
+  {
+    "key": "C002-REC",
+    "name": "Rivera - Recovery",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T06:00:00Z",
+    "windowEnd": "2026-02-19T20:00:00Z",
+    "durationSeconds": 5400,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [
+        { "resource": "REC-01", "rank": 1 },
+        { "resource": "REC-02", "rank": 2 },
+        { "resource": "REC-03", "rank": 3 },
+        { "resource": "REC-04", "rank": 4 }
+      ]},
+      { "isPrimary": false, "preferences": [
+        { "resource": "RN-01", "rank": 1 },
+        { "resource": "RN-02", "rank": 2 },
+        { "resource": "RN-03", "rank": 3 }
+      ]}
+    ],
+    "typedAttributes": { "procedureType": "ORTHO-AR", "caseId": "CASE-002", "patientId": "PAT-Rivera", "priority": "URGENT", "phase": "RECOVERY" },
+    "orderKey": "CASE-002",
+    "orderName": "CASE-002: Rivera - Arthroscopy",
+    "linkId": { "name": "CASE-002", "type": "ES", "prevLink": "C002-PROC" },
+    "process": "RECOVERY"
+  },
+
+  {
+    "key": "C003-SETUP",
+    "name": "Kim - Pre-Op Setup",
+    "type": "SETUP",
+    "windowStart": "2026-02-17T06:00:00Z",
+    "windowEnd": "2026-02-21T18:00:00Z",
+    "durationSeconds": 1800,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "OR-01", "rank": 1 }, { "resource": "OR-02", "rank": 2 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "GEN-LAP", "caseId": "CASE-003", "patientId": "PAT-Kim", "priority": "ELECTIVE", "phase": "PRE-OP" },
+    "orderKey": "CASE-003", "orderName": "CASE-003: Kim - Laparoscopic", "process": "GEN-LAP"
+  },
+  {
+    "key": "C003-PROC",
+    "name": "Kim - Laparoscopic Surgery",
+    "type": "PROCESS",
+    "windowStart": "2026-02-17T06:00:00Z",
+    "windowEnd": "2026-02-21T18:00:00Z",
+    "durationSeconds": 5400,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "OR-01", "rank": 1 }, { "resource": "OR-02", "rank": 2 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "DR-PATEL", "rank": 1 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "AN-JONES", "rank": 1 }, { "resource": "AN-GARCIA", "rank": 2 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "GEN-LAP", "caseId": "CASE-003", "patientId": "PAT-Kim", "priority": "ELECTIVE", "phase": "PROCEDURE" },
+    "orderKey": "CASE-003", "orderName": "CASE-003: Kim - Laparoscopic",
+    "linkId": { "name": "CASE-003", "type": "ES", "prevLink": "C003-SETUP" }, "process": "GEN-LAP"
+  },
+  {
+    "key": "C003-REC",
+    "name": "Kim - Recovery",
+    "type": "PROCESS",
+    "windowStart": "2026-02-17T06:00:00Z",
+    "windowEnd": "2026-02-22T20:00:00Z",
+    "durationSeconds": 7200,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "REC-01", "rank": 1 }, { "resource": "REC-02", "rank": 2 }, { "resource": "REC-03", "rank": 3 }, { "resource": "REC-04", "rank": 4 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "GEN-LAP", "caseId": "CASE-003", "patientId": "PAT-Kim", "priority": "ELECTIVE", "phase": "RECOVERY" },
+    "orderKey": "CASE-003", "orderName": "CASE-003: Kim - Laparoscopic",
+    "linkId": { "name": "CASE-003", "type": "ES", "prevLink": "C003-PROC" }, "process": "RECOVERY"
+  },
+
+  {
+    "key": "C004-SETUP",
+    "name": "Davis - Pre-Op Setup",
+    "type": "SETUP",
+    "windowStart": "2026-02-16T06:00:00Z",
+    "windowEnd": "2026-02-20T18:00:00Z",
+    "durationSeconds": 900,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "OR-01", "rank": 1 }, { "resource": "OR-02", "rank": 2 }, { "resource": "OR-03", "rank": 3 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "GEN-HERNIA", "caseId": "CASE-004", "patientId": "PAT-Davis", "priority": "ELECTIVE", "phase": "PRE-OP" },
+    "orderKey": "CASE-004", "orderName": "CASE-004: Davis - Hernia Repair", "process": "GEN-HERNIA"
+  },
+  {
+    "key": "C004-PROC",
+    "name": "Davis - Hernia Repair",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T06:00:00Z",
+    "windowEnd": "2026-02-20T18:00:00Z",
+    "durationSeconds": 3600,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "OR-01", "rank": 1 }, { "resource": "OR-02", "rank": 2 }, { "resource": "OR-03", "rank": 3 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "DR-PATEL", "rank": 1 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "AN-JONES", "rank": 1 }, { "resource": "AN-GARCIA", "rank": 2 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "GEN-HERNIA", "caseId": "CASE-004", "patientId": "PAT-Davis", "priority": "ELECTIVE", "phase": "PROCEDURE" },
+    "orderKey": "CASE-004", "orderName": "CASE-004: Davis - Hernia Repair",
+    "linkId": { "name": "CASE-004", "type": "ES", "prevLink": "C004-SETUP" }, "process": "GEN-HERNIA"
+  },
+  {
+    "key": "C004-REC",
+    "name": "Davis - Recovery",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T06:00:00Z",
+    "windowEnd": "2026-02-21T20:00:00Z",
+    "durationSeconds": 5400,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "REC-01", "rank": 1 }, { "resource": "REC-02", "rank": 2 }, { "resource": "REC-03", "rank": 3 }, { "resource": "REC-04", "rank": 4 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "GEN-HERNIA", "caseId": "CASE-004", "patientId": "PAT-Davis", "priority": "ELECTIVE", "phase": "RECOVERY" },
+    "orderKey": "CASE-004", "orderName": "CASE-004: Davis - Hernia Repair",
+    "linkId": { "name": "CASE-004", "type": "ES", "prevLink": "C004-PROC" }, "process": "RECOVERY"
+  },
+
+  {
+    "key": "C005-SETUP",
+    "name": "Williams - Pre-Op Setup",
+    "type": "SETUP",
+    "windowStart": "2026-02-16T06:00:00Z",
+    "windowEnd": "2026-02-17T16:00:00Z",
+    "durationSeconds": 600,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "OR-03", "rank": 1 }, { "resource": "OR-01", "rank": 2 }, { "resource": "OR-02", "rank": 3 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "PAIN-INJ", "caseId": "CASE-005", "patientId": "PAT-Williams", "priority": "URGENT", "phase": "PRE-OP" },
+    "orderKey": "CASE-005", "orderName": "CASE-005: Williams - Pain Injection", "process": "PAIN-INJ"
+  },
+  {
+    "key": "C005-PROC",
+    "name": "Williams - Pain Injection",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T06:00:00Z",
+    "windowEnd": "2026-02-17T16:00:00Z",
+    "durationSeconds": 1800,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "OR-03", "rank": 1 }, { "resource": "OR-01", "rank": 2 }, { "resource": "OR-02", "rank": 3 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "DR-CHEN", "rank": 1 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "EQ-FLUORO", "rank": 1 }]}
+    ],
+    "typedAttributes": { "procedureType": "PAIN-INJ", "caseId": "CASE-005", "patientId": "PAT-Williams", "priority": "URGENT", "phase": "PROCEDURE" },
+    "orderKey": "CASE-005", "orderName": "CASE-005: Williams - Pain Injection",
+    "linkId": { "name": "CASE-005", "type": "ES", "prevLink": "C005-SETUP" }, "process": "PAIN-INJ"
+  },
+  {
+    "key": "C005-REC",
+    "name": "Williams - Recovery",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T06:00:00Z",
+    "windowEnd": "2026-02-18T20:00:00Z",
+    "durationSeconds": 3600,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "REC-01", "rank": 1 }, { "resource": "REC-02", "rank": 2 }, { "resource": "REC-03", "rank": 3 }, { "resource": "REC-04", "rank": 4 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "PAIN-INJ", "caseId": "CASE-005", "patientId": "PAT-Williams", "priority": "URGENT", "phase": "RECOVERY" },
+    "orderKey": "CASE-005", "orderName": "CASE-005: Williams - Pain Injection",
+    "linkId": { "name": "CASE-005", "type": "ES", "prevLink": "C005-PROC" }, "process": "RECOVERY"
+  },
+
+  {
+    "key": "C006-SETUP",
+    "name": "Johnson - Pre-Op Setup",
+    "type": "SETUP",
+    "windowStart": "2026-02-18T06:00:00Z",
+    "windowEnd": "2026-02-21T16:00:00Z",
+    "durationSeconds": 600,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "OR-03", "rank": 1 }, { "resource": "OR-01", "rank": 2 }, { "resource": "OR-02", "rank": 3 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "EYE-CAT", "caseId": "CASE-006", "patientId": "PAT-Johnson", "priority": "ELECTIVE", "phase": "PRE-OP" },
+    "orderKey": "CASE-006", "orderName": "CASE-006: Johnson - Cataract", "process": "EYE-CAT"
+  },
+  {
+    "key": "C006-PROC",
+    "name": "Johnson - Cataract Surgery",
+    "type": "PROCESS",
+    "windowStart": "2026-02-18T06:00:00Z",
+    "windowEnd": "2026-02-21T16:00:00Z",
+    "durationSeconds": 2700,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "OR-03", "rank": 1 }, { "resource": "OR-01", "rank": 2 }, { "resource": "OR-02", "rank": 3 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "DR-CHEN", "rank": 1 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "EQ-LASER", "rank": 1 }]}
+    ],
+    "typedAttributes": { "procedureType": "EYE-CAT", "caseId": "CASE-006", "patientId": "PAT-Johnson", "priority": "ELECTIVE", "phase": "PROCEDURE" },
+    "orderKey": "CASE-006", "orderName": "CASE-006: Johnson - Cataract",
+    "linkId": { "name": "CASE-006", "type": "ES", "prevLink": "C006-SETUP" }, "process": "EYE-CAT"
+  },
+  {
+    "key": "C006-REC",
+    "name": "Johnson - Recovery",
+    "type": "PROCESS",
+    "windowStart": "2026-02-18T06:00:00Z",
+    "windowEnd": "2026-02-22T20:00:00Z",
+    "durationSeconds": 3600,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "REC-01", "rank": 1 }, { "resource": "REC-02", "rank": 2 }, { "resource": "REC-03", "rank": 3 }, { "resource": "REC-04", "rank": 4 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "EYE-CAT", "caseId": "CASE-006", "patientId": "PAT-Johnson", "priority": "ELECTIVE", "phase": "RECOVERY" },
+    "orderKey": "CASE-006", "orderName": "CASE-006: Johnson - Cataract",
+    "linkId": { "name": "CASE-006", "type": "ES", "prevLink": "C006-PROC" }, "process": "RECOVERY"
+  },
+
+  {
+    "key": "C007-SETUP",
+    "name": "Martinez - Pre-Op Setup",
+    "type": "SETUP",
+    "windowStart": "2026-02-23T06:00:00Z",
+    "windowEnd": "2026-02-27T18:00:00Z",
+    "durationSeconds": 1800,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "OR-01", "rank": 1 }, { "resource": "OR-02", "rank": 2 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "ORTHO-KR", "caseId": "CASE-007", "patientId": "PAT-Martinez", "priority": "ELECTIVE", "phase": "PRE-OP" },
+    "orderKey": "CASE-007", "orderName": "CASE-007: Martinez - Knee Replacement", "process": "ORTHO-KR"
+  },
+  {
+    "key": "C007-PROC",
+    "name": "Martinez - Knee Replacement",
+    "type": "PROCESS",
+    "windowStart": "2026-02-23T06:00:00Z",
+    "windowEnd": "2026-02-27T18:00:00Z",
+    "durationSeconds": 9000,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "OR-01", "rank": 1 }, { "resource": "OR-02", "rank": 2 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "DR-SMITH", "rank": 1 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "AN-JONES", "rank": 1 }, { "resource": "AN-GARCIA", "rank": 2 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "EQ-FLUORO", "rank": 1 }]}
+    ],
+    "typedAttributes": { "procedureType": "ORTHO-KR", "caseId": "CASE-007", "patientId": "PAT-Martinez", "priority": "ELECTIVE", "phase": "PROCEDURE" },
+    "orderKey": "CASE-007", "orderName": "CASE-007: Martinez - Knee Replacement",
+    "linkId": { "name": "CASE-007", "type": "ES", "prevLink": "C007-SETUP" }, "process": "ORTHO-KR"
+  },
+  {
+    "key": "C007-REC",
+    "name": "Martinez - Recovery",
+    "type": "PROCESS",
+    "windowStart": "2026-02-23T06:00:00Z",
+    "windowEnd": "2026-02-28T20:00:00Z",
+    "durationSeconds": 10800,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "REC-01", "rank": 1 }, { "resource": "REC-02", "rank": 2 }, { "resource": "REC-03", "rank": 3 }, { "resource": "REC-04", "rank": 4 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "ORTHO-KR", "caseId": "CASE-007", "patientId": "PAT-Martinez", "priority": "ELECTIVE", "phase": "RECOVERY" },
+    "orderKey": "CASE-007", "orderName": "CASE-007: Martinez - Knee Replacement",
+    "linkId": { "name": "CASE-007", "type": "ES", "prevLink": "C007-PROC" }, "process": "RECOVERY"
+  },
+
+  {
+    "key": "C008-SETUP",
+    "name": "Brown - Pre-Op Setup",
+    "type": "SETUP",
+    "windowStart": "2026-02-23T06:00:00Z",
+    "windowEnd": "2026-02-26T18:00:00Z",
+    "durationSeconds": 900,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "OR-01", "rank": 1 }, { "resource": "OR-02", "rank": 2 }, { "resource": "OR-03", "rank": 3 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "GEN-HERNIA", "caseId": "CASE-008", "patientId": "PAT-Brown", "priority": "ELECTIVE", "phase": "PRE-OP" },
+    "orderKey": "CASE-008", "orderName": "CASE-008: Brown - Hernia Repair", "process": "GEN-HERNIA"
+  },
+  {
+    "key": "C008-PROC",
+    "name": "Brown - Hernia Repair",
+    "type": "PROCESS",
+    "windowStart": "2026-02-23T06:00:00Z",
+    "windowEnd": "2026-02-26T18:00:00Z",
+    "durationSeconds": 3600,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "OR-01", "rank": 1 }, { "resource": "OR-02", "rank": 2 }, { "resource": "OR-03", "rank": 3 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "DR-PATEL", "rank": 1 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "AN-JONES", "rank": 1 }, { "resource": "AN-GARCIA", "rank": 2 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "GEN-HERNIA", "caseId": "CASE-008", "patientId": "PAT-Brown", "priority": "ELECTIVE", "phase": "PROCEDURE" },
+    "orderKey": "CASE-008", "orderName": "CASE-008: Brown - Hernia Repair",
+    "linkId": { "name": "CASE-008", "type": "ES", "prevLink": "C008-SETUP" }, "process": "GEN-HERNIA"
+  },
+  {
+    "key": "C008-REC",
+    "name": "Brown - Recovery",
+    "type": "PROCESS",
+    "windowStart": "2026-02-23T06:00:00Z",
+    "windowEnd": "2026-02-27T20:00:00Z",
+    "durationSeconds": 5400,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "REC-01", "rank": 1 }, { "resource": "REC-02", "rank": 2 }, { "resource": "REC-03", "rank": 3 }, { "resource": "REC-04", "rank": 4 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "GEN-HERNIA", "caseId": "CASE-008", "patientId": "PAT-Brown", "priority": "ELECTIVE", "phase": "RECOVERY" },
+    "orderKey": "CASE-008", "orderName": "CASE-008: Brown - Hernia Repair",
+    "linkId": { "name": "CASE-008", "type": "ES", "prevLink": "C008-PROC" }, "process": "RECOVERY"
+  },
+
+  {
+    "key": "C009-SETUP",
+    "name": "Lee - Pre-Op Setup",
+    "type": "SETUP",
+    "windowStart": "2026-02-24T06:00:00Z",
+    "windowEnd": "2026-02-25T16:00:00Z",
+    "durationSeconds": 600,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "OR-03", "rank": 1 }, { "resource": "OR-01", "rank": 2 }, { "resource": "OR-02", "rank": 3 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "PAIN-INJ", "caseId": "CASE-009", "patientId": "PAT-Lee", "priority": "URGENT", "phase": "PRE-OP" },
+    "orderKey": "CASE-009", "orderName": "CASE-009: Lee - Pain Injection", "process": "PAIN-INJ"
+  },
+  {
+    "key": "C009-PROC",
+    "name": "Lee - Pain Injection",
+    "type": "PROCESS",
+    "windowStart": "2026-02-24T06:00:00Z",
+    "windowEnd": "2026-02-25T16:00:00Z",
+    "durationSeconds": 1800,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "OR-03", "rank": 1 }, { "resource": "OR-01", "rank": 2 }, { "resource": "OR-02", "rank": 3 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "DR-CHEN", "rank": 1 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "EQ-FLUORO", "rank": 1 }]}
+    ],
+    "typedAttributes": { "procedureType": "PAIN-INJ", "caseId": "CASE-009", "patientId": "PAT-Lee", "priority": "URGENT", "phase": "PROCEDURE" },
+    "orderKey": "CASE-009", "orderName": "CASE-009: Lee - Pain Injection",
+    "linkId": { "name": "CASE-009", "type": "ES", "prevLink": "C009-SETUP" }, "process": "PAIN-INJ"
+  },
+  {
+    "key": "C009-REC",
+    "name": "Lee - Recovery",
+    "type": "PROCESS",
+    "windowStart": "2026-02-24T06:00:00Z",
+    "windowEnd": "2026-02-26T20:00:00Z",
+    "durationSeconds": 3600,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "REC-01", "rank": 1 }, { "resource": "REC-02", "rank": 2 }, { "resource": "REC-03", "rank": 3 }, { "resource": "REC-04", "rank": 4 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "PAIN-INJ", "caseId": "CASE-009", "patientId": "PAT-Lee", "priority": "URGENT", "phase": "RECOVERY" },
+    "orderKey": "CASE-009", "orderName": "CASE-009: Lee - Pain Injection",
+    "linkId": { "name": "CASE-009", "type": "ES", "prevLink": "C009-PROC" }, "process": "RECOVERY"
+  },
+
+  {
+    "key": "C010-SETUP",
+    "name": "Garcia - Pre-Op Setup",
+    "type": "SETUP",
+    "windowStart": "2026-02-19T06:00:00Z",
+    "windowEnd": "2026-02-27T18:00:00Z",
+    "durationSeconds": 900,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "OR-01", "rank": 1 }, { "resource": "OR-02", "rank": 2 }, { "resource": "OR-03", "rank": 3 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "ORTHO-AR", "caseId": "CASE-010", "patientId": "PAT-Garcia", "priority": "ADD-ON", "phase": "PRE-OP" },
+    "orderKey": "CASE-010", "orderName": "CASE-010: Garcia - Arthroscopy", "process": "ORTHO-AR"
+  },
+  {
+    "key": "C010-PROC",
+    "name": "Garcia - Arthroscopy",
+    "type": "PROCESS",
+    "windowStart": "2026-02-19T06:00:00Z",
+    "windowEnd": "2026-02-27T18:00:00Z",
+    "durationSeconds": 3600,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "OR-01", "rank": 1 }, { "resource": "OR-02", "rank": 2 }, { "resource": "OR-03", "rank": 3 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "DR-SMITH", "rank": 1 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "AN-JONES", "rank": 1 }, { "resource": "AN-GARCIA", "rank": 2 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "ORTHO-AR", "caseId": "CASE-010", "patientId": "PAT-Garcia", "priority": "ADD-ON", "phase": "PROCEDURE" },
+    "orderKey": "CASE-010", "orderName": "CASE-010: Garcia - Arthroscopy",
+    "linkId": { "name": "CASE-010", "type": "ES", "prevLink": "C010-SETUP" }, "process": "ORTHO-AR"
+  },
+  {
+    "key": "C010-REC",
+    "name": "Garcia - Recovery",
+    "type": "PROCESS",
+    "windowStart": "2026-02-19T06:00:00Z",
+    "windowEnd": "2026-02-28T20:00:00Z",
+    "durationSeconds": 5400,
+    "capacityResources": [
+      { "isPrimary": true, "preferences": [{ "resource": "REC-01", "rank": 1 }, { "resource": "REC-02", "rank": 2 }, { "resource": "REC-03", "rank": 3 }, { "resource": "REC-04", "rank": 4 }]},
+      { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
+    ],
+    "typedAttributes": { "procedureType": "ORTHO-AR", "caseId": "CASE-010", "patientId": "PAT-Garcia", "priority": "ADD-ON", "phase": "RECOVERY" },
+    "orderKey": "CASE-010", "orderName": "CASE-010: Garcia - Arthroscopy",
+    "linkId": { "name": "CASE-010", "type": "ES", "prevLink": "C010-PROC" }, "process": "RECOVERY"
+  }
+]

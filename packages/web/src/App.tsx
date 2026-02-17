@@ -32,11 +32,16 @@ const FONT = "'DM Sans','Segoe UI',system-ui,sans-serif";
    API HELPER
    ═══════════════════════════════════════════════════════════════ */
 
+const tenantId = new URLSearchParams(window.location.search).get('tenant') || 'demo-manufacturing';
+
 async function api(path: string, options?: RequestInit) {
   const method = options?.method?.toUpperCase() ?? 'GET';
   const hasBody = method === 'POST' || method === 'PUT' || method === 'PATCH';
   const res = await fetch(`/api/v1${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Tenant-Id': tenantId,
+    },
     ...(hasBody && !options?.body ? { body: '{}' } : {}),
     ...options,
   });
@@ -1726,6 +1731,31 @@ function ResourceDetailPanel({ resource, tasks, colors, onClose, onTaskClick }: 
       <DetailRow label={t('available', 'Available')} value={`${totalHrs.toFixed(1)}h`} />
       <DetailRow label="Assigned" value={`${assignedHrs.toFixed(1)}h`} />
 
+      {/* Net Available */}
+      {resource.netAvailable?.length > 0 && (
+        <>
+          <SectionLabel label={`Net ${t('available', 'Available')} (${resource.netAvailable.length})`} />
+          <div style={{ maxHeight: 180, overflowY: 'auto', marginBottom: 8 }}>
+            {resource.netAvailable.map((iv: any, i: number) => (
+              <div key={i} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '6px 10px', marginBottom: 2, borderRadius: 6,
+                background: C.surface, border: `1px solid ${C.border}`, fontSize: 12,
+              }}>
+                <span style={{ color: C.text }}>{fmtDate(iv.start)}</span>
+                <span style={{ color: C.green, fontWeight: 600 }}>{fmtDuration(iv.durationSec)}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {resource.netAvailable?.length === 0 && (
+        <>
+          <SectionLabel label={`Net ${t('available', 'Available')}`} />
+          <div style={{ color: C.red, fontSize: 12, padding: '4px 0 8px' }}>Fully booked — no open slots</div>
+        </>
+      )}
+
       {/* Task Agenda */}
       <SectionLabel label={`${t('task', 'Task')} Agenda (${resTasks.length})`} />
       {resTasks.length === 0 && (
@@ -1917,12 +1947,14 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
     }
   }
 
-  // Group tasks by primary resource (reuse same exclusion logic)
+  // Group tasks by every assigned resource (multi-resource tasks appear on all lanes)
   const resMap = new Map<string, any[]>();
   resources.forEach((r: any) => resMap.set(r.resourceKey, []));
   scheduled.forEach((t: any) => {
-    const rk = t.assignedResources?.[0]?.resourceKey;
-    if (rk && resMap.has(rk)) resMap.get(rk)!.push(t);
+    for (const ar of t.assignedResources || []) {
+      const rk = ar.resourceKey;
+      if (rk && resMap.has(rk)) resMap.get(rk)!.push(t);
+    }
   });
 
   // All work center names (for toggle buttons)
@@ -2075,6 +2107,21 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                   {res.resourceName}
                 </div>
                 <div style={{ flex: 1, position: 'relative', height: LANE_H, overflow: 'hidden' }}>
+                  {/* Unavailable background (full lane) */}
+                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(128,128,128,0.06)' }} />
+                  {/* Available intervals */}
+                  {res.availability?.map((iv: any, i: number) => {
+                    const left = toPct(iv.start);
+                    const right = toPct(iv.end);
+                    const w = right - left;
+                    if (w <= 0) return null;
+                    return (
+                      <div key={i} style={{
+                        position: 'absolute', left: `${left}%`, width: `${w}%`,
+                        top: 0, bottom: 0, background: 'rgba(76,175,80,0.20)',
+                      }} />
+                    );
+                  })}
                   {/* Grid lines */}
                   {axisLabels.map((lbl, i) => (
                     <div key={i} style={{
@@ -3484,7 +3531,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   const [sub, setSub] = useState('Gantt');
   return (
     <div>
-      <SubTabs tabs={['Gantt', `${t('task', 'Task')} List`]} active={sub} onChange={setSub} />
+      <SubTabs tabs={['Gantt', t('tasks', 'Tasks')]} active={sub} onChange={setSub} />
       {sub === 'Gantt' ? (
         <Card>
           <GanttChart tasks={tasks} resources={resources} products={products} colors={colors}
@@ -3903,8 +3950,10 @@ export default function App() {
 
   const handleResourceClick = useCallback((r: any) => {
     setSelectedTask(null);
-    setSelectedResource(r);
-  }, []);
+    // Look up full resource object (with utilization data) when clicked from task detail
+    const full = resources.find((res: any) => res.resourceKey === r.resourceKey);
+    setSelectedResource(full || r);
+  }, [resources]);
 
   // Direct API actions (immediate server-side, no solve)
   const handleApiUnschedule = useCallback(async (taskKey: string) => {
@@ -4094,12 +4143,12 @@ export default function App() {
                   borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite',
                   display: 'inline-block',
                 }} />
-                Solving…
+                {t('solving', 'Solving')}…
               </>
             ) : solveStale ? (
-              <>▶ Review & Solve</>
+              <>▶ Review & {t('solve', 'Solve')}</>
             ) : (
-              <>▶ {act('solveAll', 'Solve All')}</>
+              <>▶ {t('solve', 'Solve All')}</>
             )}
           </button>
           <button
@@ -4244,7 +4293,7 @@ export default function App() {
                 fontFamily: FONT, whiteSpace: 'nowrap',
               }}
             >
-              Review & Solve
+              Review & {t('solve', 'Solve')}
             </button>
           </div>
         </div>

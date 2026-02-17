@@ -1,0 +1,38 @@
+[
+  {
+    "name": "ORUtilization",
+    "displayName": "OR Utilization",
+    "type": "built-in",
+    "sourceEntity": "resource",
+    "objective": "maximize",
+    "targetValue": 80,
+    "warningThreshold": 65,
+    "criticalThreshold": 50,
+    "unit": "%",
+    "visualizationType": "gauge"
+  },
+  {
+    "name": "OnTimeStart",
+    "displayName": "On-Time Case Starts",
+    "type": "built-in",
+    "sourceEntity": "task",
+    "objective": "maximize",
+    "targetValue": 90,
+    "warningThreshold": 80,
+    "criticalThreshold": 70,
+    "unit": "%",
+    "visualizationType": "gauge"
+  },
+  {
+    "name": "TurnoverTime",
+    "displayName": "Avg Turnover Time",
+    "type": "built-in",
+    "sourceEntity": "stateChange",
+    "objective": "minimize",
+    "targetValue": 20,
+    "warningThreshold": 30,
+    "criticalThreshold": 45,
+    "unit": "min",
+    "visualizationType": "gauge"
+  }
+]
