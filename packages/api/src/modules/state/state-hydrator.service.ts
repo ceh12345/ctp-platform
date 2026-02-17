@@ -147,7 +147,12 @@ export class StateHydratorService {
           const tr = new CTPTaskResource(entry.resource, entry.isPrimary, i);
           if (entry.qty !== undefined) tr.qty = entry.qty;
           if (entry.mode) tr.mode = entry.mode;
-          tr.preferences.push(new CTPResourcePreference(entry.resource));
+          // Support multi-resource OR: if preferences array given, add each;
+          // otherwise fall back to single preference from resource key
+          const prefs: string[] = entry.preferences ?? [entry.resource];
+          for (let p = 0; p < prefs.length; p++) {
+            tr.preferences.push(new CTPResourcePreference(prefs[p], p + 1));
+          }
           capList.add(tr);
         }
         capList.sortBySequence();

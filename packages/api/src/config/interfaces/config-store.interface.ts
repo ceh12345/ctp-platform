@@ -145,7 +145,7 @@ export interface ITaskData {
   durationSeconds?: number;
   durationType?: number;
   durationQty?: number;
-  capacityResources?: { resource: string; isPrimary: boolean; qty?: number; mode?: string }[];
+  capacityResources?: { resource: string; isPrimary: boolean; qty?: number; mode?: string; preferences?: string[] }[];
   materialsResources?: { resource: string; isPrimary: boolean; qty?: number; mode?: string }[];
   process?: string;
   subType?: string;

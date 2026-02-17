@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, CSSProperties, ReactNode } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, CSSProperties, ReactNode } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════
    CONSTANTS
@@ -402,10 +402,19 @@ function useFilter<T>(data: T[], config: FilterConfig) {
     return result;
   }, [data, search, status, columnFilters, config]);
 
+  const setColumnFilter = useCallback((column: string, selected: Set<string>) => {
+    setColumnFilters(prev => {
+      const next = { ...prev };
+      if (selected.size === 0) delete next[column];
+      else next[column] = selected;
+      return next;
+    });
+  }, []);
+
   return {
     search, setSearch,
     status, setStatus,
-    columnFilters, toggleColumnValue, clearColumnFilter,
+    columnFilters, toggleColumnValue, clearColumnFilter, setColumnFilter,
     clearAll,
     activeFilterCount,
     filtered,
@@ -420,18 +429,20 @@ function useFilter<T>(data: T[], config: FilterConfig) {
 function SortHeader({ label, k, current, dir, onSort, filterProps }: {
   label: string; k: string; current: string; dir: string; onSort: (k: string) => void;
   filterProps?: {
-    distinctValues: string[];
+    column: string;
+    values: string[];
     selected: Set<string>;
-    onToggle: (column: string, value: string) => void;
-    onClear: (column: string) => void;
+    onChange: (column: string, selected: Set<string>) => void;
   };
 }) {
   const active = k === current;
+  const isFiltered = filterProps && filterProps.selected.size > 0;
   return (
     <th
       style={{
         padding: '10px 12px', textAlign: 'left', fontSize: 12, fontWeight: 600,
-        color: active ? C.accent : C.textMuted, cursor: 'pointer', userSelect: 'none',
+        color: isFiltered ? C.accent : active ? C.accent : C.textMuted,
+        cursor: 'pointer', userSelect: 'none',
         borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap', fontFamily: FONT,
       }}
     >
@@ -441,11 +452,10 @@ function SortHeader({ label, k, current, dir, onSort, filterProps }: {
         </span>
         {filterProps && (
           <ColumnFilter
-            column={k}
-            distinctValues={filterProps.distinctValues}
+            column={filterProps.column}
+            values={filterProps.values}
             selected={filterProps.selected}
-            onToggle={filterProps.onToggle}
-            onClear={filterProps.onClear}
+            onChange={filterProps.onChange}
           />
         )}
       </div>
@@ -514,69 +524,141 @@ function StatusToggles({ options, active, onChange }: {
   );
 }
 
-function ColumnFilter({ column, distinctValues, selected, onToggle, onClear }: {
+function ColumnFilter({ column, values, selected, onChange }: {
   column: string;
-  distinctValues: string[];
+  values: string[];
   selected: Set<string>;
-  onToggle: (column: string, value: string) => void;
-  onClear: (column: string) => void;
+  onChange: (column: string, selected: Set<string>) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const hasFilter = selected.size > 0;
+  const ref = useRef<HTMLDivElement>(null);
+  const isFiltered = selected.size > 0;
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const toggle = (val: string) => {
+    const next = new Set(selected);
+    if (next.has(val)) next.delete(val);
+    else next.add(val);
+    onChange(column, next);
+  };
+
+  const selectAll = () => onChange(column, new Set(values));
+  const clearAll = () => onChange(column, new Set());
 
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }} onClick={e => e.stopPropagation()}>
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}
+      onClick={e => e.stopPropagation()}>
       <button onClick={() => setOpen(!open)} style={{
-        background: hasFilter ? C.accent + '22' : 'none',
-        border: hasFilter ? `1px solid ${C.accent}44` : '1px solid transparent',
+        background: isFiltered ? C.accent + '22' : 'none',
+        border: isFiltered ? `1px solid ${C.accent}44` : '1px solid transparent',
         borderRadius: 4, padding: '2px 6px', cursor: 'pointer',
-        fontSize: 11, color: hasFilter ? C.accent : C.textDim,
+        fontSize: 11, color: isFiltered ? C.accent : C.textDim,
         display: 'inline-flex', alignItems: 'center', gap: 2,
       }}>
-        &#x25BC; {hasFilter && `(${selected.size})`}
+        <span style={{
+          fontSize: 8, transition: 'transform 0.15s',
+          transform: open ? 'rotate(180deg)' : 'rotate(0)',
+        }}>&#x25BC;</span>
+        {isFiltered && (
+          <span style={{
+            fontSize: 9, fontWeight: 700, color: '#fff',
+            background: C.accent, borderRadius: 8,
+            padding: '0 5px', minWidth: 16, textAlign: 'center',
+          }}>{selected.size}</span>
+        )}
       </button>
 
       {open && (
-        <>
-          <div onClick={() => setOpen(false)} style={{
-            position: 'fixed', inset: 0, zIndex: 998,
-          }} />
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 999,
+          minWidth: 180, maxHeight: 280, overflow: 'auto',
+          background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.4)', padding: '6px 0',
+          fontFamily: FONT,
+        }}>
           <div style={{
-            position: 'absolute', top: '100%', left: 0, zIndex: 999,
-            background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
-            padding: 8, minWidth: 180, maxHeight: 240, overflowY: 'auto',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            display: 'flex', justifyContent: 'space-between', padding: '4px 10px 8px',
+            borderBottom: `1px solid ${C.border}`,
           }}>
-            {hasFilter && (
-              <button onClick={() => onClear(column)} style={{
-                width: '100%', padding: '4px 8px', marginBottom: 4,
-                background: 'none', border: 'none', color: C.accent,
-                fontSize: 11, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
-              }}>
-                Clear filter
-              </button>
-            )}
-            {distinctValues.map(v => (
-              <label key={v} style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '4px 8px', cursor: 'pointer', fontSize: 12,
-                color: C.text, borderRadius: 4,
-              }}>
-                <input
-                  type="checkbox"
-                  checked={selected.has(v)}
-                  onChange={() => onToggle(column, v)}
-                  style={{ accentColor: C.accent }}
-                />
-                {v}
-              </label>
-            ))}
-            {distinctValues.length === 0 && (
-              <div style={{ padding: 8, color: C.textDim, fontSize: 12 }}>No values</div>
-            )}
+            <span onClick={selectAll} style={{
+              fontSize: 10, color: C.accent, cursor: 'pointer', fontWeight: 600,
+            }}>Select All</span>
+            <span onClick={clearAll} style={{
+              fontSize: 10, color: C.textMuted, cursor: 'pointer', fontWeight: 600,
+            }}>Clear</span>
           </div>
-        </>
+
+          {[...values].sort().map(val => (
+            <div key={val} onClick={() => toggle(val)} style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '5px 10px', cursor: 'pointer',
+              background: selected.has(val) ? `${C.accent}10` : 'transparent',
+              transition: 'background 0.1s',
+            }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${C.accent}15`; }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background = selected.has(val) ? `${C.accent}10` : 'transparent';
+              }}
+            >
+              <span style={{
+                width: 14, height: 14, borderRadius: 3,
+                border: `2px solid ${selected.has(val) ? C.accent : C.border}`,
+                background: selected.has(val) ? C.accent : 'transparent',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 9, color: '#fff', fontWeight: 800, flexShrink: 0,
+              }}>
+                {selected.has(val) && '\u2713'}
+              </span>
+              <span style={{ fontSize: 12, color: C.text }}>{val || '\u2014'}</span>
+            </div>
+          ))}
+
+          {values.length === 0 && (
+            <div style={{ padding: '8px 10px', fontSize: 11, color: C.textDim }}>No values</div>
+          )}
+        </div>
       )}
+    </div>
+  );
+}
+
+function ActiveFilters({ filter }: { filter: ReturnType<typeof useFilter> }) {
+  const active = Object.entries(filter.columnFilters).filter(([, s]) => s.size > 0);
+  if (active.length === 0) return null;
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+      padding: '6px 12px', marginBottom: 8,
+      background: `${C.accent}08`, borderRadius: 8,
+      border: `1px solid ${C.accent}20`,
+    }}>
+      <span style={{ fontSize: 11, color: C.textMuted, fontWeight: 600 }}>Filters:</span>
+      {active.map(([column, selected]) => (
+        <span key={column}
+          onClick={() => filter.setColumnFilter(column, new Set())}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '2px 8px', borderRadius: 12,
+            background: `${C.accent}15`, border: `1px solid ${C.accent}30`,
+            fontSize: 11, color: C.accent, cursor: 'pointer', fontWeight: 600,
+          }}
+        >
+          {column.replace(/^_/, '')}: {selected.size}
+          <span style={{ fontSize: 9, marginLeft: 2 }}>\u2715</span>
+        </span>
+      ))}
+      <span onClick={() => filter.clearAll()} style={{
+        fontSize: 10, color: C.textMuted, cursor: 'pointer', marginLeft: 8, fontWeight: 600,
+      }}>Clear all</span>
     </div>
   );
 }
@@ -1325,7 +1407,8 @@ function SolvePreview({ orders, tasks, materials, resources,
 function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceClick,
   taskPins, taskExcludes, taskUnschedules, orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask, onCancelUnschedule,
-  resourceModeOverrides, onResourceModeChange, experienceLevel = 'novice' }: {
+  resourceModeOverrides, onResourceModeChange, experienceLevel = 'novice',
+  whereToTaskKey, whereToOptions, onMoveTo }: {
   task: any; tasks: any[]; products: any[]; colors: any;
   onClose: () => void; onResourceClick: (r: any) => void;
   taskPins?: Record<string, boolean>;
@@ -1339,6 +1422,9 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   resourceModeOverrides?: Record<string, string>;
   onResourceModeChange?: (compoundKey: string, mode: string) => void;
   experienceLevel?: ExperienceLevel;
+  whereToTaskKey?: string | null;
+  whereToOptions?: any[];
+  onMoveTo?: (key: string, option: any) => void;
 }) {
   const prodName = task.outputProductKey
     ? (products.find((p: any) => p.key === task.outputProductKey)?.name || task.outputProductKey)
@@ -1402,6 +1488,50 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
             }}>✕ Unschedule</button>
           )}
         </div>
+      )}
+
+      {/* WhereTo Available Positions */}
+      {whereToTaskKey === task.key && whereToOptions && whereToOptions.length > 0 && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginTop: 16, marginBottom: 8 }}>
+            🗺️ Available Positions
+          </div>
+          {whereToOptions.slice(0, 5).map((option: any) => {
+            const ghostColor = option.rank === 1 ? C.green : option.rank <= 3 ? C.accent : C.textDim;
+            return (
+              <div key={option.contextHash}
+                onClick={() => onMoveTo?.(whereToTaskKey!, option)}
+                style={{
+                  padding: '6px 10px', borderRadius: 6, marginBottom: 3, cursor: 'pointer',
+                  border: `1px solid ${option.rank === 1 ? C.green : C.border}`,
+                  background: option.rank === 1 ? `${C.green}08` : 'transparent',
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${C.accent}15`; }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = option.rank === 1 ? `${C.green}08` : 'transparent';
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: C.text }}>
+                    #{option.rank} {option.resources.map((r: any) => r.resourceName || r.resourceKey).join(' + ')}
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: ghostColor }}>
+                    {option.score.toFixed(1)}
+                  </span>
+                </div>
+                <div style={{ fontSize: 10, color: C.textMuted, marginTop: 2 }}>
+                  {new Date(option.start).toLocaleString()} → {new Date(option.end).toLocaleString()}
+                </div>
+              </div>
+            );
+          })}
+          {whereToOptions.length > 5 && (
+            <div style={{ fontSize: 10, color: C.textDim, textAlign: 'center', marginTop: 4 }}>
+              +{whereToOptions.length - 5} more on Gantt
+            </div>
+          )}
+        </>
       )}
 
       {/* Task Info */}
@@ -1655,7 +1785,9 @@ const cellStyle: CSSProperties = {
 
 function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourceClick,
   taskPins, taskExcludes, taskUnschedules, orderModes,
-  onPinTask, onExcludeTask, onUnscheduleTask }: {
+  onPinTask, onExcludeTask, onUnscheduleTask,
+  onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
+  whereToCurrentAssignment, onMoveTo, onCancelWhereTo }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
@@ -1663,6 +1795,13 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   onPinTask?: (key: string, pinned: boolean) => void;
   onExcludeTask?: (key: string, excluded: boolean) => void;
   onUnscheduleTask?: (key: string) => void;
+  onWhereTo?: (key: string) => void;
+  whereToTaskKey?: string | null;
+  whereToOptions?: any[];
+  whereToLoading?: boolean;
+  whereToCurrentAssignment?: any;
+  onMoveTo?: (key: string, option: any) => void;
+  onCancelWhereTo?: () => void;
 }) {
   const [hovered, setHovered] = useState<any>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
@@ -1983,12 +2122,183 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                       </div>
                     );
                   })}
+                  {/* WhereTo dim overlay on lane */}
+                  {whereToTaskKey && whereToOptions && whereToOptions.length > 0 && !whereToLoading && (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)', pointerEvents: 'none', zIndex: 5 }} />
+                  )}
+                  {/* Ghost bars for this resource */}
+                  {whereToTaskKey && whereToOptions && whereToOptions.length > 0 && !whereToLoading && (
+                    whereToOptions
+                      .filter(opt => {
+                        const primary = opt.resources?.find((r: any) => r.isPrimary) || opt.resources?.[0];
+                        return primary?.resourceKey === res.resourceKey;
+                      })
+                      .map(option => {
+                        const gLeft = toPct(option.start);
+                        const gRight = toPct(option.end);
+                        const gW = Math.max(gRight - gLeft, 0.3);
+                        const ghostColor = option.rank === 1 ? C.green : option.rank <= 3 ? C.accent : C.textDim;
+                        return (
+                          <div key={option.contextHash}
+                            onClick={(e) => { e.stopPropagation(); onMoveTo?.(whereToTaskKey!, option); }}
+                            style={{
+                              position: 'absolute', left: `${gLeft}%`, width: `${gW}%`,
+                              top: 2, height: LANE_H - 4, borderRadius: 6,
+                              background: `${ghostColor}30`, border: `2px dashed ${ghostColor}`,
+                              cursor: 'pointer', zIndex: 10,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                              transition: 'background 0.15s, border-style 0.15s',
+                            }}
+                            onMouseEnter={e => {
+                              (e.currentTarget as HTMLElement).style.background = `${ghostColor}50`;
+                              (e.currentTarget as HTMLElement).style.borderStyle = 'solid';
+                            }}
+                            onMouseLeave={e => {
+                              (e.currentTarget as HTMLElement).style.background = `${ghostColor}30`;
+                              (e.currentTarget as HTMLElement).style.borderStyle = 'dashed';
+                            }}
+                          >
+                            <span style={{
+                              display: 'inline-flex', width: 20, height: 20, borderRadius: 10,
+                              alignItems: 'center', justifyContent: 'center',
+                              background: ghostColor, color: '#fff',
+                              fontSize: 10, fontWeight: 800, flexShrink: 0,
+                            }}>{option.rank}</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: ghostColor }}>
+                              {option.score.toFixed(1)}
+                            </span>
+                            {option.changeover && (
+                              <span style={{ fontSize: 9, color: C.yellow }} title={
+                                `Changeover: ${option.changeover.from} → ${option.changeover.to} (${Math.round(option.changeover.duration / 60)}min)`
+                              }>⚙</span>
+                            )}
+                          </div>
+                        );
+                      })
+                  )}
+                  {/* Current assignment highlight */}
+                  {whereToTaskKey && whereToCurrentAssignment && whereToCurrentAssignment.resources?.[0] === res.resourceKey && (
+                    <div style={{
+                      position: 'absolute',
+                      left: `${toPct(whereToCurrentAssignment.start)}%`,
+                      width: `${Math.max(toPct(whereToCurrentAssignment.end) - toPct(whereToCurrentAssignment.start), 0.3)}%`,
+                      top: 1, height: LANE_H - 2,
+                      border: `2px solid ${C.yellow}`, borderRadius: 6,
+                      pointerEvents: 'none', zIndex: 9,
+                    }}>
+                      <span style={{
+                        position: 'absolute', top: -12, right: 4,
+                        fontSize: 9, color: C.yellow, fontWeight: 700,
+                        background: C.surface, padding: '0 4px', borderRadius: 3,
+                      }}>current</span>
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
       ))}
+
+      {/* ═══ WhereTo Overlay ═══ */}
+      {/* Loading indicator */}
+      {whereToTaskKey && whereToLoading && (
+        <div style={{
+          position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 20, padding: '6px 16px', borderRadius: 8,
+          background: C.surface, border: `1px solid ${C.accent}`,
+          fontSize: 12, fontWeight: 600, color: C.accent,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+        }}>
+          🗺️ Finding options...
+        </div>
+      )}
+      {/* No options found */}
+      {whereToTaskKey && !whereToLoading && whereToOptions && whereToOptions.length === 0 && (
+        <div style={{
+          position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 20, padding: '8px 20px', borderRadius: 8,
+          background: C.surface, border: `1px solid ${C.red}`,
+          fontSize: 12, fontWeight: 600, color: C.red,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+        }}>
+          No feasible options found
+          <button onClick={onCancelWhereTo} style={{
+            marginLeft: 12, padding: '2px 8px', borderRadius: 4,
+            border: `1px solid ${C.border}`, background: 'transparent',
+            color: C.textMuted, fontSize: 11, cursor: 'pointer', fontFamily: FONT,
+          }}>Dismiss</button>
+        </div>
+      )}
+      {/* Info panel */}
+      {whereToTaskKey && whereToOptions && whereToOptions.length > 0 && !whereToLoading && (
+        <div style={{
+          position: 'absolute', top: 8, right: 8, zIndex: 20,
+          width: 280, maxHeight: 400, overflow: 'auto',
+          background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)', padding: 14,
+          fontFamily: FONT,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>🗺️ Where To?</div>
+              <div style={{ fontSize: 11, color: C.textMuted }}>
+                {whereToOptions.length} option{whereToOptions.length !== 1 ? 's' : ''} · Click to move
+              </div>
+            </div>
+            <button onClick={onCancelWhereTo} style={{
+              background: 'none', border: 'none', color: C.textMuted, fontSize: 16,
+              cursor: 'pointer', padding: 4,
+            }}>✕</button>
+          </div>
+          {whereToOptions.map((option: any) => {
+            const ghostColor = option.rank === 1 ? C.green : option.rank <= 3 ? C.accent : C.textDim;
+            return (
+              <div key={option.contextHash}
+                onClick={() => onMoveTo?.(whereToTaskKey!, option)}
+                style={{
+                  padding: '8px 10px', borderRadius: 8, marginBottom: 4, cursor: 'pointer',
+                  border: `1px solid ${option.rank === 1 ? C.green : C.border}`,
+                  background: option.rank === 1 ? `${C.green}10` : 'transparent',
+                  transition: 'all 0.1s',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${C.accent}15`; }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = option.rank === 1 ? `${C.green}10` : 'transparent';
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{
+                      display: 'inline-flex', width: 18, height: 18, borderRadius: 9,
+                      alignItems: 'center', justifyContent: 'center',
+                      background: ghostColor, color: '#fff', fontSize: 9, fontWeight: 800,
+                    }}>{option.rank}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>
+                      {option.resources.map((r: any) => r.resourceName || r.resourceKey).join(' + ')}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: ghostColor }}>
+                    {option.score.toFixed(1)}
+                  </span>
+                </div>
+                <div style={{ fontSize: 10, color: C.textMuted, marginTop: 4 }}>
+                  {new Date(option.start).toLocaleString()} → {new Date(option.end).toLocaleString()}
+                </div>
+                {option.changeover && (
+                  <div style={{ fontSize: 10, color: C.yellow, marginTop: 2 }}>
+                    ⚙ Changeover: {option.changeover.from} → {option.changeover.to}
+                    ({Math.round(option.changeover.duration / 60)}min)
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          <div style={{ fontSize: 10, color: C.textDim, marginTop: 8, textAlign: 'center' }}>
+            Press Escape to cancel
+          </div>
+        </div>
+      )}
 
       {/* Context Menu */}
       {contextMenu && (
@@ -2015,6 +2325,27 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                 🔍 View Details
               </button>
             )}
+            {onWhereTo && (() => {
+              const isProcessTask = contextMenu.task.type === 'PROCESS';
+              const isLockedOrder = orderModes?.[contextMenu.task.orderRef] === 'LOCKED';
+              const isExcl = taskExcludes?.[contextMenu.task.key];
+              const canWT = isProcessTask && !isLockedOrder && !isExcl;
+              return (
+                <button onClick={() => { if (canWT) { onWhereTo(contextMenu.task.key); setContextMenu(null); } }}
+                  disabled={!canWT}
+                  style={{
+                    width: '100%', padding: '7px 10px', background: 'none', border: 'none',
+                    color: canWT ? C.text : C.textDim, fontSize: 12,
+                    cursor: canWT ? 'pointer' : 'default', textAlign: 'left', fontFamily: FONT,
+                    borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
+                    opacity: canWT ? 1 : 0.5,
+                  }}
+                  onMouseEnter={e => { if (canWT) e.currentTarget.style.background = C.bg; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
+                  🗺️ Where Can This Go?
+                </button>
+              );
+            })()}
             {onPinTask && (
               <button onClick={() => {
                 const isPinned = taskPins?.[contextMenu.task.key] || false;
@@ -2172,12 +2503,14 @@ function BulkBtn({ icon, label, color, onClick }: {
 }
 
 function TaskRowActions({ task, taskPins, taskExcludes, orderModes,
-  onPin, onExclude, onUnschedule }: {
+  onPin, onExclude, onUnschedule, onWhereTo, whereToTaskKey }: {
   task: any;
   taskPins: Record<string, boolean>; taskExcludes: Record<string, boolean>;
   orderModes: Record<string, string>;
   onPin: (taskKey: string) => void; onExclude: (taskKey: string) => void;
   onUnschedule: (taskKey: string) => void;
+  onWhereTo?: (taskKey: string, source?: 'gantt' | 'table') => void;
+  whereToTaskKey?: string | null;
 }) {
   const isPinned = taskPins[task.key] || false;
   const isExcluded = taskExcludes[task.key] || false;
@@ -2196,6 +2529,12 @@ function TaskRowActions({ task, taskPins, taskExcludes, orderModes,
   return (
     <div style={{ display: 'flex', justifyContent: 'center', gap: 2 }}
       onClick={(e) => e.stopPropagation()}>
+      {task.type === 'PROCESS' && !isExcluded && onWhereTo && (
+        <IconBtn icon="🗺️"
+          title={isScheduled ? 'Where can this go?' : 'Find available positions'}
+          active={whereToTaskKey === task.key} activeColor={C.accent}
+          onClick={() => onWhereTo(task.key, 'table')} />
+      )}
       {isScheduled && (
         <IconBtn icon="📌" title={isPinned ? 'Unpin' : 'Pin to position'}
           active={isPinned} activeColor={C.yellow} onClick={() => onPin(task.key)} />
@@ -2270,7 +2609,8 @@ function TaskBulkActions({ filteredTasks, taskPins, taskExcludes, orderModes,
    ═══════════════════════════════════════════════════════════════ */
 
 function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExcludes, taskUnschedules, orderModes,
-  onPinTask, onExcludeTask, onUnscheduleTask, experienceLevel = 'novice' }: {
+  onPinTask, onExcludeTask, onUnscheduleTask, experienceLevel = 'novice',
+  onWhereTo, whereToTaskKey }: {
   tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
   orderModes?: Record<string, string>;
@@ -2278,31 +2618,68 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   onExcludeTask?: (key: string, excluded: boolean) => void;
   onUnscheduleTask?: (key: string) => void;
   experienceLevel?: ExperienceLevel;
+  onWhereTo?: (key: string, source?: 'gantt' | 'table') => void;
+  whereToTaskKey?: string | null;
 }) {
   const { sortKey, sortDir, toggle, sorted } = useSort('key');
+  const [activeTypeChips, setActiveTypeChips] = useState<Set<string>>(new Set(['PROCESS']));
 
   const enriched = useMemo(() => tasks.map(tk => {
     const _status = deriveTaskStatus(tk, taskPins, taskExcludes, taskUnschedules, orderModes);
     const _orderMode = orderModes?.[tk.orderRef] || 'INCLUDE';
+    const _productName = tk.outputProductKey
+      ? (products.find((p: any) => p.key === tk.outputProductKey)?.name || tk.outputProductKey)
+      : '';
+    const _priority = tk.typedAttributes?.find((a: any) => a.name === 'priority')?.value?.value || '';
+    const _type = tk.type || 'PROCESS';
     return {
       ...tk,
       _resource: tk.assignedResources?.[0]?.resourceKey || '',
       _status,
       _orderMode,
+      _productName,
+      _priority,
+      _type,
     };
-  }), [tasks, taskPins, taskExcludes, taskUnschedules, orderModes]);
+  }), [tasks, taskPins, taskExcludes, taskUnschedules, orderModes, products]);
+
+  // Derive distinct types from data
+  const distinctTypes = useMemo(() => {
+    const types = new Set(enriched.map(tk => tk._type));
+    return Array.from(types).sort();
+  }, [enriched]);
+
+  const allTypesActive = activeTypeChips.size >= distinctTypes.length;
+  const toggleTypeChip = useCallback((key: string) => {
+    setActiveTypeChips(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+  const toggleAllTypes = useCallback(() => {
+    if (allTypesActive) setActiveTypeChips(new Set(['PROCESS']));
+    else setActiveTypeChips(new Set(distinctTypes));
+  }, [allTypesActive, distinctTypes]);
+
+  // Type chip filter applied before useFilter so column dropdowns reflect type-filtered data
+  const typeFiltered = useMemo(() => {
+    if (activeTypeChips.size === 0) return [];
+    return enriched.filter(tk => activeTypeChips.has(tk._type));
+  }, [enriched, activeTypeChips]);
 
   const statusDeriver = useCallback((row: any) => row._status, []);
-  const filter = useFilter(enriched, { statusDeriver });
+  const filter = useFilter(typeFiltered, { statusDeriver });
 
-  const scheduledCount = enriched.filter(tk => tk._status === 'scheduled').length;
-  const unscheduledCount = enriched.filter(tk => tk._status === 'unscheduled').length;
-  const pinnedCount = enriched.filter(tk => tk._status === 'pinned').length;
-  const infeasibleCount = enriched.filter(tk => tk._status === 'infeasible').length;
-  const excludedCount = enriched.filter(tk => tk._status === 'excluded').length;
+  const scheduledCount = typeFiltered.filter(tk => tk._status === 'scheduled').length;
+  const unscheduledCount = typeFiltered.filter(tk => tk._status === 'unscheduled').length;
+  const pinnedCount = typeFiltered.filter(tk => tk._status === 'pinned').length;
+  const infeasibleCount = typeFiltered.filter(tk => tk._status === 'infeasible').length;
+  const excludedCount = typeFiltered.filter(tk => tk._status === 'excluded').length;
 
   const statusOptions = [
-    { value: 'all', label: 'All', count: enriched.length },
+    { value: 'all', label: 'All', count: typeFiltered.length },
     { value: 'scheduled', label: t('scheduledStatus', 'Scheduled'), color: C.green, count: scheduledCount },
     { value: 'unscheduled', label: t('unscheduledStatus', 'Unscheduled'), color: C.yellow, count: unscheduledCount },
     { value: 'pinned', label: t('pinnedStatus', 'Pinned'), color: C.yellow, count: pinnedCount },
@@ -2311,10 +2688,10 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   ].filter(opt => opt.value === 'all' || opt.count > 0);
 
   const colFilter = (key: string) => ({
-    distinctValues: filter.distinctValues(key),
+    column: key,
+    values: filter.distinctValues(key),
     selected: filter.columnFilters[key] || new Set<string>(),
-    onToggle: filter.toggleColumnValue,
-    onClear: filter.clearColumnFilter,
+    onChange: filter.setColumnFilter,
   });
 
   const hasActions = !!(onPinTask || onExcludeTask || onUnscheduleTask);
@@ -2366,6 +2743,40 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   return (
     <div>
       <FilterBar filter={filter} statusOptions={statusOptions} />
+
+      {/* Task Type Chips */}
+      {distinctTypes.length > 1 && (
+        <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+          <button onClick={toggleAllTypes} style={{
+            padding: '4px 12px', borderRadius: 6, cursor: 'pointer',
+            fontSize: 12, fontWeight: 600, fontFamily: FONT,
+            background: allTypesActive ? C.accent + '22' : 'transparent',
+            color: allTypesActive ? C.accent : C.textMuted,
+            border: allTypesActive ? `1px solid ${C.accent}44` : '1px solid transparent',
+          }}>
+            All Types
+          </button>
+          {distinctTypes.map(typ => {
+            const isActive = activeTypeChips.has(typ);
+            const count = enriched.filter(tk => tk._type === typ).length;
+            const label = typ.charAt(0) + typ.slice(1).toLowerCase().replace(/_/g, ' ');
+            return (
+              <button key={typ} onClick={() => toggleTypeChip(typ)} style={{
+                padding: '4px 12px', borderRadius: 6, cursor: 'pointer',
+                fontSize: 12, fontWeight: 600, fontFamily: FONT,
+                background: isActive ? C.accent + '22' : 'transparent',
+                color: isActive ? C.accent : C.textMuted,
+                border: isActive ? `1px solid ${C.accent}44` : '1px solid transparent',
+              }}>
+                {label}
+                <span style={{ marginLeft: 4, opacity: 0.7 }}>({count})</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <ActiveFilters filter={filter} />
       {hasActions && (
         <TaskBulkActions filteredTasks={filter.filtered}
           taskPins={safePins} taskExcludes={safeExcludes} orderModes={safeOrderModes}
@@ -2377,18 +2788,20 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
         <table style={tableStyle}>
           <thead>
             <tr>
-              <SortHeader label={t('task', 'Task')} k="key" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label={t('task', 'Task')} k="key" current={sortKey} dir={sortDir} onSort={toggle}
+                filterProps={colFilter('name')} />
+              <SortHeader label={t('product', 'Product')} k="_productName" current={sortKey} dir={sortDir} onSort={toggle}
+                filterProps={colFilter('_productName')} />
               <SortHeader label={t('order', 'Order')} k="orderRef" current={sortKey} dir={sortDir} onSort={toggle}
                 filterProps={colFilter('orderRef')} />
-              <SortHeader label={t('product', 'Product')} k="outputProductKey" current={sortKey} dir={sortDir} onSort={toggle}
-                filterProps={colFilter('outputProductKey')} />
-              <SortHeader label={t('quantity', 'Qty')} k="outputQty" current={sortKey} dir={sortDir} onSort={toggle} />
-              {showAt(experienceLevel, 'intermediate') && <SortHeader label="Scrap%" k="outputScrapRate" current={sortKey} dir={sortDir} onSort={toggle} />}
               <SortHeader label={t('resource', 'Resource')} k="_resource" current={sortKey} dir={sortDir} onSort={toggle}
                 filterProps={colFilter('_resource')} />
               <SortHeader label="Start" k="scheduledStart" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label="End" k="scheduledEnd" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label={t('duration', 'Duration')} k="durationSeconds" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label="Priority" k="_priority" current={sortKey} dir={sortDir} onSort={toggle}
+                filterProps={colFilter('_priority')} />
+              <SortHeader label="Type" k="_type" current={sortKey} dir={sortDir} onSort={toggle} />
               {showAt(experienceLevel, 'intermediate') && <SortHeader label={t('score', 'Score')} k="score" current={sortKey} dir={sortDir} onSort={toggle} />}
               <SortHeader label="Status" k="_status" current={sortKey} dir={sortDir} onSort={toggle} />
               {hasActions && <th style={{
@@ -2416,25 +2829,23 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   <td style={cellStyle}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{tk.key}</div>
-                    <div style={{ fontSize: 11, color: C.textDim }}>{tk.name}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{tk.name}</div>
+                    <div style={{ fontSize: 11, color: C.textDim }}>{tk.key}</div>
                   </td>
-                  <td style={cellStyle}>{tk.orderRef || '—'}</td>
                   <td style={cellStyle}>
-                    {tk.outputProductKey ? (
+                    {tk._productName ? (
                       <span style={{ color: prodColor, fontWeight: 500 }}>
-                        {products.find((p: any) => p.key === tk.outputProductKey)?.name || tk.outputProductKey}
+                        {tk._productName}
                       </span>
                     ) : '—'}
                   </td>
-                  <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(tk.outputQty)}</td>
-                  {showAt(experienceLevel, 'intermediate') && <td style={{ ...cellStyle, textAlign: 'right' }}>
-                    {tk.outputScrapRate != null ? fmtPctFromDecimal(tk.outputScrapRate) : '—'}
-                  </td>}
+                  <td style={cellStyle}>{tk.orderRef || '—'}</td>
                   <td style={cellStyle}>{resKey}</td>
                   <td style={cellStyle}>{fmtDate(tk.scheduledStart)}</td>
                   <td style={cellStyle}>{fmtDate(tk.scheduledEnd)}</td>
                   <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtDuration(tk.durationSeconds)}</td>
+                  <td style={cellStyle}>{tk._priority || '—'}</td>
+                  <td style={cellStyle}>{tk._type}</td>
                   {showAt(experienceLevel, 'intermediate') && <td style={{ ...cellStyle, textAlign: 'right' }}>
                     {tk.score != null ? tk.score.toFixed(2) : '—'}
                   </td>}
@@ -2445,7 +2856,8 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                     <td style={{ ...cellStyle, textAlign: 'center', padding: '4px 6px' }}>
                       <TaskRowActions task={tk}
                         taskPins={safePins} taskExcludes={safeExcludes} orderModes={safeOrderModes}
-                        onPin={handlePin} onExclude={handleExclude} onUnschedule={handleUnschedule} />
+                        onPin={handlePin} onExclude={handleExclude} onUnschedule={handleUnschedule}
+                        onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey} />
                     </td>
                   )}
                 </tr>
@@ -2512,17 +2924,19 @@ function OrderTable({ orders, products, tasks, orderModes, taskPins, taskExclude
     const excluded = orderTasks.filter((tk: any) => taskExcludes?.[tk.key]).length;
     const infeasible = orderTasks.filter((tk: any) => !tk.feasible && tk.errors?.length > 0).length;
     const placed = scheduled + pinned;
+    const prodName = products.find((p: any) => p.key === o.productKey)?.name || o.productKey;
 
     return {
       ...o,
       _status: deriveOrderStatus(o),
+      _productName: prodName,
       _totalTasks: total,
       _scheduledTasks: placed,
       _infeasibleTasks: infeasible,
       _excludedTasks: excluded,
       _scheduleProgress: total > 0 ? placed / total : 0,
     };
-  }), [orders, tasks, taskPins, taskExcludes]);
+  }), [orders, tasks, taskPins, taskExcludes, products]);
 
   const statusDeriver = useCallback((row: any) => row._status, []);
   const filter = useFilter(enriched, { statusDeriver });
@@ -2538,16 +2952,17 @@ function OrderTable({ orders, products, tasks, orderModes, taskPins, taskExclude
   ];
 
   const colFilter = (key: string) => ({
-    distinctValues: filter.distinctValues(key),
+    column: key,
+    values: filter.distinctValues(key),
     selected: filter.columnFilters[key] || new Set<string>(),
-    onToggle: filter.toggleColumnValue,
-    onClear: filter.clearColumnFilter,
+    onChange: filter.setColumnFilter,
   });
 
   const rows = sorted(filter.filtered);
   return (
     <div>
       <FilterBar filter={filter} statusOptions={statusOptions} />
+      <ActiveFilters filter={filter} />
       <div style={{ overflowX: 'auto' }}>
         <table style={tableStyle}>
           <thead>
@@ -2558,16 +2973,16 @@ function OrderTable({ orders, products, tasks, orderModes, taskPins, taskExclude
                 fontFamily: FONT, width: 80,
               }}>Mode</th>}
               <SortHeader label={t('order', 'Order')} k="orderKey" current={sortKey} dir={sortDir} onSort={toggle} />
-              <SortHeader label={t('product', 'Product')} k="productKey" current={sortKey} dir={sortDir} onSort={toggle}
-                filterProps={colFilter('productKey')} />
+              <SortHeader label={t('product', 'Product')} k="_productName" current={sortKey} dir={sortDir} onSort={toggle}
+                filterProps={colFilter('_productName')} />
               <SortHeader label={t('demand', 'Demand')} k="demandQty" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label={t('scheduledStatus', 'Scheduled')} k="scheduledQty" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label="Progress" k="_scheduleProgress" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label={t('dueDate', 'Due Date')} k="dueDate" current={sortKey} dir={sortDir} onSort={toggle} />
-              <SortHeader label={t('priority', 'Priority')} k="priority" current={sortKey} dir={sortDir} onSort={toggle}
-                filterProps={colFilter('priority')} />
+              <SortHeader label={t('priority', 'Priority')} k="priority" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label={t('fillRate', 'Fill Rate')} k="fillRate" current={sortKey} dir={sortDir} onSort={toggle} />
-              <SortHeader label="Status" k="_status" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label="Status" k="_status" current={sortKey} dir={sortDir} onSort={toggle}
+                filterProps={colFilter('_status')} />
             </tr>
           </thead>
           <tbody>
@@ -2591,7 +3006,7 @@ function OrderTable({ orders, products, tasks, orderModes, taskPins, taskExclude
                   <td style={{ ...cellStyle, fontWeight: 600 }}>{o.orderKey}</td>
                   <td style={cellStyle}>
                     <span style={{ color: prodColor, fontWeight: 500 }}>
-                      {products.find((p: any) => p.key === o.productKey)?.name || o.productKey}
+                      {o._productName}
                     </span>
                   </td>
                   <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(o.demandQty)}</td>
@@ -2689,16 +3104,17 @@ function MatTable({ materials, materialModes, onMaterialModeChange }: {
   ];
 
   const colFilter = (key: string) => ({
-    distinctValues: filter.distinctValues(key),
+    column: key,
+    values: filter.distinctValues(key),
     selected: filter.columnFilters[key] || new Set<string>(),
-    onToggle: filter.toggleColumnValue,
-    onClear: filter.clearColumnFilter,
+    onChange: filter.setColumnFilter,
   });
 
   const rows = sorted(filter.filtered);
   return (
     <div>
       <FilterBar filter={filter} statusOptions={statusOptions} />
+      <ActiveFilters filter={filter} />
       <div style={{ overflowX: 'auto' }}>
         <table style={tableStyle}>
           <thead>
@@ -2906,7 +3322,7 @@ function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskCli
 
 function OverviewTab({ summary, tasks, resources, orders, materials, products, colors, onTabChange, onTaskClick, onResourceClick, experienceLevel = 'novice',
   taskPins, taskExcludes, taskUnschedules, orderModes,
-  onPinTask, onExcludeTask, onUnscheduleTask }: {
+  onPinTask, onExcludeTask, onUnscheduleTask, onWhereTo }: {
   summary: any; tasks: any[]; resources: any[]; orders: any[]; materials: any[];
   products: any[]; colors: any; onTabChange: (t: string) => void;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
@@ -2916,6 +3332,7 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
   onPinTask?: (key: string, pinned: boolean) => void;
   onExcludeTask?: (key: string, excluded: boolean) => void;
   onUnscheduleTask?: (key: string) => void;
+  onWhereTo?: (key: string) => void;
 }) {
   const avgUtil = resources.length > 0
     ? resources.reduce((s: number, r: any) => s + r.utilization, 0) / resources.length
@@ -2954,7 +3371,8 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
             onTaskClick={onTaskClick} onResourceClick={onResourceClick}
             taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             orderModes={orderModes}
-            onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask} />
+            onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask}
+            onWhereTo={onWhereTo} />
         </Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card title={`${t('resource', 'Resource')} ${t('utilization', 'Utilization')}`}>
@@ -3044,7 +3462,9 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
 
 function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResourceClick,
   taskPins, taskExcludes, taskUnschedules, orderModes,
-  onPinTask, onExcludeTask, onUnscheduleTask, experienceLevel = 'novice' }: {
+  onPinTask, onExcludeTask, onUnscheduleTask, experienceLevel = 'novice',
+  onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
+  whereToCurrentAssignment, onMoveTo, onCancelWhereTo }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
@@ -3053,6 +3473,13 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   onExcludeTask?: (key: string, excluded: boolean) => void;
   onUnscheduleTask?: (key: string) => void;
   experienceLevel?: ExperienceLevel;
+  onWhereTo?: (key: string, source?: 'gantt' | 'table') => void;
+  whereToTaskKey?: string | null;
+  whereToOptions?: any[];
+  whereToLoading?: boolean;
+  whereToCurrentAssignment?: any;
+  onMoveTo?: (key: string, option: any) => void;
+  onCancelWhereTo?: () => void;
 }) {
   const [sub, setSub] = useState('Gantt');
   return (
@@ -3064,14 +3491,18 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             onTaskClick={onTaskClick} onResourceClick={onResourceClick}
             taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             orderModes={orderModes}
-            onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask} />
+            onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask}
+            onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey} whereToOptions={whereToOptions}
+            whereToLoading={whereToLoading} whereToCurrentAssignment={whereToCurrentAssignment}
+            onMoveTo={onMoveTo} onCancelWhereTo={onCancelWhereTo} />
         </Card>
       ) : (
         <Card>
           <TaskTable tasks={tasks} products={products} colors={colors} onTaskClick={onTaskClick}
             taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             orderModes={orderModes} experienceLevel={experienceLevel}
-            onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask} />
+            onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask}
+            onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey} />
         </Card>
       )}
     </div>
@@ -3345,6 +3776,11 @@ export default function App() {
   const [solverStrategy, setSolverStrategy] = useState('balanced');
   const [strategyOptions, setStrategyOptions] = useState<StrategyOption[]>(FALLBACK_STRATEGIES);
   const [solveStale, setSolveStale] = useState(false);
+  // WhereTo state
+  const [whereToTaskKey, setWhereToTaskKey] = useState<string | null>(null);
+  const [whereToOptions, setWhereToOptions] = useState<any[]>([]);
+  const [whereToLoading, setWhereToLoading] = useState(false);
+  const [whereToCurrentAssignment, setWhereToCurrentAssignment] = useState<any>(null);
   // Previous state snapshots for delta computation
   const [prevOrderModes, setPrevOrderModes] = useState<Record<string, string>>({});
   const [prevTaskPins, setPrevTaskPins] = useState<Record<string, boolean>>({});
@@ -3394,6 +3830,8 @@ export default function App() {
     setSolving(true);
     setSelectedTask(null);
     setSelectedResource(null);
+    // Cancel WhereTo if active
+    setWhereToTaskKey(null); setWhereToOptions([]); setWhereToCurrentAssignment(null);
     try {
       setError(null);
 
@@ -3497,6 +3935,70 @@ export default function App() {
   // Expose API handlers for direct task actions (suppress unused until wired to more UI)
   void handleApiUnschedule;
   void handleApiPin;
+
+  // WhereTo handlers
+  const cancelWhereTo = useCallback(() => {
+    setWhereToTaskKey(null);
+    setWhereToOptions([]);
+    setWhereToCurrentAssignment(null);
+  }, []);
+
+  const handleWhereTo = useCallback(async (taskKey: string, source: 'gantt' | 'table' = 'gantt') => {
+    if (source === 'gantt') setActiveTab('Schedule');
+    // Open detail panel for the task
+    setSelectedTask(tasks.find((tk: any) => tk.key === taskKey) || null);
+    setWhereToTaskKey(taskKey);
+    setWhereToLoading(true);
+    setWhereToOptions([]);
+    setWhereToCurrentAssignment(null);
+    try {
+      const result = await api(`/ctp/tasks/${encodeURIComponent(taskKey)}/where-to`, {
+        method: 'POST',
+        body: JSON.stringify({ constraints: { maxResults: 10 } }),
+      });
+      setWhereToOptions(result.options || []);
+      setWhereToCurrentAssignment(result.currentAssignment || null);
+    } catch (err) {
+      console.error('WhereTo failed:', err);
+      setWhereToOptions([]);
+    } finally {
+      setWhereToLoading(false);
+    }
+  }, [tasks]);
+
+  const handleMoveTo = useCallback(async (taskKey: string, option: any) => {
+    try {
+      const result = await api(`/ctp/tasks/${encodeURIComponent(taskKey)}/move-to`, {
+        method: 'POST',
+        body: JSON.stringify({
+          contextHash: option.contextHash,
+          startTime: option.start,
+        }),
+      });
+      if (result.success) {
+        setWhereToTaskKey(null);
+        setWhereToOptions([]);
+        setWhereToCurrentAssignment(null);
+        if (result.requiresResolve) setSolveStale(true);
+        // Refresh solve results to reflect the move
+        const updated = await api('/ctp/results');
+        if (updated.status !== 'not_solved') setSolveResult(updated);
+      } else {
+        alert(result.reason || 'Position no longer available. Refreshing options...');
+        handleWhereTo(taskKey);
+      }
+    } catch (err) {
+      console.error('MoveTo failed:', err);
+    }
+  }, [handleWhereTo]);
+
+  // Escape key to cancel WhereTo
+  useEffect(() => {
+    if (!whereToTaskKey) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') cancelWhereTo(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [whereToTaskKey, cancelWhereTo]);
 
   // Initial load
   useEffect(() => {
@@ -3646,7 +4148,7 @@ export default function App() {
           return (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => { setActiveTab(tab); if (tab !== 'Schedule' && whereToTaskKey) { setWhereToTaskKey(null); setWhereToOptions([]); setWhereToCurrentAssignment(null); } }}
               style={{
                 padding: '12px 20px', background: 'none', border: 'none',
                 borderBottom: tab === activeTab ? `2px solid ${C.accent}` : '2px solid transparent',
@@ -3770,7 +4272,8 @@ export default function App() {
             onUnscheduleTask={(key) => {
               setTaskUnschedules(prev => new Set(prev).add(key));
               setSolveStale(true);
-            }} />
+            }}
+            onWhereTo={handleWhereTo} />
         )}
         {activeTab === 'Schedule' && (
           <ScheduleTab tasks={tasks} resources={resources} products={products} colors={colors}
@@ -3791,7 +4294,11 @@ export default function App() {
             onUnscheduleTask={(key) => {
               setTaskUnschedules(prev => new Set(prev).add(key));
               setSolveStale(true);
-            }} />
+            }}
+            onWhereTo={handleWhereTo} whereToTaskKey={whereToTaskKey}
+            whereToOptions={whereToOptions} whereToLoading={whereToLoading}
+            whereToCurrentAssignment={whereToCurrentAssignment}
+            onMoveTo={handleMoveTo} onCancelWhereTo={cancelWhereTo} />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} tasks={tasks}
           orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}
@@ -3851,6 +4358,9 @@ export default function App() {
             setSolveStale(true);
           }}
           experienceLevel={experienceLevel}
+          whereToTaskKey={whereToTaskKey}
+          whereToOptions={whereToOptions}
+          onMoveTo={handleMoveTo}
         />
       )}
       {selectedResource && (

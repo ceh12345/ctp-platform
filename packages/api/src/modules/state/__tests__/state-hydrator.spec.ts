@@ -61,9 +61,9 @@ describe('StateHydratorService', () => {
   // ── Tasks ─────────────────────────────────────────────────────────
 
   describe('hydrateTasks (via buildLandscape)', () => {
-    it('creates 25 tasks from demo-manufacturing data', () => {
+    it('creates 29 tasks from demo-manufacturing data', () => {
       const landscape = hydrator.buildLandscape();
-      expect(landscape.tasks.size()).toBe(25);
+      expect(landscape.tasks.size()).toBe(29);
     });
 
     it('T-1001-H-MACHINE has window with non-zero startW and endW', () => {
@@ -186,7 +186,7 @@ describe('StateHydratorService', () => {
     it('builds a complete landscape with correct counts', () => {
       const landscape = hydrator.buildLandscape();
       expect(landscape.resources.size()).toBe(3);
-      expect(landscape.tasks.size()).toBe(25);
+      expect(landscape.tasks.size()).toBe(29);
       expect(landscape.stateChanges.size()).toBe(2);
     });
 

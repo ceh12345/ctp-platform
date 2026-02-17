@@ -43,8 +43,8 @@ describe('CTPService', () => {
     const result = ctpService.solve();
     expect(result.status).toBe('ok');
     // 25 data tasks submitted; scheduler may add state-change tasks to landscape
-    expect(result.summary.includedTasks).toBe(25);
-    expect(result.summary.totalTasks).toBeGreaterThanOrEqual(25);
+    expect(result.summary.includedTasks).toBe(29);
+    expect(result.summary.totalTasks).toBeGreaterThanOrEqual(29);
     expect(result.summary.scheduledTasks).toBeGreaterThan(0);
     expect(result.tasks.length).toBe(result.summary.totalTasks);
   });
@@ -55,7 +55,7 @@ describe('CTPService', () => {
     const result = ctpService.solve({ taskKeys: ['T-1001-H-MACHINE', 'T-1001-ASSEMBLE'] });
     // includedTasks counts all PROCESS tasks in landscape (summary-level)
     // The per-task `included` flag shows which were actually submitted
-    expect(result.summary.includedTasks).toBe(25);
+    expect(result.summary.includedTasks).toBe(29);
 
     const submittedTasks = result.tasks.filter((t) => t.included);
     expect(submittedTasks.length).toBe(2);
@@ -163,7 +163,7 @@ describe('CTPService', () => {
   it('empty taskKeys returns empty solve', () => {
     const result = ctpService.solve({ taskKeys: [] });
     // includedTasks counts all PROCESS tasks in landscape (summary-level)
-    expect(result.summary.includedTasks).toBe(25);
+    expect(result.summary.includedTasks).toBe(29);
     expect(result.summary.scheduledTasks).toBe(0);
     // No tasks submitted → all skipped
     const submittedTasks = result.tasks.filter((t) => t.included);
@@ -189,7 +189,7 @@ describe('CTPService', () => {
   it('orders array populated with fill rates', () => {
     const result = ctpService.solve();
     expect(result.orders).toBeDefined();
-    expect(result.orders.length).toBe(6);
+    expect(result.orders.length).toBe(8);
     result.orders.forEach((o: any) => {
       expect(o.orderKey).toBeDefined();
       expect(o.productKey).toBeDefined();

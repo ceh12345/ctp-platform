@@ -438,6 +438,21 @@ export class CTPService {
       throw new HttpException(`Task ${taskKey} not found`, HttpStatus.NOT_FOUND);
     }
 
+    // Non-movable task types return empty options with a reason
+    if (task.type === CTPTaskTypeConstants.SET_UP || task.type === CTPTaskTypeConstants.TEAR_DOWN) {
+      return this.formatWhereToResponse({
+        taskKey, taskName: task.name, currentAssignment: null, options: [],
+        stats: { contextsEvaluated: 0, feasibleCount: 0, infeasibleCount: 0, timeMs: 0 },
+      }, 'Setup/teardown tasks cannot be moved independently');
+    }
+
+    if (!task.canMove()) {
+      return this.formatWhereToResponse({
+        taskKey, taskName: task.name, currentAssignment: null, options: [],
+        stats: { contextsEvaluated: 0, feasibleCount: 0, infeasibleCount: 0, timeMs: 0 },
+      }, 'Task is already in process and cannot be moved');
+    }
+
     const scoring = this.buildScoring();
 
     // Convert date constraints to engine time
@@ -669,8 +684,8 @@ export class CTPService {
     return scoring;
   }
 
-  private formatWhereToResponse(result: WhereToResult): WhereToResponseDto {
-    return {
+  private formatWhereToResponse(result: WhereToResult, reason?: string): WhereToResponseDto {
+    const response: WhereToResponseDto = {
       taskKey: result.taskKey,
       taskName: result.taskName,
       currentAssignment: result.currentAssignment ? {
@@ -694,6 +709,8 @@ export class CTPService {
       })),
       stats: result.stats,
     };
+    if (reason) (response as any).reason = reason;
+    return response;
   }
 
   private extractResults(

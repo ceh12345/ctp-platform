@@ -478,5 +478,101 @@
     "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1, "mode": "ON" }],
     "linkId": { "name": "WO-1005", "type": "END", "prevLink": "T-1005-QC" },
     "typedAttributes": []
+  },
+
+  {
+    "key": "T-FLEX-MACHINE",
+    "name": "Machine Flex Part (WO-FLEX)",
+    "type": "PROCESS",
+    "process": "WO-FLEX",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-18T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "CNC-01", "isPrimary": true, "qty": 1, "mode": "ON", "preferences": ["CNC-01", "CNC-02"] }],
+    "linkId": { "name": "WO-FLEX", "type": "START", "prevLink": "" },
+    "outputProductKey": "PROD-HOUSING",
+    "outputQty": 75,
+    "outputScrapRate": 0.05,
+    "inputMaterials": [
+      { "productKey": "MAT-AL6061", "requiredQty": 188, "scrapRate": 0.02, "unitOfMeasure": "kg" }
+    ],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-C" }, "category": "product", "sequence": 1 },
+      { "name": "batchSize", "dataType": "integer", "value": { "type": "integer", "value": 75 }, "category": "production", "sequence": 2 },
+      { "name": "priority", "dataType": "enum", "value": { "type": "enum", "value": "HIGH" }, "category": "scheduling", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "T-FLEX-ASSEMBLE",
+    "name": "Assemble Flex Widget (WO-FLEX)",
+    "type": "PROCESS",
+    "process": "WO-FLEX",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-18T00:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1, "mode": "ON" }],
+    "linkId": { "name": "WO-FLEX", "type": "END", "prevLink": "T-FLEX-MACHINE" },
+    "outputProductKey": "PROD-WC",
+    "outputQty": 75,
+    "outputScrapRate": 0.04,
+    "inputMaterials": [
+      { "productKey": "PROD-HOUSING", "requiredQty": 75, "scrapRate": 0.0, "unitOfMeasure": "pcs" },
+      { "productKey": "MAT-SEALKIT", "requiredQty": 75, "scrapRate": 0.0, "unitOfMeasure": "pcs" }
+    ],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-C" }, "category": "product", "sequence": 1 }
+    ]
+  },
+
+  {
+    "key": "T-FLOAT-MACHINE",
+    "name": "Machine Float Part (WO-FLOAT)",
+    "type": "PROCESS",
+    "process": "WO-FLOAT",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-20T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "CNC-02", "isPrimary": true, "qty": 1, "mode": "ON", "preferences": ["CNC-01", "CNC-02"] }],
+    "linkId": { "name": "WO-FLOAT", "type": "START", "prevLink": "" },
+    "outputProductKey": "PROD-BRACKET",
+    "outputQty": 100,
+    "outputScrapRate": 0.03,
+    "inputMaterials": [
+      { "productKey": "MAT-SS304", "requiredQty": 180, "scrapRate": 0.02, "unitOfMeasure": "kg" }
+    ],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-C" }, "category": "product", "sequence": 1 },
+      { "name": "batchSize", "dataType": "integer", "value": { "type": "integer", "value": 100 }, "category": "production", "sequence": 2 },
+      { "name": "priority", "dataType": "enum", "value": { "type": "enum", "value": "MEDIUM" }, "category": "scheduling", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "T-FLOAT-ASSEMBLE",
+    "name": "Assemble Float Widget (WO-FLOAT)",
+    "type": "PROCESS",
+    "process": "WO-FLOAT",
+    "windowStart": "2026-02-10T00:00:00Z",
+    "windowEnd": "2026-02-20T00:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1.0,
+    "durationType": 0,
+    "capacityResources": [{ "resource": "ASM-01", "isPrimary": true, "qty": 1, "mode": "ON" }],
+    "linkId": { "name": "WO-FLOAT", "type": "END", "prevLink": "T-FLOAT-MACHINE" },
+    "outputProductKey": "PROD-WC",
+    "outputQty": 100,
+    "outputScrapRate": 0.04,
+    "inputMaterials": [
+      { "productKey": "PROD-BRACKET", "requiredQty": 100, "scrapRate": 0.0, "unitOfMeasure": "pcs" },
+      { "productKey": "MAT-SEALKIT", "requiredQty": 100, "scrapRate": 0.0, "unitOfMeasure": "pcs" }
+    ],
+    "typedAttributes": [
+      { "name": "productType", "dataType": "enum", "value": { "type": "enum", "value": "Widget-C" }, "category": "product", "sequence": 1 }
+    ]
   }
 ]
