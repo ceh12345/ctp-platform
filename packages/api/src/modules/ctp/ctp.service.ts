@@ -933,6 +933,7 @@ export class CTPService {
       const scheduledQty = orderScheduledQty.get(order.key) ?? 0;
       return {
         orderKey: order.key,
+        name: order.name ?? order.key,
         productKey: order.productKey,
         demandQty: order.demandQty,
         scheduledQty: Math.round(scheduledQty * 100) / 100,

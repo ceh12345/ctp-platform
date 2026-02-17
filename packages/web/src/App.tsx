@@ -1817,7 +1817,8 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   taskPins, taskExcludes, taskUnschedules, orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask,
   onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
-  whereToCurrentAssignment, onMoveTo, onCancelWhereTo }: {
+  whereToCurrentAssignment, onMoveTo, onCancelWhereTo,
+  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
@@ -1832,12 +1833,12 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   whereToCurrentAssignment?: any;
   onMoveTo?: (key: string, option: any) => void;
   onCancelWhereTo?: () => void;
+  zoomLevel: string; setZoomLevel: (v: string) => void;
+  scrollOffset: number; setScrollOffset: React.Dispatch<React.SetStateAction<number>>;
 }) {
   const [hovered, setHovered] = useState<any>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [contextMenu, setContextMenu] = useState<{ task: any; x: number; y: number } | null>(null);
-  const [zoomLevel, setZoomLevel] = useState('Day');
-  const [scrollOffset, setScrollOffset] = useState(0);
   const [ganttSearch, setGanttSearch] = useState('');
   const [hideEmpty, setHideEmpty] = useState(false);
   const [hiddenWorkCenters, setHiddenWorkCenters] = useState<Set<string>>(new Set());
@@ -2466,6 +2467,368 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
           {hovered.score != null && (
             <div style={{ color: C.textMuted }}>Score: {hovered.score.toFixed(2)}</div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GANTT BY CASE
+   ═══════════════════════════════════════════════════════════════ */
+
+const CASE_LANE_H = 44;
+const CASE_LABEL_W = 180;
+
+function CaseGanttChart({ tasks, orders, products, colors, onTaskClick,
+  taskPins, taskExcludes, taskUnschedules, orderModes,
+  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset }: {
+  tasks: any[]; orders?: any[]; products: any[]; colors: any;
+  onTaskClick?: (t: any) => void;
+  taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
+  orderModes?: Record<string, string>;
+  zoomLevel: string; setZoomLevel: (v: string) => void;
+  scrollOffset: number; setScrollOffset: React.Dispatch<React.SetStateAction<number>>;
+}) {
+  const [hovered, setHovered] = useState<any>(null);
+  const [hoveredGap, setHoveredGap] = useState<any>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [caseSearch, setCaseSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'start' | 'priority' | 'worstGap' | 'name'>('start');
+
+  // Filter scheduled tasks (same as GanttChart)
+  const scheduled = tasks.filter((tk: any) => {
+    if (!tk.feasible || !tk.scheduledStart || !tk.scheduledEnd) return false;
+    if (taskExcludes?.[tk.key]) return false;
+    const om = orderModes?.[tk.orderRef] || 'INCLUDE';
+    if (om === 'EXCLUDE') return false;
+    return true;
+  });
+  const unscheduledTasks = tasks.filter((tk: any) => {
+    if (taskExcludes?.[tk.key]) return false;
+    const om = orderModes?.[tk.orderRef] || 'INCLUDE';
+    if (om === 'EXCLUDE') return false;
+    return !tk.feasible || !tk.scheduledStart || !tk.scheduledEnd;
+  });
+
+  if (scheduled.length === 0 && unscheduledTasks.length === 0) {
+    return <div style={{ color: C.textDim, padding: 20, textAlign: 'center' }}>No tasks to display</div>;
+  }
+
+  // Time range computation (same as GanttChart)
+  const taskStarts = scheduled.map((tk: any) => new Date(tk.scheduledStart).getTime());
+  const taskEnds = scheduled.map((tk: any) => new Date(tk.scheduledEnd).getTime());
+  const dataStart = taskStarts.length > 0 ? Math.min(...taskStarts) : Date.now();
+  const dataEnd = taskEnds.length > 0 ? Math.max(...taskEnds) : Date.now() + 86400000;
+
+  const zoomConfig = ZOOM_LEVELS.find(z => z.label === zoomLevel);
+  let hStartMs: number, hEndMs: number;
+  if (zoomConfig && zoomConfig.days > 0) {
+    const viewStart = new Date(dataStart);
+    if (zoomConfig.days < 1) { viewStart.setUTCMinutes(0, 0, 0); }
+    else { viewStart.setUTCHours(0, 0, 0, 0); }
+    const stepMs = zoomConfig.days * 24 * 3600 * 1000;
+    const scrolledStart = new Date(viewStart.getTime() + scrollOffset * stepMs);
+    hStartMs = scrolledStart.getTime();
+    hEndMs = hStartMs + stepMs;
+  } else {
+    const bufferMs = 12 * 3600 * 1000;
+    const hStartDate = new Date(dataStart - bufferMs); hStartDate.setUTCHours(0, 0, 0, 0);
+    const hEndDate = new Date(dataEnd + bufferMs); hEndDate.setUTCHours(23, 59, 59, 999);
+    hStartMs = hStartDate.getTime();
+    hEndMs = hEndDate.getTime();
+  }
+  const totalMs = hEndMs - hStartMs;
+  if (totalMs <= 0) return <div style={{ color: C.textDim }}>Invalid time range</div>;
+  const toPct = (iso: string) => ((new Date(iso).getTime() - hStartMs) / totalMs) * 100;
+
+  // Axis labels (same as GanttChart)
+  const axisLabels: { pct: number; label: string }[] = [];
+  if (zoomConfig && zoomConfig.days > 0 && zoomConfig.days <= 1) {
+    const stepMin = zoomConfig.days <= 0.25 ? 30 : 60;
+    const h = new Date(hStartMs); h.setUTCSeconds(0, 0);
+    const mins = h.getUTCMinutes();
+    const nextSlot = Math.ceil(mins / stepMin) * stepMin;
+    if (nextSlot >= 60) { h.setUTCMinutes(0); h.setUTCHours(h.getUTCHours() + 1); }
+    else if (nextSlot > mins) { h.setUTCMinutes(nextSlot); }
+    else { h.setTime(h.getTime() + stepMin * 60000); h.setUTCSeconds(0, 0); }
+    while (h.getTime() < hEndMs) {
+      const hr = h.getUTCHours(); const min = h.getUTCMinutes();
+      let label: string;
+      if (zoomConfig.days < 1) {
+        label = h.toLocaleTimeString(_locale?.locale || 'en-US', { hour: '2-digit', minute: '2-digit', timeZone: _locale?.timezone || 'UTC' });
+      } else {
+        const isPeriodMark = hr % 6 === 0 && min === 0;
+        const period = hr < 12 ? 'am' : 'pm';
+        const hr12 = hr === 0 ? 12 : hr > 12 ? hr - 12 : hr;
+        label = isPeriodMark ? `${hr12}${period}` : `${hr12}`;
+      }
+      axisLabels.push({ pct: ((h.getTime() - hStartMs) / totalMs) * 100, label });
+      h.setTime(h.getTime() + stepMin * 60000);
+    }
+  } else {
+    const step = zoomConfig && zoomConfig.days >= 14 ? 2 : 1;
+    const d = new Date(hStartMs); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() + 1);
+    let count = 0;
+    while (d.getTime() < hEndMs) {
+      if (count % step === 0) {
+        axisLabels.push({
+          pct: ((d.getTime() - hStartMs) / totalMs) * 100,
+          label: d.toLocaleDateString(_locale?.locale || 'en-US', { month: 'short', day: 'numeric', timeZone: _locale?.timezone || 'UTC' }),
+        });
+      }
+      d.setUTCDate(d.getUTCDate() + 1); count++;
+    }
+  }
+
+  // Build case rows
+  type CaseRow = { caseKey: string; caseName: string; priority: string; phases: any[]; unscheduledPhases: any[]; gaps: { startMs: number; endMs: number; gapSec: number; fromName: string; toName: string }[]; earliestStart: number; worstGap: number };
+  const caseMap = new Map<string, { sched: any[]; unsched: any[] }>();
+  for (const tk of scheduled) {
+    const key = tk.orderRef || tk.key;
+    if (!caseMap.has(key)) caseMap.set(key, { sched: [], unsched: [] });
+    caseMap.get(key)!.sched.push(tk);
+  }
+  for (const tk of unscheduledTasks) {
+    const key = tk.orderRef || tk.key;
+    if (!caseMap.has(key)) caseMap.set(key, { sched: [], unsched: [] });
+    caseMap.get(key)!.unsched.push(tk);
+  }
+
+  let caseRows: CaseRow[] = [];
+  for (const [caseKey, { sched, unsched }] of caseMap) {
+    const phases = [...sched].sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime());
+    const gaps: CaseRow['gaps'] = [];
+    let worstGap = 0;
+    for (let i = 0; i < phases.length - 1; i++) {
+      const endMs = new Date(phases[i].scheduledEnd).getTime();
+      const startMs = new Date(phases[i + 1].scheduledStart).getTime();
+      const gapSec = Math.max(0, (startMs - endMs) / 1000);
+      if (gapSec > 0) {
+        gaps.push({ startMs: endMs, endMs: startMs, gapSec, fromName: phases[i].name, toName: phases[i + 1].name });
+        worstGap = Math.max(worstGap, gapSec);
+      }
+    }
+    const order = orders?.find((o: any) => o.orderKey === caseKey);
+    const caseName = order?.name ?? caseKey;
+    const priority = phases[0]?.typedAttributes?.find((a: any) => a.name === 'priority')?.value?.value || '';
+    const earliestStart = phases.length > 0 ? new Date(phases[0].scheduledStart).getTime() : Infinity;
+    caseRows.push({ caseKey, caseName, priority, phases, unscheduledPhases: unsched, gaps, earliestStart, worstGap });
+  }
+
+  // Search filter
+  if (caseSearch) {
+    const q = caseSearch.toLowerCase();
+    caseRows = caseRows.filter(r => r.caseName.toLowerCase().includes(q) || r.caseKey.toLowerCase().includes(q));
+  }
+
+  // Sort
+  const priorityRank = (p: string) => p === 'URGENT' ? 0 : p === 'ADD-ON' ? 1 : 2;
+  if (sortBy === 'start') caseRows.sort((a, b) => a.earliestStart - b.earliestStart);
+  else if (sortBy === 'priority') caseRows.sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority));
+  else if (sortBy === 'worstGap') caseRows.sort((a, b) => b.worstGap - a.worstGap);
+  else if (sortBy === 'name') caseRows.sort((a, b) => a.caseName.localeCompare(b.caseName));
+
+  const navBtnStyle = { padding: '5px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: 12, fontFamily: FONT } as const;
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {/* Filter bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+        <SearchBox value={caseSearch} onChange={setCaseSearch} placeholder={`Filter ${t('orders', 'orders').toLowerCase()}...`} />
+        <span style={{ fontSize: 11, color: C.textDim, marginLeft: 8 }}>Sort:</span>
+        {(['start', 'priority', 'worstGap', 'name'] as const).map(s => (
+          <button key={s} onClick={() => setSortBy(s)} style={{
+            padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+            cursor: 'pointer', fontFamily: FONT,
+            background: sortBy === s ? `${C.accent}22` : 'transparent',
+            color: sortBy === s ? C.accent : C.textMuted,
+            border: sortBy === s ? `1px solid ${C.accent}44` : `1px solid ${C.border}`,
+          }}>
+            {s === 'start' ? 'Earliest Start' : s === 'priority' ? 'Priority' : s === 'worstGap' ? 'Worst Gap' : 'Name'}
+          </button>
+        ))}
+        <span style={{ fontSize: 12, color: C.textDim, marginLeft: 'auto' }}>
+          {caseRows.length} {t(caseRows.length !== 1 ? 'orders' : 'order', caseRows.length !== 1 ? 'orders' : 'order').toLowerCase()}
+        </span>
+      </div>
+
+      {/* Zoom controls */}
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {ZOOM_LEVELS.map(z => (
+            <button key={z.label} onClick={() => { setZoomLevel(z.label); setScrollOffset(0); }} style={{
+              padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+              fontSize: 12, fontWeight: 600,
+              background: z.label === zoomLevel ? '#3b82f6' : 'transparent',
+              color: z.label === zoomLevel ? '#fff' : '#94a3b8',
+              fontFamily: FONT,
+            }}>{z.label}</button>
+          ))}
+        </div>
+        {zoomConfig && zoomConfig.days > 0 && (
+          <div style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
+            <button onClick={() => setScrollOffset(s => s - 1)} style={navBtnStyle}>← {act('prev', 'Prev')}</button>
+            <button onClick={() => setScrollOffset(0)} style={navBtnStyle}>{act('today', 'Today')}</button>
+            <button onClick={() => setScrollOffset(s => s + 1)} style={navBtnStyle}>{act('next', 'Next')} →</button>
+          </div>
+        )}
+      </div>
+
+      {/* Time axis */}
+      <div style={{ marginLeft: CASE_LABEL_W, display: 'flex', position: 'relative', height: 24, overflow: 'hidden' }}>
+        {axisLabels.map((lbl, i) => (
+          <div key={i} style={{
+            position: 'absolute', left: `${lbl.pct}%`, fontSize: 10, color: C.textMuted,
+            transform: 'translateX(-50%)', whiteSpace: 'nowrap',
+          }}>{lbl.label}</div>
+        ))}
+      </div>
+
+      {/* Case lanes */}
+      {caseRows.map(row => (
+        <div key={row.caseKey} style={{ display: 'flex', borderTop: `1px solid ${C.border}` }}>
+          {/* Row label */}
+          <div style={{
+            width: CASE_LABEL_W, minWidth: CASE_LABEL_W, padding: '8px 10px', fontSize: 12,
+            color: C.textMuted, fontWeight: 500, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2,
+          }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.text, fontWeight: 600, fontSize: 11 }}
+              title={row.caseName}>{row.caseName}</span>
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              {row.priority && (
+                <span style={{
+                  fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
+                  background: row.priority === 'URGENT' ? '#f4433620' : row.priority === 'ADD-ON' ? '#ff980020' : `${C.border}`,
+                  color: row.priority === 'URGENT' ? '#f44336' : row.priority === 'ADD-ON' ? '#ff9800' : C.textDim,
+                }}>{row.priority}</span>
+              )}
+              {row.worstGap > 0 && (
+                <span style={{ fontSize: 9, color: C.red, fontWeight: 600 }}>{fmtDuration(row.worstGap)} gap</span>
+              )}
+            </div>
+          </div>
+
+          {/* Lane area */}
+          <div style={{ flex: 1, position: 'relative', height: CASE_LANE_H, overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(128,128,128,0.04)' }} />
+            {/* Grid lines */}
+            {axisLabels.map((lbl, i) => (
+              <div key={i} style={{
+                position: 'absolute', left: `${lbl.pct}%`, top: 0, bottom: 0,
+                width: 1, background: C.border, opacity: 0.5,
+              }} />
+            ))}
+            {/* Gap regions */}
+            {row.gaps.map((gap, i) => {
+              const left = ((gap.startMs - hStartMs) / totalMs) * 100;
+              const w = ((gap.endMs - hStartMs) / totalMs) * 100 - left;
+              if (w <= 0) return null;
+              return (
+                <div key={`gap-${i}`}
+                  onMouseEnter={e => { setHoveredGap(gap); setHovered(null); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
+                  onMouseMove={e => setTooltipPos({ x: e.clientX, y: e.clientY })}
+                  onMouseLeave={() => setHoveredGap(null)}
+                  style={{
+                    position: 'absolute', left: `${left}%`, width: `${w}%`,
+                    top: 10, height: CASE_LANE_H - 20, borderRadius: 3,
+                    background: gap.gapSec > 900 ? `${C.red}15` : '#ff980015',
+                    border: `1.5px dashed ${gap.gapSec > 900 ? C.red : '#ff9800'}`,
+                  }}
+                />
+              );
+            })}
+            {/* Phase bars */}
+            {row.phases.map((tk: any) => {
+              const left = toPct(tk.scheduledStart);
+              const right = toPct(tk.scheduledEnd);
+              const w = Math.max(right - left, 0.3);
+              const barColor = colors ? getTaskColor(tk, colors) : C.accent;
+              const isPinned = taskPins?.[tk.key];
+              const willUnsched = taskUnschedules?.has(tk.key);
+              return (
+                <div key={tk.key}
+                  onMouseEnter={e => { setHovered(tk); setHoveredGap(null); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
+                  onMouseMove={e => setTooltipPos({ x: e.clientX, y: e.clientY })}
+                  onMouseLeave={() => setHovered(null)}
+                  onClick={() => onTaskClick?.(tk)}
+                  style={{
+                    position: 'absolute', left: `${left}%`, width: `${w}%`,
+                    top: 6, height: CASE_LANE_H - 12, borderRadius: 4,
+                    background: barColor, opacity: 0.85, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', paddingLeft: 4,
+                    overflow: 'hidden', fontSize: 10, color: '#fff', fontWeight: 500,
+                    border: willUnsched ? `2px dashed ${C.red}` : 'none',
+                  }}>
+                  {isPinned && <span style={{ marginRight: 2, fontSize: 9 }}>📌</span>}
+                  {w > 3 && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tk.name}</span>}
+                </div>
+              );
+            })}
+            {/* Unscheduled phases (dashed outlines) */}
+            {row.unscheduledPhases.map((tk: any) => {
+              const lastEndMs = row.phases.length > 0
+                ? new Date(row.phases[row.phases.length - 1].scheduledEnd).getTime()
+                : hStartMs;
+              const estDurMs = (tk.durationSeconds || 3600) * 1000;
+              const left = ((lastEndMs - hStartMs) / totalMs) * 100;
+              const w = Math.max((estDurMs / totalMs) * 100, 0.5);
+              return (
+                <div key={tk.key}
+                  onMouseEnter={e => { setHovered({ ...tk, _unscheduled: true }); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
+                  onMouseMove={e => setTooltipPos({ x: e.clientX, y: e.clientY })}
+                  onMouseLeave={() => setHovered(null)}
+                  onClick={() => onTaskClick?.(tk)}
+                  style={{
+                    position: 'absolute', left: `${left}%`, width: `${w}%`,
+                    top: 8, height: CASE_LANE_H - 16, borderRadius: 4,
+                    background: 'transparent', border: `2px dashed ${C.textDim}`, opacity: 0.6,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', paddingLeft: 4,
+                    overflow: 'hidden', fontSize: 9, color: C.textDim, fontWeight: 500,
+                  }}>
+                  {w > 3 && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tk.name}</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Task tooltip */}
+      {hovered && !hoveredGap && (
+        <div style={{
+          position: 'fixed', left: tooltipPos.x + 12, top: tooltipPos.y - 10,
+          background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+          padding: '10px 14px', fontSize: 12, color: C.text, zIndex: 999,
+          pointerEvents: 'none', fontFamily: FONT, minWidth: 200,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>{hovered.name}</div>
+          {hovered._unscheduled && <div style={{ color: C.yellow, fontSize: 11, fontWeight: 600, marginBottom: 2 }}>Unscheduled</div>}
+          {hovered.type && hovered.type !== 'PROCESS' && <div style={{ color: C.yellow, fontSize: 11, fontWeight: 600, marginBottom: 2 }}>{hovered.type}</div>}
+          {hovered.scheduledStart && <div style={{ color: C.textMuted }}>{fmtDate(hovered.scheduledStart)} → {fmtDate(hovered.scheduledEnd)}</div>}
+          <div style={{ color: C.textMuted }}>{t('duration', 'Duration')}: {fmtDuration(hovered.durationSeconds)}</div>
+          {hovered.assignedResources?.length > 0 && (
+            <div style={{ color: C.textMuted }}>Resources: {hovered.assignedResources.map((r: any) => r.resourceKey).join(', ')}</div>
+          )}
+        </div>
+      )}
+
+      {/* Gap tooltip */}
+      {hoveredGap && (
+        <div style={{
+          position: 'fixed', left: tooltipPos.x + 12, top: tooltipPos.y - 10,
+          background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+          padding: '10px 14px', fontSize: 12, color: C.text, zIndex: 999,
+          pointerEvents: 'none', fontFamily: FONT, minWidth: 160,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        }}>
+          <div style={{ fontWeight: 700, color: hoveredGap.gapSec > 900 ? C.red : '#ff9800', marginBottom: 4 }}>
+            Gap: {fmtDuration(hoveredGap.gapSec)}
+          </div>
+          <div style={{ color: C.textMuted, fontSize: 11 }}>
+            Between {hoveredGap.fromName} and {hoveredGap.toName}
+          </div>
         </div>
       )}
     </div>
@@ -3526,7 +3889,7 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
    ═══════════════════════════════════════════════════════════════ */
 
 function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResourceClick,
-  taskPins, taskExcludes, taskUnschedules, orderModes,
+  taskPins, taskExcludes, taskUnschedules, orderModes, orders,
   onPinTask, onExcludeTask, onUnscheduleTask, experienceLevel = 'novice',
   onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
   whereToCurrentAssignment, onMoveTo, onCancelWhereTo,
@@ -3535,6 +3898,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
   orderModes?: Record<string, string>;
+  orders?: any[];
   onPinTask?: (key: string, pinned: boolean) => void;
   onExcludeTask?: (key: string, excluded: boolean) => void;
   onUnscheduleTask?: (key: string) => void;
@@ -3549,13 +3913,16 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   caseFilter?: string | null;
   onClearCaseFilter?: () => void;
 }) {
-  const [sub, setSub] = useState('Gantt');
-  // Force Task List sub-tab when case filter is active
-  const effectiveSub = caseFilter ? t('tasks', 'Tasks') : sub;
+  const tabNames = [`Gantt by ${t('resource', 'Resource')}`, `Gantt by ${t('order', 'Order')}`, t('tasks', 'Task List')];
+  const [subIdx, setSubIdx] = useState(0);
+  const [zoomLevel, setZoomLevel] = useState('Day');
+  const [scrollOffset, setScrollOffset] = useState(0);
+  // Force Task List when case filter is active
+  const effectiveIdx = caseFilter ? 2 : subIdx;
   return (
     <div>
-      <SubTabs tabs={['Gantt', t('tasks', 'Tasks')]} active={effectiveSub} onChange={(s) => { setSub(s); if (caseFilter) onClearCaseFilter?.(); }} />
-      {effectiveSub === 'Gantt' ? (
+      <SubTabs tabs={tabNames} active={tabNames[effectiveIdx]} onChange={(s) => { setSubIdx(tabNames.indexOf(s)); if (caseFilter) onClearCaseFilter?.(); }} />
+      {effectiveIdx === 0 ? (
         <Card>
           <GanttChart tasks={tasks} resources={resources} products={products} colors={colors}
             onTaskClick={onTaskClick} onResourceClick={onResourceClick}
@@ -3564,7 +3931,18 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask}
             onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey} whereToOptions={whereToOptions}
             whereToLoading={whereToLoading} whereToCurrentAssignment={whereToCurrentAssignment}
-            onMoveTo={onMoveTo} onCancelWhereTo={onCancelWhereTo} />
+            onMoveTo={onMoveTo} onCancelWhereTo={onCancelWhereTo}
+            zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
+            scrollOffset={scrollOffset} setScrollOffset={setScrollOffset} />
+        </Card>
+      ) : effectiveIdx === 1 ? (
+        <Card>
+          <CaseGanttChart tasks={tasks} orders={orders} products={products} colors={colors}
+            onTaskClick={onTaskClick}
+            taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
+            orderModes={orderModes}
+            zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
+            scrollOffset={scrollOffset} setScrollOffset={setScrollOffset} />
         </Card>
       ) : (
         <Card>
@@ -3982,6 +4360,35 @@ function SchedulingDetail({ data, experienceLevel }: { data: any; experienceLeve
   );
 }
 
+function MiniCaseGantt({ chain }: { chain: any }) {
+  const phases = (chain.phases || []).filter((p: any) => p.scheduledStart && p.scheduledEnd);
+  if (phases.length === 0) return null;
+  const allStarts = phases.map((p: any) => new Date(p.scheduledStart).getTime());
+  const allEnds = phases.map((p: any) => new Date(p.scheduledEnd).getTime());
+  const minMs = Math.min(...allStarts);
+  const maxMs = Math.max(...allEnds);
+  const span = maxMs - minMs;
+  if (span <= 0) return null;
+  const pct = (ms: number) => ((ms - minMs) / span) * 100;
+  const phaseColor = (i: number) => i === 0 ? '#ff9800' : i === phases.length - 1 ? '#4caf50' : C.accent;
+  return (
+    <div style={{ position: 'relative', height: 20, background: C.surface2, borderRadius: 4, overflow: 'hidden', marginBottom: 10 }}>
+      {chain.gaps?.map((gap: any, i: number) => {
+        if (gap.gapSeconds <= 0 || !phases[i]?.scheduledEnd || !phases[i + 1]?.scheduledStart) return null;
+        const left = pct(new Date(phases[i].scheduledEnd).getTime());
+        const w = pct(new Date(phases[i + 1].scheduledStart).getTime()) - left;
+        if (w <= 0) return null;
+        return <div key={`g${i}`} style={{ position: 'absolute', left: `${left}%`, width: `${w}%`, top: 4, height: 12, borderRadius: 2, background: `${C.red}20`, border: `1px dashed ${C.red}` }} />;
+      })}
+      {phases.map((p: any, i: number) => {
+        const left = pct(new Date(p.scheduledStart).getTime());
+        const w = Math.max(pct(new Date(p.scheduledEnd).getTime()) - left, 0.5);
+        return <div key={p.taskKey} style={{ position: 'absolute', left: `${left}%`, width: `${w}%`, top: 3, height: 14, borderRadius: 3, background: phaseColor(i), opacity: 0.8 }} />;
+      })}
+    </div>
+  );
+}
+
 function ChainDetail({ data, experienceLevel, onNavigateToCase }: { data: any; experienceLevel: ExperienceLevel; onNavigateToCase?: (caseKey: string) => void }) {
   const [sortBy, setSortBy] = useState<'gap' | 'name' | 'start'>('gap');
   const [filter, setFilter] = useState<'all' | 'violations' | 'complete'>('all');
@@ -4055,6 +4462,9 @@ function ChainDetail({ data, experienceLevel, onNavigateToCase }: { data: any; e
               {chain.totalGap === 0 ? '✓ Back-to-back' : `⚠ ${Math.round(chain.totalGap / 60)}min total gap`}
             </span>
           </div>
+
+          {/* Mini Gantt bar */}
+          <MiniCaseGantt chain={chain} />
 
           {/* Phase rows */}
           {chain.phases.map((phase: any, i: number) => (
@@ -4820,6 +5230,7 @@ export default function App() {
         )}
         {activeTab === 'Schedule' && (
           <ScheduleTab tasks={tasks} resources={resources} products={products} colors={colors}
+            orders={orders}
             onTaskClick={handleTaskClick} onResourceClick={handleResourceClick}
             taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             orderModes={orderModes}
