@@ -2,7 +2,7 @@
   {
     "key": "C001-SETUP",
     "name": "Thompson - Pre-Op Setup",
-    "type": "SETUP",
+    "type": "PROCESS",
     "windowStart": "2026-02-16T06:00:00Z",
     "windowEnd": "2026-02-20T18:00:00Z",
     "durationSeconds": 1800,
@@ -20,6 +20,7 @@
     "typedAttributes": { "procedureType": "ORTHO-KR", "caseId": "CASE-001", "patientId": "PAT-Thompson", "priority": "ELECTIVE", "phase": "PRE-OP" },
     "orderKey": "CASE-001",
     "orderName": "CASE-001: Thompson - Knee Replacement",
+    "linkId": { "name": "CASE-001", "type": "ES", "prevLink": "" },
     "process": "ORTHO-KR"
   },
   {
@@ -86,7 +87,7 @@
   {
     "key": "C002-SETUP",
     "name": "Rivera - Pre-Op Setup",
-    "type": "SETUP",
+    "type": "PROCESS",
     "windowStart": "2026-02-16T06:00:00Z",
     "windowEnd": "2026-02-18T18:00:00Z",
     "durationSeconds": 900,
@@ -105,6 +106,7 @@
     "typedAttributes": { "procedureType": "ORTHO-AR", "caseId": "CASE-002", "patientId": "PAT-Rivera", "priority": "URGENT", "phase": "PRE-OP" },
     "orderKey": "CASE-002",
     "orderName": "CASE-002: Rivera - Arthroscopy",
+    "linkId": { "name": "CASE-002", "type": "ES", "prevLink": "" },
     "process": "ORTHO-AR"
   },
   {
@@ -169,7 +171,7 @@
   {
     "key": "C003-SETUP",
     "name": "Kim - Pre-Op Setup",
-    "type": "SETUP",
+    "type": "PROCESS",
     "windowStart": "2026-02-17T06:00:00Z",
     "windowEnd": "2026-02-21T18:00:00Z",
     "durationSeconds": 1800,
@@ -178,7 +180,9 @@
       { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
     ],
     "typedAttributes": { "procedureType": "GEN-LAP", "caseId": "CASE-003", "patientId": "PAT-Kim", "priority": "ELECTIVE", "phase": "PRE-OP" },
-    "orderKey": "CASE-003", "orderName": "CASE-003: Kim - Laparoscopic", "process": "GEN-LAP"
+    "orderKey": "CASE-003", "orderName": "CASE-003: Kim - Laparoscopic",
+    "linkId": { "name": "CASE-003", "type": "ES", "prevLink": "" },
+    "process": "GEN-LAP"
   },
   {
     "key": "C003-PROC",
@@ -216,7 +220,7 @@
   {
     "key": "C004-SETUP",
     "name": "Davis - Pre-Op Setup",
-    "type": "SETUP",
+    "type": "PROCESS",
     "windowStart": "2026-02-16T06:00:00Z",
     "windowEnd": "2026-02-20T18:00:00Z",
     "durationSeconds": 900,
@@ -225,7 +229,9 @@
       { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
     ],
     "typedAttributes": { "procedureType": "GEN-HERNIA", "caseId": "CASE-004", "patientId": "PAT-Davis", "priority": "ELECTIVE", "phase": "PRE-OP" },
-    "orderKey": "CASE-004", "orderName": "CASE-004: Davis - Hernia Repair", "process": "GEN-HERNIA"
+    "orderKey": "CASE-004", "orderName": "CASE-004: Davis - Hernia Repair",
+    "linkId": { "name": "CASE-004", "type": "ES", "prevLink": "" },
+    "process": "GEN-HERNIA"
   },
   {
     "key": "C004-PROC",
@@ -263,7 +269,7 @@
   {
     "key": "C005-SETUP",
     "name": "Williams - Pre-Op Setup",
-    "type": "SETUP",
+    "type": "PROCESS",
     "windowStart": "2026-02-16T06:00:00Z",
     "windowEnd": "2026-02-17T16:00:00Z",
     "durationSeconds": 600,
@@ -272,7 +278,9 @@
       { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
     ],
     "typedAttributes": { "procedureType": "PAIN-INJ", "caseId": "CASE-005", "patientId": "PAT-Williams", "priority": "URGENT", "phase": "PRE-OP" },
-    "orderKey": "CASE-005", "orderName": "CASE-005: Williams - Pain Injection", "process": "PAIN-INJ"
+    "orderKey": "CASE-005", "orderName": "CASE-005: Williams - Pain Injection",
+    "linkId": { "name": "CASE-005", "type": "ES", "prevLink": "" },
+    "process": "PAIN-INJ"
   },
   {
     "key": "C005-PROC",
@@ -310,7 +318,7 @@
   {
     "key": "C006-SETUP",
     "name": "Johnson - Pre-Op Setup",
-    "type": "SETUP",
+    "type": "PROCESS",
     "windowStart": "2026-02-18T06:00:00Z",
     "windowEnd": "2026-02-21T16:00:00Z",
     "durationSeconds": 600,
@@ -319,7 +327,9 @@
       { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
     ],
     "typedAttributes": { "procedureType": "EYE-CAT", "caseId": "CASE-006", "patientId": "PAT-Johnson", "priority": "ELECTIVE", "phase": "PRE-OP" },
-    "orderKey": "CASE-006", "orderName": "CASE-006: Johnson - Cataract", "process": "EYE-CAT"
+    "orderKey": "CASE-006", "orderName": "CASE-006: Johnson - Cataract",
+    "linkId": { "name": "CASE-006", "type": "ES", "prevLink": "" },
+    "process": "EYE-CAT"
   },
   {
     "key": "C006-PROC",
@@ -357,7 +367,7 @@
   {
     "key": "C007-SETUP",
     "name": "Martinez - Pre-Op Setup",
-    "type": "SETUP",
+    "type": "PROCESS",
     "windowStart": "2026-02-23T06:00:00Z",
     "windowEnd": "2026-02-27T18:00:00Z",
     "durationSeconds": 1800,
@@ -366,7 +376,9 @@
       { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
     ],
     "typedAttributes": { "procedureType": "ORTHO-KR", "caseId": "CASE-007", "patientId": "PAT-Martinez", "priority": "ELECTIVE", "phase": "PRE-OP" },
-    "orderKey": "CASE-007", "orderName": "CASE-007: Martinez - Knee Replacement", "process": "ORTHO-KR"
+    "orderKey": "CASE-007", "orderName": "CASE-007: Martinez - Knee Replacement",
+    "linkId": { "name": "CASE-007", "type": "ES", "prevLink": "" },
+    "process": "ORTHO-KR"
   },
   {
     "key": "C007-PROC",
@@ -405,7 +417,7 @@
   {
     "key": "C008-SETUP",
     "name": "Brown - Pre-Op Setup",
-    "type": "SETUP",
+    "type": "PROCESS",
     "windowStart": "2026-02-23T06:00:00Z",
     "windowEnd": "2026-02-26T18:00:00Z",
     "durationSeconds": 900,
@@ -414,7 +426,9 @@
       { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
     ],
     "typedAttributes": { "procedureType": "GEN-HERNIA", "caseId": "CASE-008", "patientId": "PAT-Brown", "priority": "ELECTIVE", "phase": "PRE-OP" },
-    "orderKey": "CASE-008", "orderName": "CASE-008: Brown - Hernia Repair", "process": "GEN-HERNIA"
+    "orderKey": "CASE-008", "orderName": "CASE-008: Brown - Hernia Repair",
+    "linkId": { "name": "CASE-008", "type": "ES", "prevLink": "" },
+    "process": "GEN-HERNIA"
   },
   {
     "key": "C008-PROC",
@@ -452,7 +466,7 @@
   {
     "key": "C009-SETUP",
     "name": "Lee - Pre-Op Setup",
-    "type": "SETUP",
+    "type": "PROCESS",
     "windowStart": "2026-02-24T06:00:00Z",
     "windowEnd": "2026-02-25T16:00:00Z",
     "durationSeconds": 600,
@@ -461,7 +475,9 @@
       { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
     ],
     "typedAttributes": { "procedureType": "PAIN-INJ", "caseId": "CASE-009", "patientId": "PAT-Lee", "priority": "URGENT", "phase": "PRE-OP" },
-    "orderKey": "CASE-009", "orderName": "CASE-009: Lee - Pain Injection", "process": "PAIN-INJ"
+    "orderKey": "CASE-009", "orderName": "CASE-009: Lee - Pain Injection",
+    "linkId": { "name": "CASE-009", "type": "ES", "prevLink": "" },
+    "process": "PAIN-INJ"
   },
   {
     "key": "C009-PROC",
@@ -499,7 +515,7 @@
   {
     "key": "C010-SETUP",
     "name": "Garcia - Pre-Op Setup",
-    "type": "SETUP",
+    "type": "PROCESS",
     "windowStart": "2026-02-19T06:00:00Z",
     "windowEnd": "2026-02-27T18:00:00Z",
     "durationSeconds": 900,
@@ -508,7 +524,9 @@
       { "isPrimary": false, "preferences": [{ "resource": "RN-01", "rank": 1 }, { "resource": "RN-02", "rank": 2 }, { "resource": "RN-03", "rank": 3 }]}
     ],
     "typedAttributes": { "procedureType": "ORTHO-AR", "caseId": "CASE-010", "patientId": "PAT-Garcia", "priority": "ADD-ON", "phase": "PRE-OP" },
-    "orderKey": "CASE-010", "orderName": "CASE-010: Garcia - Arthroscopy", "process": "ORTHO-AR"
+    "orderKey": "CASE-010", "orderName": "CASE-010: Garcia - Arthroscopy",
+    "linkId": { "name": "CASE-010", "type": "ES", "prevLink": "" },
+    "process": "ORTHO-AR"
   },
   {
     "key": "C010-PROC",

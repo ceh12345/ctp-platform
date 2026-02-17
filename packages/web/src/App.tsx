@@ -2657,7 +2657,7 @@ function TaskBulkActions({ filteredTasks, taskPins, taskExcludes, orderModes,
 
 function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExcludes, taskUnschedules, orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask, experienceLevel = 'novice',
-  onWhereTo, whereToTaskKey }: {
+  onWhereTo, whereToTaskKey, caseFilter, onClearCaseFilter }: {
   tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
   orderModes?: Record<string, string>;
@@ -2667,11 +2667,15 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   experienceLevel?: ExperienceLevel;
   onWhereTo?: (key: string, source?: 'gantt' | 'table') => void;
   whereToTaskKey?: string | null;
+  caseFilter?: string | null;
+  onClearCaseFilter?: () => void;
 }) {
   const { sortKey, sortDir, toggle, sorted } = useSort('key');
   const [activeTypeChips, setActiveTypeChips] = useState<Set<string>>(new Set(['PROCESS']));
 
-  const enriched = useMemo(() => tasks.map(tk => {
+  const caseTasks = useMemo(() => caseFilter ? tasks.filter(tk => tk.orderRef === caseFilter) : tasks, [tasks, caseFilter]);
+
+  const enriched = useMemo(() => caseTasks.map(tk => {
     const _status = deriveTaskStatus(tk, taskPins, taskExcludes, taskUnschedules, orderModes);
     const _orderMode = orderModes?.[tk.orderRef] || 'INCLUDE';
     const _productName = tk.outputProductKey
@@ -2688,7 +2692,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
       _priority,
       _type,
     };
-  }), [tasks, taskPins, taskExcludes, taskUnschedules, orderModes, products]);
+  }), [caseTasks, taskPins, taskExcludes, taskUnschedules, orderModes, products]);
 
   // Derive distinct types from data
   const distinctTypes = useMemo(() => {
@@ -2787,8 +2791,22 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   }, [onUnscheduleTask]);
 
   const rows = sorted(filter.filtered);
+  // Derive case name for the filter chip
+  const caseFilterName = caseFilter ? (caseTasks[0]?.orderName || caseFilter) : null;
   return (
     <div>
+      {caseFilter && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, fontFamily: FONT,
+            background: C.accent + '18', color: C.accent, border: `1px solid ${C.accent}44`,
+          }}>
+            Filtered: {caseFilterName}
+            <span onClick={onClearCaseFilter} style={{ cursor: 'pointer', opacity: 0.7, fontSize: 14 }} title="Clear filter">&times;</span>
+          </span>
+        </div>
+      )}
       <FilterBar filter={filter} statusOptions={statusOptions} />
 
       {/* Task Type Chips */}
@@ -3511,7 +3529,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   taskPins, taskExcludes, taskUnschedules, orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask, experienceLevel = 'novice',
   onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
-  whereToCurrentAssignment, onMoveTo, onCancelWhereTo }: {
+  whereToCurrentAssignment, onMoveTo, onCancelWhereTo,
+  caseFilter, onClearCaseFilter }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
@@ -3527,12 +3546,16 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   whereToCurrentAssignment?: any;
   onMoveTo?: (key: string, option: any) => void;
   onCancelWhereTo?: () => void;
+  caseFilter?: string | null;
+  onClearCaseFilter?: () => void;
 }) {
   const [sub, setSub] = useState('Gantt');
+  // Force Task List sub-tab when case filter is active
+  const effectiveSub = caseFilter ? t('tasks', 'Tasks') : sub;
   return (
     <div>
-      <SubTabs tabs={['Gantt', t('tasks', 'Tasks')]} active={sub} onChange={setSub} />
-      {sub === 'Gantt' ? (
+      <SubTabs tabs={['Gantt', t('tasks', 'Tasks')]} active={effectiveSub} onChange={(s) => { setSub(s); if (caseFilter) onClearCaseFilter?.(); }} />
+      {effectiveSub === 'Gantt' ? (
         <Card>
           <GanttChart tasks={tasks} resources={resources} products={products} colors={colors}
             onTaskClick={onTaskClick} onResourceClick={onResourceClick}
@@ -3549,7 +3572,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             orderModes={orderModes} experienceLevel={experienceLevel}
             onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask}
-            onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey} />
+            onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey}
+            caseFilter={caseFilter} onClearCaseFilter={onClearCaseFilter} />
         </Card>
       )}
     </div>
@@ -3790,10 +3814,432 @@ function UserProfileContent() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   TAB CONTENT — ANALYTICS
+   ═══════════════════════════════════════════════════════════════ */
+
+function formatKpiValue(kpi: any): string {
+  if (kpi.format === 'percent') return `${kpi.value}%`;
+  if (kpi.format === 'duration') return `${kpi.value}m`;
+  if (kpi.format === 'ratio') return String(kpi.value);
+  if (kpi.format === 'count') return String(kpi.value);
+  return String(kpi.value);
+}
+
+function UtilizationDetail({ data, experienceLevel }: { data: any; experienceLevel: ExperienceLevel }) {
+  const [expandedResource, setExpandedResource] = useState<string | null>(null);
+  if (!data || !data.resources) return null;
+
+  const groupAvg = data.avgUtilization ?? 0;
+
+  return (
+    <div>
+      {/* Group summary */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+          <span style={{ fontSize: 28, fontWeight: 700, color: groupAvg >= 70 ? C.green : groupAvg >= 50 ? C.yellow : C.red }}>
+            {groupAvg}%
+          </span>
+          <span style={{ fontSize: 13, color: C.textMuted }}>Average Utilization</span>
+        </div>
+        {/* Target line bar */}
+        <div style={{ position: 'relative', height: 8, background: C.surface2, borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(groupAvg, 100)}%`, background: groupAvg >= 70 ? C.green : groupAvg >= 50 ? C.yellow : C.red, borderRadius: 4 }} />
+          <div style={{ position: 'absolute', left: '70%', top: -2, width: 2, height: 12, background: C.textDim }} title="Target: 70%" />
+        </div>
+      </div>
+
+      {/* Per-resource bars */}
+      {data.resources.map((res: any) => (
+        <div key={res.key} style={{ marginBottom: 12 }}>
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4, cursor: 'pointer' }}
+            onClick={() => setExpandedResource(expandedResource === res.key ? null : res.key)}
+          >
+            <span style={{ fontSize: 12, color: C.text, width: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {res.name}
+            </span>
+            <div style={{ flex: 1, height: 20, display: 'flex', borderRadius: 4, overflow: 'hidden', background: C.surface2 }}>
+              {/* Assigned (green) */}
+              <div style={{ width: `${res.utilization}%`, height: '100%', background: C.green, transition: 'width 0.3s' }} />
+              {/* Available but unassigned (light grey) */}
+              <div style={{ width: `${Math.max(100 - res.utilization, 0)}%`, height: '100%', background: C.border }} />
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 600, width: 45, textAlign: 'right', fontVariantNumeric: 'tabular-nums',
+              color: res.utilization >= 70 ? C.green : res.utilization >= 50 ? C.yellow : C.red }}>
+              {res.utilization}%
+            </span>
+          </div>
+          {/* Daily breakdown (expert) */}
+          {showAt(experienceLevel, 'expert') && expandedResource === res.key && res.daily && (
+            <div style={{ marginLeft: 132, marginBottom: 8, fontSize: 11 }}>
+              {res.daily.map((d: any) => (
+                <div key={d.date} style={{ display: 'flex', gap: 12, padding: '2px 0', borderBottom: `1px solid ${C.border}` }}>
+                  <span style={{ color: C.textDim, width: 80 }}>{d.date}</span>
+                  <span style={{ color: C.textMuted, width: 70 }}>{fmtDuration(d.available)}</span>
+                  <span style={{ color: C.green, width: 70 }}>{fmtDuration(d.assigned)}</span>
+                  <span style={{ fontWeight: 600, color: d.utilization >= 70 ? C.green : d.utilization >= 50 ? C.yellow : C.red }}>
+                    {d.utilization}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* Bottleneck (intermediate+) */}
+      {showAt(experienceLevel, 'intermediate') && data.bottleneck && (
+        <Card style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textDim, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+            Bottleneck
+          </div>
+          <div style={{ fontSize: 13, color: C.text }}>
+            <strong>{data.bottleneck.resource}</strong> in {data.bottleneck.hierarchy} at{' '}
+            <span style={{ color: C.red, fontWeight: 600 }}>{data.bottleneck.resourceUtilization}%</span>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function SchedulingDetail({ data, experienceLevel }: { data: any; experienceLevel: ExperienceLevel }) {
+  if (!data || !('totalTasks' in data)) return null;
+
+  // Group turnovers by resource for bar chart
+  const resourceTurnovers = new Map<string, number[]>();
+  for (const to of data.avgTurnover?.turnovers ?? []) {
+    if (!resourceTurnovers.has(to.resource)) resourceTurnovers.set(to.resource, []);
+    resourceTurnovers.get(to.resource)!.push(to.duration);
+  }
+  const maxTurnover = Math.max(...(data.avgTurnover?.turnovers?.map((t: any) => t.duration) ?? [0]), 1);
+
+  return (
+    <div>
+      {/* Stat cards */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <KPI icon="✓" label="Scheduled" value={`${data.scheduled}/${data.totalTasks}`}
+          color={data.scheduled === data.totalTasks ? C.green : C.yellow}
+          sub={`${data.unscheduled} unscheduled`} />
+        <KPI icon="✗" label="Infeasible" value={data.infeasible}
+          color={data.infeasible === 0 ? C.green : C.red} />
+        <KPI icon="⏱" label="On-Time Starts" value={fmtPctDirect(data.onTimeStarts?.percentage ?? 0)}
+          color={data.onTimeStarts?.percentage >= 90 ? C.green : data.onTimeStarts?.percentage >= 75 ? C.yellow : C.red}
+          sub={`${data.onTimeStarts?.count ?? 0} of ${data.onTimeStarts?.total ?? 0}`} />
+        <KPI icon="⚙" label="Avg Turnover" value={`${data.avgTurnover?.minutes ?? 0}m`}
+          color={data.avgTurnover?.minutes <= 20 ? C.green : data.avgTurnover?.minutes <= 45 ? C.yellow : C.red}
+          sub={`${data.avgTurnover?.count ?? 0} turnovers`} />
+      </div>
+
+      {/* Turnover bar chart (intermediate+) */}
+      {showAt(experienceLevel, 'intermediate') && data.avgTurnover?.turnovers?.length > 0 && (
+        <>
+          <SectionLabel label="Turnovers by Resource" />
+          {[...resourceTurnovers.entries()].map(([resource, durations]) => {
+            const avg = Math.round(durations.reduce((s, d) => s + d, 0) / durations.length);
+            return (
+              <div key={resource} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: C.text, width: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{resource}</span>
+                <div style={{ flex: 1, height: 16, background: C.surface2, borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ width: `${(avg / maxTurnover) * 100}%`, height: '100%', background: avg <= 1200 ? C.green : avg <= 2700 ? C.yellow : C.red, borderRadius: 3 }} />
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 600, width: 40, textAlign: 'right', color: C.textMuted }}>{fmtDuration(avg)}</span>
+              </div>
+            );
+          })}
+        </>
+      )}
+
+      {/* Turnover table (expert) */}
+      {showAt(experienceLevel, 'expert') && data.avgTurnover?.turnovers?.length > 0 && (
+        <>
+          <SectionLabel label="All Turnovers" />
+          <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+            <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', color: C.textDim, fontWeight: 600 }}>Resource</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', color: C.textDim, fontWeight: 600 }}>From</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', color: C.textDim, fontWeight: 600 }}>To</th>
+                  <th style={{ textAlign: 'right', padding: '6px 8px', color: C.textDim, fontWeight: 600 }}>Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.avgTurnover.turnovers.map((to: any, i: number) => (
+                  <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
+                    <td style={{ padding: '6px 8px', color: C.text }}>{to.resource}</td>
+                    <td style={{ padding: '6px 8px', color: C.textMuted }}>{to.from}</td>
+                    <td style={{ padding: '6px 8px', color: C.textMuted }}>{to.to}</td>
+                    <td style={{ padding: '6px 8px', color: C.text, textAlign: 'right', fontWeight: 600 }}>{fmtDuration(to.duration)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ChainDetail({ data, experienceLevel, onNavigateToCase }: { data: any; experienceLevel: ExperienceLevel; onNavigateToCase?: (caseKey: string) => void }) {
+  const [sortBy, setSortBy] = useState<'gap' | 'name' | 'start'>('gap');
+  const [filter, setFilter] = useState<'all' | 'violations' | 'complete'>('all');
+
+  if (!data || !data.chains) return null;
+
+  let chains = [...data.chains];
+
+  // Filter
+  if (filter === 'violations') chains = chains.filter((c: any) => c.totalGap > 0);
+  if (filter === 'complete') chains = chains.filter((c: any) => c.status === 'complete');
+
+  // Sort
+  if (sortBy === 'gap') chains.sort((a: any, b: any) => b.totalGap - a.totalGap);
+  if (sortBy === 'name') chains.sort((a: any, b: any) => a.caseName.localeCompare(b.caseName));
+  if (sortBy === 'start') chains.sort((a: any, b: any) => {
+    const aStart = a.phases[0]?.scheduledStart ?? '';
+    const bStart = b.phases[0]?.scheduledStart ?? '';
+    return aStart.localeCompare(bStart);
+  });
+
+  return (
+    <div>
+      {/* Summary stats */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <KPI icon="🔗" label="Chains" value={data.summary.totalChains}
+          sub={`${data.summary.completeChains} complete`} />
+        <KPI icon="⏱" label="Avg Gap" value={`${Math.round(data.summary.avgGapSeconds / 60)}m`}
+          color={data.summary.avgGapSeconds === 0 ? C.green : data.summary.avgGapSeconds <= 900 ? C.yellow : C.red} />
+        <KPI icon="⚡" label="Back-to-Back" value={`${data.summary.backToBackRate}%`}
+          color={data.summary.backToBackRate >= 90 ? C.green : data.summary.backToBackRate >= 70 ? C.yellow : C.red} />
+        <KPI icon="⚠" label="Violations" value={data.summary.violations.length}
+          color={data.summary.violations.length === 0 ? C.green : C.red} />
+      </div>
+
+      {/* Controls */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
+        <SubTabs tabs={['All', 'Violations', 'Complete']} active={filter === 'all' ? 'All' : filter === 'violations' ? 'Violations' : 'Complete'}
+          onChange={(t) => setFilter(t === 'All' ? 'all' : t === 'Violations' ? 'violations' : 'complete')} />
+        <div style={{ flex: 1 }} />
+        <span style={{ fontSize: 11, color: C.textDim }}>Sort:</span>
+        {(['gap', 'name', 'start'] as const).map((s) => (
+          <button key={s} onClick={() => setSortBy(s)} style={{
+            padding: '3px 8px', borderRadius: 4, border: `1px solid ${sortBy === s ? C.accent : C.border}`,
+            background: sortBy === s ? `${C.accent}20` : 'transparent', color: sortBy === s ? C.accent : C.textMuted,
+            fontSize: 11, cursor: 'pointer', fontFamily: FONT, fontWeight: 600,
+          }}>
+            {s === 'gap' ? 'Worst Gap' : s === 'name' ? 'Name' : 'Start Time'}
+          </button>
+        ))}
+      </div>
+
+      {/* Chain cards */}
+      {chains.map((chain: any) => (
+        <div key={chain.caseKey} style={{
+          border: `1px solid ${C.border}`, borderRadius: 8, padding: 12, marginBottom: 8,
+          background: C.surface,
+        }}>
+          {/* Case header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span onClick={() => onNavigateToCase?.(chain.caseKey)} style={{
+              fontWeight: 600, fontSize: 13, color: onNavigateToCase ? C.accent : C.text,
+              cursor: onNavigateToCase ? 'pointer' : 'default',
+              textDecoration: onNavigateToCase ? 'underline' : 'none',
+            }} title={onNavigateToCase ? `View ${chain.caseName} in Schedule` : undefined}>{chain.caseName}</span>
+            <span style={{
+              fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
+              background: chain.totalGap === 0 ? '#4caf5020' : '#f4433620',
+              color: chain.totalGap === 0 ? '#4caf50' : '#f44336',
+            }}>
+              {chain.totalGap === 0 ? '✓ Back-to-back' : `⚠ ${Math.round(chain.totalGap / 60)}min total gap`}
+            </span>
+          </div>
+
+          {/* Phase rows */}
+          {chain.phases.map((phase: any, i: number) => (
+            <div key={phase.taskKey}>
+              {/* Connector line */}
+              {i > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', paddingLeft: 20, height: 20 }}>
+                  <span style={{ fontSize: 10, color: C.textDim }}>│</span>
+                  {chain.gaps[i - 1]?.gapSeconds > 0 && (
+                    <span style={{ fontSize: 10, color: '#f44336', marginLeft: 8 }}>
+                      ⚠ {Math.round(chain.gaps[i - 1].gapSeconds / 60)}min gap
+                    </span>
+                  )}
+                  {chain.gaps[i - 1]?.gapSeconds === 0 && (
+                    <span style={{ fontSize: 10, color: '#4caf50', marginLeft: 8 }}>✓ 0 gap</span>
+                  )}
+                </div>
+              )}
+
+              {/* Phase row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 20 }}>
+                <span style={{ fontSize: 10, width: 16, color: C.textDim }}>
+                  {i === 0 ? '┌' : i === chain.phases.length - 1 ? '└' : '├'}
+                </span>
+                <span style={{
+                  fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 4,
+                  background: phase.type === 'SET_UP' ? '#ff980020' : phase.type === 'PROCESS' ? '#2196f320' : '#9e9e9e20',
+                  color: phase.type === 'SET_UP' ? '#ff9800' : phase.type === 'PROCESS' ? '#2196f3' : '#9e9e9e',
+                  width: 60, textAlign: 'center' as const,
+                }}>
+                  {phase.type === 'SET_UP' ? t('setup', 'Setup') : phase.type === 'TEAR_DOWN' ? t('teardown', 'Teardown') : t('process', 'Process')}
+                </span>
+                <span style={{ fontSize: 12, flex: 1, color: C.text }}>{phase.name}</span>
+                <span style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: C.textMuted }}>
+                  {phase.scheduledStart ? fmtDate(phase.scheduledStart) : '—'} — {phase.scheduledEnd ? fmtDate(phase.scheduledEnd) : '—'}
+                </span>
+                {showAt(experienceLevel, 'intermediate') && (
+                  <span style={{ fontSize: 10, color: C.textDim }}>
+                    {phase.resources.join(', ')}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {chains.length === 0 && (
+        <div style={{ textAlign: 'center', padding: 40, color: C.textDim, fontSize: 13 }}>
+          {filter === 'violations' ? 'No violations found — all chains are back-to-back!' : 'No chains to display'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AnalyticsTab({ kpis, detail, selectedKpi, onSelectKpi, loading, experienceLevel = 'novice' as ExperienceLevel, onNavigateToCase }: {
+  kpis: any[];
+  detail: any;
+  selectedKpi: string | null;
+  onSelectKpi: (key: string) => void;
+  loading: boolean;
+  experienceLevel?: ExperienceLevel;
+  onNavigateToCase?: (caseKey: string) => void;
+}) {
+  // No-solve state
+  if (kpis.length === 0 && !loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+        <Card style={{ textAlign: 'center', maxWidth: 400, padding: 40 }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>📊</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 8 }}>No Analytics Yet</div>
+          <div style={{ fontSize: 13, color: C.textMuted }}>
+            Run <strong>{t('solve', 'Build Schedule')}</strong> to see analytics and KPIs.
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Group KPIs
+  const groups = new Map<string, any[]>();
+  for (const kpi of kpis) {
+    if (!groups.has(kpi.group)) groups.set(kpi.group, []);
+    groups.get(kpi.group)!.push(kpi);
+  }
+
+  // Determine selected KPI's group for detail view
+  const selectedKpiObj = kpis.find((k) => k.key === selectedKpi);
+  const selectedGroup = selectedKpiObj?.group;
+
+  // Find group data in detail response
+  let detailContent: React.ReactNode = null;
+  if (loading) {
+    detailContent = (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: C.textMuted }}>
+        Loading...
+      </div>
+    );
+  } else if (selectedGroup === 'Utilization' && detail) {
+    // Find the utilization group matching selected KPI
+    const slug = selectedKpi ?? '';
+    const hierarchy = slug.replace(/-utilization$/, '').replace(/-/g, ' ');
+    const group = detail.groups?.find((g: any) => g.hierarchy.toLowerCase().replace(/[^a-z0-9]+/g, ' ') === hierarchy);
+    detailContent = <UtilizationDetail data={{ ...group, bottleneck: detail.bottleneck }} experienceLevel={experienceLevel} />;
+  } else if (selectedGroup === 'Scheduling' && detail) {
+    detailContent = <SchedulingDetail data={detail} experienceLevel={experienceLevel} />;
+  } else if (selectedGroup === 'Chain Integrity' && detail) {
+    detailContent = <ChainDetail data={detail} experienceLevel={experienceLevel} onNavigateToCase={onNavigateToCase} />;
+  } else if (selectedKpi && !detail) {
+    detailContent = (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: C.textMuted }}>
+        Select a KPI to view details
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: 0, minHeight: 'calc(100vh - 200px)' }}>
+      {/* Left Panel — KPI Catalog */}
+      <div style={{
+        width: 280, borderRight: `1px solid ${C.border}`, overflowY: 'auto',
+        background: C.surface, borderRadius: '8px 0 0 8px', flexShrink: 0,
+      }}>
+        {[...groups.entries()].map(([groupName, groupKpis]) => (
+          <div key={groupName}>
+            <div style={{
+              padding: '10px 16px', fontSize: 10, fontWeight: 700,
+              textTransform: 'uppercase', letterSpacing: 0.8,
+              color: C.textDim, borderBottom: `1px solid ${C.border}`,
+            }}>
+              {groupName}
+            </div>
+            {groupKpis.map((kpi: any) => (
+              <div
+                key={kpi.key}
+                onClick={() => onSelectKpi(kpi.key)}
+                style={{
+                  padding: '8px 16px', cursor: 'pointer',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  background: selectedKpi === kpi.key ? `${C.accent}10` : 'transparent',
+                  borderLeft: selectedKpi === kpi.key ? `3px solid ${C.accent}` : '3px solid transparent',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={(e) => { if (selectedKpi !== kpi.key) e.currentTarget.style.background = `${C.text}08`; }}
+                onMouseLeave={(e) => { if (selectedKpi !== kpi.key) e.currentTarget.style.background = 'transparent'; }}
+              >
+                <span style={{ fontSize: 12, color: C.text }}>{kpi.name}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: C.text }}>
+                    {formatKpiValue(kpi)}
+                  </span>
+                  <span style={{
+                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                    background: kpi.status === 'good' ? '#4caf50' : kpi.status === 'warning' ? '#ff9800' : '#f44336',
+                  }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* Right Panel — Detail View */}
+      <div style={{ flex: 1, padding: 20, overflowY: 'auto' }}>
+        {selectedKpiObj && (
+          <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600, color: C.text }}>
+            {selectedKpiObj.name}
+          </h3>
+        )}
+        {detailContent || (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300, color: C.textDim, fontSize: 13 }}>
+            Select a KPI from the catalog to view details
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    MAIN APP
    ═══════════════════════════════════════════════════════════════ */
 
-const TABS = ['Overview', 'Schedule', 'Orders', 'Conflicts', 'Materials'];
+const TABS = ['Overview', 'Schedule', 'Orders', 'Conflicts', 'Materials', 'Analytics'];
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -3828,6 +4274,13 @@ export default function App() {
   const [whereToOptions, setWhereToOptions] = useState<any[]>([]);
   const [whereToLoading, setWhereToLoading] = useState(false);
   const [whereToCurrentAssignment, setWhereToCurrentAssignment] = useState<any>(null);
+  // Schedule case filter (set from Analytics chain links)
+  const [scheduleCaseFilter, setScheduleCaseFilter] = useState<string | null>(null);
+  // Analytics state
+  const [analyticsKpis, setAnalyticsKpis] = useState<any[]>([]);
+  const [analyticsDetail, setAnalyticsDetail] = useState<any>(null);
+  const [selectedKpi, setSelectedKpi] = useState<string | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   // Previous state snapshots for delta computation
   const [prevOrderModes, setPrevOrderModes] = useState<Record<string, string>>({});
   const [prevTaskPins, setPrevTaskPins] = useState<Record<string, boolean>>({});
@@ -3879,6 +4332,8 @@ export default function App() {
     setSelectedResource(null);
     // Cancel WhereTo if active
     setWhereToTaskKey(null); setWhereToOptions([]); setWhereToCurrentAssignment(null);
+    // Clear analytics so they reload after new solve
+    setAnalyticsKpis([]); setAnalyticsDetail(null); setSelectedKpi(null);
     try {
       setError(null);
 
@@ -4049,6 +4504,45 @@ export default function App() {
     return () => document.removeEventListener('keydown', handler);
   }, [whereToTaskKey, cancelWhereTo]);
 
+  // Analytics: load summary when tab opens, load detail when KPI selected
+  const loadAnalyticsSummary = useCallback(async () => {
+    setAnalyticsLoading(true);
+    try {
+      const data = await api('/analytics/summary');
+      setAnalyticsKpis(data.kpis || []);
+    } catch { setAnalyticsKpis([]); }
+    finally { setAnalyticsLoading(false); }
+  }, []);
+
+  const handleSelectKpi = useCallback(async (key: string) => {
+    setSelectedKpi(key);
+    setAnalyticsDetail(null);
+    setAnalyticsLoading(true);
+    // Determine which endpoint to call based on KPI group
+    const kpi = analyticsKpis.find((k: any) => k.key === key);
+    if (!kpi) { setAnalyticsLoading(false); return; }
+    try {
+      if (kpi.group === 'Utilization') {
+        const data = await api('/analytics/utilization');
+        setAnalyticsDetail(data);
+      } else if (kpi.group === 'Scheduling') {
+        const data = await api('/analytics/scheduling');
+        setAnalyticsDetail(data);
+      } else if (kpi.group === 'Chain Integrity') {
+        const data = await api('/analytics/chains');
+        setAnalyticsDetail(data);
+      }
+    } catch { setAnalyticsDetail(null); }
+    finally { setAnalyticsLoading(false); }
+  }, [analyticsKpis]);
+
+  // Auto-load analytics summary when switching to Analytics tab
+  useEffect(() => {
+    if (activeTab === 'Analytics' && analyticsKpis.length === 0 && !analyticsLoading && solveResult) {
+      loadAnalyticsSummary();
+    }
+  }, [activeTab, analyticsKpis.length, analyticsLoading, solveResult, loadAnalyticsSummary]);
+
   // Initial load
   useEffect(() => {
     document.body.style.margin = '0';
@@ -4197,7 +4691,7 @@ export default function App() {
           return (
             <button
               key={tab}
-              onClick={() => { setActiveTab(tab); if (tab !== 'Schedule' && whereToTaskKey) { setWhereToTaskKey(null); setWhereToOptions([]); setWhereToCurrentAssignment(null); } }}
+              onClick={() => { setActiveTab(tab); if (tab !== 'Schedule') { if (whereToTaskKey) { setWhereToTaskKey(null); setWhereToOptions([]); setWhereToCurrentAssignment(null); } if (scheduleCaseFilter) setScheduleCaseFilter(null); } }}
               style={{
                 padding: '12px 20px', background: 'none', border: 'none',
                 borderBottom: tab === activeTab ? `2px solid ${C.accent}` : '2px solid transparent',
@@ -4347,7 +4841,8 @@ export default function App() {
             onWhereTo={handleWhereTo} whereToTaskKey={whereToTaskKey}
             whereToOptions={whereToOptions} whereToLoading={whereToLoading}
             whereToCurrentAssignment={whereToCurrentAssignment}
-            onMoveTo={handleMoveTo} onCancelWhereTo={cancelWhereTo} />
+            onMoveTo={handleMoveTo} onCancelWhereTo={cancelWhereTo}
+            caseFilter={scheduleCaseFilter} onClearCaseFilter={() => setScheduleCaseFilter(null)} />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} tasks={tasks}
           orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}
@@ -4357,6 +4852,9 @@ export default function App() {
         {activeTab === 'Materials' && <MaterialsTab materials={materials}
           materialModes={materialModeOverrides}
           onMaterialModeChange={(key, mode) => { setMaterialModeOverrides(prev => ({ ...prev, [key]: mode })); setSolveStale(true); }} />}
+        {activeTab === 'Analytics' && <AnalyticsTab kpis={analyticsKpis} detail={analyticsDetail}
+          selectedKpi={selectedKpi} onSelectKpi={handleSelectKpi} loading={analyticsLoading}
+          experienceLevel={experienceLevel} onNavigateToCase={(caseKey) => { setScheduleCaseFilter(caseKey); setActiveTab('Schedule'); }} />}
       </main>
 
       {/* Modals */}
