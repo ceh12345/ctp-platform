@@ -75,8 +75,22 @@ export class PickBestScheduleAgent
       }
     }
 
-    if (!best) task.addError(this.name, this.NO_SCHEDULES);
-     
+    if (!best) {
+      // Collect slot-level errors from all contexts to surface the real reason
+      const reasons = new Set<string>();
+      for (let i = 0; i < schedules.contexts.length; i++) {
+        const ctx = schedules.contexts.at(i);
+        if (ctx?.slot?.errors) {
+          ctx.slot.errors.forEach((err) => reasons.add(err));
+        }
+      }
+      if (reasons.size > 0) {
+        task.addError(this.name, `No feasible schedule: ${[...reasons].join(', ')}`);
+      } else {
+        task.addError(this.name, this.NO_SCHEDULES);
+      }
+    }
+
     return best;
   }
 }

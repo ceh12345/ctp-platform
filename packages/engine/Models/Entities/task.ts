@@ -212,7 +212,9 @@ export class CTPTask extends CTPKeyEntity implements ITask {
   }
 
   public addError(a: string, r: string) {
-    this.errors.push({ agent: a, reason: r, type: "" });
+    if (!this.errors.some(e => e.agent === a && e.reason === r)) {
+      this.errors.push({ agent: a, reason: r, type: "" });
+    }
   }
 
   constructor(t?: string, n?: string, k?: string) {

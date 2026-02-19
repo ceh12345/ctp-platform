@@ -376,6 +376,9 @@ export abstract class CTPBaseScheduler {
         this.scheduleTask(task, best);
         this.reComputeScheduleContexts(task);
         this.endTask(task);
+      } else {
+        // No feasible schedule — stop retrying this task
+        task.processed = true;
       }
 
       // Free contexts for this task to prevent heap accumulation

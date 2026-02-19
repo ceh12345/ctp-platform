@@ -54,6 +54,14 @@ describe('Healthcare Chain Verification', () => {
     if (!result) result = solveHealthcare();
     const scheduled = result.tasks.filter((t: any) => t.feasible);
     console.log(`\n=== SCHEDULED: ${scheduled.length} / ${result.tasks.length} tasks ===\n`);
+
+    // Print errors for unscheduled tasks
+    const unscheduled = result.tasks.filter((t: any) => !t.feasible);
+    if (unscheduled.length > 0) {
+      console.log('=== UNSCHEDULED TASKS ===');
+      unscheduled.forEach((t: any) => console.log(`  ${t.key}: ${JSON.stringify(t.errors)}`));
+    }
+
     expect(scheduled.length).toBeGreaterThanOrEqual(28);
   });
 
