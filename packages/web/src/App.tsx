@@ -1833,9 +1833,16 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   whereToCurrentAssignment?: any;
   onMoveTo?: (key: string, option: any) => void;
   onCancelWhereTo?: () => void;
-  zoomLevel: string; setZoomLevel: (v: string) => void;
-  scrollOffset: number; setScrollOffset: React.Dispatch<React.SetStateAction<number>>;
+  zoomLevel?: string; setZoomLevel?: (v: string) => void;
+  scrollOffset?: number; setScrollOffset?: React.Dispatch<React.SetStateAction<number>>;
 }) {
+  // Local fallback state when props aren't provided (e.g. Overview tab)
+  const [localZoom, setLocalZoom] = useState('Day');
+  const [localScroll, setLocalScroll] = useState(0);
+  const effectiveZoom = zoomLevel ?? localZoom;
+  const effectiveSetZoom = setZoomLevel ?? setLocalZoom;
+  const effectiveScroll = scrollOffset ?? localScroll;
+  const effectiveSetScroll = setScrollOffset ?? setLocalScroll;
   const [hovered, setHovered] = useState<any>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [contextMenu, setContextMenu] = useState<{ task: any; x: number; y: number } | null>(null);
@@ -1861,7 +1868,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   const dataStart = Math.min(...taskStarts);
   const dataEnd = Math.max(...taskEnds);
 
-  const zoomConfig = ZOOM_LEVELS.find(z => z.label === zoomLevel);
+  const zoomConfig = ZOOM_LEVELS.find(z => z.label === effectiveZoom);
   let hStartMs: number, hEndMs: number;
 
   if (zoomConfig && zoomConfig.days > 0) {
@@ -1874,7 +1881,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
       viewStart.setUTCHours(0, 0, 0, 0);
     }
     const stepMs = zoomConfig.days * 24 * 3600 * 1000;
-    const scrolledStart = new Date(viewStart.getTime() + scrollOffset * stepMs);
+    const scrolledStart = new Date(viewStart.getTime() + effectiveScroll * stepMs);
     const scrolledEnd = new Date(scrolledStart.getTime() + stepMs);
     hStartMs = scrolledStart.getTime();
     hEndMs = scrolledEnd.getTime();
@@ -2032,11 +2039,11 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
         <div style={{ display: 'flex', gap: 4 }}>
           {ZOOM_LEVELS.map(z => (
-            <button key={z.label} onClick={() => { setZoomLevel(z.label); setScrollOffset(0); }} style={{
+            <button key={z.label} onClick={() => { effectiveSetZoom(z.label); effectiveSetScroll(0); }} style={{
               padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
               fontSize: 12, fontWeight: 600,
-              background: z.label === zoomLevel ? '#3b82f6' : 'transparent',
-              color: z.label === zoomLevel ? '#fff' : '#94a3b8',
+              background: z.label === effectiveZoom ? '#3b82f6' : 'transparent',
+              color: z.label === effectiveZoom ? '#fff' : '#94a3b8',
               fontFamily: FONT,
             }}>
               {z.label}
@@ -2045,15 +2052,15 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
         </div>
         {zoomConfig && zoomConfig.days > 0 && (
           <div style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
-            <button onClick={() => setScrollOffset(s => s - 1)} style={{
+            <button onClick={() => effectiveSetScroll(s => s - 1)} style={{
               padding: '5px 10px', borderRadius: 6, border: `1px solid ${C.border}`,
               background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: 12, fontFamily: FONT,
             }}>← {act('prev', 'Prev')}</button>
-            <button onClick={() => setScrollOffset(0)} style={{
+            <button onClick={() => effectiveSetScroll(0)} style={{
               padding: '5px 10px', borderRadius: 6, border: `1px solid ${C.border}`,
               background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: 12, fontFamily: FONT,
             }}>{act('today', 'Today')}</button>
-            <button onClick={() => setScrollOffset(s => s + 1)} style={{
+            <button onClick={() => effectiveSetScroll(s => s + 1)} style={{
               padding: '5px 10px', borderRadius: 6, border: `1px solid ${C.border}`,
               background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: 12, fontFamily: FONT,
             }}>{act('next', 'Next')} →</button>
@@ -3020,7 +3027,7 @@ function TaskBulkActions({ filteredTasks, taskPins, taskExcludes, orderModes,
 
 function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExcludes, taskUnschedules, orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask, experienceLevel = 'novice',
-  onWhereTo, whereToTaskKey, caseFilter, onClearCaseFilter }: {
+  onWhereTo, whereToTaskKey, caseFilter, onClearCaseFilter, onNavigateToOrders }: {
   tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
   orderModes?: Record<string, string>;
@@ -3032,6 +3039,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   whereToTaskKey?: string | null;
   caseFilter?: string | null;
   onClearCaseFilter?: () => void;
+  onNavigateToOrders?: (orderKey: string) => void;
 }) {
   const { sortKey, sortDir, toggle, sorted } = useSort('key');
   const [activeTypeChips, setActiveTypeChips] = useState<Set<string>>(new Set(['PROCESS']));
@@ -3267,7 +3275,16 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                       </span>
                     ) : '—'}
                   </td>
-                  <td style={cellStyle}>{tk.orderRef || '—'}</td>
+                  <td style={cellStyle}>{tk.orderRef ? (
+                    <span onClick={(e) => { e.stopPropagation(); onNavigateToOrders?.(tk.orderRef); }}
+                      style={{
+                        color: onNavigateToOrders ? C.accent : C.text,
+                        cursor: onNavigateToOrders ? 'pointer' : 'default',
+                        textDecoration: onNavigateToOrders ? 'underline' : 'none',
+                      }}
+                      title={onNavigateToOrders ? `View ${tk.orderRef} in Orders` : undefined}
+                    >{tk.orderRef}</span>
+                  ) : '—'}</td>
                   <td style={cellStyle}>{resKey}</td>
                   <td style={cellStyle}>{fmtDate(tk.scheduledStart)}</td>
                   <td style={cellStyle}>{fmtDate(tk.scheduledEnd)}</td>
@@ -3354,6 +3371,9 @@ function OrderTable({ orders, products, tasks, orderModes, taskPins, taskExclude
     const placed = scheduled + pinned;
     const prodName = products.find((p: any) => p.key === o.productKey)?.name || o.productKey;
 
+    const starts = orderTasks.filter((tk: any) => tk.feasible && tk.scheduledStart).map((tk: any) => tk.scheduledStart);
+    const ends = orderTasks.filter((tk: any) => tk.feasible && tk.scheduledEnd).map((tk: any) => tk.scheduledEnd);
+
     return {
       ...o,
       _status: deriveOrderStatus(o),
@@ -3363,6 +3383,8 @@ function OrderTable({ orders, products, tasks, orderModes, taskPins, taskExclude
       _infeasibleTasks: infeasible,
       _excludedTasks: excluded,
       _scheduleProgress: total > 0 ? placed / total : 0,
+      _scheduledStart: starts.length ? starts.sort()[0] : null,
+      _scheduledEnd: ends.length ? ends.sort().pop() : null,
     };
   }), [orders, tasks, taskPins, taskExcludes, products]);
 
@@ -3400,12 +3422,15 @@ function OrderTable({ orders, products, tasks, orderModes, taskPins, taskExclude
                 color: C.textMuted, borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap',
                 fontFamily: FONT, width: 80,
               }}>Mode</th>}
-              <SortHeader label={t('order', 'Order')} k="orderKey" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label={t('order', 'Order')} k="orderKey" current={sortKey} dir={sortDir} onSort={toggle}
+                filterProps={colFilter('orderKey')} />
               <SortHeader label={t('product', 'Product')} k="_productName" current={sortKey} dir={sortDir} onSort={toggle}
                 filterProps={colFilter('_productName')} />
               <SortHeader label={t('demand', 'Demand')} k="demandQty" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label={t('scheduledStatus', 'Scheduled')} k="scheduledQty" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label="Progress" k="_scheduleProgress" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label="Start" k="_scheduledStart" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label="End" k="_scheduledEnd" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label={t('dueDate', 'Due Date')} k="dueDate" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label={t('priority', 'Priority')} k="priority" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label={t('fillRate', 'Fill Rate')} k="fillRate" current={sortKey} dir={sortDir} onSort={toggle} />
@@ -3442,6 +3467,8 @@ function OrderTable({ orders, products, tasks, orderModes, taskPins, taskExclude
                   <td style={cellStyle}>
                     <ScheduleProgress placed={o._scheduledTasks} total={o._totalTasks} infeasible={o._infeasibleTasks} />
                   </td>
+                  <td style={cellStyle}>{fmtDate(o._scheduledStart)}</td>
+                  <td style={cellStyle}>{fmtDate(o._scheduledEnd)}</td>
                   <td style={cellStyle}>{fmtDateShort(o.dueDate)}</td>
                   <td style={cellStyle}>
                     <Badge
@@ -3893,7 +3920,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   onPinTask, onExcludeTask, onUnscheduleTask, experienceLevel = 'novice',
   onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
   whereToCurrentAssignment, onMoveTo, onCancelWhereTo,
-  caseFilter, onClearCaseFilter }: {
+  caseFilter, onClearCaseFilter, onNavigateToOrders }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
@@ -3912,6 +3939,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   onCancelWhereTo?: () => void;
   caseFilter?: string | null;
   onClearCaseFilter?: () => void;
+  onNavigateToOrders?: (orderKey: string) => void;
 }) {
   const tabNames = [`Gantt by ${t('resource', 'Resource')}`, `Gantt by ${t('order', 'Order')}`, t('tasks', 'Task List')];
   const [subIdx, setSubIdx] = useState(0);
@@ -3951,7 +3979,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             orderModes={orderModes} experienceLevel={experienceLevel}
             onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask}
             onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey}
-            caseFilter={caseFilter} onClearCaseFilter={onClearCaseFilter} />
+            caseFilter={caseFilter} onClearCaseFilter={onClearCaseFilter}
+            onNavigateToOrders={onNavigateToOrders} />
         </Card>
       )}
     </div>
@@ -3962,26 +3991,44 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
    TAB CONTENT — ORDERS
    ═══════════════════════════════════════════════════════════════ */
 
-function OrdersTab({ orders, products, tasks, orderModes, taskPins, taskExcludes, onOrderModeChange }: {
+function OrdersTab({ orders, products, tasks, orderModes, taskPins, taskExcludes, onOrderModeChange,
+  caseFilter, onClearCaseFilter }: {
   orders: any[]; products: any[]; tasks?: any[];
   orderModes?: Record<string, string>;
   taskPins?: Record<string, boolean>;
   taskExcludes?: Record<string, boolean>;
   onOrderModeChange?: (key: string, mode: string) => void;
+  caseFilter?: string | null;
+  onClearCaseFilter?: () => void;
 }) {
-  const totalDemand = orders.reduce((s: number, o: any) => s + (o.demandQty || 0), 0);
-  const lateCount = orders.filter((o: any) => deriveOrderStatus(o) === 'late').length;
-  const atRiskCount = orders.filter((o: any) => deriveOrderStatus(o) === 'at-risk').length;
+  const filteredOrders = useMemo(() =>
+    caseFilter ? orders.filter(o => o.orderKey === caseFilter) : orders,
+    [orders, caseFilter]);
+  const totalDemand = filteredOrders.reduce((s: number, o: any) => s + (o.demandQty || 0), 0);
+  const lateCount = filteredOrders.filter((o: any) => deriveOrderStatus(o) === 'late').length;
+  const atRiskCount = filteredOrders.filter((o: any) => deriveOrderStatus(o) === 'at-risk').length;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {caseFilter && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, fontFamily: FONT,
+            background: C.accent + '18', color: C.accent, border: `1px solid ${C.accent}44`,
+          }}>
+            Filtered: {caseFilter}
+            <span onClick={onClearCaseFilter} style={{ cursor: 'pointer', opacity: 0.7, fontSize: 14 }} title="Clear filter">&times;</span>
+          </span>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KPI label={`Total ${t('orders', 'Orders')}`} value={orders.length} icon="📋" />
+        <KPI label={`Total ${t('orders', 'Orders')}`} value={filteredOrders.length} icon="📋" />
         <KPI label={`Total ${t('demand', 'Demand')}`} value={fmtNum(totalDemand)} icon="📦" />
         <KPI label={t('late', 'Late')} value={lateCount} icon="⏰" color={lateCount > 0 ? C.red : C.green} />
         <KPI label={t('atRisk', 'At Risk')} value={atRiskCount} icon="⚠" color={atRiskCount > 0 ? C.yellow : C.green} />
       </div>
       <Card>
-        <OrderTable orders={orders} products={products} tasks={tasks}
+        <OrderTable orders={filteredOrders} products={products} tasks={tasks}
           orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}
           onOrderModeChange={onOrderModeChange} />
       </Card>
@@ -4686,6 +4733,8 @@ export default function App() {
   const [whereToCurrentAssignment, setWhereToCurrentAssignment] = useState<any>(null);
   // Schedule case filter (set from Analytics chain links)
   const [scheduleCaseFilter, setScheduleCaseFilter] = useState<string | null>(null);
+  // Orders case filter (set from task orderRef click)
+  const [ordersCaseFilter, setOrdersCaseFilter] = useState<string | null>(null);
   // Analytics state
   const [analyticsKpis, setAnalyticsKpis] = useState<any[]>([]);
   const [analyticsDetail, setAnalyticsDetail] = useState<any>(null);
@@ -5101,7 +5150,7 @@ export default function App() {
           return (
             <button
               key={tab}
-              onClick={() => { setActiveTab(tab); if (tab !== 'Schedule') { if (whereToTaskKey) { setWhereToTaskKey(null); setWhereToOptions([]); setWhereToCurrentAssignment(null); } if (scheduleCaseFilter) setScheduleCaseFilter(null); } }}
+              onClick={() => { setActiveTab(tab); if (tab !== 'Schedule') { if (whereToTaskKey) { setWhereToTaskKey(null); setWhereToOptions([]); setWhereToCurrentAssignment(null); } if (scheduleCaseFilter) setScheduleCaseFilter(null); } if (tab !== 'Orders' && ordersCaseFilter) setOrdersCaseFilter(null); }}
               style={{
                 padding: '12px 20px', background: 'none', border: 'none',
                 borderBottom: tab === activeTab ? `2px solid ${C.accent}` : '2px solid transparent',
@@ -5253,11 +5302,13 @@ export default function App() {
             whereToOptions={whereToOptions} whereToLoading={whereToLoading}
             whereToCurrentAssignment={whereToCurrentAssignment}
             onMoveTo={handleMoveTo} onCancelWhereTo={cancelWhereTo}
-            caseFilter={scheduleCaseFilter} onClearCaseFilter={() => setScheduleCaseFilter(null)} />
+            caseFilter={scheduleCaseFilter} onClearCaseFilter={() => setScheduleCaseFilter(null)}
+            onNavigateToOrders={(orderKey) => { setOrdersCaseFilter(orderKey); setActiveTab('Orders'); }} />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} tasks={tasks}
           orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}
-          onOrderModeChange={(key, mode) => { setOrderModes(prev => ({ ...prev, [key]: mode })); setSolveStale(true); }} />}
+          onOrderModeChange={(key, mode) => { setOrderModes(prev => ({ ...prev, [key]: mode })); setSolveStale(true); }}
+          caseFilter={ordersCaseFilter} onClearCaseFilter={() => setOrdersCaseFilter(null)} />}
         {activeTab === 'Conflicts' && <ConflictsTab tasks={tasks} resources={resources} materials={materials}
           onTaskClick={handleTaskClickByKey} />}
         {activeTab === 'Materials' && <MaterialsTab materials={materials}
