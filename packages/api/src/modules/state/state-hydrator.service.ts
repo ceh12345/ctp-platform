@@ -229,6 +229,9 @@ export class StateHydratorService {
         task.materialsResources = matList;
       }
 
+      // Sequence (chain ordering)
+      if (item.sequence !== undefined) task.sequence = item.sequence;
+
       // Process & subType
       if (item.process) task.process = item.process;
       if (item.subType) task.subType = item.subType;
@@ -267,6 +270,18 @@ export class StateHydratorService {
       const taskAttrs = this.normalizeTypedAttributes(item.typedAttributes);
       if (taskAttrs) {
         task.typedAttributes.fromArray(taskAttrs);
+      }
+
+      // Map typedAttributes.priority → task.rank for scheduling order
+      if (item.typedAttributes) {
+        const attrs: any = item.typedAttributes;
+        const rawPriority = Array.isArray(attrs)
+          ? attrs.find((a: any) => a.name === 'priority')?.value?.value
+          : attrs.priority;
+        if (rawPriority) {
+          const priorityRank: Record<string, number> = { URGENT: 1, 'ADD-ON': 2, ELECTIVE: 3 };
+          task.rank = priorityRank[String(rawPriority).toUpperCase()] ?? 3;
+        }
       }
 
       tasks.addEntity(task);

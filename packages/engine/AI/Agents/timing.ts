@@ -53,7 +53,7 @@ export class TimingSequenceAgent implements ITimingSequenceAgent {
                   if (task.scheduled && schedule &&  schedule.slot.hasStartTimes())
                   {
                       if (settings.scheduleDirection == CTPScheduleDirectionConstants.FORWARD )
-                        schedule.slot.startTimes?.truncate(task.scheduled.startW,true);
+                        schedule.slot.startTimes?.truncate(task.scheduled.endW,true);
                       else
                         schedule.slot.startTimes?.truncate(task.scheduled.endW,false);
                   }
