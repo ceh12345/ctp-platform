@@ -109,10 +109,12 @@ export class CTPStartTimeEngine
 
             if (st <= ranges.lst) {
               if (st < ranges.est) st = ranges.est;
+              if (st < this.startW) st = this.startW;
               if (et > this.endW) et = this.endW;
               if (et > ranges.lst) et = ranges.lst;
 
-              theEngines.unionEngine.union(results, new CTPInterval(st, et));
+              if (st <= et)
+                theEngines.unionEngine.union(results, new CTPInterval(st, et));
             }
             iPtr = iPtr.next;
           }

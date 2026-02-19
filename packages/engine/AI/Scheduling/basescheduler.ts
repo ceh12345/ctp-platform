@@ -348,6 +348,84 @@ export abstract class CTPBaseScheduler {
     });
   }
 
+  /**
+   * Per-task scheduling for chain-aware mode (requiresPreds).
+   * Tightens each task's window from its predecessor before exploding contexts.
+   */
+  protected scheduleTasksChainAware(tasks: List<CTPTask>): void {
+    tasks.forEach((task) => {
+      // Tighten window before explosion
+      const feasible = this.tightenWindowFromPredecessor(task);
+      if (!feasible) {
+        task.processed = true;
+        return; // Skip — predecessor not scheduled
+      }
+
+      // Explode contexts for just this task
+      const singleTask = new List<CTPTask>();
+      singleTask.add(task);
+      this.explodeScheduleContexts(singleTask);
+
+      this.reComputeScheduleContexts();
+
+      // Schedule
+      this.startTask(task);
+      this.solverSequence += 1;
+      const best = this.selectBestScheduleForTask(task);
+      if (best) {
+        this.scheduleTask(task, best);
+        this.reComputeScheduleContexts(task);
+        this.endTask(task);
+      }
+
+      // Free contexts for this task to prevent heap accumulation
+      this.scheduleContexts.removeByTask(task);
+    });
+  }
+
+  protected tightenWindowFromPredecessor(task: CTPTask): boolean {
+    if (!this.settings?.requiresPreds) return true;
+
+    const predKey = task.linkId?.prevLink;
+    if (!predKey || predKey === '') return true; // Chain root or standalone
+
+    const predecessor = this.landscape.tasks.getEntity(predKey);
+    if (!predecessor) {
+      task.addError('ChainConstraint', `Predecessor ${predKey} not found`);
+      return false;
+    }
+
+    if (!predecessor.scheduled) {
+      task.addError('ChainConstraint',
+        `Predecessor ${predecessor.name} is not scheduled — cannot schedule ${task.name}`);
+      return false;
+    }
+
+    const predEnd = predecessor.scheduled.endW;
+
+    if (task.window) {
+      if (task.window.startW < predEnd) {
+        console.log(`TIGHTEN: ${task.name} window.startW [${task.window.startW} → ${predEnd}] pred=${predecessor.name}`);
+        task.window.startW = predEnd;
+      }
+
+      if (task.window.startW >= task.window.endW) {
+        task.addError('ChainConstraint',
+          `Window collapsed: predecessor ${predecessor.name} ends at ${predEnd} but task window ends at ${task.window.endW}`);
+        return false;
+      }
+
+      const duration = task.duration?.duration() ?? 0;
+      if ((task.window.endW - task.window.startW) < duration) {
+        task.addError('ChainConstraint',
+          `Window too narrow after tightening: need ${duration}s but only ${task.window.endW - task.window.startW}s available`);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   protected abstract initScheduling(tasks: List<CTPTask>): void;
   protected abstract initUnScheduling(tasks: List<CTPTask>): void;
 
@@ -401,8 +479,14 @@ export abstract class CTPBaseScheduler {
     let next = this.nextTasksToSchedule(tasks, topTasksToSchedule);
 
     while (next.length > 0) {
-      this.explodeScheduleContexts(next);
-      this.scheduleTasks(next);
+      if (this.settings?.requiresPreds) {
+        // Chain-aware: per-task explosion with window tightening
+        this.scheduleTasksChainAware(next);
+      } else {
+        // Original: batch explosion + scheduling
+        this.explodeScheduleContexts(next);
+        this.scheduleTasks(next);
+      }
 
       next = this.nextTasksToSchedule(tasks, topTasksToSchedule);
       counter += 1;

@@ -10,14 +10,17 @@ export class CTPScheduler extends CTPBaseScheduler {
     tasks.forEach((t) => {
       t.score = Number.MAX_VALUE;
       t.errors = [];
+      t.window?.reset(); // Restore original windows for re-solves
     });
 
     // Add in the preds for each task
     if (this.settings?.requiresPreds){
       const agent = this.getDependentLookaheadAgent();
       agent.preschedule(this.landscape,tasks,this.settings);
+      // Chain-aware mode: skip upfront explosion — done per-task in scheduleTasksChainAware
+    } else {
+      this.explodeScheduleContexts(tasks);
     }
-    this.explodeScheduleContexts(tasks);
   }
 
   protected initUnScheduling(tasks: List<CTPTask>) {

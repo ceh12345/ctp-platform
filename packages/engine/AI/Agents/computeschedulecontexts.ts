@@ -68,7 +68,9 @@ export class ComputeScheduleContextsAgent extends AIAgent {
         schedule.task.duration &&
         !schedule.task.processed
       ) {
-        agent.solve(st, et, schedule.task.duration, schedule.slot, landscape);
+        const taskSt = schedule.task.window ? Math.max(st, schedule.task.window.startW) : st;
+        const taskEt = schedule.task.window ? Math.min(et, schedule.task.window.endW) : et;
+        agent.solve(taskSt, taskEt, schedule.task.duration, schedule.slot, landscape);
 
         // Apply state change results results
         scAgent.solve(st, et, schedule, landscape);

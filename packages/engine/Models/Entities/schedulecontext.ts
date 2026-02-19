@@ -94,6 +94,34 @@ export class ScheduleContexts extends EntityHashMap<ScheduleContext> {
     }
   }
 
+  public override clear(): void {
+    super.clear();
+    this.byTask.clear();
+    this.byResource.clear();
+  }
+
+  public removeByTask(t: CTPTask): void {
+    if (!t) return;
+    const taskContexts = this.byTask.getEntity(t.hashKey);
+    if (!taskContexts) return;
+
+    // Remove each context from the main map and from byResource
+    taskContexts.contexts.forEach((ctx) => {
+      this.removeEntity(ctx);
+      ctx.slot.resources?.forEach((res) => {
+        if (res.resource) {
+          const rsc = this.byResource.getEntity(res.resource.hashKey);
+          if (rsc) {
+            rsc.contexts.remove(ctx);
+          }
+        }
+      });
+    });
+
+    // Remove the task entry itself
+    this.byTask.removeEntity(taskContexts);
+  }
+
   public updateRecomputeByTask(t: CTPTask) {
     if (!t) return;
     const task = this.byTask.getEntity(t.key);
