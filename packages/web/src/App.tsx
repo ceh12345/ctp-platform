@@ -1413,7 +1413,7 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   taskPins, taskExcludes, taskUnschedules, orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask, onCancelUnschedule,
   resourceModeOverrides, onResourceModeChange, experienceLevel = 'novice',
-  whereToTaskKey, whereToOptions, onMoveTo }: {
+  whereToTaskKey, whereToOptions, onMoveTo, onNavigateToOrders }: {
   task: any; tasks: any[]; products: any[]; colors: any;
   onClose: () => void; onResourceClick: (r: any) => void;
   taskPins?: Record<string, boolean>;
@@ -1430,6 +1430,7 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   whereToTaskKey?: string | null;
   whereToOptions?: any[];
   onMoveTo?: (key: string, option: any) => void;
+  onNavigateToOrders?: (orderKey: string) => void;
 }) {
   const prodName = task.outputProductKey
     ? (products.find((p: any) => p.key === task.outputProductKey)?.name || task.outputProductKey)
@@ -1460,7 +1461,13 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
       {/* Header badges */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
         {taskStatusBadge(deriveTaskStatus(task, taskPins, taskExcludes, taskUnschedules, orderModes))}
-        {task.orderRef && <Badge label={task.orderRef} color={C.purple} />}
+        {task.orderRef && (onNavigateToOrders
+          ? <span onClick={() => { onNavigateToOrders(task.orderRef); onClose(); }}
+              style={{ color: C.accent, cursor: 'pointer', textDecoration: 'underline', fontSize: 13, fontWeight: 600 }}
+              title={`View ${task.orderRef} in Orders`}
+            >{task.orderRef}</span>
+          : <Badge label={task.orderRef} color={C.purple} />
+        )}
         {task.process && <Badge label={task.process} color={C.accent} />}
       </div>
 
@@ -5370,6 +5377,10 @@ export default function App() {
           whereToTaskKey={whereToTaskKey}
           whereToOptions={whereToOptions}
           onMoveTo={handleMoveTo}
+          onNavigateToOrders={(orderKey) => {
+            setOrdersCaseFilter(orderKey);
+            setActiveTab('Orders');
+          }}
         />
       )}
       {selectedResource && (

@@ -54,6 +54,11 @@ export * from './AI/Agents/pickbestschedule';
 export * from './AI/Agents/statechangeagent';
 export * from './AI/Agents/timing';
 
+// AI - Neighborhoods
+export * from './AI/Neighborhoods/neighborhood';
+export * from './AI/Neighborhoods/greedyneighborhood';
+export * from './AI/Neighborhoods/chainneighborhood';
+
 // AI - Scheduling
 export * from './AI/Scheduling/basescheduler';
 export * from './AI/Scheduling/defaultscheduler';

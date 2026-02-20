@@ -36,6 +36,8 @@ import { DependencyLookAheadAgent } from "../Agents/LookAhead Agents/dependencyl
 import { NextNeighborhoodAgent } from "../Agents/nextneighborhood";
 import { PickBestScheduleAgent } from "../Agents/pickbestschedule";
 import { TimingSequenceAgent } from "../Agents/timing";
+import { GreedyNeighborhood } from "../Neighborhoods/greedyneighborhood";
+import { ChainNeighborhood } from "../Neighborhoods/chainneighborhood";
 
 export interface IScheduler {
   initLandscape(
@@ -189,8 +191,18 @@ export abstract class CTPBaseScheduler {
     numOfTasks: number,
   ): List<CTPTask> {
     let agent = this.getNextNeighborhoodAgent();
-    agent.setDependencyLookAhead(this.settings?.requiresPreds ? this.getDependentLookaheadAgent() : null);
-    let next = agent.solve(tasks, numOfTasks,this.settings);
+
+    // Set strategy based on settings
+    if (this.settings?.requiresPreds) {
+      agent.setStrategy(new ChainNeighborhood());
+    } else {
+      const greedy = new GreedyNeighborhood();
+      greedy.dependencyLookAhead = this.settings?.requiresPreds
+        ? this.getDependentLookaheadAgent() : null;
+      agent.setStrategy(greedy);
+    }
+
+    let next = agent.solve(tasks, numOfTasks, this.settings, this.landscape);
     return next;
   }
   
@@ -461,7 +473,7 @@ export abstract class CTPBaseScheduler {
         task.errors = [];
       });
 
-    
+
     this.initScheduling(tasks);
 
     if (!this.assert()) throw "Scheduler not initialized" + this.errors;
@@ -476,6 +488,10 @@ export abstract class CTPBaseScheduler {
 
     this.startScheduling();
 
+    // PASS 1: Manual — schedule planner-prioritized tasks first
+    this.scheduleManualPass(tasks);
+
+    // PASS 2: Solver — everything else, using the selected neighborhood strategy
     let counter = 0;
     let max = tasks.length + 10;
 
@@ -497,6 +513,75 @@ export abstract class CTPBaseScheduler {
     }
 
     this.endScheduling();
+  }
+
+  /**
+   * Pass 1: Schedule tasks with manualPriority > 0 in the planner's exact order.
+   * Auto-includes chain predecessors so chains remain valid.
+   * Uses the same scheduling pipeline as Pass 2.
+   */
+  protected scheduleManualPass(tasks: List<CTPTask>): void {
+    // Collect manual tasks
+    const manualTasks: CTPTask[] = [];
+    tasks.forEach(task => {
+      if (task.manualPriority > 0 && task.canSolve() &&
+          task.state === CTPTaskStateConstants.NOT_SCHEDULED) {
+        manualTasks.push(task);
+      }
+    });
+
+    if (manualTasks.length === 0) return;
+
+    // Sort by manualPriority (lower = first)
+    manualTasks.sort((a, b) => a.manualPriority - b.manualPriority);
+
+    // Build the ordered list, auto-including chain predecessors
+    const orderedManual = new List<CTPTask>();
+    const added = new Set<string>();
+
+    for (const task of manualTasks) {
+      // Walk up the chain and add unscheduled predecessors first
+      this.addChainPredecessors(task, orderedManual, added);
+
+      if (!added.has(task.hashKey)) {
+        orderedManual.add(task);
+        added.add(task.hashKey);
+      }
+    }
+
+    // Schedule using the same pipeline
+    if (this.settings?.requiresPreds) {
+      this.scheduleTasksChainAware(orderedManual);
+    } else {
+      this.explodeScheduleContexts(orderedManual);
+      this.scheduleTasks(orderedManual);
+    }
+  }
+
+  /**
+   * Recursively add chain predecessors before a task so the chain
+   * schedules in the correct order during Pass 1.
+   */
+  private addChainPredecessors(
+    task: CTPTask,
+    orderedList: List<CTPTask>,
+    added: Set<string>
+  ): void {
+    const predKey = task.linkId?.prevLink;
+    if (!predKey || predKey === '') return;
+
+    const predecessor = this.landscape.tasks.getEntity(predKey);
+    if (!predecessor) return;
+    if (predecessor.state === CTPTaskStateConstants.SCHEDULED) return;
+    if (added.has(predecessor.hashKey)) return;
+
+    // Recurse up the chain first
+    this.addChainPredecessors(predecessor, orderedList, added);
+
+    if (!added.has(predecessor.hashKey) && predecessor.canSolve() && !predecessor.processed) {
+      orderedList.add(predecessor);
+      added.add(predecessor.hashKey);
+    }
   }
 
   public unschedule(tasks: List<CTPTask>) {
