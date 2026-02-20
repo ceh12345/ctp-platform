@@ -1,3 +1,14 @@
+/**
+ * Chain Neighborhood Strategy
+ *
+ * Processes tasks chain-by-chain in priority order. Each chain completes
+ * (Setup -> Procedure -> Recovery) before moving to the next chain.
+ * Chains are sorted by the priority rank of their next unscheduled task.
+ *
+ * Best for: Healthcare, job shops, any scenario with linked activity chains.
+ * Trade-off: Prioritizes chain integrity over individual task optimization.
+ * Default for: requiresPreds = true
+ */
 import { INeighborhoodStrategy } from "./neighborhood";
 import { CTPTaskStateConstants } from "../../Models/Core/constants";
 import { List } from "../../Models/Core/list";
@@ -7,6 +18,7 @@ import { CTPTask } from "../../Models/Entities/task";
 
 export class ChainNeighborhood implements INeighborhoodStrategy {
   public name: string = "Chain";
+  public chainCompatible: boolean = true;
 
   protected greedySortFn: (n1: CTPTask, n2: CTPTask) => number = (n1, n2) => {
     let n1et = n1.feasible ? n1.feasible.startW : n1.window?.startW;

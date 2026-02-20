@@ -29,6 +29,7 @@ export * from './Models/Entities/route';
 export * from './Models/Entities/schedulecontext';
 export * from './Models/Entities/score';
 export * from './Models/Entities/slot';
+export * from './Models/Entities/solveresult';
 export * from './Models/Entities/solvestats';
 export * from './Models/Entities/starttime';
 export * from './Models/Entities/statechange';
@@ -58,6 +59,9 @@ export * from './AI/Agents/timing';
 export * from './AI/Neighborhoods/neighborhood';
 export * from './AI/Neighborhoods/greedyneighborhood';
 export * from './AI/Neighborhoods/chainneighborhood';
+export * from './AI/Neighborhoods/duedateneighborhood';
+export * from './AI/Neighborhoods/shortestfirstneighborhood';
+export * from './AI/Neighborhoods/chainfirstfitneighborhood';
 
 // AI - Scheduling
 export * from './AI/Scheduling/basescheduler';

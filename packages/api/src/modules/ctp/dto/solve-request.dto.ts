@@ -58,8 +58,8 @@ export class SolveRequestDto {
   // --- Override fields ---
 
   @ApiPropertyOptional({
-    description: 'Solver strategy key (validated against tenant config at runtime)',
-    default: 'balanced',
+    description: 'Neighborhood strategy: Chain, ChainFirstFit, DueDate, Greedy, ShortestFirst',
+    default: 'Chain',
   })
   @IsOptional()
   @IsString()

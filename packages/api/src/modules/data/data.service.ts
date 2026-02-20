@@ -6,8 +6,6 @@ import {
   IOrderData,
   IMaterialData,
 } from '../../config/interfaces/config-store.interface';
-import { StrategyConfig } from '../../config/interfaces/strategy.interface';
-
 @Injectable()
 export class DataService {
   constructor(
@@ -39,7 +37,7 @@ export class DataService {
     return this.configService.getLocale();
   }
 
-  getStrategies(): { strategies: StrategyConfig[]; defaultStrategy: string } {
+  getStrategies() {
     return this.strategyConfigService.getStrategiesForTenant();
   }
 }

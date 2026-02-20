@@ -5,6 +5,7 @@ import { SchedulingLandscape } from "../../Models/Entities/landscape";
 
 export interface INeighborhoodStrategy {
   name: string;
+  chainCompatible: boolean;
   solve(
     tasks: List<CTPTask>,
     numToProcess: number,

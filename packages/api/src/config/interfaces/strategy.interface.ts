@@ -13,6 +13,19 @@ export interface StrategyConfig {
   tier?: string;
 }
 
+export interface SolverTierConfig {
+  key: string;
+  label: string;
+  icon: string;
+  short: string;
+  detail: string;
+  defaultStrategy: string;
+  time: string;
+  sortOrder: number;
+  enabled: boolean;
+  solverDepth?: { bumpLimit?: number; tabuTenure?: number; iterationCount?: number };
+}
+
 export interface TenantStrategyOverride {
   strategyKey: string;
   label?: string;

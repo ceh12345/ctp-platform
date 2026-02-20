@@ -26,7 +26,6 @@ const DEFAULT_SETTINGS: ISettingsConfig = {
   topTasksToSchedule: 2,
   resetUsageAfterProcessChange: true,
   scheduleDirection: 1,
-  requiresPreds: false,
 };
 
 export class FileConfigStore implements IConfigStore {

@@ -1,3 +1,13 @@
+/**
+ * Greedy Neighborhood Strategy
+ *
+ * Selects the next tasks to schedule based on a multi-factor sort:
+ * earliest feasible end time -> best score -> priority rank -> window start -> shortest duration.
+ *
+ * Best for: General purpose scheduling, manufacturing environments without strict chain dependencies.
+ * Trade-off: Optimizes individual task placement but may break chain continuity.
+ * Default for: requiresPreds = false
+ */
 import { INeighborhoodStrategy } from "./neighborhood";
 import { CTPScheduleDirectionConstants, CTPTaskStateConstants } from "../../Models/Core/constants";
 import { List } from "../../Models/Core/list";
@@ -8,6 +18,7 @@ import { IDependencyLookAhead } from "../Agents/LookAhead Agents/dependencylooka
 
 export class GreedyNeighborhood implements INeighborhoodStrategy {
   public name: string = "Greedy";
+  public chainCompatible: boolean = false;
   public dependencyLookAhead: IDependencyLookAhead | null = null;
 
   protected sortFn: (n1: CTPTask, n2: CTPTask) => number = (n1, n2) => {

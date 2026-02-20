@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from './config.service';
-import { StrategyConfig } from './interfaces/strategy.interface';
-import { GLOBAL_STRATEGIES, DEFAULT_STRATEGY_KEY } from './strategy-defaults';
+import { StrategyConfig, SolverTierConfig } from './interfaces/strategy.interface';
+import { GLOBAL_STRATEGIES, DEFAULT_STRATEGY_KEY, SOLVER_TIERS, DEFAULT_TIER_KEY } from './strategy-defaults';
 
 @Injectable()
 export class StrategyConfigService {
@@ -11,7 +11,12 @@ export class StrategyConfigService {
    * Merge global defaults + tenant overrides + custom strategies.
    * Returns only enabled, public strategies sorted by sortOrder.
    */
-  getStrategiesForTenant(): { strategies: StrategyConfig[]; defaultStrategy: string } {
+  getStrategiesForTenant(): {
+    strategies: StrategyConfig[];
+    defaultStrategy: string;
+    tiers: SolverTierConfig[];
+    defaultTier: string;
+  } {
     const overrides = this.configService.getStrategyOverrides();
     const customs = this.configService.getCustomStrategies();
 
@@ -56,7 +61,13 @@ export class StrategyConfigService {
       .filter(s => s.enabled && s.isPublic)
       .sort((a, b) => a.sortOrder - b.sortOrder);
 
-    return { strategies, defaultStrategy: DEFAULT_STRATEGY_KEY };
+    // Tiers — deep-copy, filter enabled, sort
+    const tiers = SOLVER_TIERS
+      .filter(t => t.enabled)
+      .map(t => ({ ...t }))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
+    return { strategies, defaultStrategy: DEFAULT_STRATEGY_KEY, tiers, defaultTier: DEFAULT_TIER_KEY };
   }
 
   /** Check if a strategy key is available for the current tenant. */

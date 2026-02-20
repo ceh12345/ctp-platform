@@ -4,6 +4,5 @@
   "tasksPerLoop": 50,
   "topTasksToSchedule": 2,
   "resetUsageAfterProcessChange": true,
-  "scheduleDirection": 1,
-  "requiresPreds": true
+  "scheduleDirection": 1
 }

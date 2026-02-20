@@ -36,8 +36,13 @@ import { DependencyLookAheadAgent } from "../Agents/LookAhead Agents/dependencyl
 import { NextNeighborhoodAgent } from "../Agents/nextneighborhood";
 import { PickBestScheduleAgent } from "../Agents/pickbestschedule";
 import { TimingSequenceAgent } from "../Agents/timing";
+import { INeighborhoodStrategy } from "../Neighborhoods/neighborhood";
 import { GreedyNeighborhood } from "../Neighborhoods/greedyneighborhood";
 import { ChainNeighborhood } from "../Neighborhoods/chainneighborhood";
+import { ChainFirstFitNeighborhood } from "../Neighborhoods/chainfirstfitneighborhood";
+import { DueDateNeighborhood } from "../Neighborhoods/duedateneighborhood";
+import { ShortestFirstNeighborhood } from "../Neighborhoods/shortestfirstneighborhood";
+import { CTPSolveResult } from "../../Models/Entities/solveresult";
 
 export interface IScheduler {
   initLandscape(
@@ -50,7 +55,7 @@ export interface IScheduler {
   initSettings(settings: CTPAppSettings | null): void;
   initAgents(): void;
   initScoring(scoring: CTPScoring): void;
-  schedule(tasks: List<CTPTask>): void;
+  schedule(tasks: List<CTPTask>): CTPSolveResult;
   unschedule(tasks: List<CTPTask>): void;
 }
 
@@ -62,6 +67,8 @@ export abstract class CTPBaseScheduler {
   protected init: boolean;
   protected errors: string = "";
   protected solverSequence: number = 0;
+  protected neighborhoodAgent: NextNeighborhoodAgent | null = null;
+  protected contextsEvaluated: number = 0;
 
   constructor() {
     this.landscape = new SchedulingLandscape();
@@ -147,6 +154,7 @@ export abstract class CTPBaseScheduler {
 
             const context = new ScheduleContext(this.landscape, task, slot);
             this.scheduleContexts.addEntity(context);
+            this.contextsEvaluated++;
           });
         }
       }
@@ -186,23 +194,44 @@ export abstract class CTPBaseScheduler {
     bestscoreagent.solve(taskscores);
   }
 
+  /**
+   * Map a strategy name to an INeighborhoodStrategy instance.
+   * Falls back to Chain (requiresPreds) or Greedy (no requiresPreds).
+   */
+  protected resolveStrategy(name: string | undefined): INeighborhoodStrategy {
+    switch (name) {
+      case 'Chain':          return new ChainNeighborhood();
+      case 'ChainFirstFit':  return new ChainFirstFitNeighborhood();
+      case 'DueDate':        return new DueDateNeighborhood();
+      case 'Greedy':         return new GreedyNeighborhood();
+      case 'ShortestFirst':  return new ShortestFirstNeighborhood();
+      default:
+        // Default: Chain for chain-aware, Greedy otherwise
+        return this.settings?.requiresPreds
+          ? new ChainNeighborhood()
+          : new GreedyNeighborhood();
+    }
+  }
+
   protected nextTasksToSchedule(
     tasks: List<CTPTask>,
     numOfTasks: number,
   ): List<CTPTask> {
-    let agent = this.getNextNeighborhoodAgent();
+    if (!this.neighborhoodAgent) {
+      this.neighborhoodAgent = this.getNextNeighborhoodAgent();
 
-    // Set strategy based on settings
-    if (this.settings?.requiresPreds) {
-      agent.setStrategy(new ChainNeighborhood());
-    } else {
-      const greedy = new GreedyNeighborhood();
-      greedy.dependencyLookAhead = this.settings?.requiresPreds
-        ? this.getDependentLookaheadAgent() : null;
-      agent.setStrategy(greedy);
+      // Resolve strategy from settings
+      const strategy = this.resolveStrategy(this.settings?.solverStrategy);
+      this.neighborhoodAgent.setStrategy(strategy);
+
+      // Strategy compatibility guard
+      if (this.settings?.requiresPreds && !strategy.chainCompatible) {
+        console.log(`Strategy "${strategy.name}" is not chain-compatible — falling back to Chain`);
+        this.neighborhoodAgent.setStrategy(new ChainNeighborhood());
+      }
     }
 
-    let next = agent.solve(tasks, numOfTasks, this.settings, this.landscape);
+    let next = this.neighborhoodAgent.solve(tasks, numOfTasks, this.settings, this.landscape);
     return next;
   }
   
@@ -213,7 +242,7 @@ export abstract class CTPBaseScheduler {
   }
   protected requiresPreds(task: CTPTask) : boolean
   {
-      return this.settings ? this.settings.requiresPreds : false;
+      return this.settings ? !!this.settings.requiresPreds : false;
   }
 
   protected selectBestScheduleForTask(
@@ -466,13 +495,32 @@ export abstract class CTPBaseScheduler {
     return this.init && hasLandscape && hasSettings && hasScoring;
   }
 
-  public schedule(tasks: List<CTPTask>) {
+  public schedule(tasks: List<CTPTask>): CTPSolveResult {
+    const startTime = performance.now();
+
     if (tasks)
       tasks.forEach((task) => {
         task.processed = false;
         task.errors = [];
       });
 
+    this.neighborhoodAgent = null; // Reset for fresh strategy selection
+    this.contextsEvaluated = 0;
+
+    // Ensure default settings exist before auto-detection
+    if (!this.settings) this.settings = new CTPAppSettings();
+
+    // Auto-detect chains if requiresPreds not explicitly set (must run before initScheduling)
+    if (this.settings.requiresPreds === null || this.settings.requiresPreds === undefined) {
+      let hasChains = false;
+      this.landscape.tasks.forEach(task => {
+        if (task.hasLinkId()) hasChains = true;
+      });
+      this.settings.requiresPreds = hasChains;
+      if (hasChains) {
+        console.log('Auto-detected linked tasks — enabling requiresPreds');
+      }
+    }
 
     this.initScheduling(tasks);
 
@@ -513,6 +561,23 @@ export abstract class CTPBaseScheduler {
     }
 
     this.endScheduling();
+
+    // Build solve result
+    const result = new CTPSolveResult();
+    const agent = this.neighborhoodAgent as NextNeighborhoodAgent | null;
+    result.strategy = agent ? agent.getStrategy().name : "";
+    result.totalTasks = tasks.length;
+    result.solveTimeMs = performance.now() - startTime;
+    result.contextsEvaluated = this.contextsEvaluated;
+
+    tasks.forEach(task => {
+      if (task.state === CTPTaskStateConstants.SCHEDULED) result.scheduled++;
+      else if (task.errors && task.errors.length > 0) result.infeasible++;
+      else result.notScheduled++;
+    });
+
+    result.debug();
+    return result;
   }
 
   /**

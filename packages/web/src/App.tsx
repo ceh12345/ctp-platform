@@ -1058,10 +1058,24 @@ interface StrategyOption {
 }
 
 const FALLBACK_STRATEGIES: StrategyOption[] = [
-  { key: 'quick', label: 'Quick', icon: '⚡', short: 'Fastest results', detail: '', bestFor: '', time: '< 1s', sortOrder: 10 },
-  { key: 'balanced', label: 'Balanced', icon: '🎯', short: 'Best for most situations', detail: '', bestFor: '', time: '1-5s', sortOrder: 20 },
-  { key: 'thorough', label: 'Thorough', icon: '🔬', short: 'More thorough, takes longer', detail: '', bestFor: '', time: '10-30s', sortOrder: 30 },
-  { key: 'best', label: 'Best', icon: '🏆', short: 'Best quality, slowest', detail: '', bestFor: '', time: '30-60s', sortOrder: 40 },
+  { key: 'Chain', label: 'Chain', icon: '🔗', short: 'Chain-by-chain in priority order', detail: '', bestFor: '', time: '1-5s', sortOrder: 10 },
+  { key: 'ChainFirstFit', label: 'First Fit', icon: '⚡', short: 'First chain, full sequence — fastest', detail: '', bestFor: '', time: '< 1s', sortOrder: 20 },
+  { key: 'DueDate', label: 'Due Date', icon: '📅', short: 'Earliest due date first', detail: '', bestFor: '', time: '1-5s', sortOrder: 30 },
+  { key: 'Greedy', label: 'Greedy', icon: '🎯', short: 'Best individual placement, ignores chains', detail: '', bestFor: '', time: '1-5s', sortOrder: 40 },
+  { key: 'ShortestFirst', label: 'Shortest First', icon: '⏱️', short: 'Shortest tasks first (SPT)', detail: '', bestFor: '', time: '1-5s', sortOrder: 50 },
+];
+
+interface SolverTierOption {
+  key: string; label: string; icon: string; short: string;
+  detail: string; defaultStrategy: string; time: string; sortOrder: number;
+  solverDepth?: { bumpLimit?: number; tabuTenure?: number; iterationCount?: number };
+}
+
+const FALLBACK_TIERS: SolverTierOption[] = [
+  { key: 'quick', label: 'Quick', icon: '⚡', short: 'Fast feasibility check', detail: '', defaultStrategy: 'ChainFirstFit', time: '< 1s', sortOrder: 10 },
+  { key: 'balanced', label: 'Balanced', icon: '🎯', short: 'Good balance of speed and quality', detail: '', defaultStrategy: 'Chain', time: '1-5s', sortOrder: 20 },
+  { key: 'thorough', label: 'Thorough', icon: '🔬', short: 'Deeper search with conflict resolution', detail: '', defaultStrategy: 'Chain', time: '5-30s', sortOrder: 30, solverDepth: { bumpLimit: 10, tabuTenure: 5, iterationCount: 100 } },
+  { key: 'best', label: 'Best', icon: '🏆', short: 'Maximum quality, multiple passes', detail: '', defaultStrategy: 'Chain', time: '30s-5m', sortOrder: 40, solverDepth: { bumpLimit: 50, tabuTenure: 10, iterationCount: 1000 } },
 ];
 
 function SolvePreview({ orders, tasks, materials, resources,
@@ -1069,6 +1083,8 @@ function SolvePreview({ orders, tasks, materials, resources,
   materialModes, modeOverrides,
   previousOrderModes, previousTaskPins, previousTaskExcludes, previousMaterialModes,
   strategy, onStrategyChange, strategyOptions,
+  tier, onTierChange, tierOptions,
+  experienceLevel,
   onConfirm, onCancel }: {
   orders: any[]; tasks: any[]; materials: any[]; resources: any[];
   orderModes: Record<string, string>;
@@ -1084,6 +1100,10 @@ function SolvePreview({ orders, tasks, materials, resources,
   strategy: string;
   onStrategyChange: (s: string) => void;
   strategyOptions: StrategyOption[];
+  tier: string;
+  onTierChange: (t: string) => void;
+  tierOptions: SolverTierOption[];
+  experienceLevel: ExperienceLevel;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -1235,7 +1255,7 @@ function SolvePreview({ orders, tasks, materials, resources,
     }}>
       <div onClick={e => e.stopPropagation()} style={{
         background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16,
-        padding: 0, width: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+        padding: 0, width: 560, maxHeight: '80vh', display: 'flex', flexDirection: 'column',
         fontFamily: FONT, boxShadow: '0 16px 64px rgba(0,0,0,0.5)',
       }}>
         {/* Header */}
@@ -1343,45 +1363,109 @@ function SolvePreview({ orders, tasks, materials, resources,
             )}
           </div>
 
-          {/* Strategy selector */}
+          {/* Tier selector (always visible) */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16,
+            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
             padding: '10px 12px', background: C.bg, borderRadius: 8,
             border: `1px solid ${C.border}`,
           }}>
-            <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600, whiteSpace: 'nowrap' }}>Strategy:</span>
+            <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600, whiteSpace: 'nowrap' }}>Solver:</span>
             <div style={{ display: 'flex', gap: 4, flex: 1, justifyContent: 'center' }}>
-              {strategyOptions.map(opt => {
-                const isActive = opt.key === strategy;
+              {tierOptions.map(t => {
+                const isActive = t.key === tier;
                 const tooltip = (
                   <div style={{ maxWidth: 260 }}>
-                    <div style={{ fontWeight: 700, marginBottom: 4, color: C.text }}>{opt.icon} {opt.label}</div>
-                    <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 6 }}>{opt.short}</div>
-                    <div style={{ fontSize: 11, color: C.textDim, lineHeight: 1.4, marginBottom: 6 }}>{opt.detail}</div>
-                    <div style={{ fontSize: 11, color: C.accent }}>Best for: {opt.bestFor}</div>
+                    <div style={{ fontWeight: 700, marginBottom: 4, color: C.text }}>{t.icon} {t.label}</div>
+                    <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 6 }}>{t.short}</div>
+                    {t.detail && <div style={{ fontSize: 11, color: C.textDim, lineHeight: 1.4, marginBottom: 6 }}>{t.detail}</div>}
+                    <div style={{ fontSize: 11, color: C.accent }}>Expected: {t.time}</div>
                   </div>
                 );
                 return (
-                  <HoverTooltip key={opt.key} content={tooltip}>
-                    <button onClick={() => onStrategyChange(opt.key)}
+                  <HoverTooltip key={t.key} content={tooltip}>
+                    <button onClick={() => onTierChange(t.key)}
                       style={{
-                        padding: '5px 10px', borderRadius: 6, cursor: 'pointer',
-                        fontSize: 11, fontWeight: 600, fontFamily: FONT,
+                        padding: '6px 14px', borderRadius: 6, cursor: 'pointer',
+                        fontSize: 12, fontWeight: 600, fontFamily: FONT,
                         background: isActive ? C.accent + '22' : 'transparent',
                         color: isActive ? C.accent : C.textMuted,
                         border: isActive ? `1px solid ${C.accent}44` : `1px solid transparent`,
-                        display: 'flex', alignItems: 'center', gap: 4,
+                        display: 'flex', alignItems: 'center', gap: 5,
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      <span style={{ fontSize: 12 }}>{opt.icon}</span>
-                      {opt.label}
+                      <span style={{ fontSize: 14 }}>{t.icon}</span>
+                      {t.label}
                     </button>
                   </HoverTooltip>
                 );
               })}
             </div>
           </div>
+
+          {/* Dispatching strategy override (intermediate+) */}
+          {showAt(experienceLevel, 'intermediate') && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8,
+              padding: '8px 10px', background: C.bg, borderRadius: 8,
+              border: `1px solid ${C.border}`,
+            }}>
+              <span style={{ fontSize: 10, color: C.textDim, fontWeight: 600, whiteSpace: 'nowrap' }}>Dispatch:</span>
+              <div style={{ display: 'flex', gap: 2, flex: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
+                {strategyOptions.map(opt => {
+                  const isActive = opt.key === strategy;
+                  const tooltip = (
+                    <div style={{ maxWidth: 260 }}>
+                      <div style={{ fontWeight: 700, marginBottom: 4, color: C.text }}>{opt.icon} {opt.label}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 6 }}>{opt.short}</div>
+                      {opt.detail && <div style={{ fontSize: 11, color: C.textDim, lineHeight: 1.4, marginBottom: 6 }}>{opt.detail}</div>}
+                      {opt.bestFor && <div style={{ fontSize: 11, color: C.accent }}>Best for: {opt.bestFor}</div>}
+                    </div>
+                  );
+                  return (
+                    <HoverTooltip key={opt.key} content={tooltip}>
+                      <button onClick={() => onStrategyChange(opt.key)}
+                        style={{
+                          padding: '4px 7px', borderRadius: 5, cursor: 'pointer',
+                          fontSize: 10, fontWeight: 600, fontFamily: FONT,
+                          background: isActive ? C.accent + '22' : 'transparent',
+                          color: isActive ? C.accent : C.textMuted,
+                          border: isActive ? `1px solid ${C.accent}44` : `1px solid transparent`,
+                          display: 'flex', alignItems: 'center', gap: 3,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        <span style={{ fontSize: 10 }}>{opt.icon}</span>
+                        {opt.label}
+                      </button>
+                    </HoverTooltip>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Solver depth parameters (expert only, read-only placeholder) */}
+          {showAt(experienceLevel, 'expert') && (() => {
+            const activeTier = tierOptions.find(t => t.key === tier);
+            const depth = activeTier?.solverDepth;
+            if (!depth) return null;
+            return (
+              <div style={{
+                display: 'flex', gap: 16, alignItems: 'center', marginBottom: 8,
+                padding: '8px 12px', background: C.bg, borderRadius: 8,
+                border: `1px solid ${C.border}`, opacity: 0.6,
+              }}>
+                <span style={{ fontSize: 11, color: C.textDim, fontWeight: 600 }}>Depth:</span>
+                {depth.bumpLimit != null && <span style={{ fontSize: 11, color: C.textDim }}>Bumps: {depth.bumpLimit}</span>}
+                {depth.tabuTenure != null && <span style={{ fontSize: 11, color: C.textDim }}>Tabu: {depth.tabuTenure}</span>}
+                {depth.iterationCount != null && <span style={{ fontSize: 11, color: C.textDim }}>Iters: {depth.iterationCount}</span>}
+                <span style={{ fontSize: 10, color: C.textDim, fontStyle: 'italic', marginLeft: 'auto' }}>read-only</span>
+              </div>
+            );
+          })()}
+
+          <div style={{ height: 8 }} />
 
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button onClick={onCancel} style={{
@@ -1409,11 +1493,343 @@ function SolvePreview({ orders, tasks, materials, resources,
   );
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Solve Results Dialog — post-solve summary
+// ═══════════════════════════════════════════════════════════════
+
+interface SolveSnapshot {
+  scheduledTasks: number;
+  includedTasks: number;
+  feasibilityRate: number;
+  makespan: number;
+  totalScore?: number;
+}
+
+function SolveResultsDialog({ result, previousSnapshot, experienceLevel, onClose, onTaskClick, onViewProblems }: {
+  result: any;
+  previousSnapshot: SolveSnapshot | null;
+  experienceLevel: ExperienceLevel;
+  onClose: () => void;
+  onTaskClick: (task: any) => void;
+  onViewProblems: () => void;
+}) {
+  const summary = result.summary;
+  const stats = result.stats || {};
+  const tasks = result.tasks || [];
+  const orders = result.orders || [];
+  const materials = result.materials || [];
+
+  // Derived data
+  const infeasibleTasks = tasks.filter((t: any) => t.included && !t.feasible && t.type !== 'SET_UP' && t.type !== 'TEAR_DOWN');
+  const lateOrders = orders.filter((o: any) => {
+    if (!o.dueDate) return false;
+    const scheduledTasks = tasks.filter((t: any) => t.orderRef === o.orderKey && t.feasible && t.scheduledEnd);
+    if (scheduledTasks.length === 0) return false;
+    const lastEnd = scheduledTasks.map((t: any) => t.scheduledEnd).sort().pop();
+    return lastEnd && new Date(lastEnd) > new Date(o.dueDate);
+  });
+  const shortages = materials.filter((m: any) => m.firstShortageDate);
+  const lowFillOrders = orders.filter((o: any) => o.fillRate < 1 && o.fillRate > 0);
+
+  const hasProblems = infeasibleTasks.length > 0 || lateOrders.length > 0 || shortages.length > 0 || lowFillOrders.length > 0;
+
+  // Average resource utilization
+  const resourceUtils = result.resourceUtilization || [];
+  const avgUtil = resourceUtils.length > 0
+    ? Math.round(resourceUtils.reduce((s: number, r: any) => s + r.utilization, 0) / resourceUtils.length * 10) / 10
+    : 0;
+
+  // Previous snapshot comparison
+  const prev = previousSnapshot;
+  const prevAvgUtil = prev ? null : null; // We don't store prev util — skip for now
+
+  // Outcome color
+  const outcomeColor = summary.unscheduledTasks === 0 ? C.green
+    : summary.unscheduledTasks <= 3 ? C.yellow : C.red;
+  const outcomeIcon = summary.unscheduledTasks === 0 ? '✅'
+    : summary.unscheduledTasks <= 3 ? '⚠️' : '❌';
+  const outcomeText = summary.unscheduledTasks === 0 ? 'Solve Complete'
+    : `${summary.unscheduledTasks} task${summary.unscheduledTasks !== 1 ? 's' : ''} could not be scheduled`;
+
+  // Delta helper
+  const delta = (current: number, previous: number | undefined, suffix: string = '', invert: boolean = false) => {
+    if (previous === undefined || previous === null) return null;
+    const diff = current - previous;
+    if (diff === 0) return <span style={{ color: C.textDim, fontSize: 11 }}> —</span>;
+    const isGood = invert ? diff < 0 : diff > 0;
+    const arrow = diff > 0 ? '↑' : '↓';
+    const sign = diff > 0 ? '+' : '';
+    return (
+      <span style={{ color: isGood ? C.green : C.red, fontSize: 11, fontWeight: 600 }}>
+        {' '}{sign}{Math.round(diff * 10) / 10}{suffix} {arrow}
+      </span>
+    );
+  };
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 1000, display: 'flex',
+      alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16,
+        padding: 0, width: 560, maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+        fontFamily: FONT, boxShadow: '0 16px 64px rgba(0,0,0,0.5)',
+      }}>
+        {/* Header bar */}
+        <div style={{
+          padding: '16px 24px', borderBottom: `1px solid ${C.border}`,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          background: outcomeColor + '10', borderRadius: '16px 16px 0 0',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 20 }}>{outcomeIcon}</span>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>{outcomeText}</div>
+              <div style={{ fontSize: 12, color: C.textMuted }}>
+                {summary.scheduledTasks}/{summary.includedTasks} scheduled
+              </div>
+            </div>
+          </div>
+          <span style={{ fontSize: 13, color: C.textDim, fontWeight: 600 }}>
+            {(stats.totalTimeMs / 1000).toFixed(1)}s
+          </span>
+        </div>
+
+        {/* Scrollable content */}
+        <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
+
+          {/* Strategy line — always visible, top of content */}
+          <div style={{
+            padding: '8px 12px', borderRadius: 8, marginBottom: 12,
+            background: C.bg, border: `1px solid ${C.border}`,
+            fontSize: 12, color: C.textMuted, display: 'flex', gap: 16, alignItems: 'center',
+          }}>
+            <span>Strategy: <strong style={{ color: C.text }}>{stats.strategy || 'Chain'}</strong></span>
+            {result.solveResult && (
+              <span>Contexts: <strong style={{ color: C.text }}>{result.solveResult.contextsEvaluated}</strong></span>
+            )}
+            {stats.totalScore != null && (
+              <span>Score: <strong style={{ color: C.text }}>{Math.round(stats.totalScore)}</strong></span>
+            )}
+          </div>
+
+          {/* Scorecard — always visible */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+            {[
+              { label: 'Scheduled', value: `${summary.scheduledTasks}/${summary.includedTasks}`,
+                delta: delta(summary.scheduledTasks, prev?.scheduledTasks) },
+              { label: 'Feasibility', value: `${summary.feasibilityRate}%`,
+                delta: delta(summary.feasibilityRate, prev?.feasibilityRate, '%') },
+              { label: 'Infeasible', value: String(summary.unscheduledTasks),
+                delta: delta(summary.unscheduledTasks, prev ? (prev.includedTasks - prev.scheduledTasks) : undefined, '', true) },
+              { label: 'Avg Utilization', value: `${avgUtil}%`, delta: null },
+            ].map(kpi => (
+              <div key={kpi.label} style={{
+                padding: '12px 14px', borderRadius: 10,
+                background: C.bg, border: `1px solid ${C.border}`,
+              }}>
+                <div style={{ fontSize: 22, fontWeight: 700, color: C.text, fontVariantNumeric: 'tabular-nums' }}>
+                  {kpi.value}{kpi.delta}
+                </div>
+                <div style={{ fontSize: 11, color: C.textMuted, fontWeight: 600, marginTop: 2 }}>{kpi.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Section 2: Problems — only if problems exist */}
+          {hasProblems && (
+            <div style={{ marginBottom: 16 }}>
+              <SectionLabel label="Attention Needed" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {infeasibleTasks.length > 0 && (
+                  <div style={{
+                    padding: '8px 12px', borderRadius: 8,
+                    background: C.redDim, border: `1px solid ${C.red}22`, fontSize: 12,
+                  }}>
+                    <div style={{ color: C.red, fontWeight: 600, marginBottom: 4 }}>
+                      {infeasibleTasks.length} infeasible task{infeasibleTasks.length !== 1 ? 's' : ''}
+                    </div>
+                    {infeasibleTasks.slice(0, 5).map((t: any) => (
+                      <div key={t.key}
+                        onClick={() => { onTaskClick(t); onClose(); }}
+                        style={{ color: C.text, cursor: 'pointer', padding: '2px 0', display: 'flex', justifyContent: 'space-between' }}
+                        onMouseEnter={e => { e.currentTarget.style.color = C.accent; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = C.text; }}
+                      >
+                        <span>{t.name}</span>
+                        <span style={{ color: C.textDim, fontSize: 11 }}>
+                          {t.errors?.[0]?.reason || 'no feasible slot'}
+                        </span>
+                      </div>
+                    ))}
+                    {infeasibleTasks.length > 5 && (
+                      <div style={{ color: C.textDim, fontSize: 11, marginTop: 4 }}>
+                        +{infeasibleTasks.length - 5} more...
+                      </div>
+                    )}
+                  </div>
+                )}
+                {lateOrders.length > 0 && (
+                  <div style={{
+                    padding: '8px 12px', borderRadius: 8,
+                    background: C.yellowDim, border: `1px solid ${C.yellow}22`, fontSize: 12,
+                  }}>
+                    <div style={{ color: C.yellow, fontWeight: 600, marginBottom: 4 }}>
+                      {lateOrders.length} late order{lateOrders.length !== 1 ? 's' : ''}
+                    </div>
+                    {lateOrders.slice(0, 3).map((o: any) => (
+                      <div key={o.orderKey} style={{ color: C.text, padding: '2px 0' }}>
+                        {o.name} — due {fmtDate(o.dueDate)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {shortages.length > 0 && (
+                  <div style={{
+                    padding: '8px 12px', borderRadius: 8,
+                    background: C.redDim, border: `1px solid ${C.red}22`, fontSize: 12,
+                  }}>
+                    <div style={{ color: C.red, fontWeight: 600, marginBottom: 4 }}>
+                      {shortages.length} material shortage{shortages.length !== 1 ? 's' : ''}
+                    </div>
+                    {shortages.slice(0, 3).map((m: any) => (
+                      <div key={m.materialKey} style={{ color: C.text, padding: '2px 0' }}>
+                        {m.materialName}: short {m.shortageQty} {m.unit} at {fmtDate(m.firstShortageDate)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {lowFillOrders.length > 0 && (
+                  <div style={{
+                    padding: '8px 12px', borderRadius: 8,
+                    background: `${C.yellow}08`, border: `1px solid ${C.yellow}22`, fontSize: 12,
+                  }}>
+                    <div style={{ color: C.yellow, fontWeight: 600, marginBottom: 4 }}>
+                      {lowFillOrders.length} partially filled order{lowFillOrders.length !== 1 ? 's' : ''}
+                    </div>
+                    {lowFillOrders.slice(0, 3).map((o: any) => (
+                      <div key={o.orderKey} style={{ color: C.text, padding: '2px 0' }}>
+                        {o.name}: {Math.round(o.fillRate * 100)}% filled ({o.scheduledQty}/{o.demandQty})
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Comparison vs previous (intermediate+) */}
+          {showAt(experienceLevel, 'intermediate') && prev && (
+            <div style={{ marginBottom: 16 }}>
+              <SectionLabel label="vs Previous Solve" />
+              <div style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6,
+              }}>
+                {[
+                  { label: 'Scheduled', prev: prev.scheduledTasks, cur: summary.scheduledTasks, suffix: '' },
+                  { label: 'Feasibility', prev: prev.feasibilityRate, cur: summary.feasibilityRate, suffix: '%' },
+                  { label: 'Makespan', prev: Math.round(prev.makespan / 3600), cur: Math.round(summary.makespan / 3600), suffix: 'h', invert: true },
+                ].map(row => {
+                  const diff = row.cur - row.prev;
+                  const isGood = row.invert ? diff < 0 : diff > 0;
+                  const color = diff === 0 ? C.textDim : isGood ? C.green : C.red;
+                  const arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '—';
+                  return (
+                    <div key={row.label} style={{
+                      padding: '6px 10px', borderRadius: 6, background: C.bg,
+                      border: `1px solid ${C.border}`, fontSize: 12,
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    }}>
+                      <span style={{ color: C.textMuted }}>{row.label}</span>
+                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                        <span style={{ color: C.textDim }}>{row.prev}{row.suffix}</span>
+                        <span style={{ color: C.textDim }}> → </span>
+                        <span style={{ color, fontWeight: 600 }}>{row.cur}{row.suffix} {arrow}</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Section 5: Solver stats (expert only) */}
+          {showAt(experienceLevel, 'expert') && (
+            <div style={{ marginBottom: 8 }}>
+              <SectionLabel label="Solver Diagnostics" />
+              <div style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6,
+              }}>
+                {[
+                  stats.propagationTimeMs != null && { label: 'Propagation', value: `${stats.propagationTimeMs}ms` },
+                  stats.windowsTightened != null && { label: 'Windows tightened', value: String(stats.windowsTightened) },
+                  stats.bumpsPerformed != null && { label: 'Bumps', value: `${stats.backtrackSuccesses || 0}/${stats.bumpsPerformed}` },
+                  stats.iterations != null && { label: 'Iterations', value: String(stats.iterations) },
+                  result.solveResult?.contextsEvaluated != null && { label: 'Contexts', value: String(result.solveResult.contextsEvaluated) },
+                  stats.contextsPerTask != null && { label: 'Ctx/task', value: String(stats.contextsPerTask) },
+                ].filter(Boolean).map((item: any) => (
+                  <div key={item.label} style={{
+                    padding: '6px 10px', borderRadius: 6, background: C.bg,
+                    border: `1px solid ${C.border}`, fontSize: 11,
+                  }}>
+                    <div style={{ color: C.text, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{item.value}</div>
+                    <div style={{ color: C.textDim, fontSize: 10 }}>{item.label}</div>
+                  </div>
+                ))}
+              </div>
+              {stats.scoreBreakdown && (
+                <div style={{
+                  marginTop: 6, padding: '6px 10px', borderRadius: 6,
+                  background: C.bg, border: `1px solid ${C.border}`, fontSize: 11,
+                  display: 'flex', gap: 12, flexWrap: 'wrap',
+                }}>
+                  <span style={{ color: C.textDim, fontWeight: 600 }}>Score breakdown:</span>
+                  {Object.entries(stats.scoreBreakdown).map(([key, val]) => (
+                    <span key={key} style={{ color: C.text }}>
+                      {key}: <strong>{Math.round(val as number)}</strong>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '16px 24px', borderTop: `1px solid ${C.border}`,
+          display: 'flex', gap: 10, justifyContent: 'flex-end',
+        }}>
+          {hasProblems && (
+            <button onClick={() => { onViewProblems(); onClose(); }} style={{
+              padding: '8px 20px', borderRadius: 8, border: `1px solid ${C.border}`,
+              background: 'transparent', color: C.textMuted,
+              fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+            }}>
+              View Problems
+            </button>
+          )}
+          <button onClick={onClose} style={{
+            padding: '8px 20px', borderRadius: 8, border: 'none',
+            background: C.accent, color: '#fff',
+            fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            View Schedule
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceClick,
   taskPins, taskExcludes, taskUnschedules, orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask, onCancelUnschedule,
   resourceModeOverrides, onResourceModeChange, experienceLevel = 'novice',
-  whereToTaskKey, whereToOptions, onMoveTo, onNavigateToOrders }: {
+  whereToTaskKey, whereToOptions, onMoveTo, onNavigateToOrders, onTaskClick }: {
   task: any; tasks: any[]; products: any[]; colors: any;
   onClose: () => void; onResourceClick: (r: any) => void;
   taskPins?: Record<string, boolean>;
@@ -1431,6 +1847,7 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   whereToOptions?: any[];
   onMoveTo?: (key: string, option: any) => void;
   onNavigateToOrders?: (orderKey: string) => void;
+  onTaskClick?: (task: any) => void;
 }) {
   const prodName = task.outputProductKey
     ? (products.find((p: any) => p.key === task.outputProductKey)?.name || task.outputProductKey)
@@ -1666,14 +2083,21 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
           <SectionLabel label={`Order Chain (${task.orderRef})`} />
           {orderChain.map((t: any, i: number) => {
             const isCurrent = t.key === task.key;
+            const clickable = !isCurrent && !!onTaskClick;
             return (
-              <div key={t.key} style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '6px 10px', marginBottom: 2, borderRadius: 6,
-                background: isCurrent ? C.accentGlow : 'transparent',
-                border: isCurrent ? `1px solid ${C.accent}33` : '1px solid transparent',
-                fontSize: 12,
-              }}>
+              <div key={t.key}
+                onClick={clickable ? () => onTaskClick!(t) : undefined}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '6px 10px', marginBottom: 2, borderRadius: 6,
+                  background: isCurrent ? C.accentGlow : 'transparent',
+                  border: isCurrent ? `1px solid ${C.accent}33` : '1px solid transparent',
+                  fontSize: 12,
+                  cursor: clickable ? 'pointer' : 'default',
+                }}
+                onMouseEnter={clickable ? (e) => { e.currentTarget.style.background = `${C.text}08`; } : undefined}
+                onMouseLeave={clickable ? (e) => { e.currentTarget.style.background = 'transparent'; } : undefined}
+              >
                 <span style={{
                   width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1682,7 +2106,13 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
                 }}>
                   {i + 1}
                 </span>
-                <span style={{ color: isCurrent ? C.accent : C.text, fontWeight: isCurrent ? 700 : 400, flex: 1 }}>
+                <span style={{
+                  color: isCurrent ? C.accent : clickable ? C.text : C.text,
+                  fontWeight: isCurrent ? 700 : 400, flex: 1,
+                  textDecoration: clickable ? 'underline' : 'none',
+                  textDecorationColor: clickable ? C.textDim : undefined,
+                  textUnderlineOffset: 2,
+                }}>
                   {t.name}
                 </span>
                 <span style={{ color: C.textDim, fontSize: 11 }}>{fmtDate(t.scheduledStart)}</span>
@@ -4724,14 +5154,18 @@ export default function App() {
 
   // Solve preview & override state
   const [showSolvePreview, setShowSolvePreview] = useState(false);
+  const [showSolveResults, setShowSolveResults] = useState(false);
+  const [previousSolveSnapshot, setPreviousSolveSnapshot] = useState<SolveSnapshot | null>(null);
   const [orderModes, setOrderModes] = useState<Record<string, string>>({});
   const [taskPins, setTaskPins] = useState<Record<string, boolean>>({});
   const [taskExcludes, setTaskExcludes] = useState<Record<string, boolean>>({});
   const [taskUnschedules, setTaskUnschedules] = useState<Set<string>>(new Set());
   const [materialModeOverrides, setMaterialModeOverrides] = useState<Record<string, string>>({});
   const [resourceModeOverrides, setResourceModeOverrides] = useState<Record<string, string>>({});
-  const [solverStrategy, setSolverStrategy] = useState('balanced');
+  const [solverStrategy, setSolverStrategy] = useState('Chain');
   const [strategyOptions, setStrategyOptions] = useState<StrategyOption[]>(FALLBACK_STRATEGIES);
+  const [selectedTier, setSelectedTier] = useState('balanced');
+  const [tierOptions, setTierOptions] = useState<SolverTierOption[]>(FALLBACK_TIERS);
   const [solveStale, setSolveStale] = useState(false);
   // WhereTo state
   const [whereToTaskKey, setWhereToTaskKey] = useState<string | null>(null);
@@ -4757,6 +5191,12 @@ export default function App() {
     setExperienceLevel(level);
     localStorage.setItem('ctp-experience-level', level);
   }, []);
+
+  const handleTierChange = useCallback((tierKey: string) => {
+    setSelectedTier(tierKey);
+    const tierDef = tierOptions.find(t => t.key === tierKey);
+    if (tierDef) setSolverStrategy(tierDef.defaultStrategy);
+  }, [tierOptions]);
 
   const tasks = solveResult?.tasks || [];
   const resources = solveResult?.resourceUtilization || [];
@@ -4786,6 +5226,16 @@ export default function App() {
       if (strategiesData?.strategies?.length > 0) {
         setStrategyOptions(strategiesData.strategies);
       }
+      if (strategiesData?.tiers?.length > 0) {
+        setTierOptions(strategiesData.tiers);
+        if (strategiesData.defaultTier) {
+          setSelectedTier(strategiesData.defaultTier);
+          const defaultTierDef = strategiesData.tiers.find(
+            (t: any) => t.key === strategiesData.defaultTier
+          );
+          if (defaultTierDef) setSolverStrategy(defaultTierDef.defaultStrategy);
+        }
+      }
     } catch (e: any) {
       setError(e.message || 'Failed to load data');
     }
@@ -4800,6 +5250,18 @@ export default function App() {
     setWhereToTaskKey(null); setWhereToOptions([]); setWhereToCurrentAssignment(null);
     // Clear analytics so they reload after new solve
     setAnalyticsKpis([]); setAnalyticsDetail(null); setSelectedKpi(null);
+
+    // Snapshot current solve for comparison deltas
+    if (solveResult?.summary) {
+      setPreviousSolveSnapshot({
+        scheduledTasks: solveResult.summary.scheduledTasks,
+        includedTasks: solveResult.summary.includedTasks,
+        feasibilityRate: solveResult.summary.feasibilityRate,
+        makespan: solveResult.summary.makespan,
+        totalScore: solveResult.stats?.totalScore,
+      });
+    }
+
     try {
       setError(null);
 
@@ -4847,12 +5309,15 @@ export default function App() {
       if (result.colors) setColors(result.colors);
       if (result.terminology) _terminology = result.terminology;
       if (result.locale) _locale = result.locale;
+
+      // Show results dialog
+      setShowSolveResults(true);
     } catch (e: any) {
       setError(e.message || 'Solve failed');
     } finally {
       setSolving(false);
     }
-  }, [orderModes, taskPins, taskExcludes, taskUnschedules, materialModeOverrides, resourceModeOverrides, solverStrategy, experienceLevel]);
+  }, [orderModes, taskPins, taskExcludes, taskUnschedules, materialModeOverrides, resourceModeOverrides, solverStrategy, experienceLevel, solveResult]);
 
   const handleSolveCancel = useCallback(() => {
     setShowSolvePreview(false);
@@ -5381,6 +5846,7 @@ export default function App() {
             setOrdersCaseFilter(orderKey);
             setActiveTab('Orders');
           }}
+          onTaskClick={(t) => setSelectedTask(t)}
         />
       )}
       {selectedResource && (
@@ -5413,8 +5879,27 @@ export default function App() {
           strategy={solverStrategy}
           onStrategyChange={setSolverStrategy}
           strategyOptions={strategyOptions}
+          tier={selectedTier}
+          onTierChange={handleTierChange}
+          tierOptions={tierOptions}
+          experienceLevel={experienceLevel}
           onConfirm={handleSolveConfirm}
           onCancel={handleSolveCancel}
+        />
+      )}
+
+      {/* Solve Results Dialog */}
+      {showSolveResults && solveResult && (
+        <SolveResultsDialog
+          result={solveResult}
+          previousSnapshot={previousSolveSnapshot}
+          experienceLevel={experienceLevel}
+          onClose={() => setShowSolveResults(false)}
+          onTaskClick={(t) => { setSelectedTask(t); setSelectedResource(null); }}
+          onViewProblems={() => {
+            // Switch to schedule tab — infeasible tasks are visible there
+            setActiveTab('Schedule');
+          }}
         />
       )}
 

@@ -18,6 +18,7 @@ import {
   BestScheduleContext,
   ScheduleEngine,
   CTPStartTime,
+  CTPSolveResult as EngineSolveResult,
 } from '@ctp/engine';
 import { StateService } from '../state/state.service';
 import { ConfigService } from '../../config/config.service';
@@ -64,6 +65,7 @@ export interface CTPSolveResult {
   colors?: any;
   terminology?: Record<string, string>;
   locale?: any;
+  solveResult?: EngineSolveResult;
 }
 
 @Injectable()
@@ -91,7 +93,7 @@ export class CTPService {
       throw new HttpException('State not loaded.', HttpStatus.BAD_REQUEST);
     }
 
-    const requestedStrategy = request?.strategy || landscape.appSettings?.solverStrategy || 'balanced';
+    const requestedStrategy = request?.strategy || landscape.appSettings?.solverStrategy || 'Chain';
 
     // Validate strategy key against tenant config
     if (request?.strategy && !this.strategyConfigService.validateStrategy(request.strategy)) {
@@ -176,13 +178,18 @@ export class CTPService {
       landscape.stateChanges,
       landscape.processes,
     );
+    // Pass requested strategy to the engine via appSettings
+    if (landscape.appSettings) {
+      landscape.appSettings.solverStrategy = strategy;
+    }
     scheduler.initSettings(landscape.appSettings);
     scheduler.initScoring(scoring);
 
     const taskList = this.buildTaskList(landscape, request);
 
+    let engineSolveResult: EngineSolveResult | undefined;
     if (taskList.length > 0) {
-      scheduler.schedule(taskList);
+      engineSolveResult = scheduler.schedule(taskList);
     }
 
     // ─── 5. Collect stats ───
@@ -203,6 +210,7 @@ export class CTPService {
     // ─── 6. Build response ───
     const detailLevel = request?.detailLevel || 'novice';
     const result = this.extractResults(landscape, taskList, stats, detailLevel);
+    if (engineSolveResult) result.solveResult = engineSolveResult;
     this.results.set(this.configService.getTenantId(), result);
     return result;
   }
