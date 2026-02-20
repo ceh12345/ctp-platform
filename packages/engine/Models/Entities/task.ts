@@ -164,6 +164,13 @@ export class CTPTask extends CTPKeyEntity implements ITask {
   // Material inputs — what does this task consume?
   public inputMaterials: CTPTaskMaterialInputList | null;
 
+  // Batching
+  public batchRuleKey: string | null = null;  // References a CTPBatchRule by key
+  public batchQty: number = 1;                // How many units this task contributes to the batch
+
+  // Manual priority override (0 = no override)
+  public manualPriority: number = 0;
+
   public resetScore() {
     this.score = Number.MAX_VALUE;
     this.feasible = null;
@@ -243,6 +250,11 @@ export class CTPTask extends CTPKeyEntity implements ITask {
     this.outputQty = 0;
     this.outputScrapRate = 0.0;
     this.inputMaterials = null;
+
+    // Batching
+    this.batchRuleKey = null;
+    this.batchQty = 1;
+    this.manualPriority = 0;
   }
 }
 

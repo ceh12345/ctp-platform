@@ -17,6 +17,7 @@ export * from './Models/Core/window';
 
 // Models - Entities
 export * from './Models/Entities/appsettings';
+export * from './Models/Entities/batchrule';
 export * from './Models/Entities/candidate';
 export * from './Models/Entities/horizon';
 export * from './Models/Entities/landscape';

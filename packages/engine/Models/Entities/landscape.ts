@@ -8,6 +8,7 @@ import { CTPTask, CTPTasks } from "./task";
 import { CTPResource, CTPResources } from "./resource";
 import { CTPProcess, CTPProcesses } from "./process";
 import { CTPStateChanges } from "./statechange";
+import { CTPBatchRules } from "./batchrule";
 
 export interface ILandscape {
   horizon: CTPHorizon | null;
@@ -17,7 +18,7 @@ export interface ILandscape {
   appSettings: CTPAppSettings | null;
   stateChanges: CTPStateChanges | null;
   stateTasks: CTPTasks | null;
-
+  batchRules: CTPBatchRules | null;
 }
 
 export class SchedulingLandscape implements ILandscape {
@@ -27,7 +28,8 @@ export class SchedulingLandscape implements ILandscape {
   public processes: CTPProcesses;
   public stateChanges: CTPStateChanges;
   public stateTasks: CTPTasks;
-  
+  public batchRules: CTPBatchRules;
+
   public appSettings: CTPAppSettings | null = null;
 
   public setSettings(a: CTPAppSettings): void {
@@ -287,6 +289,7 @@ export class SchedulingLandscape implements ILandscape {
     this.processes = new CTPProcesses();
     this.stateChanges = new CTPStateChanges();
     this.stateTasks = new CTPTasks();
+    this.batchRules = new CTPBatchRules();
     if (s !== undefined && e !== undefined) this.setHorizon(s, e);
     if (a) this.setSettings(a);
     else this.appSettings = new CTPAppSettings();
