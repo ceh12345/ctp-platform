@@ -26,6 +26,8 @@
 - [Terminology](concepts/terminology.md) — How the generic model maps to your industry
 - [Chains and Gaps](concepts/chains-and-gaps.md) — Linked tasks, back-to-back scheduling, and violations
 - [Resource Types](concepts/resource-types.md) — Reusable, consumable, calendars, and hierarchies
+- [Batch Rules](concepts/batch-rules.md) — Grouping compatible tasks to run together on a shared resource
+- [Work Orders and Cases](concepts/work-orders.md) — The case view, order status, and navigation
 - Experience Levels — _coming soon_
 
 ## AI Assistant
