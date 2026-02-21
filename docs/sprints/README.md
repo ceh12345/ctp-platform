@@ -64,25 +64,23 @@ Prompt 4: Stress Tests              │  ├──→ Sprint 8: Task Swap (needs
 
 ```
 /docs/sprints/
-├── README.md                          ← You are here
-├── roadmap.md                         ← Overview of both tracks with timeline
-├── parking-lot.md                     ← Ideas not yet in a sprint
-├── solver/
-│   ├── prompt-1-ranked-contexts.md    ← Top-N ranked alternatives per task
-│   ├── prompt-2-snapshot-restore.md   ← Save/restore schedule state
-│   ├── prompt-3-balanced-strategy.md  ← Bump backtracking solver
-│   └── prompt-4-stress-tests.md       ← Quick vs Balanced comparison scenarios
-└── ui/
-    ├── sprint-1-select-and-act.md     ← Checkboxes, selection toolbar, unscheduled panel
-    ├── sprint-2-solve-selected.md     ← Partial re-solve via taskKeys
-    ├── sprint-3-resource-time-filter.md ← Gantt-driven filtering
-    ├── sprint-4-redirect-work.md      ← Resource preference overrides
-    ├── sprint-5-reprioritize.md       ← Inline priority editing, rush
-    ├── sprint-6-what-if.md            ← Snapshot, compare, revert
-    ├── sprint-7-time-fence.md         ← Rolling freeze window
-    ├── sprint-8-task-swap.md          ← Swap two tasks on same resource
-    ├── sprint-9-capacity-adjustment.md ← Overtime, maintenance, speed factor
-    └── sprint-10-task-operations.md   ← Split, rerun, duration edit
+  README.md                          ← You are here
+  roadmap.md                         ← Overview of both tracks with timeline
+  parking-lot.md                     ← Ideas not yet in a sprint
+  solver-1-ranked-contexts.md        ← Top-N ranked alternatives per task
+  solver-2-snapshot-restore.md       ← Save/restore schedule state
+  solver-3-balanced-strategy.md      ← Bump backtracking solver
+  solver-4-stress-tests.md           ← Quick vs Balanced comparison scenarios
+  ui-1-select-and-act.md             ← Checkboxes, selection toolbar, unscheduled panel
+  ui-2-solve-selected.md             ← Partial re-solve via taskKeys
+  ui-3-resource-time-filter.md       ← Gantt-driven filtering
+  ui-4-redirect-work.md              ← Resource preference overrides
+  ui-5-reprioritize.md               ← Inline priority editing, rush
+  ui-6-what-if.md                    ← Snapshot, compare, revert
+  ui-7-time-fence.md                 ← Rolling freeze window
+  ui-8-task-swap.md                  ← Swap two tasks on same resource
+  ui-9-capacity-adjustment.md        ← Overtime, maintenance, speed factor
+  ui-10-task-operations.md           ← Split, rerun, duration edit
 ```
 
 ## Review Cadence
