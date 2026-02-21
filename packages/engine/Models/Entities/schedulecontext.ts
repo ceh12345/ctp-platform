@@ -8,6 +8,7 @@ import { List } from "../Core/list";
 import { CTPResource } from "./resource";
 import { CTPStateChanges } from "./statechange";
 import { CTPStartTime } from "./starttime";
+import { RecomputeTracker } from "./recompute-tracker";
 
 export class ScheduleContext extends CTPEntityHashed {
   public landscape: ILandscape;
@@ -64,11 +65,13 @@ export class ResourceScheduleContexts extends ScheduleContextsFor<CTPResource> {
 export class ScheduleContexts extends EntityHashMap<ScheduleContext> {
   public byTask: EntityHashMap<TaskScheduleContexts>;
   public byResource: EntityHashMap<ResourceScheduleContexts>;
+  private tracker: RecomputeTracker;
 
   public constructor(t?: string, n?: string, k?: string) {
     super();
     this.byTask = new EntityHashMap<TaskScheduleContexts>();
     this.byResource = new EntityHashMap<ResourceScheduleContexts>();
+    this.tracker = new RecomputeTracker(this.byTask, this.byResource);
   }
 
   public addEntity(s: ScheduleContext) {
@@ -123,45 +126,11 @@ export class ScheduleContexts extends EntityHashMap<ScheduleContext> {
   }
 
   public updateRecomputeByTask(t: CTPTask) {
-    if (!t) return;
-    const task = this.byTask.getEntity(t.key);
-    if (task) {
-      t.capacityResources?.forEach((res) => {
-        const resource = this.byResource.getEntity(res.scheduledResource ?? "");
-        if (resource) {
-          resource.value.recompute = true;
-          resource.contexts.forEach((schedule) => {
-            if (schedule.task && schedule.task.key != t.key) {
-              schedule.recompute = true;
-              if (!schedule.task.processed)
-                schedule.task.score = Number.MAX_VALUE;
-            }
-          });
-        }
-      });
-    }
+    this.tracker.markUnscheduled(t);
   }
-  public updateRecompute(s: ScheduleContext) {
-    if (!s) return;
-    if (!s.slot.hasStartTimes()) return;
 
-    const task = this.byTask.getEntity(s.task.key);
-    if (task) {
-      s.recompute = false;
-      s.task.processed = true;
-      s.slot.resources?.forEach((res) => {
-        const resource = this.byResource.getEntity(res.resource?.hashKey ?? "");
-        if (resource) {
-          resource.value.recompute = true;
-          resource.contexts.forEach((schedule) => {
-            if (schedule.task && !schedule.task.processed) {
-              schedule.recompute = true;
-              schedule.task.score = Number.MAX_VALUE;
-            }
-          });
-        }
-      });
-    }
+  public updateRecompute(s: ScheduleContext) {
+    this.tracker.markScheduled(s);
   }
 }
 

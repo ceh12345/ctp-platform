@@ -13,6 +13,8 @@ export * from './Models/Core/list';
 export * from './Models/Core/namevalue';
 export * from './Models/Core/preference';
 export * from './Models/Core/range';
+export * from './Models/Core/duration-policy';
+export * from './Models/Core/interval-walker';
 export * from './Models/Core/window';
 
 // Models - Entities
@@ -26,6 +28,7 @@ export * from './Models/Entities/process';
 export * from './Models/Entities/product';
 export * from './Models/Entities/resource';
 export * from './Models/Entities/route';
+export * from './Models/Entities/recompute-tracker';
 export * from './Models/Entities/schedulecontext';
 export * from './Models/Entities/score';
 export * from './Models/Entities/slot';

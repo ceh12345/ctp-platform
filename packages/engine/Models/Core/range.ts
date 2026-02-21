@@ -5,6 +5,8 @@ import { CTPDurationConstants } from "../Core/constants";
 import { IInterval, CTPInterval, CTPDuration } from "../Core/window";
 import { LinkedList, ListNode } from "../Core/linklist";
 import { CTPAvailable } from "../Intervals/intervals";
+import { DurationPolicy } from "./duration-policy";
+import { clipDuration, walkForward, walkBackward, accumulateRangeValues } from "./interval-walker";
 
 export interface IRangeValues {
   duration: number;
@@ -141,25 +143,15 @@ export class CTPRange extends CTPInterval implements IRangeTime {
     return this.values;
   }
 
+  private static _policy = new DurationPolicy();
+
   protected computeBoundedDuration(
     st: number,
     et: number,
     ptr: CTPInterval,
     useRunRate: boolean = false,
   ) {
-    let d = 0;
-
-    if (ptr) {
-      d = ptr.duration();
-      if (ptr.endW > this.endW) d -= ptr.endW - this.endW;
-      if (ptr.startW < this.startW) d -= this.startW - ptr.startW;
-    }
-
-    if (useRunRate) {
-      if (ptr.runRate === null) d = 0;
-      else d = d * ptr.runRate;
-    }
-    return d;
+    return clipDuration(ptr, this.startW, this.endW, useRunRate);
   }
 
   public computeDurationForward(
@@ -167,73 +159,34 @@ export class CTPRange extends CTPInterval implements IRangeTime {
     et: number,
     d: CTPDuration,
   ): boolean {
-    // Set Earliest End Time
+    const policy = CTPRange._policy;
+
+    // Set initial values (always, even before early returns)
     this.values.eet = st + d.duration();
     this.values.est = st;
 
-    // How muhc duration
-    let consumed = d.duration();
-    let byRunRate = false;
+    // RunRate required but missing → infeasible
+    if (policy.isMissingRunRate(d)) return false;
 
-    if (
-      d.durationType == CTPDurationConstants.FIXED_RUN_RATE ||
-      d.durationType == CTPDurationConstants.FLOAT_RUN_RATE
-    ) {
-      if (d.runRate === null) return false;
-      else consumed = d.runRate;
-      byRunRate = true;
-    }
-
-    // amount of duration so far
-    let more = 0;
-
-    let ptr = this.estPtr;
-
-    // Reset if fixed duration and range duration < fixed duration
-    let reset = false;
-
-    // If STATIC Duration and eetgreater than window end return false else return true
-    if (d.durationType == CTPDurationConstants.STATIC) {
+    // STATIC: no interval walking, just boundary check
+    if (policy.isStatic(d)) {
       if (this.values.eet > et) return false;
       return true;
     }
 
-    // Reset eet and est to first ptr
-    if (ptr) {
-      this.values.eet = ptr.data.endW;
-      this.values.est = ptr.data.startW;
-    }
-
-    while (ptr && ptr !== this.lstPtr?.next) {
-      while (more < consumed && ptr && ptr != this.lstPtr?.next) {
-        if (reset) {
-          this.values.eet = ptr.data.endW;
-          this.values.est = ptr.data.startW;
-          more = 0;
-        }
-        reset = false;
-
-        let dur = this.computeBoundedDuration(st, et, ptr.data, byRunRate);
-
-        if (
-          d.durationType === CTPDurationConstants.FIXED_DURATION ||
-          d.durationType == CTPDurationConstants.FIXED_RUN_RATE
-        ) {
-          if (dur < consumed) reset = true;
-        }
-        if (!reset) {
-          more += dur;
-          this.values.eet = ptr.data.endW;
-        }
-
-        ptr = ptr?.next;
-      }
-      if (more >= consumed && this.values.eet) {
-        if (more > consumed) this.values.eet -= more - consumed;
-        break;
-      }
-    }
-    return more >= consumed;
+    // Delegate to IntervalWalker
+    const result = walkForward(
+      this.estPtr,
+      this.lstPtr,
+      policy.consumed(d),
+      this.startW,
+      this.endW,
+      policy.byRunRate(d),
+      policy.isFixed(d),
+    );
+    this.values.est = result.start;
+    this.values.eet = result.end;
+    return result.feasible;
   }
 
   public computeDurationBackward(
@@ -241,72 +194,34 @@ export class CTPRange extends CTPInterval implements IRangeTime {
     et: number,
     d: CTPDuration,
   ): boolean {
-    // Set Earliest End Time
+    const policy = CTPRange._policy;
+
+    // Set initial values (always, even before early returns)
     this.values.lst = et - d.duration();
     this.values.lett = et;
 
-    // How muhc duration
-    let consumed = d.duration();
-    let byRunRate = false;
+    // RunRate required but missing → infeasible
+    if (policy.isMissingRunRate(d)) return false;
 
-    if (
-      d.durationType == CTPDurationConstants.FIXED_RUN_RATE ||
-      d.durationType == CTPDurationConstants.FLOAT_RUN_RATE
-    ) {
-      if (d.runRate === null) return false;
-      else consumed = d.runRate;
-      byRunRate = true;
-    }
-
-    // amount of duration so far
-    let more = 0;
-
-    let ptr = this.lstPtr;
-
-    // Reset if fixed duration and range duration < fixed duration
-    let reset = false;
-
-    // If STATIC Duration and eetgreater than window end return false else return true
-    if (d.durationType == CTPDurationConstants.STATIC) {
+    // STATIC: no interval walking, just boundary check
+    if (policy.isStatic(d)) {
       if (this.values.lst < st) return false;
       return true;
     }
 
-    // Reset lst and lett to first ptr
-    if (ptr) {
-      this.values.lett = ptr.data.endW;
-      this.values.lst = ptr.data.startW;
-    }
-
-    while (ptr && ptr !== this.estPtr?.prev) {
-      while (more < consumed && ptr && ptr != this.estPtr?.prev) {
-        if (reset) {
-          this.values.lst = ptr.data.startW;
-          this.values.lett = ptr.data.endW;
-          more = 0;
-        }
-        reset = false;
-        let dur = this.computeBoundedDuration(st, et, ptr.data, byRunRate);
-
-        if (
-          d.durationType === CTPDurationConstants.FIXED_DURATION ||
-          d.durationType == CTPDurationConstants.FIXED_RUN_RATE
-        ) {
-          if (dur < consumed) reset = true;
-        }
-        if (!reset) {
-          more += dur;
-          this.values.lst = ptr.data.startW;
-        }
-
-        ptr = ptr?.prev;
-      }
-      if (more >= consumed && this.values.lst) {
-        if (more > consumed) this.values.lst += more - consumed;
-        break;
-      }
-    }
-    return more >= consumed;
+    // Delegate to IntervalWalker
+    const result = walkBackward(
+      this.lstPtr,
+      this.estPtr,
+      policy.consumed(d),
+      this.startW,
+      this.endW,
+      policy.byRunRate(d),
+      policy.isFixed(d),
+    );
+    this.values.lst = result.start;
+    this.values.lett = result.end;
+    return result.feasible;
   }
 
   public computeEarliestLatestStartTimes(
@@ -319,37 +234,11 @@ export class CTPRange extends CTPInterval implements IRangeTime {
   }
 
   public computeRangeValues(st: number, et: number): CTPRangeValues {
-    this.values.minAvail = Number.MAX_VALUE;
-    this.values.maxAvail = 0;
-    this.values.runRateQty = 0;
-    this.values.duration = 0;
-
-    let ePtr = this.estPtr;
-    while (ePtr && ePtr !== this.lstPtr) {
-      if (et < ePtr.data.startW) {
-      } else if (st > ePtr.data.endW) {
-      } else {
-        if (ePtr.data.qty && ePtr.data.qty > this.values.maxAvail)
-          this.values.maxAvail = ePtr.data.qty;
-        if (ePtr.data.qty && ePtr.data.qty < this.values.minAvail)
-          this.values.minAvail = ePtr.data.qty;
-        if (st > ePtr.data.startW) {
-          this.values.duration += ePtr.data.endW - st;
-          if (ePtr.data.runRate)
-            this.values.runRateQty += (ePtr.data.endW - st) * ePtr.data.runRate;
-        } else if (et < ePtr.data.endW) {
-          this.values.duration += et - ePtr.data.startW;
-          if (ePtr.data.runRate)
-            this.values.runRateQty +=
-              (et - ePtr.data.startW) * ePtr.data.runRate;
-        } else {
-          this.values.duration += ePtr.data.duration();
-          if (ePtr.data.runRate)
-            this.values.runRateQty += ePtr.data.duration() * ePtr.data.runRate;
-        }
-      }
-      ePtr = ePtr.next;
-    }
+    const acc = accumulateRangeValues(this.estPtr, this.lstPtr, st, et);
+    this.values.duration = acc.duration;
+    this.values.runRateQty = acc.runRateQty;
+    this.values.minAvail = acc.minAvail;
+    this.values.maxAvail = acc.maxAvail;
     return this.rangeValues;
   }
 
