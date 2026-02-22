@@ -2645,24 +2645,34 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                 ...(isFiltered && { background: `${C.accent}08`, borderLeft: `3px solid ${C.accent}` }),
               }}>
                 <div
-                  onClick={() => {
-                    if (onResourceFilter) {
-                      onResourceFilter(res.resourceKey);
-                    } else {
-                      onResourceClick?.(res);
-                    }
-                  }}
                   style={{
-                    width: LABEL_W, minWidth: LABEL_W, padding: '10px 12px', fontSize: 12,
+                    width: LABEL_W, minWidth: LABEL_W, padding: '6px 8px 6px 12px', fontSize: 12,
                     color: isFiltered ? C.accent : C.textMuted, fontWeight: isFiltered ? 600 : 500,
-                    display: 'flex', alignItems: 'center',
-                    cursor: (onResourceFilter || onResourceClick) ? 'pointer' : 'default',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
                     transition: 'color 0.1s',
                   }}
-                  onMouseEnter={e => { if (onResourceFilter || onResourceClick) e.currentTarget.style.color = C.accent; }}
-                  onMouseLeave={e => { e.currentTarget.style.color = isFiltered ? C.accent : C.textMuted; }}
                 >
-                  {res.resourceName}
+                  <span
+                    onClick={() => onResourceClick?.(res)}
+                    style={{ cursor: onResourceClick ? 'pointer' : 'default', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    onMouseEnter={e => { if (onResourceClick) (e.currentTarget as HTMLElement).style.color = C.accent; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = ''; }}
+                  >
+                    {res.resourceName}
+                  </span>
+                  {onResourceFilter && (
+                    <span
+                      onClick={() => onResourceFilter(res.resourceKey)}
+                      title={isFiltered ? 'Clear resource filter' : 'Filter to this resource'}
+                      style={{
+                        cursor: 'pointer', fontSize: 10, lineHeight: 1, padding: '2px 4px', borderRadius: 4,
+                        color: isFiltered ? C.accent : C.textDim,
+                        background: isFiltered ? `${C.accent}18` : 'transparent',
+                        border: `1px solid ${isFiltered ? C.accent + '44' : 'transparent'}`,
+                        flexShrink: 0, userSelect: 'none',
+                      }}
+                    >⊡</span>
+                  )}
                 </div>
                 <div style={{ flex: 1, position: 'relative', height: LANE_H, overflow: 'hidden' }}>
                   {/* Unavailable background (full lane) */}
