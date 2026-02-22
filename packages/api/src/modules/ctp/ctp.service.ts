@@ -19,6 +19,7 @@ import {
   ScheduleEngine,
   CTPStartTime,
   CTPSolveResult as EngineSolveResult,
+  CTPInterval,
 } from '@ctp/engine';
 import { StateService } from '../state/state.service';
 import { ConfigService } from '../../config/config.service';
@@ -146,6 +147,36 @@ export class CTPService {
     // 1g. Per-task resource preference overrides (REQUIRED/PREFERRED/AVAILABLE/EXCLUDED)
     if (request?.resourcePreferenceOverrides) {
       landscape.applyResourcePreferenceOverrides(request.resourcePreferenceOverrides);
+    }
+
+    // 1h. Per-task priority overrides
+    if (request?.priorityOverrides) {
+      for (const [key, pri] of Object.entries(request.priorityOverrides)) {
+        const t = landscape.tasks?.getEntity(key);
+        if (t) t.priority = pri;
+      }
+    }
+
+    // 1i. Per-task window overrides
+    if (request?.windowOverrides) {
+      for (const [key, win] of Object.entries(request.windowOverrides)) {
+        const t = landscape.tasks?.getEntity(key);
+        if (t) {
+          const sw = win.startW ? CTPDateTime.fromDateTime(win.startW) : undefined;
+          const ew = win.endW ? CTPDateTime.fromDateTime(win.endW) : undefined;
+          if (sw !== undefined || ew !== undefined) {
+            if (!t.window) {
+              t.window = new CTPInterval(
+                sw ?? landscape.horizon.startW,
+                ew ?? landscape.horizon.endW,
+                1,
+              );
+            }
+            if (sw !== undefined) { t.window.startW = sw; t.window.origStartW = sw; }
+            if (ew !== undefined) { t.window.endW = ew; t.window.origEndW = ew; }
+          }
+        }
+      }
     }
 
     // ─── 2. Constraint propagation ───
@@ -643,6 +674,15 @@ export class CTPService {
     });
   }
 
+  private sortByPriority(taskList: List<CTPTask>): List<CTPTask> {
+    const arr: CTPTask[] = [];
+    taskList.forEach((t) => arr.push(t));
+    arr.sort((a, b) => a.priority - b.priority);
+    const sorted = new List<CTPTask>();
+    for (const t of arr) sorted.add(t);
+    return sorted;
+  }
+
   private buildTaskList(
     landscape: SchedulingLandscape,
     request?: SolveRequestDto,
@@ -655,7 +695,7 @@ export class CTPService {
         const task = landscape.tasks.getEntity(key);
         if (task) taskList.add(task);
       }
-      return taskList;
+      return this.sortByPriority(taskList);
     }
 
     if (request?.filter) {
@@ -681,12 +721,12 @@ export class CTPService {
         }
         if (match) taskList.add(task);
       });
-      return taskList;
+      return this.sortByPriority(taskList);
     }
 
     // Default: all tasks
     landscape.tasks.forEach((t) => taskList.add(t));
-    return taskList;
+    return this.sortByPriority(taskList);
   }
 
   private buildScoring(): CTPScoring {
@@ -853,13 +893,15 @@ export class CTPService {
         type: task.type || CTPTaskTypeConstants.PROCESS,
         subType: task.subType ?? null,
         materialResources,
+        priority: task.priority,
+        originalPriority: task.originalPriority,
+        windowStart: task.window ? CTPDateTime.toDateTime(task.window.startW).toISO() : null,
+        windowEnd: task.window ? CTPDateTime.toDateTime(task.window.endW).toISO() : null,
       };
 
       // Add detail fields for intermediate+
       if (detailLevel !== 'novice') {
         taskResult.blendedScore = task.score !== Number.MAX_VALUE ? task.score : null;
-        taskResult.windowStart = task.window ? CTPDateTime.toDateTime(task.window.startW).toISO() : null;
-        taskResult.windowEnd = task.window ? CTPDateTime.toDateTime(task.window.endW).toISO() : null;
 
         // Compatible resources — full preference list for each capacity slot
         const compatibleResources: any[] = [];

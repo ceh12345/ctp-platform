@@ -284,6 +284,16 @@ export class StateHydratorService {
         }
       }
 
+      // Numeric priority from config (separate from URGENT/ADD-ON/ELECTIVE rank)
+      if (item.typedAttributes) {
+        const attrs: any = item.typedAttributes;
+        const numPri = Array.isArray(attrs)
+          ? attrs.find((a: any) => a.name === 'numericPriority')?.value?.value
+          : attrs.numericPriority;
+        if (typeof numPri === 'number') task.priority = numPri;
+      }
+      task.originalPriority = task.priority;
+
       tasks.addEntity(task);
     }
     return tasks;

@@ -132,6 +132,22 @@ export class SolveRequestDto {
   @IsOptional()
   @IsObject()
   resourcePreferenceOverrides?: Record<string, Record<string, string>>;
+
+  @ApiPropertyOptional({
+    description: 'Per-task priority overrides: { taskKey: priority (1=highest, 100=lowest) }',
+    example: { 'OP-001': 1, 'OP-003': 10 },
+  })
+  @IsOptional()
+  @IsObject()
+  priorityOverrides?: Record<string, number>;
+
+  @ApiPropertyOptional({
+    description: 'Per-task window overrides: { taskKey: { startW?: isoString, endW?: isoString } }',
+    example: { 'OP-005': { endW: '2026-03-05T23:59:59' } },
+  })
+  @IsOptional()
+  @IsObject()
+  windowOverrides?: Record<string, { startW?: string; endW?: string }>;
 }
 
 export class UnscheduleTaskDto {

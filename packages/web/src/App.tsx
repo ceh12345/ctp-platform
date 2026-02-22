@@ -177,9 +177,15 @@ const EXPERIENCE_LEVELS: { value: ExperienceLevel; label: string; icon: string; 
   { value: 'expert', label: 'Engineer', icon: '⚙', desc: 'Full diagnostic data, solver stats, and strategy tuning.' },
 ];
 
+const TIME_RANGE_OPTIONS = [
+  { label: '3 hours', days: 3 / 24 },
+  { label: '6 hours', days: 6 / 24 },
+  { label: '8 hours', days: 8 / 24 },
+  { label: '12 hours', days: 12 / 24 },
+  { label: '24 hours', days: 1 },
+];
 const ZOOM_LEVELS = [
-  { label: '3 Hr', days: 3 / 24 },
-  { label: 'Day', days: 1 },
+  ...TIME_RANGE_OPTIONS,
   { label: '3 Day', days: 3 },
   { label: 'Week', days: 7 },
   { label: '2 Week', days: 14 },
@@ -2103,6 +2109,8 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   resourceModeOverrides, onResourceModeChange, experienceLevel = 'novice',
   whereToTaskKey, whereToOptions, onMoveTo, onNavigateToOrders, onTaskClick,
   resourcePreferenceOverrides, onResourcePrefChange, onClearResourceOverrides,
+  windowOverrides, onSetWindowOverride,
+  priorityOverrides, onSetPriority,
   onApiSchedule, actionLoading }: {
   task: any; tasks: any[]; products: any[]; colors: any;
   onClose: () => void; onResourceClick: (r: any) => void;
@@ -2127,6 +2135,10 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   resourcePreferenceOverrides?: Record<string, Record<string, string>>;
   onResourcePrefChange?: (taskKey: string, resourceKey: string, mode: string) => void;
   onClearResourceOverrides?: (taskKey: string) => void;
+  windowOverrides?: Record<string, { startW?: string; endW?: string }>;
+  onSetWindowOverride?: (key: string, win: { startW?: string; endW?: string }) => void;
+  priorityOverrides?: Record<string, number>;
+  onSetPriority?: (key: string, priority: number) => void;
   onApiSchedule?: (key: string) => Promise<void>;
   actionLoading?: string | null;
 }) {
@@ -2277,6 +2289,69 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
       <DetailRow label={t('duration', 'Duration')} value={fmtDuration(task.durationSeconds)} />
       {showAt(experienceLevel, 'intermediate') && (
         <DetailRow label={t('score', 'Score')} value={task.score != null ? task.score.toFixed(2) : '—'} />
+      )}
+
+      {/* Priority */}
+      <SectionLabel label="Priority" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', marginBottom: 4 }}>
+        <span style={{ fontSize: 12, color: C.textMuted, minWidth: 60 }}>Priority</span>
+        <input type="number" min={1} max={100}
+          value={priorityOverrides?.[task.key] ?? task.priority ?? 100}
+          onChange={e => {
+            const v = Math.max(1, Math.min(100, parseInt(e.target.value) || 100));
+            onSetPriority?.(task.key, v);
+          }}
+          style={{
+            width: 56, padding: '3px 6px', fontSize: 12, fontFamily: FONT,
+            border: `1px solid ${priorityOverrides?.[task.key] !== undefined ? C.purple : C.border}`,
+            borderRadius: 4,
+            background: priorityOverrides?.[task.key] !== undefined ? C.purple + '08' : 'transparent',
+            color: priorityOverrides?.[task.key] !== undefined ? C.purple : C.text,
+            fontWeight: priorityOverrides?.[task.key] !== undefined ? 700 : 400,
+            textAlign: 'center',
+          }} />
+        {(priorityOverrides?.[task.key] ?? task.priority) === 1 && (
+          <span style={{ fontSize: 10, color: C.red, fontWeight: 600, padding: '1px 5px', borderRadius: 3, border: `1px solid ${C.red}33` }}>{'\u26A1'} RUSH</span>
+        )}
+        {priorityOverrides?.[task.key] !== undefined && (
+          <span onClick={() => onSetPriority?.(task.key, task.priority ?? 100)}
+            style={{ fontSize: 11, color: C.textMuted, cursor: 'pointer', textDecoration: 'underline' }}>Reset</span>
+        )}
+      </div>
+
+      {/* Time Window */}
+      <SectionLabel label="Time Window" />
+      <DetailRow label="Window Start" value={fmtDate(task.windowStart)} />
+      <DetailRow label="Window End" value={fmtDate(task.windowEnd)} />
+      {!task.feasible && onSetWindowOverride && (
+        <div style={{ marginTop: 4, padding: '8px 10px', borderRadius: 8, background: C.redDim ?? '#fee', border: `1px solid ${C.red}33` }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: C.red, marginBottom: 6 }}>Infeasible — Extend Window</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button onClick={() => {
+              const endMs = new Date(task.windowEnd || task.scheduledEnd || Date.now()).getTime() + 86_400_000;
+              onSetWindowOverride(task.key, { startW: task.windowStart || undefined, endW: new Date(endMs).toISOString() });
+            }} style={{
+              padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              fontFamily: FONT, border: `1px solid ${C.border}`, background: C.surface2, color: C.text,
+            }}>+1 day</button>
+            <button onClick={() => {
+              const endMs = new Date(task.windowEnd || task.scheduledEnd || Date.now()).getTime() + 7 * 86_400_000;
+              onSetWindowOverride(task.key, { startW: task.windowStart || undefined, endW: new Date(endMs).toISOString() });
+            }} style={{
+              padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              fontFamily: FONT, border: `1px solid ${C.border}`, background: C.surface2, color: C.text,
+            }}>+1 week</button>
+            <button onClick={() => onSetWindowOverride(task.key, {})} style={{
+              padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              fontFamily: FONT, border: `1px solid ${C.border}`, background: C.surface2, color: C.text,
+            }}>No Window</button>
+          </div>
+          {windowOverrides?.[task.key] && (
+            <div style={{ marginTop: 4, fontSize: 11, color: C.purple, fontWeight: 600 }}>
+              Window override pending — solve to apply
+            </div>
+          )}
+        </div>
       )}
 
       {/* Product Output */}
@@ -2642,7 +2717,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   onSetResourcePrefForTask?: (taskKey: string) => void;
 }) {
   // Local fallback state when props aren't provided (e.g. Overview tab)
-  const [localZoom, setLocalZoom] = useState('Day');
+  const [localZoom, setLocalZoom] = useState('3 hours');
   const [localScroll, setLocalScroll] = useState(0);
   const effectiveZoom = zoomLevel ?? localZoom;
   const effectiveSetZoom = setZoomLevel ?? setLocalZoom;
@@ -2846,20 +2921,28 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
       </div>
 
       {/* Zoom controls */}
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {ZOOM_LEVELS.map(z => (
-            <button key={z.label} onClick={() => { effectiveSetZoom(z.label); effectiveSetScroll(0); }} style={{
-              padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-              fontSize: 12, fontWeight: 600,
-              background: z.label === effectiveZoom ? '#3b82f6' : 'transparent',
-              color: z.label === effectiveZoom ? '#fff' : '#94a3b8',
-              fontFamily: FONT,
-            }}>
-              {z.label}
-            </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 12 }}>
+        <select value={TIME_RANGE_OPTIONS.some(t => t.label === effectiveZoom) ? effectiveZoom : '3 hours'} onChange={e => { effectiveSetZoom(e.target.value); effectiveSetScroll(0); }} style={{
+          padding: '5px 14px', paddingRight: 24, borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: FONT,
+          border: 'none', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none',
+          backgroundColor: TIME_RANGE_OPTIONS.some(t => t.label === effectiveZoom) ? '#3b82f6' : 'transparent',
+          color: TIME_RANGE_OPTIONS.some(t => t.label === effectiveZoom) ? '#fff' : '#94a3b8',
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='${TIME_RANGE_OPTIONS.some(t => t.label === effectiveZoom) ? 'white' : '%2394a3b8'}'/%3E%3C/svg%3E")`,
+          backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
+        }}>
+          {TIME_RANGE_OPTIONS.map(z => (
+            <option key={z.label} value={z.label} style={{ background: '#1e293b', color: '#fff' }}>{z.label}</option>
           ))}
-        </div>
+        </select>
+        {ZOOM_LEVELS.filter(z => !TIME_RANGE_OPTIONS.includes(z)).map(z => (
+          <button key={z.label} onClick={() => { effectiveSetZoom(z.label); effectiveSetScroll(0); }} style={{
+            padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+            fontSize: 12, fontWeight: 600,
+            background: z.label === effectiveZoom ? '#3b82f6' : 'transparent',
+            color: z.label === effectiveZoom ? '#fff' : '#94a3b8',
+            fontFamily: FONT,
+          }}>{z.label}</button>
+        ))}
         {zoomConfig && zoomConfig.days > 0 && (
           <div style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
             <button onClick={() => effectiveSetScroll(s => s - 1)} style={{
@@ -3574,17 +3657,27 @@ function CaseGanttChart({ tasks, orders, products, colors, onTaskClick,
 
       {/* Zoom controls */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {ZOOM_LEVELS.map(z => (
-            <button key={z.label} onClick={() => { setZoomLevel(z.label); setScrollOffset(0); }} style={{
-              padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-              fontSize: 12, fontWeight: 600,
-              background: z.label === zoomLevel ? '#3b82f6' : 'transparent',
-              color: z.label === zoomLevel ? '#fff' : '#94a3b8',
-              fontFamily: FONT,
-            }}>{z.label}</button>
+        <select value={TIME_RANGE_OPTIONS.some(t => t.label === zoomLevel) ? zoomLevel : '3 hours'} onChange={e => { setZoomLevel(e.target.value); setScrollOffset(0); }} style={{
+          padding: '5px 14px', paddingRight: 24, borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: FONT,
+          border: 'none', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none',
+          backgroundColor: TIME_RANGE_OPTIONS.some(t => t.label === zoomLevel) ? '#3b82f6' : 'transparent',
+          color: TIME_RANGE_OPTIONS.some(t => t.label === zoomLevel) ? '#fff' : '#94a3b8',
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='${TIME_RANGE_OPTIONS.some(t => t.label === zoomLevel) ? 'white' : '%2394a3b8'}'/%3E%3C/svg%3E")`,
+          backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
+        }}>
+          {TIME_RANGE_OPTIONS.map(z => (
+            <option key={z.label} value={z.label} style={{ background: '#1e293b', color: '#fff' }}>{z.label}</option>
           ))}
-        </div>
+        </select>
+        {ZOOM_LEVELS.filter(z => !TIME_RANGE_OPTIONS.includes(z)).map(z => (
+          <button key={z.label} onClick={() => { setZoomLevel(z.label); setScrollOffset(0); }} style={{
+            padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+            fontSize: 12, fontWeight: 600,
+            background: z.label === zoomLevel ? '#3b82f6' : 'transparent',
+            color: z.label === zoomLevel ? '#fff' : '#94a3b8',
+            fontFamily: FONT,
+          }}>{z.label}</button>
+        ))}
         {zoomConfig && zoomConfig.days > 0 && (
           <div style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
             <button onClick={() => setScrollOffset(s => s - 1)} style={navBtnStyle}>← {act('prev', 'Prev')}</button>
@@ -3968,6 +4061,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   selectedTasks, onToggleSelect, onSetSelectedTasks,
   onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected,
   onSetResourcePreference, resourcePreferenceOverrides,
+  priorityOverrides, onSetPriority, onRushSelected,
   onApiSchedule, actionLoading }: {
   tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
@@ -4003,6 +4097,9 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   onIncludeSelected?: (keys: string[]) => void;
   onSetResourcePreference?: () => void;
   resourcePreferenceOverrides?: Record<string, Record<string, string>>;
+  priorityOverrides?: Record<string, number>;
+  onSetPriority?: (key: string, priority: number) => void;
+  onRushSelected?: (keys: string[]) => void;
 }) {
   const { sortKey, sortDir, toggle, sorted } = useSort('key');
   const [activeTypeChips, setActiveTypeChips] = useState<Set<string>>(new Set(['PROCESS']));
@@ -4015,7 +4112,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
     const _productName = tk.outputProductKey
       ? (products.find((p: any) => p.key === tk.outputProductKey)?.name || tk.outputProductKey)
       : '';
-    const _priority = tk.typedAttributes?.find((a: any) => a.name === 'priority')?.value?.value || '';
+    const _priority = priorityOverrides?.[tk.key] ?? tk.priority ?? 100;
     const _type = tk.type || 'PROCESS';
     return {
       ...tk,
@@ -4026,7 +4123,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
       _priority,
       _type,
     };
-  }), [caseTasks, taskPins, taskExcludes, taskUnschedules, orderModes, products]);
+  }), [caseTasks, taskPins, taskExcludes, taskUnschedules, orderModes, products, priorityOverrides]);
 
   // Derive distinct types from data
   const distinctTypes = useMemo(() => {
@@ -4048,10 +4145,18 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
     else setActiveTypeChips(new Set(distinctTypes));
   }, [allTypesActive, distinctTypes]);
 
+  const [priorityFilter, setPriorityFilter] = useState('all');
+
   const typeFiltered = useMemo(() => {
     if (activeTypeChips.size === 0) return [];
-    return enriched.filter(tk => activeTypeChips.has(tk._type));
-  }, [enriched, activeTypeChips]);
+    let filtered = enriched.filter(tk => activeTypeChips.has(tk._type));
+    if (priorityFilter === 'rush') filtered = filtered.filter(tk => tk._priority === 1);
+    else if (priorityFilter === 'override') filtered = filtered.filter(tk => priorityOverrides?.[tk.key] !== undefined);
+    else if (priorityFilter === 'high') filtered = filtered.filter(tk => tk._priority >= 1 && tk._priority <= 25);
+    else if (priorityFilter === 'medium') filtered = filtered.filter(tk => tk._priority >= 26 && tk._priority <= 75);
+    else if (priorityFilter === 'low') filtered = filtered.filter(tk => tk._priority >= 76);
+    return filtered;
+  }, [enriched, activeTypeChips, priorityFilter, priorityOverrides]);
 
   const statusDeriver = useCallback((row: any) => row._status, []);
   const filter = useFilter(typeFiltered, { statusDeriver });
@@ -4231,6 +4336,20 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
             })}
           </>
         )}
+        <div style={{ width: 1, height: 20, background: C.border }} />
+        <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} style={{
+          padding: '4px 8px', borderRadius: 6, fontSize: 12, fontFamily: FONT,
+          border: `1px solid ${priorityFilter !== 'all' ? C.purple : C.border}`,
+          background: priorityFilter !== 'all' ? C.purple + '12' : C.surface2,
+          color: priorityFilter !== 'all' ? C.purple : C.text, cursor: 'pointer',
+        }}>
+          <option value="all">All Priorities</option>
+          <option value="rush">Rush Only</option>
+          <option value="override">Has Override</option>
+          <option value="high">High (1-25)</option>
+          <option value="medium">Medium (26-75)</option>
+          <option value="low">Low (76-100)</option>
+        </select>
         <span style={{ marginLeft: 'auto', fontSize: 12, color: C.textDim }}>{rows.length} results</span>
       </div>
       <ActiveFilters filter={filter} />
@@ -4330,6 +4449,11 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
             {onSetResourcePreference && (
               <button style={{ ...btnStyle, color: C.purple }} onClick={() => onSetResourcePreference()}>
                 {'\uD83D\uDD00'} Set Resource Pref
+              </button>
+            )}
+            {onRushSelected && (
+              <button style={{ ...btnStyle, color: C.red }} onClick={() => onRushSelected(selArr.map((t: any) => t.key))}>
+                {'\u26A1'} Rush {selArr.length}
               </button>
             )}
             <div style={{ flex: 1 }} />
@@ -4443,7 +4567,22 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                   <td style={cellStyle}>{fmtDate(tk.scheduledStart)}</td>
                   <td style={cellStyle}>{fmtDate(tk.scheduledEnd)}</td>
                   <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtDuration(tk.durationSeconds)}</td>
-                  <td style={cellStyle}>{tk._priority || '—'}</td>
+                  <td style={cellStyle} onClick={e => e.stopPropagation()}>
+                    <input type="number" min={1} max={100} value={tk._priority}
+                      onChange={e => {
+                        const v = Math.max(1, Math.min(100, parseInt(e.target.value) || 100));
+                        onSetPriority?.(tk.key, v);
+                      }}
+                      style={{
+                        width: 48, padding: '2px 4px', fontSize: 12, fontFamily: FONT,
+                        border: `1px solid ${priorityOverrides?.[tk.key] !== undefined ? C.purple : C.border}`,
+                        borderRadius: 4,
+                        background: priorityOverrides?.[tk.key] !== undefined ? C.purple + '08' : 'transparent',
+                        color: priorityOverrides?.[tk.key] !== undefined ? C.purple : C.text,
+                        fontWeight: priorityOverrides?.[tk.key] !== undefined ? 700 : 400,
+                        textAlign: 'center',
+                      }} />
+                  </td>
                   <td style={cellStyle}>{tk._type}</td>
                   {showAt(experienceLevel, 'intermediate') && <td style={{ ...cellStyle, textAlign: 'right' }}>
                     {tk.score != null ? tk.score.toFixed(2) : '—'}
@@ -4461,6 +4600,9 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                     )}
                     {resourcePreferenceOverrides?.[tk.key] && Object.keys(resourcePreferenceOverrides[tk.key]).length > 0 && (
                       <span style={{ fontSize: 10, color: C.purple, fontWeight: 600, marginLeft: 4, padding: '1px 5px', borderRadius: 3, border: `1px solid ${C.purple}33` }}>{'\uD83D\uDD00'} REDIRECT</span>
+                    )}
+                    {(priorityOverrides?.[tk.key] ?? tk.priority) === 1 && (
+                      <span style={{ fontSize: 10, color: C.red, fontWeight: 600, marginLeft: 4, padding: '1px 5px', borderRadius: 3, border: `1px solid ${C.red}33` }}>{'\u26A1'} RUSH</span>
                     )}
                   </td>
                   {hasActions && (
@@ -5250,7 +5392,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   caseFilter, onClearCaseFilter, onNavigateToOrders,
   selectedTasks, onToggleSelect, onSetSelectedTasks,
   onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected,
-  onSetResourcePreference, onSetResourcePrefForTask, resourcePreferenceOverrides }: {
+  onSetResourcePreference, onSetResourcePrefForTask, resourcePreferenceOverrides,
+  priorityOverrides, onSetPriority, onRushSelected }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
@@ -5288,10 +5431,13 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   onSetResourcePreference?: () => void;
   onSetResourcePrefForTask?: (taskKey: string) => void;
   resourcePreferenceOverrides?: Record<string, Record<string, string>>;
+  priorityOverrides?: Record<string, number>;
+  onSetPriority?: (key: string, priority: number) => void;
+  onRushSelected?: (keys: string[]) => void;
 }) {
   const tabNames = [`Gantt by ${t('resource', 'Resource')}`, `Gantt by ${t('order', 'Order')}`, t('tasks', 'Task List')];
   const [subIdx, setSubIdx] = useState(0);
-  const [zoomLevel, setZoomLevel] = useState('Day');
+  const [zoomLevel, setZoomLevel] = useState('3 hours');
   const [scrollOffset, setScrollOffset] = useState(0);
   const [resourceFilter, setResourceFilter] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<{ after?: string; before?: string }>({});
@@ -5362,6 +5508,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             onPinSelected={onPinSelected} onUnpinSelected={onUnpinSelected}
             onExcludeSelected={onExcludeSelected} onIncludeSelected={onIncludeSelected}
             onSetResourcePreference={onSetResourcePreference} resourcePreferenceOverrides={resourcePreferenceOverrides}
+            priorityOverrides={priorityOverrides} onSetPriority={onSetPriority} onRushSelected={onRushSelected}
             onApiSchedule={onApiSchedule} actionLoading={actionLoading} />
         </Card>
       )}
@@ -6115,6 +6262,8 @@ export default function App() {
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [resourcePreferenceOverrides, setResourcePreferenceOverrides] = useState<Record<string, Record<string, string>>>({});
   const [showResourcePrefDialog, setShowResourcePrefDialog] = useState(false);
+  const [priorityOverrides, setPriorityOverrides] = useState<Record<string, number>>({});
+  const [windowOverrides, setWindowOverrides] = useState<Record<string, { startW?: string; endW?: string }>>({});
   // Immediate action state
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -6242,6 +6391,8 @@ export default function App() {
       if (Object.keys(resourceModeOverrides).length > 0) body.resourceModes = resourceModeOverrides;
       if (Object.keys(materialModeOverrides).length > 0) body.materialModes = materialModeOverrides;
       if (Object.keys(resourcePreferenceOverrides).length > 0) body.resourcePreferenceOverrides = resourcePreferenceOverrides;
+      if (Object.keys(priorityOverrides).length > 0) body.priorityOverrides = priorityOverrides;
+      if (Object.keys(windowOverrides).length > 0) body.windowOverrides = windowOverrides;
 
       body.strategy = solverStrategy;
       body.detailLevel = experienceLevel;
@@ -6267,6 +6418,8 @@ export default function App() {
       setMaterialModeOverrides({});
       setResourceModeOverrides({});
       setResourcePreferenceOverrides({});
+      setPriorityOverrides({});
+      setWindowOverrides({});
       setSelectedTasks(new Set());
 
       if (result.colors) setColors(result.colors);
@@ -6280,7 +6433,7 @@ export default function App() {
     } finally {
       setSolving(false);
     }
-  }, [orderModes, taskPins, taskExcludes, taskUnschedules, materialModeOverrides, resourceModeOverrides, resourcePreferenceOverrides, solverStrategy, experienceLevel, solveResult]);
+  }, [orderModes, taskPins, taskExcludes, taskUnschedules, materialModeOverrides, resourceModeOverrides, resourcePreferenceOverrides, priorityOverrides, windowOverrides, solverStrategy, experienceLevel, solveResult]);
 
   const handleSolveCancel = useCallback(() => {
     setShowSolvePreview(false);
@@ -6381,6 +6534,8 @@ export default function App() {
 
       // Clear all overrides — server state is now truth
       setResourcePreferenceOverrides({});
+      setPriorityOverrides({});
+      setWindowOverrides({});
       setTaskUnschedules(new Set());
       setTaskPins({});
       setTaskExcludes({});
@@ -6909,6 +7064,10 @@ export default function App() {
               if (mm > 0) parts.push(`${mm} material mode${mm > 1 ? 's' : ''}`);
               const rm = Object.keys(resourceModeOverrides).length;
               if (rm > 0) parts.push(`${rm} resource mode${rm > 1 ? 's' : ''}`);
+              const po = Object.keys(priorityOverrides).length;
+              if (po > 0) parts.push(`${po} priority override${po > 1 ? 's' : ''}`);
+              const wo = Object.keys(windowOverrides).length;
+              if (wo > 0) parts.push(`${wo} window override${wo > 1 ? 's' : ''}`);
               return parts.length > 0 ? ` · ${parts.join(' · ')}` : '';
             })()}
           </span>
@@ -6921,6 +7080,8 @@ export default function App() {
                 setTaskUnschedules(new Set());
                 setMaterialModeOverrides({});
                 setResourceModeOverrides({});
+                setPriorityOverrides({});
+                setWindowOverrides({});
                 setSolveStale(false);
               }}
               style={{
@@ -7036,7 +7197,22 @@ export default function App() {
               setSelectedTasks(new Set([taskKey]));
               setShowResourcePrefDialog(true);
             }}
-            resourcePreferenceOverrides={resourcePreferenceOverrides} />
+            resourcePreferenceOverrides={resourcePreferenceOverrides}
+            priorityOverrides={priorityOverrides}
+            onSetPriority={(key, pri) => {
+              setPriorityOverrides(prev => ({ ...prev, [key]: pri }));
+              setSolveStale(true);
+            }}
+            onRushSelected={(keys) => {
+              setPriorityOverrides(prev => {
+                const next = { ...prev };
+                keys.forEach(k => { next[k] = 1; });
+                return next;
+              });
+              setSelectedTasks(new Set());
+              setSolveStale(true);
+              showToast(`${keys.length} task(s) set to RUSH priority`);
+            }} />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} tasks={tasks}
           orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}
@@ -7075,6 +7251,8 @@ export default function App() {
                 setSolveResult(freshState);
                 setSolveStale(false);
                 setResourcePreferenceOverrides({});
+                setPriorityOverrides({});
+                setWindowOverrides({});
                 setTaskUnschedules(new Set());
                 setTaskPins({});
                 setTaskExcludes({});
@@ -7121,6 +7299,8 @@ export default function App() {
                 setSolveResult(result);
                 setSolveStale(false);
                 setResourcePreferenceOverrides({});
+                setPriorityOverrides({});
+                setWindowOverrides({});
                 setTaskUnschedules(new Set());
                 setTaskPins({});
                 setTaskExcludes({});
@@ -7229,6 +7409,16 @@ export default function App() {
             setSolveStale(true);
           }}
           onClearResourceOverrides={handleClearResourceOverrides}
+          windowOverrides={windowOverrides}
+          onSetWindowOverride={(key, win) => {
+            setWindowOverrides(prev => ({ ...prev, [key]: win }));
+            setSolveStale(true);
+          }}
+          priorityOverrides={priorityOverrides}
+          onSetPriority={(key, pri) => {
+            setPriorityOverrides(prev => ({ ...prev, [key]: pri }));
+            setSolveStale(true);
+          }}
           onApiSchedule={handleApiSchedule}
           actionLoading={actionLoading}
         />

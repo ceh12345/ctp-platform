@@ -198,6 +198,10 @@ export class CTPTask extends CTPKeyEntity implements ITask {
   // Manual priority override (0 = no override)
   public manualPriority: number = 0;
 
+  // Planner-facing priority (1 = highest, 100 = lowest)
+  public priority: number = 100;
+  public originalPriority: number = 100;  // snapshot at hydration time
+
   public resetScore() {
     this.score = Number.MAX_VALUE;
     this.feasible = null;
@@ -282,6 +286,8 @@ export class CTPTask extends CTPKeyEntity implements ITask {
     this.batchRuleKey = null;
     this.batchQty = 1;
     this.manualPriority = 0;
+    this.priority = 100;
+    this.originalPriority = 100;
   }
 }
 
