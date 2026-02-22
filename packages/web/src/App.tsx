@@ -3670,7 +3670,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   onApiUnschedule, onApiPin, onApiBulkUnschedule, onApiBulkPin,
   experienceLevel = 'novice',
   onWhereTo, whereToTaskKey, caseFilter, onClearCaseFilter, onNavigateToOrders,
-  resourceFilter, timeFilter, onResourceFilterChange,
+  resourceFilter, timeFilter, onResourceFilterChange, onTimeFilterChange,
   selectedTasks, onToggleSelect, onSetSelectedTasks,
   onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected }: {
   tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void;
@@ -3692,6 +3692,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   resourceFilter?: string | null;
   timeFilter?: { after?: string; before?: string };
   onResourceFilterChange?: (key: string | null) => void;
+  onTimeFilterChange?: (f: { after?: string; before?: string }) => void;
   selectedTasks?: Set<string>;
   onToggleSelect?: (key: string) => void;
   onSetSelectedTasks?: (s: Set<string>) => void;
@@ -3754,6 +3755,24 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
 
   const statusDeriver = useCallback((row: any) => row._status, []);
   const filter = useFilter(typeFiltered, { statusDeriver });
+
+  // Time filter reference points (relative to schedule data, not browser clock)
+  const scheduledForTz = useMemo(() => tasks.filter((tk: any) => tk.scheduledStart), [tasks]);
+  const { offsetMs: tzOff } = scheduledForTz.length > 0 ? detectGanttTz(scheduledForTz) : { offsetMs: 0 };
+  const schedStart = useMemo(() => {
+    if (scheduledForTz.length === 0) return Date.now();
+    return Math.min(...scheduledForTz.map((tk: any) => new Date(tk.scheduledStart).getTime()));
+  }, [scheduledForTz]);
+  const snapMidnightMs = (ms: number) => {
+    const inTz = new Date(ms + tzOff); inTz.setUTCHours(0, 0, 0, 0); return inTz.getTime() - tzOff;
+  };
+  const fmtPreset = (iso: string) => new Date(iso).toLocaleString(undefined, {
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+  const presetBtnStyle: CSSProperties = {
+    padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+    fontFamily: FONT, border: `1px solid ${C.border}`, background: C.surface2, color: C.textMuted,
+  };
 
   // Sync resourceFilter chip ↔ _resource column dropdown (ref prevents loop)
   const colFilterChangedRef = useRef(false);
@@ -3874,6 +3893,27 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
             Filtered: {caseFilterName}
             <span onClick={onClearCaseFilter} style={{ cursor: 'pointer', opacity: 0.7, fontSize: 14 }} title="Clear filter">&times;</span>
           </span>
+        </div>
+      )}
+      {/* Time filter — presets + active chips, anchored directly above this table */}
+      {onTimeFilterChange && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button style={presetBtnStyle} onClick={() => onTimeFilterChange({ after: new Date(snapMidnightMs(schedStart)).toISOString() })}>Schedule Start</button>
+            <button style={presetBtnStyle} onClick={() => onTimeFilterChange({ after: new Date(schedStart).toISOString() })}>Now →</button>
+            <button style={presetBtnStyle} onClick={() => onTimeFilterChange({ after: new Date(schedStart).toISOString(), before: new Date(schedStart + 4 * 3600_000).toISOString() })}>Next 4h</button>
+            <button style={presetBtnStyle} onClick={() => { const d = snapMidnightMs(schedStart); onTimeFilterChange({ after: new Date(d).toISOString(), before: new Date(d + 86_400_000).toISOString() }); }}>Today</button>
+            <button style={presetBtnStyle} onClick={() => { const d = snapMidnightMs(schedStart) + 86_400_000; onTimeFilterChange({ after: new Date(d).toISOString(), before: new Date(d + 86_400_000).toISOString() }); }}>Tomorrow</button>
+          </div>
+          {timeFilter?.after && (
+            <FilterChip label={`After: ${fmtPreset(timeFilter.after)}`} onClear={() => onTimeFilterChange({ ...timeFilter, after: undefined })} />
+          )}
+          {timeFilter?.before && (
+            <FilterChip label={`Before: ${fmtPreset(timeFilter.before)}`} onClear={() => onTimeFilterChange({ ...timeFilter, before: undefined })} />
+          )}
+          {(timeFilter?.after || timeFilter?.before) && (
+            <button onClick={() => onTimeFilterChange({})} style={{ fontSize: 11, color: C.textMuted, background: 'none', border: 'none', cursor: 'pointer', fontFamily: FONT }}>Clear</button>
+          )}
         </div>
       )}
       <FilterBar filter={filter} statusOptions={statusOptions} />
@@ -4931,87 +4971,24 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   const [resourceFilter, setResourceFilter] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<{ after?: string; before?: string }>({});
 
-  // Compute data timezone offset and schedule reference points
-  const scheduledForTz = useMemo(() => tasks.filter((tk: any) => tk.scheduledStart), [tasks]);
-  const { offsetMs: tzOff } = scheduledForTz.length > 0 ? detectGanttTz(scheduledForTz) : { offsetMs: 0 };
-  // Earliest scheduled task start — anchor for all time presets
-  const schedStart = useMemo(() => {
-    if (scheduledForTz.length === 0) return Date.now();
-    return Math.min(...scheduledForTz.map((tk: any) => new Date(tk.scheduledStart).getTime()));
-  }, [scheduledForTz]);
-  // Snap any ms timestamp to midnight in data timezone
-  const snapMidnightMs = (ms: number) => {
-    const inTz = new Date(ms + tzOff);
-    inTz.setUTCHours(0, 0, 0, 0);
-    return inTz.getTime() - tzOff;
-  };
-
   const resourceName = resourceFilter
     ? (resources.find((r: any) => r.resourceKey === resourceFilter)?.resourceName || resourceFilter)
     : null;
-  const fmtTime = (iso: string) => new Date(iso).toLocaleString(undefined, {
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
-
-  const presetStyle: CSSProperties = {
-    padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-    fontFamily: FONT, border: `1px solid ${C.border}`, background: C.surface2, color: C.textMuted,
-  };
 
   // Force Task List when case filter is active
   const effectiveIdx = caseFilter ? 2 : subIdx;
 
-  // Resource chip: always visible (set by clicking Gantt, clear from anywhere)
+  // Resource chip: always visible above all sub-tabs
   const resourceChipBar = resourceName ? (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
       <FilterChip label={`Resource: ${resourceName}`} onClear={() => setResourceFilter(null)} />
     </div>
   ) : null;
 
-  // Time presets + chips: only on Task List sub-tab
-  const timeFilterBar = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-      <div style={{ display: 'flex', gap: 4 }}>
-        <button style={presetStyle} onClick={() => {
-          setTimeFilter({ after: new Date(snapMidnightMs(schedStart)).toISOString() });
-        }}>Schedule Start</button>
-        <button style={presetStyle} onClick={() => {
-          setTimeFilter({ after: new Date(schedStart).toISOString() });
-        }}>Now →</button>
-        <button style={presetStyle} onClick={() => {
-          setTimeFilter({
-            after: new Date(schedStart).toISOString(),
-            before: new Date(schedStart + 4 * 3600_000).toISOString(),
-          });
-        }}>Next 4h</button>
-        <button style={presetStyle} onClick={() => {
-          const dayStartMs = snapMidnightMs(schedStart);
-          setTimeFilter({ after: new Date(dayStartMs).toISOString(), before: new Date(dayStartMs + 86_400_000).toISOString() });
-        }}>Today</button>
-        <button style={presetStyle} onClick={() => {
-          const day2StartMs = snapMidnightMs(schedStart) + 86_400_000;
-          setTimeFilter({ after: new Date(day2StartMs).toISOString(), before: new Date(day2StartMs + 86_400_000).toISOString() });
-        }}>Tomorrow</button>
-      </div>
-      {timeFilter.after && (
-        <FilterChip label={`After: ${fmtTime(timeFilter.after)}`} onClear={() => setTimeFilter(prev => ({ ...prev, after: undefined }))} />
-      )}
-      {timeFilter.before && (
-        <FilterChip label={`Before: ${fmtTime(timeFilter.before)}`} onClear={() => setTimeFilter(prev => ({ ...prev, before: undefined }))} />
-      )}
-      {(timeFilter.after || timeFilter.before) && (
-        <button onClick={() => setTimeFilter({})} style={{ fontSize: 11, color: C.textMuted, background: 'none', border: 'none', cursor: 'pointer', fontFamily: FONT }}>
-          Clear
-        </button>
-      )}
-    </div>
-  );
-
   return (
     <div>
       <SubTabs tabs={tabNames} active={tabNames[effectiveIdx]} onChange={(s) => { setSubIdx(tabNames.indexOf(s)); if (caseFilter) onClearCaseFilter?.(); }} />
       {resourceChipBar}
-      {effectiveIdx === 2 && timeFilterBar}
       {effectiveIdx === 0 ? (
         <Card>
           <GanttChart tasks={tasks} resources={resources} products={products} colors={colors}
@@ -5063,6 +5040,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             onNavigateToOrders={onNavigateToOrders}
             resourceFilter={resourceFilter} timeFilter={timeFilter}
             onResourceFilterChange={(key) => setResourceFilter(key)}
+            onTimeFilterChange={(f) => setTimeFilter(f)}
             selectedTasks={selectedTasks} onToggleSelect={onToggleSelect} onSetSelectedTasks={onSetSelectedTasks}
             onScheduleSelected={onScheduleSelected} onUnscheduleSelected={onUnscheduleSelected}
             onPinSelected={onPinSelected} onUnpinSelected={onUnpinSelected}
