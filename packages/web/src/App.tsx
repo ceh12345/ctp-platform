@@ -3670,7 +3670,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   onApiUnschedule, onApiPin, onApiBulkUnschedule, onApiBulkPin,
   experienceLevel = 'novice',
   onWhereTo, whereToTaskKey, caseFilter, onClearCaseFilter, onNavigateToOrders,
-  resourceFilter, timeFilter,
+  resourceFilter, timeFilter, onResourceFilterChange,
   selectedTasks, onToggleSelect, onSetSelectedTasks,
   onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected }: {
   tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void;
@@ -3691,6 +3691,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   onNavigateToOrders?: (orderKey: string) => void;
   resourceFilter?: string | null;
   timeFilter?: { after?: string; before?: string };
+  onResourceFilterChange?: (key: string | null) => void;
   selectedTasks?: Set<string>;
   onToggleSelect?: (key: string) => void;
   onSetSelectedTasks?: (s: Set<string>) => void;
@@ -3754,6 +3755,32 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   const statusDeriver = useCallback((row: any) => row._status, []);
   const filter = useFilter(typeFiltered, { statusDeriver });
 
+  // Sync resourceFilter chip ↔ _resource column dropdown (ref prevents loop)
+  const colFilterChangedRef = useRef(false);
+  useEffect(() => {
+    if (colFilterChangedRef.current) { colFilterChangedRef.current = false; return; }
+    filter.setColumnFilter('_resource', resourceFilter ? new Set([resourceFilter]) : new Set());
+  }, [resourceFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const colFilter = (key: string) => {
+    const base = {
+      column: key,
+      values: filter.distinctValues(key),
+      selected: filter.columnFilters[key] || new Set<string>(),
+    };
+    if (key === '_resource') {
+      return {
+        ...base,
+        onChange: (col: string, sel: Set<string>) => {
+          colFilterChangedRef.current = true;
+          filter.setColumnFilter(col, sel);
+          onResourceFilterChange?.(sel.size === 1 ? [...sel][0] : null);
+        },
+      };
+    }
+    return { ...base, onChange: filter.setColumnFilter };
+  };
+
   const scheduledCount = typeFiltered.filter(tk => tk._status === 'scheduled').length;
   const unscheduledCount = typeFiltered.filter(tk => tk._status === 'unscheduled').length;
   const pinnedCount = typeFiltered.filter(tk => tk._status === 'pinned').length;
@@ -3768,13 +3795,6 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
     { value: 'infeasible', label: t('infeasibleStatus', 'Infeasible'), color: C.red, count: infeasibleCount },
     { value: 'excluded', label: t('excludedStatus', 'Excluded'), color: C.textDim, count: excludedCount },
   ].filter(opt => opt.value === 'all' || opt.count > 0);
-
-  const colFilter = (key: string) => ({
-    column: key,
-    values: filter.distinctValues(key),
-    selected: filter.columnFilters[key] || new Set<string>(),
-    onChange: filter.setColumnFilter,
-  });
 
   const hasActions = !!(onPinTask || onExcludeTask || onUnscheduleTask);
   const safePins = taskPins || {};
@@ -5042,6 +5062,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             caseFilter={caseFilter} onClearCaseFilter={onClearCaseFilter}
             onNavigateToOrders={onNavigateToOrders}
             resourceFilter={resourceFilter} timeFilter={timeFilter}
+            onResourceFilterChange={(key) => setResourceFilter(key)}
             selectedTasks={selectedTasks} onToggleSelect={onToggleSelect} onSetSelectedTasks={onSetSelectedTasks}
             onScheduleSelected={onScheduleSelected} onUnscheduleSelected={onUnscheduleSelected}
             onPinSelected={onPinSelected} onUnpinSelected={onUnpinSelected}
