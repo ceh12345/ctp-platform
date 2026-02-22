@@ -5,7 +5,6 @@
 | Sprint | Name | Status | Notes |
 |--------|------|--------|-------|
 | Solver Prompt 1 | Top-N Ranked Contexts | READY | No dependencies, start anytime |
-| UI Sprint 1 | Select & Act | READY | Prompt written, start anytime |
 
 ## Done
 
@@ -14,14 +13,17 @@
 | Range Refactor | 44 snapshot + 466 existing | — |
 | Unschedule Integration | 14 new tests, 480 total engine | — |
 | API test suite | 87 tests passing | — |
+| UI Sprint 1 — Select & Act | Checkboxes, selection toolbar, unscheduled panel, visual indicators | 2026-02-21 |
+| UI Sprint 1.1 — Immediate Actions | Single-task and bulk unschedule/pin/schedule via API; toast; loading state; Unschedule Order context menu | 2026-02-21 |
+| UI Sprint 2 — Solve Selected | Covered by 1.1 bulk immediate actions (Schedule N, Unschedule N, Pin N from selection toolbar) | 2026-02-21 |
 
 ## Up Next
 
 | Sprint | Name | Blocked By |
 |--------|------|------------|
 | Solver Prompt 2 | Snapshot/Restore | Solver Prompt 1 |
-| UI Sprint 2 | Solve Selected | UI Sprint 1 |
-| UI Sprint 3 | Resource + Time Filter | UI Sprint 1 |
+| UI Sprint 3 | Resource + Time Filter | — |
+| UI Sprint 4 | Redirect Work | — |
 
 ## Backlog
 
@@ -29,35 +31,34 @@
 |--------|------|------------|
 | Solver Prompt 3 | Balanced Strategy | Solver Prompt 2 |
 | Solver Prompt 4 | Stress Tests | Solver Prompt 3 |
-| UI Sprint 4 | Redirect Work | UI Sprint 1, 2 |
-| UI Sprint 5 | Reprioritize | UI Sprint 1 |
-| UI Sprint 6 | What-If Mode | UI Sprints 1-5, Solver Prompt 2 |
-| UI Sprint 7 | Time Fence | UI Sprint 1 |
-| UI Sprint 8 | Task Swap | UI Sprint 1, 2, 4 |
+| UI Sprint 5 | Reprioritize | — |
+| UI Sprint 6 | What-If Mode | UI Sprints 3-5, Solver Prompt 2 |
+| UI Sprint 7 | Time Fence | — |
+| UI Sprint 8 | Task Swap | UI Sprint 4 |
 | UI Sprint 9 | Capacity Adjustment | UI Sprint 3, API work |
-| UI Sprint 10 | Task Operations | UI Sprint 1, 5, API work |
+| UI Sprint 10 | Task Operations | UI Sprint 5, API work |
 
 ## Dependency Map
 
 ```
 SOLVER TRACK                          UI TRACK
 ────────────                          ────────
-Prompt 1: Ranked Contexts             Sprint 1: Select & Act
-         │                                     │
-         ▼                                     ├──→ Sprint 2: Solve Selected
-Prompt 2: Snapshot/Restore ─────────┐  │       ├──→ Sprint 3: Resource + Time Filter
-         │                          │  │       ├──→ Sprint 5: Reprioritize
-         ▼                          │  │       └──→ Sprint 7: Time Fence
-Prompt 3: Balanced Strategy         │  │
-         │                          │  ├──→ Sprint 4: Redirect Work (needs 1+2)
-         ▼                          │  │
-Prompt 4: Stress Tests              │  ├──→ Sprint 8: Task Swap (needs 1+2+4)
-                                    │  │
-                                    └──┼──→ Sprint 6: What-If (needs 1-5 + Solver P2)
-                                       │
-                                       ├──→ Sprint 9: Capacity Adjustment (needs 3)
-                                       │
-                                       └──→ Sprint 10: Task Operations (needs 1+5)
+Prompt 1: Ranked Contexts             ✓ Sprint 1: Select & Act
+         │                            ✓ Sprint 1.1: Immediate Actions
+         ▼                            ✓ Sprint 2: Solve Selected (via 1.1)
+Prompt 2: Snapshot/Restore ───────┐           │
+         │                        │           ├──→ Sprint 3: Resource + Time Filter
+         ▼                        │           ├──→ Sprint 4: Redirect Work
+Prompt 3: Balanced Strategy       │           ├──→ Sprint 5: Reprioritize
+         │                        │           └──→ Sprint 7: Time Fence
+         ▼                        │
+Prompt 4: Stress Tests            │   ├──→ Sprint 8: Task Swap (needs 4)
+                                  │   │
+                                  └───┼──→ Sprint 6: What-If (needs 3-5 + Solver P2)
+                                      │
+                                      ├──→ Sprint 9: Capacity Adjustment (needs 3)
+                                      │
+                                      └──→ Sprint 10: Task Operations (needs 5)
 ```
 
 ## File Index

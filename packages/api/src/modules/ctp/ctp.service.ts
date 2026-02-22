@@ -243,7 +243,13 @@ export class CTPService {
       ?.map(tr => tr.scheduledResource)
       .filter(Boolean) as string[] || [];
 
-    const success = landscape.unscheduleTask(taskKey, resetScore);
+    // Use scheduler to also remove associated state change tasks (SETUP/TEARDOWN/changeover)
+    const scheduler = new CTPScheduler();
+    scheduler.initLandscape(
+      landscape.horizon, landscape.tasks, landscape.resources,
+      landscape.stateChanges, landscape.processes,
+    );
+    const success = scheduler.unscheduleTaskWithStateChanges(taskKey, resetScore);
 
     if (!success) {
       throw new HttpException(`Failed to unschedule task ${taskKey}`, HttpStatus.INTERNAL_SERVER_ERROR);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef, CSSProperties, ReactNode } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment, CSSProperties, ReactNode } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════
    CONSTANTS
@@ -90,6 +90,16 @@ function fmtDateShort(iso: string | null | undefined): string {
   });
 }
 
+function fmtTime(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const loc = _locale?.locale || 'en-US';
+  const tz = _locale?.timezone;
+  return new Date(iso).toLocaleTimeString(loc, {
+    hour: '2-digit', minute: '2-digit',
+    ...(tz ? { timeZone: tz } : {}),
+  });
+}
+
 function fmtDuration(seconds: number | null | undefined): string {
   if (!seconds) return '—';
   const h = Math.floor(seconds / 3600);
@@ -113,6 +123,18 @@ function fmtNum(v: number | null | undefined): string {
   if (v == null) return '—';
   const loc = _locale?.locale || 'en-US';
   return v.toLocaleString(loc);
+}
+
+/** Detect timezone offset from task ISO dates for Gantt axis labels */
+function detectGanttTz(tasks: any[]): { offsetMs: number; tz: string } {
+  const iso = tasks.find((tk: any) => tk.scheduledStart)?.scheduledStart || '';
+  const m = iso.match(/([+-])(\d{2}):(\d{2})$/);
+  if (!m) return { offsetMs: 0, tz: _locale?.timezone || 'UTC' };
+  const sign = m[1] === '-' ? -1 : 1;
+  const hrs = parseInt(m[2]), mins = parseInt(m[3]);
+  const offsetMs = sign * (hrs * 60 + mins) * 60000;
+  const tz = _locale?.timezone || (mins === 0 && hrs > 0 ? `Etc/GMT${sign < 0 ? '+' : '-'}${hrs}` : 'UTC');
+  return { offsetMs, tz };
 }
 
 function getTaskColor(task: any, colors: any): string {
@@ -1301,6 +1323,47 @@ function SolvePreview({ orders, tasks, materials, resources,
                   text={`${orderSummary.excluded} orders excluded (${orderSummary.excludedTasks} tasks — ${orderSummary.excludedOrderKeys.join(', ')})`} />
               )}
 
+              {/* Queued Actions */}
+              {(taskSummary.unschedule.length > 0 || taskSummary.pinned.length > 0 || taskSummary.excluded.length > 0) && (
+                <div style={{
+                  marginBottom: 16, padding: 12, borderRadius: 8,
+                  background: C.surface2, border: `1px solid ${C.border}`,
+                }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: C.textMuted, marginBottom: 8 }}>
+                    QUEUED ACTIONS
+                  </div>
+                  {taskSummary.unschedule.length > 0 && (
+                    <div style={{ fontSize: 13, color: C.red, marginBottom: 4 }}>
+                      {'\u2715'} Unschedule: {taskSummary.unschedule.map(k =>
+                        tasks.find((tt: any) => tt.key === k)?.name || k
+                      ).join(', ')}
+                    </div>
+                  )}
+                  {taskSummary.pinned.length > 0 && (
+                    <div style={{ fontSize: 13, color: C.accent, marginBottom: 4 }}>
+                      {'\uD83D\uDCCC'} Pin: {taskSummary.pinned.map(k =>
+                        tasks.find((tt: any) => tt.key === k)?.name || k
+                      ).join(', ')}
+                    </div>
+                  )}
+                  {taskSummary.excluded.length > 0 && (
+                    <div style={{ fontSize: 13, color: C.textDim }}>
+                      {'\u23F8'} Exclude: {taskSummary.excluded.map(k =>
+                        tasks.find((tt: any) => tt.key === k)?.name || k
+                      ).join(', ')}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: C.textDim, marginTop: 8, fontStyle: 'italic' }}>
+                    Solve will: {[
+                      taskSummary.unschedule.length > 0 && `unschedule ${taskSummary.unschedule.length}`,
+                      taskSummary.excluded.length > 0 && `exclude ${taskSummary.excluded.length}`,
+                      taskSummary.pinned.length > 0 && `pin ${taskSummary.pinned.length}`,
+                      `schedule ${taskSummary.toSolve} remaining`,
+                    ].filter(Boolean).join(' \u2192 ')}
+                  </div>
+                </div>
+              )}
+
               {/* Tasks section */}
               <SectionLabel label="Tasks" />
               {taskSummary.pinned.length > 0 && (
@@ -1828,6 +1891,7 @@ function SolveResultsDialog({ result, previousSnapshot, experienceLevel, onClose
 function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceClick,
   taskPins, taskExcludes, taskUnschedules, orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask, onCancelUnschedule,
+  onApiUnschedule, onApiPin,
   resourceModeOverrides, onResourceModeChange, experienceLevel = 'novice',
   whereToTaskKey, whereToOptions, onMoveTo, onNavigateToOrders, onTaskClick }: {
   task: any; tasks: any[]; products: any[]; colors: any;
@@ -1840,6 +1904,8 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   onExcludeTask?: (key: string, excluded: boolean) => void;
   onUnscheduleTask?: (key: string) => void;
   onCancelUnschedule?: (key: string) => void;
+  onApiUnschedule?: (key: string) => Promise<void>;
+  onApiPin?: (key: string, pinned: boolean) => Promise<void>;
   resourceModeOverrides?: Record<string, string>;
   onResourceModeChange?: (compoundKey: string, mode: string) => void;
   experienceLevel?: ExperienceLevel;
@@ -1854,7 +1920,7 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
     : null;
   const prodColor = colors ? getTaskColor(task, colors) : C.accent;
 
-  const isPinned = taskPins?.[task.key] || false;
+  const isPinned = taskPins?.[task.key] || task.pinned || false;
   const isExcluded = taskExcludes?.[task.key] || false;
   const willUnschedule = taskUnschedules?.has(task.key) || false;
 
@@ -1889,14 +1955,14 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
       </div>
 
       {/* Action buttons */}
-      {onPinTask && (
+      {(onApiPin || onPinTask) && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          <button onClick={() => onPinTask(task.key, !isPinned)} style={{
+          <button onClick={() => onApiPin ? onApiPin(task.key, !task.pinned) : onPinTask?.(task.key, !isPinned)} style={{
             ...actionBtnBase,
-            background: isPinned ? C.yellowDim : 'transparent',
-            border: `1px solid ${isPinned ? C.yellow : C.border}`,
-            color: isPinned ? C.yellow : C.textMuted,
-          }}>📌 {isPinned ? 'Pinned' : 'Pin'}</button>
+            background: (task.pinned || isPinned) ? C.yellowDim : 'transparent',
+            border: `1px solid ${(task.pinned || isPinned) ? C.yellow : C.border}`,
+            color: (task.pinned || isPinned) ? C.yellow : C.textMuted,
+          }}>📌 {(task.pinned || isPinned) ? 'Pinned' : 'Pin'}</button>
 
           <button onClick={() => onExcludeTask?.(task.key, !isExcluded)} style={{
             ...actionBtnBase,
@@ -1905,13 +1971,8 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
             color: isExcluded ? C.textDim : C.textMuted,
           }}>⏸ {isExcluded ? 'Excluded' : 'Exclude'}</button>
 
-          {willUnschedule ? (
-            <button onClick={() => onCancelUnschedule?.(task.key)} style={{
-              ...actionBtnBase,
-              background: C.redDim, border: `1px solid ${C.red}`, color: C.red,
-            }}>✕ Will unschedule (undo)</button>
-          ) : (
-            <button onClick={() => onUnscheduleTask?.(task.key)} style={{
+          {task.feasible && (
+            <button onClick={() => onApiUnschedule ? onApiUnschedule(task.key) : onUnscheduleTask?.(task.key)} style={{
               ...actionBtnBase,
               background: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted,
             }}>✕ Unschedule</button>
@@ -1949,9 +2010,20 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
                     {option.score.toFixed(1)}
                   </span>
                 </div>
-                <div style={{ fontSize: 10, color: C.textMuted, marginTop: 2 }}>
-                  {new Date(option.start).toLocaleString()} → {new Date(option.end).toLocaleString()}
-                </div>
+                {option.latestStart && option.start !== option.latestStart ? (
+                  <>
+                    <div style={{ fontSize: 10, color: C.textMuted, marginTop: 2 }}>
+                      Window: {fmtTime(option.start)} – {fmtTime(option.latestStart)}
+                    </div>
+                    <div style={{ fontSize: 10, color: C.accent, fontWeight: 600 }}>
+                      Suggested: {fmtTime(option.latestStart)} – {fmtTime(option.latestEnd)} ({fmtDuration(option.duration)})
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ fontSize: 10, color: C.textMuted, marginTop: 2 }}>
+                    {fmtTime(option.latestStart || option.start)} – {fmtTime(option.latestEnd || option.end)} ({fmtDuration(option.duration)})
+                  </div>
+                )}
               </div>
             );
           })}
@@ -2253,6 +2325,7 @@ const cellStyle: CSSProperties = {
 function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourceClick,
   taskPins, taskExcludes, taskUnschedules, orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask,
+  onApiUnschedule, onApiPin, onApiBulkUnschedule, actionLoading,
   onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
   whereToCurrentAssignment, onMoveTo, onCancelWhereTo,
   zoomLevel, setZoomLevel, scrollOffset, setScrollOffset }: {
@@ -2263,6 +2336,10 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   onPinTask?: (key: string, pinned: boolean) => void;
   onExcludeTask?: (key: string, excluded: boolean) => void;
   onUnscheduleTask?: (key: string) => void;
+  onApiUnschedule?: (key: string) => Promise<void>;
+  onApiPin?: (key: string, pinned: boolean) => Promise<void>;
+  onApiBulkUnschedule?: (keys: string[]) => Promise<void>;
+  actionLoading?: string | null;
   onWhereTo?: (key: string) => void;
   whereToTaskKey?: string | null;
   whereToOptions?: any[];
@@ -2300,6 +2377,13 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
     return <div style={{ color: C.textDim, padding: 20 }}>No {t('scheduledStatus', 'scheduled').toLowerCase()} {t('tasks', 'tasks')}</div>;
   }
 
+  // Detect timezone from task data for correct axis labels
+  const { offsetMs: _tzOff, tz: _ganttTz } = detectGanttTz(scheduled);
+  const _localH = (d: Date) => new Date(d.getTime() + _tzOff).getUTCHours();
+  const _localM = (d: Date) => new Date(d.getTime() + _tzOff).getUTCMinutes();
+  const _snapMidnight = (d: Date) => { const s = new Date(d.getTime() + _tzOff); s.setUTCHours(0, 0, 0, 0); return new Date(s.getTime() - _tzOff); };
+  const _snapEndOfDay = (d: Date) => { const s = new Date(d.getTime() + _tzOff); s.setUTCHours(23, 59, 59, 999); return new Date(s.getTime() - _tzOff); };
+
   const taskStarts = scheduled.map((t: any) => new Date(t.scheduledStart).getTime());
   const taskEnds = scheduled.map((t: any) => new Date(t.scheduledEnd).getTime());
   const dataStart = Math.min(...taskStarts);
@@ -2314,8 +2398,9 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
       // Sub-day zoom: snap to the hour of earliest task
       viewStart.setUTCMinutes(0, 0, 0);
     } else {
-      // Day+ zoom: snap to midnight
-      viewStart.setUTCHours(0, 0, 0, 0);
+      // Day+ zoom: snap to midnight in data timezone
+      const snapped = _snapMidnight(viewStart);
+      viewStart.setTime(snapped.getTime());
     }
     const stepMs = zoomConfig.days * 24 * 3600 * 1000;
     const scrolledStart = new Date(viewStart.getTime() + effectiveScroll * stepMs);
@@ -2325,10 +2410,8 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   } else {
     // Fit to data
     const bufferMs = 12 * 3600 * 1000;
-    const hStartDate = new Date(dataStart - bufferMs);
-    hStartDate.setUTCHours(0, 0, 0, 0);
-    const hEndDate = new Date(dataEnd + bufferMs);
-    hEndDate.setUTCHours(23, 59, 59, 999);
+    const hStartDate = _snapMidnight(new Date(dataStart - bufferMs));
+    const hEndDate = _snapEndOfDay(new Date(dataEnd + bufferMs));
     hStartMs = hStartDate.getTime();
     hEndMs = hEndDate.getTime();
   }
@@ -2352,12 +2435,12 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
     else if (nextSlot > mins) { h.setUTCMinutes(nextSlot); }
     else { h.setTime(h.getTime() + stepMin * 60000); h.setUTCSeconds(0, 0); }
     while (h.getTime() < hEndMs) {
-      const hr = h.getUTCHours();
-      const min = h.getUTCMinutes();
+      const hr = _localH(h);
+      const min = _localM(h);
       let label: string;
       if (zoomConfig.days < 1) {
         // 3 Hr view: full time on every tick
-        label = h.toLocaleTimeString(_locale?.locale || 'en-US', { hour: '2-digit', minute: '2-digit', timeZone: _locale?.timezone || 'UTC' });
+        label = h.toLocaleTimeString(_locale?.locale || 'en-US', { hour: '2-digit', minute: '2-digit', timeZone: _ganttTz });
       } else {
         // Day view: hour number only, am/pm at 6-hour marks
         const isPeriodMark = hr % 6 === 0 && min === 0;
@@ -2375,19 +2458,18 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   } else {
     // Daily labels
     const step = zoomConfig && zoomConfig.days >= 14 ? 2 : 1;
-    const d = new Date(hStartMs);
-    d.setUTCHours(0, 0, 0, 0);
-    d.setUTCDate(d.getUTCDate() + 1);
+    const d = _snapMidnight(new Date(hStartMs));
+    d.setTime(d.getTime() + 86400000); // advance to next local midnight
     let count = 0;
     while (d.getTime() < hEndMs) {
       if (count % step === 0) {
         axisLabels.push({
           date: new Date(d),
           pct: ((d.getTime() - hStartMs) / totalMs) * 100,
-          label: d.toLocaleDateString(_locale?.locale || 'en-US', { month: 'short', day: 'numeric', timeZone: _locale?.timezone || 'UTC' }),
+          label: d.toLocaleDateString(_locale?.locale || 'en-US', { month: 'short', day: 'numeric', timeZone: _ganttTz }),
         });
       }
-      d.setUTCDate(d.getUTCDate() + 1);
+      d.setTime(d.getTime() + 86400000);
       count++;
     }
   }
@@ -2580,7 +2662,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                     const right = toPct(t.scheduledEnd);
                     const w = Math.max(right - left, 0.3);
                     const barColor = colors ? getTaskColor(t, colors) : C.accent;
-                    const isPinned = taskPins?.[t.key];
+                    const isPinned = taskPins?.[t.key] || t.pinned;
                     const isExcluded = taskExcludes?.[t.key];
                     const willUnsched = taskUnschedules?.has(t.key);
                     return (
@@ -2601,16 +2683,25 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                           position: 'absolute', left: `${left}%`, width: `${w}%`,
                           top: 6, height: LANE_H - 12, borderRadius: 4,
                           background: barColor,
-                          opacity: isExcluded ? 0.3 : 0.85,
+                          opacity: actionLoading === t.key ? 0.45 : isExcluded ? 0.2 : 0.85,
                           cursor: 'pointer',
                           display: 'flex', alignItems: 'center', paddingLeft: 4,
                           overflow: 'hidden', fontSize: 10, color: '#fff', fontWeight: 500,
                           transition: 'opacity 0.15s',
                           border: willUnsched ? `2px dashed ${C.red}` : 'none',
+                          ...(isPinned && { boxShadow: `0 0 0 2px ${C.accent}` }),
+                          ...(isExcluded && { filter: 'grayscale(1)' }),
+                          ...(actionLoading === t.key && { animation: 'pulse 1s ease-in-out infinite' }),
                         }}
                       >
-                        {isPinned && <span style={{ marginRight: 2, fontSize: 9 }}>📌</span>}
-                        {w > 3 && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>}
+                        {willUnsched && (
+                          <div style={{
+                            position: 'absolute', inset: 0, borderRadius: 'inherit',
+                            background: `repeating-linear-gradient(-45deg, transparent, transparent 4px, ${C.red}22 4px, ${C.red}22 8px)`,
+                          }} />
+                        )}
+                        {isPinned && <span style={{ position: 'absolute', top: -6, right: -4, fontSize: 9, zIndex: 2 }}>📌</span>}
+                        {w > 3 && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'relative', zIndex: 1 }}>{t.name}</span>}
                       </div>
                     );
                   })}
@@ -2618,7 +2709,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                   {whereToTaskKey && whereToOptions && whereToOptions.length > 0 && !whereToLoading && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)', pointerEvents: 'none', zIndex: 5 }} />
                   )}
-                  {/* Ghost bars for this resource */}
+                  {/* Ghost bars for this resource — start window + suggested placement */}
                   {whereToTaskKey && whereToOptions && whereToOptions.length > 0 && !whereToLoading && (
                     whereToOptions
                       .filter(opt => {
@@ -2626,45 +2717,65 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                         return primary?.resourceKey === res.resourceKey;
                       })
                       .map(option => {
+                        const barOpacity = option.rank === 1 ? 1.0 : 0.5;
+                        const barBg = option.rank === 1 ? `${C.accent}25` : `${C.accent}12`;
+                        const barBorder = option.rank === 1 ? `2px solid ${C.accent}` : `1px dashed ${C.accent}66`;
+                        // Ghost bar: earliest start → earliest end (visible near current schedule)
                         const gLeft = toPct(option.start);
                         const gRight = toPct(option.end);
                         const gW = Math.max(gRight - gLeft, 0.3);
-                        const ghostColor = option.rank === 1 ? C.green : option.rank <= 3 ? C.accent : C.textDim;
+                        // Start window extends right if there's flexibility
+                        const hasWindow = option.latestStart && option.start !== option.latestStart;
+                        const winRight = hasWindow ? toPct(option.latestEnd || option.end) : gRight;
+                        const winW = winRight - gLeft;
+                        const showWindow = hasWindow && winW > 0.5;
+                        // Tooltip
+                        const taskName = tasks.find((tk: any) => tk.key === whereToTaskKey)?.name || whereToTaskKey;
+                        const resNames = option.resources?.map((r: any) => r.resourceName || r.resourceKey).join(', ') || '';
+                        const tooltipText = [
+                          `${taskName} — Option #${option.rank}`,
+                          `Start window: ${fmtTime(option.start)} – ${fmtTime(option.latestStart || option.start)}`,
+                          `Suggested: ${fmtTime(option.latestStart || option.start)} (latest, no idle time)`,
+                          `Duration: ${fmtDuration(option.duration)}`,
+                          `End: ${fmtTime(option.latestEnd || option.end)}`,
+                          `Resources: ${resNames}`,
+                          `Score: ${option.score.toFixed(2)}`,
+                        ].join('\n');
                         return (
-                          <div key={option.contextHash}
-                            onClick={(e) => { e.stopPropagation(); onMoveTo?.(whereToTaskKey!, option); }}
-                            style={{
-                              position: 'absolute', left: `${gLeft}%`, width: `${gW}%`,
-                              top: 2, height: LANE_H - 4, borderRadius: 6,
-                              background: `${ghostColor}30`, border: `2px dashed ${ghostColor}`,
-                              cursor: 'pointer', zIndex: 10,
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                              transition: 'background 0.15s, border-style 0.15s',
-                            }}
-                            onMouseEnter={e => {
-                              (e.currentTarget as HTMLElement).style.background = `${ghostColor}50`;
-                              (e.currentTarget as HTMLElement).style.borderStyle = 'solid';
-                            }}
-                            onMouseLeave={e => {
-                              (e.currentTarget as HTMLElement).style.background = `${ghostColor}30`;
-                              (e.currentTarget as HTMLElement).style.borderStyle = 'dashed';
-                            }}
-                          >
-                            <span style={{
-                              display: 'inline-flex', width: 20, height: 20, borderRadius: 10,
-                              alignItems: 'center', justifyContent: 'center',
-                              background: ghostColor, color: '#fff',
-                              fontSize: 10, fontWeight: 800, flexShrink: 0,
-                            }}>{option.rank}</span>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: ghostColor }}>
-                              {option.score.toFixed(1)}
-                            </span>
-                            {option.changeover && (
-                              <span style={{ fontSize: 9, color: C.yellow }} title={
-                                `Changeover: ${option.changeover.from} → ${option.changeover.to} (${Math.round(option.changeover.duration / 60)}min)`
-                              }>⚙</span>
+                          <Fragment key={option.contextHash}>
+                            {/* Start window — light background showing flexibility */}
+                            {showWindow && (
+                              <div style={{
+                                position: 'absolute', left: `${gLeft}%`, width: `${winW}%`,
+                                top: 2, height: LANE_H - 4, borderRadius: 4,
+                                background: `${C.accent}08`, border: `1px dashed ${C.accent}22`,
+                                pointerEvents: 'none', zIndex: 9,
+                              }} />
                             )}
-                          </div>
+                            {/* Ghost bar — solid suggested placement at latest start */}
+                            <div
+                              title={tooltipText}
+                              onClick={(e) => { e.stopPropagation(); onMoveTo?.(whereToTaskKey!, option); }}
+                              style={{
+                                position: 'absolute', left: `${gLeft}%`, width: `${gW}%`,
+                                top: 2, height: LANE_H - 4, borderRadius: 4,
+                                background: barBg, border: barBorder, opacity: barOpacity,
+                                cursor: 'pointer', zIndex: 10,
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '0 8px', gap: 4, overflow: 'hidden',
+                                transition: 'background 0.15s',
+                              }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${C.accent}40`; }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = barBg; }}
+                            >
+                              <span style={{ fontSize: 10, fontWeight: 600, color: C.accent, whiteSpace: 'nowrap' }}>
+                                {option.rank === 1 ? '★' : `#${option.rank}`} {fmtTime(option.start)}
+                              </span>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: C.accent, whiteSpace: 'nowrap' }}>
+                                Move Here
+                              </span>
+                            </div>
+                          </Fragment>
                         );
                       })
                   )}
@@ -2774,9 +2885,20 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                     {option.score.toFixed(1)}
                   </span>
                 </div>
-                <div style={{ fontSize: 10, color: C.textMuted, marginTop: 4 }}>
-                  {new Date(option.start).toLocaleString()} → {new Date(option.end).toLocaleString()}
-                </div>
+                {option.latestStart && option.start !== option.latestStart ? (
+                  <>
+                    <div style={{ fontSize: 10, color: C.textMuted, marginTop: 4 }}>
+                      Window: {fmtTime(option.start)} – {fmtTime(option.latestStart)}
+                    </div>
+                    <div style={{ fontSize: 10, color: C.accent, fontWeight: 600 }}>
+                      Suggested: {fmtTime(option.latestStart)} – {fmtTime(option.latestEnd)} ({fmtDuration(option.duration)})
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ fontSize: 10, color: C.textMuted, marginTop: 4 }}>
+                    {fmtTime(option.latestStart || option.start)} – {fmtTime(option.latestEnd || option.end)} ({fmtDuration(option.duration)})
+                  </div>
+                )}
                 {option.changeover && (
                   <div style={{ fontSize: 10, color: C.yellow, marginTop: 2 }}>
                     ⚙ Changeover: {option.changeover.from} → {option.changeover.to}
@@ -2838,19 +2960,19 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                 </button>
               );
             })()}
-            {onPinTask && (
-              <button onClick={() => {
-                const isPinned = taskPins?.[contextMenu.task.key] || false;
-                onPinTask(contextMenu.task.key, !isPinned);
+            {onApiPin && contextMenu.task.feasible && (
+              <button onClick={async () => {
+                const isPinned = contextMenu.task.pinned || false;
                 setContextMenu(null);
+                await onApiPin(contextMenu.task.key, !isPinned);
               }} style={{
                 width: '100%', padding: '7px 10px', background: 'none', border: 'none',
-                color: taskPins?.[contextMenu.task.key] ? C.yellow : C.text,
+                color: contextMenu.task.pinned ? C.yellow : C.text,
                 fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
                 borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
               }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-                📌 {taskPins?.[contextMenu.task.key] ? 'Unpin' : 'Pin'}
+                📌 {contextMenu.task.pinned ? 'Unpin' : 'Pin'}
               </button>
             )}
             {onExcludeTask && (
@@ -2868,19 +2990,37 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                 ⏸ {taskExcludes?.[contextMenu.task.key] ? 'Re-include' : 'Exclude'}
               </button>
             )}
-            {onUnscheduleTask && contextMenu.task.feasible && (
-              <button onClick={() => {
-                onUnscheduleTask(contextMenu.task.key);
+            {onApiUnschedule && contextMenu.task.feasible && (
+              <button onClick={async () => {
                 setContextMenu(null);
+                await onApiUnschedule(contextMenu.task.key);
               }} style={{
                 width: '100%', padding: '7px 10px', background: 'none', border: 'none',
                 color: C.red, fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
                 borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
               }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-                ✕ Unschedule
+                ✕ Unschedule Task
               </button>
             )}
+            {onApiBulkUnschedule && contextMenu.task.feasible && contextMenu.task.orderRef && (() => {
+              const orderTasks = tasks.filter((t: any) => t.orderRef === contextMenu.task.orderRef && t.feasible && t.scheduledStart);
+              if (orderTasks.length < 2) return null;
+              return (
+                <button onClick={async () => {
+                  const keys = orderTasks.map((t: any) => t.key);
+                  setContextMenu(null);
+                  await onApiBulkUnschedule(keys);
+                }} style={{
+                  width: '100%', padding: '7px 10px', background: 'none', border: 'none',
+                  color: C.red, fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
+                  borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
+                }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
+                   onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                  ✕ Unschedule Order ({orderTasks.length})
+                </button>
+              );
+            })()}
           </div>
         </>
       )}
@@ -2959,6 +3099,13 @@ function CaseGanttChart({ tasks, orders, products, colors, onTaskClick,
     return <div style={{ color: C.textDim, padding: 20, textAlign: 'center' }}>No tasks to display</div>;
   }
 
+  // Detect timezone from task data for correct axis labels
+  const { offsetMs: _tzOff, tz: _ganttTz } = detectGanttTz(scheduled);
+  const _localH = (d: Date) => new Date(d.getTime() + _tzOff).getUTCHours();
+  const _localM = (d: Date) => new Date(d.getTime() + _tzOff).getUTCMinutes();
+  const _snapMidnight = (d: Date) => { const s = new Date(d.getTime() + _tzOff); s.setUTCHours(0, 0, 0, 0); return new Date(s.getTime() - _tzOff); };
+  const _snapEndOfDay = (d: Date) => { const s = new Date(d.getTime() + _tzOff); s.setUTCHours(23, 59, 59, 999); return new Date(s.getTime() - _tzOff); };
+
   // Time range computation (same as GanttChart)
   const taskStarts = scheduled.map((tk: any) => new Date(tk.scheduledStart).getTime());
   const taskEnds = scheduled.map((tk: any) => new Date(tk.scheduledEnd).getTime());
@@ -2970,15 +3117,15 @@ function CaseGanttChart({ tasks, orders, products, colors, onTaskClick,
   if (zoomConfig && zoomConfig.days > 0) {
     const viewStart = new Date(dataStart);
     if (zoomConfig.days < 1) { viewStart.setUTCMinutes(0, 0, 0); }
-    else { viewStart.setUTCHours(0, 0, 0, 0); }
+    else { const snapped = _snapMidnight(viewStart); viewStart.setTime(snapped.getTime()); }
     const stepMs = zoomConfig.days * 24 * 3600 * 1000;
     const scrolledStart = new Date(viewStart.getTime() + scrollOffset * stepMs);
     hStartMs = scrolledStart.getTime();
     hEndMs = hStartMs + stepMs;
   } else {
     const bufferMs = 12 * 3600 * 1000;
-    const hStartDate = new Date(dataStart - bufferMs); hStartDate.setUTCHours(0, 0, 0, 0);
-    const hEndDate = new Date(dataEnd + bufferMs); hEndDate.setUTCHours(23, 59, 59, 999);
+    const hStartDate = _snapMidnight(new Date(dataStart - bufferMs));
+    const hEndDate = _snapEndOfDay(new Date(dataEnd + bufferMs));
     hStartMs = hStartDate.getTime();
     hEndMs = hEndDate.getTime();
   }
@@ -2997,10 +3144,10 @@ function CaseGanttChart({ tasks, orders, products, colors, onTaskClick,
     else if (nextSlot > mins) { h.setUTCMinutes(nextSlot); }
     else { h.setTime(h.getTime() + stepMin * 60000); h.setUTCSeconds(0, 0); }
     while (h.getTime() < hEndMs) {
-      const hr = h.getUTCHours(); const min = h.getUTCMinutes();
+      const hr = _localH(h); const min = _localM(h);
       let label: string;
       if (zoomConfig.days < 1) {
-        label = h.toLocaleTimeString(_locale?.locale || 'en-US', { hour: '2-digit', minute: '2-digit', timeZone: _locale?.timezone || 'UTC' });
+        label = h.toLocaleTimeString(_locale?.locale || 'en-US', { hour: '2-digit', minute: '2-digit', timeZone: _ganttTz });
       } else {
         const isPeriodMark = hr % 6 === 0 && min === 0;
         const period = hr < 12 ? 'am' : 'pm';
@@ -3012,16 +3159,17 @@ function CaseGanttChart({ tasks, orders, products, colors, onTaskClick,
     }
   } else {
     const step = zoomConfig && zoomConfig.days >= 14 ? 2 : 1;
-    const d = new Date(hStartMs); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() + 1);
+    const d = _snapMidnight(new Date(hStartMs));
+    d.setTime(d.getTime() + 86400000);
     let count = 0;
     while (d.getTime() < hEndMs) {
       if (count % step === 0) {
         axisLabels.push({
           pct: ((d.getTime() - hStartMs) / totalMs) * 100,
-          label: d.toLocaleDateString(_locale?.locale || 'en-US', { month: 'short', day: 'numeric', timeZone: _locale?.timezone || 'UTC' }),
+          label: d.toLocaleDateString(_locale?.locale || 'en-US', { month: 'short', day: 'numeric', timeZone: _ganttTz }),
         });
       }
-      d.setUTCDate(d.getUTCDate() + 1); count++;
+      d.setTime(d.getTime() + 86400000); count++;
     }
   }
 
@@ -3189,6 +3337,7 @@ function CaseGanttChart({ tasks, orders, products, colors, onTaskClick,
               const w = Math.max(right - left, 0.3);
               const barColor = colors ? getTaskColor(tk, colors) : C.accent;
               const isPinned = taskPins?.[tk.key];
+              const isExcluded = taskExcludes?.[tk.key];
               const willUnsched = taskUnschedules?.has(tk.key);
               return (
                 <div key={tk.key}
@@ -3199,13 +3348,21 @@ function CaseGanttChart({ tasks, orders, products, colors, onTaskClick,
                   style={{
                     position: 'absolute', left: `${left}%`, width: `${w}%`,
                     top: 6, height: CASE_LANE_H - 12, borderRadius: 4,
-                    background: barColor, opacity: 0.85, cursor: 'pointer',
+                    background: barColor, opacity: isExcluded ? 0.2 : 0.85, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', paddingLeft: 4,
                     overflow: 'hidden', fontSize: 10, color: '#fff', fontWeight: 500,
                     border: willUnsched ? `2px dashed ${C.red}` : 'none',
+                    ...(isPinned && { boxShadow: `0 0 0 2px ${C.accent}` }),
+                    ...(isExcluded && { filter: 'grayscale(1)' }),
                   }}>
-                  {isPinned && <span style={{ marginRight: 2, fontSize: 9 }}>📌</span>}
-                  {w > 3 && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tk.name}</span>}
+                  {willUnsched && (
+                    <div style={{
+                      position: 'absolute', inset: 0, borderRadius: 'inherit',
+                      background: `repeating-linear-gradient(-45deg, transparent, transparent 4px, ${C.red}22 4px, ${C.red}22 8px)`,
+                    }} />
+                  )}
+                  {isPinned && <span style={{ position: 'absolute', top: -6, right: -4, fontSize: 9, zIndex: 2 }}>📌</span>}
+                  {w > 3 && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'relative', zIndex: 1 }}>{tk.name}</span>}
                 </div>
               );
             })}
@@ -3356,17 +3513,18 @@ function BulkBtn({ icon, label, color, onClick }: {
   );
 }
 
-function TaskRowActions({ task, taskPins, taskExcludes, orderModes,
+function TaskRowActions({ task, taskPins, taskExcludes, taskUnschedules, orderModes,
   onPin, onExclude, onUnschedule, onWhereTo, whereToTaskKey }: {
   task: any;
   taskPins: Record<string, boolean>; taskExcludes: Record<string, boolean>;
+  taskUnschedules?: Set<string>;
   orderModes: Record<string, string>;
   onPin: (taskKey: string) => void; onExclude: (taskKey: string) => void;
   onUnschedule: (taskKey: string) => void;
   onWhereTo?: (taskKey: string, source?: 'gantt' | 'table') => void;
   whereToTaskKey?: string | null;
 }) {
-  const isPinned = taskPins[task.key] || false;
+  const isPinned = taskPins[task.key] || task.pinned || false;
   const isExcluded = taskExcludes[task.key] || false;
   const isScheduled = task.feasible && task.scheduledStart;
   const orderMode = orderModes[task.orderRef] || 'INCLUDE';
@@ -3397,7 +3555,9 @@ function TaskRowActions({ task, taskPins, taskExcludes, orderModes,
         title={isExcluded ? 'Include in solve' : 'Exclude from solve'}
         active={isExcluded} activeColor={C.textDim} onClick={() => onExclude(task.key)} />
       {isScheduled && !isPinned && (
-        <IconBtn icon="✕" title="Unschedule" activeColor={C.red}
+        <IconBtn icon={taskUnschedules?.has(task.key) ? '\u21A9' : '\u2715'}
+          title={taskUnschedules?.has(task.key) ? 'Cancel Unschedule' : 'Unschedule'}
+          active={taskUnschedules?.has(task.key) || false} activeColor={C.red}
           onClick={() => onUnschedule(task.key)} />
       )}
     </div>
@@ -3418,7 +3578,7 @@ function TaskBulkActions({ filteredTasks, taskPins, taskExcludes, orderModes,
     return orderMode !== 'LOCKED';
   });
   const scheduled = actionable.filter(t => t.feasible && t.scheduledStart);
-  const pinnedCount = actionable.filter(t => taskPins[t.key]).length;
+  const pinnedCount = actionable.filter(t => taskPins[t.key] || t.pinned).length;
   const excludedCount = actionable.filter(t => taskExcludes[t.key]).length;
   const scheduledKeys = scheduled.map(t => t.key);
   const actionableKeys = actionable.map(t => t.key);
@@ -3463,20 +3623,37 @@ function TaskBulkActions({ filteredTasks, taskPins, taskExcludes, orderModes,
    ═══════════════════════════════════════════════════════════════ */
 
 function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExcludes, taskUnschedules, orderModes,
-  onPinTask, onExcludeTask, onUnscheduleTask, experienceLevel = 'novice',
-  onWhereTo, whereToTaskKey, caseFilter, onClearCaseFilter, onNavigateToOrders }: {
+  onPinTask, onExcludeTask, onUnscheduleTask,
+  onApiUnschedule, onApiPin, onApiBulkUnschedule, onApiBulkPin,
+  experienceLevel = 'novice',
+  onWhereTo, whereToTaskKey, caseFilter, onClearCaseFilter, onNavigateToOrders,
+  selectedTasks, onToggleSelect, onSetSelectedTasks,
+  onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected }: {
   tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
   orderModes?: Record<string, string>;
   onPinTask?: (key: string, pinned: boolean) => void;
   onExcludeTask?: (key: string, excluded: boolean) => void;
   onUnscheduleTask?: (key: string) => void;
+  onApiUnschedule?: (key: string) => Promise<void>;
+  onApiPin?: (key: string, pinned: boolean) => Promise<void>;
+  onApiBulkUnschedule?: (keys: string[]) => Promise<void>;
+  onApiBulkPin?: (keys: string[], pinned: boolean) => Promise<void>;
   experienceLevel?: ExperienceLevel;
   onWhereTo?: (key: string, source?: 'gantt' | 'table') => void;
   whereToTaskKey?: string | null;
   caseFilter?: string | null;
   onClearCaseFilter?: () => void;
   onNavigateToOrders?: (orderKey: string) => void;
+  selectedTasks?: Set<string>;
+  onToggleSelect?: (key: string) => void;
+  onSetSelectedTasks?: (s: Set<string>) => void;
+  onScheduleSelected?: (keys: string[]) => void;
+  onUnscheduleSelected?: (keys: string[]) => void;
+  onPinSelected?: (keys: string[]) => void;
+  onUnpinSelected?: (keys: string[]) => void;
+  onExcludeSelected?: (keys: string[]) => void;
+  onIncludeSelected?: (keys: string[]) => void;
 }) {
   const { sortKey, sortDir, toggle, sorted } = useSort('key');
   const [activeTypeChips, setActiveTypeChips] = useState<Set<string>>(new Set(['PROCESS']));
@@ -3560,8 +3737,9 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
 
   const handlePin = useCallback((key: string) => {
     const pinned = !safePins[key];
-    onPinTask?.(key, pinned);
-  }, [safePins, onPinTask]);
+    if (onApiPin) { onApiPin(key, pinned); }
+    else { onPinTask?.(key, pinned); }
+  }, [safePins, onApiPin, onPinTask]);
 
   const handleExclude = useCallback((key: string) => {
     const excluded = !safeExcludes[key];
@@ -3569,16 +3747,19 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   }, [safeExcludes, onExcludeTask]);
 
   const handleUnschedule = useCallback((key: string) => {
-    onUnscheduleTask?.(key);
-  }, [onUnscheduleTask]);
+    if (onApiUnschedule) { onApiUnschedule(key); }
+    else { onUnscheduleTask?.(key); }
+  }, [onApiUnschedule, onUnscheduleTask]);
 
   const handlePinAll = useCallback((keys: string[]) => {
-    keys.forEach(k => onPinTask?.(k, true));
-  }, [onPinTask]);
+    if (onApiBulkPin) { onApiBulkPin(keys, true); }
+    else { keys.forEach(k => onPinTask?.(k, true)); }
+  }, [onApiBulkPin, onPinTask]);
 
   const handleUnpinAll = useCallback((keys: string[]) => {
-    keys.forEach(k => onPinTask?.(k, false));
-  }, [onPinTask]);
+    if (onApiBulkPin) { onApiBulkPin(keys, false); }
+    else { keys.forEach(k => onPinTask?.(k, false)); }
+  }, [onApiBulkPin, onPinTask]);
 
   const handleExcludeAll = useCallback((keys: string[]) => {
     keys.forEach(k => onExcludeTask?.(k, true));
@@ -3589,14 +3770,14 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   }, [onExcludeTask]);
 
   const handleUnscheduleAll = useCallback((keys: string[]) => {
-    if (keys.length > 5) {
-      const confirmed = window.confirm(
-        `Unschedule ${keys.length} tasks? This will remove their current assignments.`
-      );
-      if (!confirmed) return;
+    if (onApiBulkUnschedule) { onApiBulkUnschedule(keys); }
+    else {
+      if (keys.length > 5) {
+        if (!window.confirm(`Unschedule ${keys.length} tasks? This will remove their current assignments.`)) return;
+      }
+      keys.forEach(k => onUnscheduleTask?.(k));
     }
-    keys.forEach(k => onUnscheduleTask?.(k));
-  }, [onUnscheduleTask]);
+  }, [onApiBulkUnschedule, onUnscheduleTask]);
 
   const rows = sorted(filter.filtered);
   // Derive case name for the filter chip
@@ -3650,7 +3831,78 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
       )}
 
       <ActiveFilters filter={filter} />
-      {hasActions && (
+      {selectedTasks && selectedTasks.size > 0 ? (() => {
+        const selArr = Array.from(selectedTasks);
+        const selObjs = selArr.map(k => tasks.find((tt: any) => tt.key === k)).filter(Boolean);
+        const scheduledSel = selObjs.filter((tt: any) => tt.feasible && tt.scheduledStart && !taskUnschedules?.has(tt.key));
+        const unscheduledSel = selObjs.filter((tt: any) => !tt.feasible || !tt.scheduledStart || taskExcludes?.[tt.key]);
+        const pinnedSel = selObjs.filter((tt: any) => taskPins?.[tt.key] || tt.pinned);
+        const unpinnedScheduled = scheduledSel.filter((tt: any) => !taskPins?.[tt.key] && !tt.pinned);
+        const excludedSel = selObjs.filter((tt: any) => taskExcludes?.[tt.key]);
+        const nonExcluded = selObjs.filter((tt: any) => !taskExcludes?.[tt.key]);
+        const pendingUnsched = selArr.filter(k => taskUnschedules?.has(k));
+        const btnStyle: CSSProperties = {
+          padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+          fontFamily: FONT, border: `1px solid ${C.border}`, background: C.surface2, color: C.text,
+        };
+        return (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+            background: `${C.accent}0a`, borderRadius: 8, marginBottom: 8,
+            border: `1px solid ${C.accent}33`, fontFamily: FONT,
+          }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: C.accent }}>
+              {selectedTasks.size} selected
+            </span>
+            <div style={{ width: 1, height: 16, background: C.border }} />
+            {unscheduledSel.length > 0 && onScheduleSelected && (
+              <button style={{ ...btnStyle, color: C.green }} onClick={() => onScheduleSelected(unscheduledSel.map((tt: any) => tt.key))}>
+                {'\u25B6'} Schedule {unscheduledSel.length}
+              </button>
+            )}
+            {scheduledSel.length > 0 && onUnscheduleSelected && (
+              <button style={{ ...btnStyle, color: C.red }} onClick={() => onUnscheduleSelected(scheduledSel.map((tt: any) => tt.key))}>
+                {'\u2715'} Unschedule {scheduledSel.length}
+              </button>
+            )}
+            {pendingUnsched.length > 0 && onScheduleSelected && (
+              <button style={{ ...btnStyle, color: C.yellow }} onClick={() => onScheduleSelected(pendingUnsched)}>
+                {'\u21A9'} Cancel Unschedule {pendingUnsched.length}
+              </button>
+            )}
+            {unpinnedScheduled.length > 0 && onPinSelected && (
+              <button style={{ ...btnStyle, color: C.accent }} onClick={() => onPinSelected(unpinnedScheduled.map((tt: any) => tt.key))}>
+                {'\uD83D\uDCCC'} Pin {unpinnedScheduled.length}
+              </button>
+            )}
+            {pinnedSel.length > 0 && onUnpinSelected && (
+              <button style={{ ...btnStyle, color: C.yellow }} onClick={() => onUnpinSelected(pinnedSel.map((tt: any) => tt.key))}>
+                {'\uD83D\uDCCC'} Unpin {pinnedSel.length}
+              </button>
+            )}
+            {nonExcluded.length > 0 && onExcludeSelected && (
+              <button style={{ ...btnStyle, color: C.textDim }} onClick={() => onExcludeSelected(nonExcluded.map((tt: any) => tt.key))}>
+                {'\u23F8'} Exclude {nonExcluded.length}
+              </button>
+            )}
+            {excludedSel.length > 0 && onIncludeSelected && (
+              <button style={{ ...btnStyle, color: C.green }} onClick={() => onIncludeSelected(excludedSel.map((tt: any) => tt.key))}>
+                {'\u25B6'} Include {excludedSel.length}
+              </button>
+            )}
+            {selArr.length === 1 && onWhereTo && (
+              <button style={{ ...btnStyle, color: C.accent }} onClick={() => onWhereTo(selArr[0], 'table')}>
+                {'\uD83D\uDDFA'} Where To
+              </button>
+            )}
+            <div style={{ flex: 1 }} />
+            <button onClick={() => onSetSelectedTasks?.(new Set())}
+              style={{ background: 'none', border: 'none', color: C.textMuted, fontSize: 11, cursor: 'pointer', fontFamily: FONT }}>
+              Clear
+            </button>
+          </div>
+        );
+      })() : hasActions && (
         <TaskBulkActions filteredTasks={filter.filtered}
           taskPins={safePins} taskExcludes={safeExcludes} orderModes={safeOrderModes}
           onPinAll={handlePinAll} onUnpinAll={handleUnpinAll}
@@ -3661,6 +3913,24 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
         <table style={tableStyle}>
           <thead>
             <tr>
+              {selectedTasks && <th style={{ padding: '10px 8px', width: 36, textAlign: 'center', borderBottom: `1px solid ${C.border}` }}>
+                <input type="checkbox"
+                  checked={rows.length > 0 && rows.every((r: any) => selectedTasks.has(r.key))}
+                  ref={el => {
+                    if (el) el.indeterminate = rows.some((r: any) => selectedTasks.has(r.key))
+                      && !rows.every((r: any) => selectedTasks.has(r.key));
+                  }}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      onSetSelectedTasks?.(new Set([...selectedTasks, ...rows.map((r: any) => r.key)]));
+                    } else {
+                      const rowKeys = new Set(rows.map((r: any) => r.key));
+                      onSetSelectedTasks?.(new Set([...selectedTasks].filter(k => !rowKeys.has(k))));
+                    }
+                  }}
+                  style={{ cursor: 'pointer', accentColor: C.accent }}
+                />
+              </th>}
               <SortHeader label={t('task', 'Task')} k="key" current={sortKey} dir={sortDir} onSort={toggle}
                 filterProps={colFilter('name')} />
               <SortHeader label={t('product', 'Product')} k="_productName" current={sortKey} dir={sortDir} onSort={toggle}
@@ -3693,14 +3963,24 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                   transition: 'background 0.1s, opacity 0.2s',
                   cursor: onTaskClick ? 'pointer' : 'default',
                   opacity: tk._status === 'excluded' ? 0.4 : 1,
-                  borderLeft: tk._status === 'pinned' ? `3px solid ${C.yellow}` :
+                  borderLeft: taskUnschedules?.has(tk.key) ? `3px solid ${C.red}` :
+                              tk._status === 'pinned' ? `3px solid ${C.yellow}` :
                               tk._orderMode === 'LOCKED' ? `3px solid ${C.yellow}` :
                               '3px solid transparent',
+                  ...(selectedTasks?.has(tk.key) && { background: `${C.accent}0a` }),
                 }}
                   onClick={() => onTaskClick?.(tk)}
-                  onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  onMouseEnter={e => (e.currentTarget.style.background = selectedTasks?.has(tk.key) ? `${C.accent}14` : C.surface2)}
+                  onMouseLeave={e => (e.currentTarget.style.background = selectedTasks?.has(tk.key) ? `${C.accent}0a` : 'transparent')}
                 >
+                  {selectedTasks && <td style={{ padding: '4px 8px', textAlign: 'center' as const }}
+                    onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox"
+                      checked={selectedTasks.has(tk.key)}
+                      onChange={() => onToggleSelect?.(tk.key)}
+                      style={{ cursor: 'pointer', accentColor: C.accent }}
+                    />
+                  </td>}
                   <td style={cellStyle}>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{tk.name}</div>
                     <div style={{ fontSize: 11, color: C.textDim }}>{tk.key}</div>
@@ -3733,11 +4013,21 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                   </td>}
                   <td style={cellStyle}>
                     {taskStatusBadge(tk._status)}
+                    {taskUnschedules?.has(tk.key) && (
+                      <span style={{ fontSize: 10, color: C.red, fontWeight: 600, marginLeft: 4 }}>{'\u2192'} UNSCHED</span>
+                    )}
+                    {taskPins?.[tk.key] && !taskUnschedules?.has(tk.key) && (
+                      <span style={{ fontSize: 10, color: C.accent, fontWeight: 600, marginLeft: 4 }}>{'\u2192'} PIN</span>
+                    )}
+                    {taskExcludes?.[tk.key] && !taskUnschedules?.has(tk.key) && (
+                      <span style={{ fontSize: 10, color: C.textDim, fontWeight: 600, marginLeft: 4 }}>{'\u2192'} EXCLUDE</span>
+                    )}
                   </td>
                   {hasActions && (
                     <td style={{ ...cellStyle, textAlign: 'center', padding: '4px 6px' }}>
                       <TaskRowActions task={tk}
-                        taskPins={safePins} taskExcludes={safeExcludes} orderModes={safeOrderModes}
+                        taskPins={safePins} taskExcludes={safeExcludes} taskUnschedules={taskUnschedules}
+                        orderModes={safeOrderModes}
                         onPin={handlePin} onExclude={handleExclude} onUnschedule={handleUnschedule}
                         onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey} />
                     </td>
@@ -4349,15 +4639,169 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   UNSCHEDULED TASKS PANEL
+   ═══════════════════════════════════════════════════════════════ */
+
+function UnscheduledPanel({ tasks, colors, taskExcludes, taskUnschedules,
+  onTaskClick, onWhereTo, onApiSchedule, actionLoading,
+  selectedTasks, onToggleSelect }: {
+  tasks: any[]; products?: any[]; colors: any;
+  taskExcludes?: Record<string, boolean>;
+  taskUnschedules?: Set<string>;
+  orderModes?: Record<string, string>;
+  onTaskClick?: (t: any) => void;
+  onWhereTo?: (key: string) => void;
+  onApiSchedule?: (key: string) => Promise<void>;
+  actionLoading?: string | null;
+  selectedTasks?: Set<string>;
+  onToggleSelect?: (key: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+
+  const unscheduled = useMemo(() => {
+    return tasks.filter((t: any) => {
+      const isUnscheduled = !t.feasible || !t.scheduledStart;
+      const isPendingUnsched = taskUnschedules?.has(t.key);
+      const isExcluded = taskExcludes?.[t.key];
+      if (t.type && t.type !== 'PROCESS') return false;
+      return isUnscheduled || isPendingUnsched || isExcluded;
+    });
+  }, [tasks, taskUnschedules, taskExcludes]);
+
+  if (unscheduled.length === 0) return null;
+
+  const pendingUnsched = unscheduled.filter(t => taskUnschedules?.has(t.key));
+
+  return (
+    <div style={{
+      marginTop: 12, borderRadius: 8,
+      border: `1px solid ${C.border}`, background: C.surface,
+    }}>
+      <div onClick={() => setExpanded(!expanded)} style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 14px', cursor: 'pointer',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 12, color: C.textMuted }}>
+            {expanded ? '\u25BE' : '\u25B8'}
+          </span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
+            Not Scheduled
+          </span>
+          <span style={{
+            fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
+            background: C.yellowDim, color: C.yellow,
+          }}>
+            {unscheduled.length}
+          </span>
+          {pendingUnsched.length > 0 && (
+            <span style={{
+              fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
+              background: C.redDim, color: C.red,
+            }}>
+              {pendingUnsched.length} pending unschedule
+            </span>
+          )}
+        </div>
+      </div>
+
+      {expanded && (
+        <div style={{
+          padding: '0 14px 12px', display: 'flex', flexWrap: 'wrap', gap: 6,
+        }}>
+          {unscheduled.map((task: any) => {
+            const prodColor = colors ? getTaskColor(task, colors) : C.accent;
+            const isSelected = selectedTasks?.has(task.key);
+            const isPendingUnsched = taskUnschedules?.has(task.key);
+            const isExcluded = taskExcludes?.[task.key];
+
+            return (
+              <div key={task.key}
+                onClick={() => onTaskClick?.(task)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 10px', borderRadius: 6, cursor: 'pointer',
+                  background: isSelected ? `${C.accent}18` : C.surface2,
+                  border: `1px solid ${isSelected ? C.accent + '44' : C.border}`,
+                  transition: 'all 0.15s', fontSize: 12, fontFamily: FONT,
+                  opacity: isExcluded ? 0.4 : 1,
+                }}>
+
+                {onToggleSelect && (
+                  <input type="checkbox"
+                    checked={isSelected || false}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={() => onToggleSelect(task.key)}
+                    style={{ cursor: 'pointer', accentColor: C.accent, margin: 0 }}
+                  />
+                )}
+
+                <div style={{
+                  width: 6, height: 6, borderRadius: '50%', background: prodColor, flexShrink: 0,
+                }} />
+
+                <div>
+                  <span style={{ fontWeight: 600, color: C.text }}>{task.name}</span>
+                  {task.orderRef && (
+                    <span style={{ color: C.textDim, marginLeft: 6 }}>{task.orderRef}</span>
+                  )}
+                </div>
+
+                {isPendingUnsched && (
+                  <span style={{ fontSize: 10, color: C.red, fontWeight: 600 }}>{'\u2192'} UNSCHED</span>
+                )}
+                {isExcluded && !isPendingUnsched && (
+                  <span style={{ fontSize: 10, color: C.textDim, fontWeight: 600 }}>EXCLUDED</span>
+                )}
+                {!isPendingUnsched && !isExcluded && task.errors?.length > 0 && (
+                  <span style={{ fontSize: 10, color: C.red, fontWeight: 600 }}>INFEASIBLE</span>
+                )}
+
+                {onApiSchedule && !isExcluded && (
+                  <button onClick={(e) => { e.stopPropagation(); onApiSchedule(task.key); }}
+                    title="Schedule this task now"
+                    disabled={actionLoading === task.key}
+                    style={{
+                      background: 'none', border: 'none', cursor: actionLoading === task.key ? 'wait' : 'pointer',
+                      fontSize: 12, padding: '0 2px', color: C.green,
+                      opacity: actionLoading === task.key ? 0.4 : 0.7,
+                    }}>
+                    {actionLoading === task.key ? '...' : '\u25B6'}
+                  </button>
+                )}
+                {onWhereTo && !isExcluded && (
+                  <button onClick={(e) => { e.stopPropagation(); onWhereTo(task.key); }}
+                    title="Find available positions"
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: 12, padding: '0 2px', color: C.accent, opacity: 0.7,
+                    }}>
+                    {'\uD83D\uDDFA\uFE0F'}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    TAB CONTENT — SCHEDULE
    ═══════════════════════════════════════════════════════════════ */
 
 function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResourceClick,
   taskPins, taskExcludes, taskUnschedules, orderModes, orders,
-  onPinTask, onExcludeTask, onUnscheduleTask, experienceLevel = 'novice',
+  onPinTask, onExcludeTask, onUnscheduleTask,
+  onApiUnschedule, onApiPin, onApiSchedule, onApiBulkUnschedule, onApiBulkPin, actionLoading,
+  experienceLevel = 'novice',
   onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
   whereToCurrentAssignment, onMoveTo, onCancelWhereTo,
-  caseFilter, onClearCaseFilter, onNavigateToOrders }: {
+  caseFilter, onClearCaseFilter, onNavigateToOrders,
+  selectedTasks, onToggleSelect, onSetSelectedTasks,
+  onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
@@ -4366,6 +4810,12 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   onPinTask?: (key: string, pinned: boolean) => void;
   onExcludeTask?: (key: string, excluded: boolean) => void;
   onUnscheduleTask?: (key: string) => void;
+  onApiUnschedule?: (key: string) => Promise<void>;
+  onApiPin?: (key: string, pinned: boolean) => Promise<void>;
+  onApiSchedule?: (key: string) => Promise<void>;
+  onApiBulkUnschedule?: (keys: string[]) => Promise<void>;
+  onApiBulkPin?: (keys: string[], pinned: boolean) => Promise<void>;
+  actionLoading?: string | null;
   experienceLevel?: ExperienceLevel;
   onWhereTo?: (key: string, source?: 'gantt' | 'table') => void;
   whereToTaskKey?: string | null;
@@ -4377,6 +4827,15 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   caseFilter?: string | null;
   onClearCaseFilter?: () => void;
   onNavigateToOrders?: (orderKey: string) => void;
+  selectedTasks?: Set<string>;
+  onToggleSelect?: (key: string) => void;
+  onSetSelectedTasks?: (s: Set<string>) => void;
+  onScheduleSelected?: (keys: string[]) => void;
+  onUnscheduleSelected?: (keys: string[]) => void;
+  onPinSelected?: (keys: string[]) => void;
+  onUnpinSelected?: (keys: string[]) => void;
+  onExcludeSelected?: (keys: string[]) => void;
+  onIncludeSelected?: (keys: string[]) => void;
 }) {
   const tabNames = [`Gantt by ${t('resource', 'Resource')}`, `Gantt by ${t('order', 'Order')}`, t('tasks', 'Task List')];
   const [subIdx, setSubIdx] = useState(0);
@@ -4394,11 +4853,18 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             orderModes={orderModes}
             onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask}
+            onApiUnschedule={onApiUnschedule} onApiPin={onApiPin}
+            onApiBulkUnschedule={onApiBulkUnschedule} actionLoading={actionLoading}
             onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey} whereToOptions={whereToOptions}
             whereToLoading={whereToLoading} whereToCurrentAssignment={whereToCurrentAssignment}
             onMoveTo={onMoveTo} onCancelWhereTo={onCancelWhereTo}
             zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
             scrollOffset={scrollOffset} setScrollOffset={setScrollOffset} />
+          <UnscheduledPanel tasks={tasks} colors={colors}
+            taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
+            onTaskClick={onTaskClick} onWhereTo={onWhereTo}
+            onApiSchedule={onApiSchedule} actionLoading={actionLoading}
+            selectedTasks={selectedTasks} onToggleSelect={onToggleSelect} />
         </Card>
       ) : effectiveIdx === 1 ? (
         <Card>
@@ -4408,6 +4874,11 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             orderModes={orderModes}
             zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
             scrollOffset={scrollOffset} setScrollOffset={setScrollOffset} />
+          <UnscheduledPanel tasks={tasks} colors={colors}
+            taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
+            onTaskClick={onTaskClick} onWhereTo={onWhereTo}
+            onApiSchedule={onApiSchedule} actionLoading={actionLoading}
+            selectedTasks={selectedTasks} onToggleSelect={onToggleSelect} />
         </Card>
       ) : (
         <Card>
@@ -4415,9 +4886,15 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             orderModes={orderModes} experienceLevel={experienceLevel}
             onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask}
+            onApiUnschedule={onApiUnschedule} onApiPin={onApiPin}
+            onApiBulkUnschedule={onApiBulkUnschedule} onApiBulkPin={onApiBulkPin}
             onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey}
             caseFilter={caseFilter} onClearCaseFilter={onClearCaseFilter}
-            onNavigateToOrders={onNavigateToOrders} />
+            onNavigateToOrders={onNavigateToOrders}
+            selectedTasks={selectedTasks} onToggleSelect={onToggleSelect} onSetSelectedTasks={onSetSelectedTasks}
+            onScheduleSelected={onScheduleSelected} onUnscheduleSelected={onUnscheduleSelected}
+            onPinSelected={onPinSelected} onUnpinSelected={onUnpinSelected}
+            onExcludeSelected={onExcludeSelected} onIncludeSelected={onIncludeSelected} />
         </Card>
       )}
     </div>
@@ -5167,6 +5644,14 @@ export default function App() {
   const [selectedTier, setSelectedTier] = useState('balanced');
   const [tierOptions, setTierOptions] = useState<SolverTierOption[]>(FALLBACK_TIERS);
   const [solveStale, setSolveStale] = useState(false);
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+  // Immediate action state
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 4000);
+  }, []);
   // WhereTo state
   const [whereToTaskKey, setWhereToTaskKey] = useState<string | null>(null);
   const [whereToOptions, setWhereToOptions] = useState<any[]>([]);
@@ -5303,8 +5788,14 @@ export default function App() {
       setPrevTaskExcludes({ ...taskExcludes });
       setPrevMaterialModes({ ...materialModeOverrides });
 
-      // Clear one-time actions
+      // Clear all overrides — server state is now truth
       setTaskUnschedules(new Set());
+      setTaskPins({});
+      setTaskExcludes({});
+      setOrderModes({});
+      setMaterialModeOverrides({});
+      setResourceModeOverrides({});
+      setSelectedTasks(new Set());
 
       if (result.colors) setColors(result.colors);
       if (result.terminology) _terminology = result.terminology;
@@ -5341,36 +5832,6 @@ export default function App() {
     setSelectedResource(full || r);
   }, [resources]);
 
-  // Direct API actions (immediate server-side, no solve)
-  const handleApiUnschedule = useCallback(async (taskKey: string) => {
-    try {
-      setError(null);
-      await api(`/ctp/tasks/${encodeURIComponent(taskKey)}/unschedule`, { method: 'POST' });
-      const result = await api('/ctp/results');
-      if (result.status !== 'not_solved') setSolveResult(result);
-    } catch (e: any) {
-      setError(e.message || 'Unschedule failed');
-    }
-  }, []);
-
-  const handleApiPin = useCallback(async (taskKey: string, pinned: boolean) => {
-    try {
-      setError(null);
-      await api(`/ctp/tasks/${encodeURIComponent(taskKey)}/pin`, {
-        method: 'PATCH',
-        body: JSON.stringify({ pinned }),
-      });
-      const result = await api('/ctp/results');
-      if (result.status !== 'not_solved') setSolveResult(result);
-    } catch (e: any) {
-      setError(e.message || 'Pin failed');
-    }
-  }, []);
-
-  // Expose API handlers for direct task actions (suppress unused until wired to more UI)
-  void handleApiUnschedule;
-  void handleApiPin;
-
   // WhereTo handlers
   const cancelWhereTo = useCallback(() => {
     setWhereToTaskKey(null);
@@ -5380,8 +5841,10 @@ export default function App() {
 
   const handleWhereTo = useCallback(async (taskKey: string, source: 'gantt' | 'table' = 'gantt') => {
     if (source === 'gantt') setActiveTab('Schedule');
-    // Open detail panel for the task
-    setSelectedTask(tasks.find((tk: any) => tk.key === taskKey) || null);
+    // Open detail panel only from table — from Gantt the user already sees the task
+    if (source === 'table') {
+      setSelectedTask(tasks.find((tk: any) => tk.key === taskKey) || null);
+    }
     setWhereToTaskKey(taskKey);
     setWhereToLoading(true);
     setWhereToOptions([]);
@@ -5415,9 +5878,9 @@ export default function App() {
         setWhereToOptions([]);
         setWhereToCurrentAssignment(null);
         if (result.requiresResolve) setSolveStale(true);
-        // Refresh solve results to reflect the move
-        const updated = await api('/ctp/results');
-        if (updated.status !== 'not_solved') setSolveResult(updated);
+        // Refresh from live landscape state (not cached results — moveTo modifies landscape directly)
+        const updated = await api('/ctp/state');
+        if (updated.tasks) setSolveResult(updated);
       } else {
         alert(result.reason || 'Position no longer available. Refreshing options...');
         handleWhereTo(taskKey);
@@ -5426,6 +5889,153 @@ export default function App() {
       console.error('MoveTo failed:', err);
     }
   }, [handleWhereTo]);
+
+  // ─── Immediate single-task API actions ───
+
+  const handleApiUnschedule = useCallback(async (taskKey: string) => {
+    setActionLoading(taskKey);
+    try {
+      const res = await api(`/ctp/tasks/${encodeURIComponent(taskKey)}/unschedule`, {
+        method: 'POST',
+        body: JSON.stringify({ resetScore: true }),
+      });
+      if (res.success) {
+        const updated = await api('/ctp/state');
+        if (updated.tasks) setSolveResult(updated);
+      } else {
+        showToast(`Cannot unschedule: ${res.message || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error('Unschedule error:', err);
+      showToast('Unschedule failed');
+    } finally {
+      setActionLoading(null);
+    }
+  }, [showToast]);
+
+  const handleApiPin = useCallback(async (taskKey: string, pinned: boolean) => {
+    setActionLoading(taskKey);
+    try {
+      const res = await api(`/ctp/tasks/${encodeURIComponent(taskKey)}/pin`, {
+        method: 'PATCH',
+        body: JSON.stringify({ pinned }),
+      });
+      if (res.success || res.taskKey) {
+        const updated = await api('/ctp/state');
+        if (updated.tasks) setSolveResult(updated);
+        setTaskPins(prev => ({ ...prev, [taskKey]: pinned }));
+      } else {
+        showToast(`Cannot ${pinned ? 'pin' : 'unpin'}: ${res.message || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error('Pin error:', err);
+      showToast(`${pinned ? 'Pin' : 'Unpin'} failed`);
+    } finally {
+      setActionLoading(null);
+    }
+  }, [showToast]);
+
+  const handleApiSchedule = useCallback(async (taskKey: string) => {
+    setActionLoading(taskKey);
+    try {
+      const res = await api(`/ctp/tasks/${encodeURIComponent(taskKey)}/schedule`, {
+        method: 'POST',
+      });
+      if (res.success) {
+        const updated = await api('/ctp/state');
+        if (updated.tasks) setSolveResult(updated);
+      } else {
+        showToast(`Cannot schedule: ${res.errors?.[0]?.reason || res.message || 'No feasible slot'}`);
+      }
+    } catch (err) {
+      console.error('Schedule error:', err);
+      showToast('Schedule failed');
+    } finally {
+      setActionLoading(null);
+    }
+  }, [showToast]);
+
+  const handleApiBulkUnschedule = useCallback(async (keys: string[]) => {
+    setActionLoading('__bulk__');
+    let successCount = 0;
+    try {
+      for (const key of keys) {
+        try {
+          const res = await api(`/ctp/tasks/${encodeURIComponent(key)}/unschedule`, {
+            method: 'POST',
+            body: JSON.stringify({ resetScore: true }),
+          });
+          if (res.success) successCount++;
+        } catch { /* continue */ }
+      }
+      const updated = await api('/ctp/state');
+      if (updated.tasks) setSolveResult(updated);
+      setSelectedTasks(new Set());
+      if (successCount < keys.length) {
+        showToast(`${successCount}/${keys.length} tasks unscheduled`);
+      }
+    } catch (err) {
+      console.error('Bulk unschedule error:', err);
+      showToast('Bulk unschedule failed');
+    } finally {
+      setActionLoading(null);
+    }
+  }, [showToast]);
+
+  const handleApiBulkPin = useCallback(async (keys: string[], pinned: boolean) => {
+    setActionLoading('__bulk__');
+    try {
+      for (const key of keys) {
+        try {
+          await api(`/ctp/tasks/${encodeURIComponent(key)}/pin`, {
+            method: 'PATCH',
+            body: JSON.stringify({ pinned }),
+          });
+        } catch { /* continue */ }
+      }
+      const updated = await api('/ctp/state');
+      if (updated.tasks) setSolveResult(updated);
+      setTaskPins(prev => {
+        const next = { ...prev };
+        keys.forEach(k => { next[k] = pinned; });
+        return next;
+      });
+      setSelectedTasks(new Set());
+    } catch (err) {
+      console.error('Bulk pin error:', err);
+      showToast(`Bulk ${pinned ? 'pin' : 'unpin'} failed`);
+    } finally {
+      setActionLoading(null);
+    }
+  }, [showToast]);
+
+  const handleBulkSchedule = useCallback(async (keys: string[]) => {
+    setActionLoading('__bulk__');
+    let successCount = 0;
+    try {
+      for (const key of keys) {
+        try {
+          const res = await api(`/ctp/tasks/${encodeURIComponent(key)}/schedule`, {
+            method: 'POST',
+          });
+          if (res.success) successCount++;
+        } catch { /* continue */ }
+      }
+      const updated = await api('/ctp/state');
+      if (updated.tasks) setSolveResult(updated);
+      setSelectedTasks(new Set());
+      if (successCount < keys.length) {
+        showToast(`${successCount}/${keys.length} scheduled. ${keys.length - successCount} could not be placed.`);
+      } else if (keys.length > 1) {
+        showToast(`${successCount}/${keys.length} tasks scheduled`);
+      }
+    } catch (err) {
+      console.error('Bulk schedule error:', err);
+      showToast('Bulk schedule failed');
+    } finally {
+      setActionLoading(null);
+    }
+  }, [showToast]);
 
   // Escape key to cancel WhereTo
   useEffect(() => {
@@ -5744,7 +6354,11 @@ export default function App() {
               setSolveStale(true);
             }}
             onUnscheduleTask={(key) => {
-              setTaskUnschedules(prev => new Set(prev).add(key));
+              setTaskUnschedules(prev => {
+                const next = new Set(prev);
+                if (next.has(key)) next.delete(key); else next.add(key);
+                return next;
+              });
               setSolveStale(true);
             }}
             onWhereTo={handleWhereTo} />
@@ -5767,15 +6381,45 @@ export default function App() {
               setSolveStale(true);
             }}
             onUnscheduleTask={(key) => {
-              setTaskUnschedules(prev => new Set(prev).add(key));
+              setTaskUnschedules(prev => {
+                const next = new Set(prev);
+                if (next.has(key)) next.delete(key); else next.add(key);
+                return next;
+              });
               setSolveStale(true);
             }}
+            onApiUnschedule={handleApiUnschedule} onApiPin={handleApiPin}
+            onApiSchedule={handleApiSchedule} actionLoading={actionLoading}
+            onApiBulkUnschedule={handleApiBulkUnschedule} onApiBulkPin={handleApiBulkPin}
             onWhereTo={handleWhereTo} whereToTaskKey={whereToTaskKey}
             whereToOptions={whereToOptions} whereToLoading={whereToLoading}
             whereToCurrentAssignment={whereToCurrentAssignment}
             onMoveTo={handleMoveTo} onCancelWhereTo={cancelWhereTo}
             caseFilter={scheduleCaseFilter} onClearCaseFilter={() => setScheduleCaseFilter(null)}
-            onNavigateToOrders={(orderKey) => { setOrdersCaseFilter(orderKey); setActiveTab('Orders'); }} />
+            onNavigateToOrders={(orderKey) => { setOrdersCaseFilter(orderKey); setActiveTab('Orders'); }}
+            selectedTasks={selectedTasks}
+            onToggleSelect={(key) => {
+              setSelectedTasks(prev => {
+                const next = new Set(prev);
+                if (next.has(key)) next.delete(key); else next.add(key);
+                return next;
+              });
+            }}
+            onSetSelectedTasks={setSelectedTasks}
+            onScheduleSelected={(keys) => { handleBulkSchedule(keys); }}
+            onUnscheduleSelected={(keys) => { handleApiBulkUnschedule(keys); }}
+            onPinSelected={(keys) => { handleApiBulkPin(keys, true); }}
+            onUnpinSelected={(keys) => { handleApiBulkPin(keys, false); }}
+            onExcludeSelected={(keys) => {
+              setTaskExcludes(prev => { const next = { ...prev }; keys.forEach(k => { next[k] = true; }); return next; });
+              setSelectedTasks(new Set());
+              setSolveStale(true);
+            }}
+            onIncludeSelected={(keys) => {
+              setTaskExcludes(prev => { const next = { ...prev }; keys.forEach(k => { next[k] = false; }); return next; });
+              setSelectedTasks(new Set());
+              setSolveStale(true);
+            }} />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} tasks={tasks}
           orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}
@@ -5827,7 +6471,11 @@ export default function App() {
             setSolveStale(true);
           }}
           onUnscheduleTask={(key) => {
-            setTaskUnschedules(prev => new Set(prev).add(key));
+            setTaskUnschedules(prev => {
+              const next = new Set(prev);
+              if (next.has(key)) next.delete(key); else next.add(key);
+              return next;
+            });
             setSolveStale(true);
           }}
           onCancelUnschedule={(key) => {
@@ -5838,6 +6486,8 @@ export default function App() {
             setResourceModeOverrides(prev => ({ ...prev, [compoundKey]: mode }));
             setSolveStale(true);
           }}
+          onApiUnschedule={handleApiUnschedule}
+          onApiPin={handleApiPin}
           experienceLevel={experienceLevel}
           whereToTaskKey={whereToTaskKey}
           whereToOptions={whereToOptions}
@@ -5903,8 +6553,25 @@ export default function App() {
         />
       )}
 
+      {/* Toast notification */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          background: C.surface2, color: C.text, border: `1px solid ${C.border}`,
+          borderRadius: 8, padding: '10px 20px', fontSize: 13, fontWeight: 500,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 10000,
+          animation: 'toastIn 0.2s ease-out',
+        }}>
+          {toast}
+        </div>
+      )}
+
       {/* Global animation keyframes */}
-      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg) } }
+        @keyframes pulse { 0%,100% { opacity: 0.45 } 50% { opacity: 0.8 } }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px) } to { opacity: 1; transform: translateX(-50%) translateY(0) } }
+      `}</style>
     </div>
   );
 }

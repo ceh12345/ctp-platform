@@ -345,6 +345,23 @@ export abstract class CTPBaseScheduler {
     this.scheduleContexts.updateRecomputeByTask(task);
     task.score = Number.MAX_VALUE;
   }
+
+  /**
+   * Public entry point for unscheduling a task by key.
+   * Removes associated state change tasks (SETUP/TEARDOWN/changeover) before
+   * unscheduling the main task so they don't remain orphaned in the landscape.
+   */
+  public unscheduleTaskWithStateChanges(taskKey: string, resetScore: boolean = true): boolean {
+    const task = this.landscape.tasks?.getEntity(taskKey);
+    if (!task) return false;
+    if (task.pinned) return false;
+    if (task.state === CTPTaskStateConstants.NOT_SCHEDULED) return false;
+
+    task.errors = [];
+    this.unScheduleStateChanges(task);
+    return this.landscape.unscheduleTask(taskKey, resetScore);
+  }
+
   public initLandscape(
     hor: CTPHorizon,
     tasks: CTPTasks,
