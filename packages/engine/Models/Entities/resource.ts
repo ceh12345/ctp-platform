@@ -5,7 +5,7 @@ import { CTPPreference, IPreference } from "../Core/preference";
 import { List } from "../Core/list";
 import { CTPInterval } from "../Core/window";
 import { AvailableMatrix } from "../Intervals/availablematrix";
-import { CTPResourceConstants } from "../Core/constants";
+import { CTPResourceConstants, CTPResourcePreferenceModeConstants } from "../Core/constants";
 
 export interface IResource extends IKeyEntity {
   original: CTPAvailable | null;
@@ -48,6 +48,7 @@ export class CTPResources extends EntityHashMap<CTPResource> {
 export interface IResourcePreference extends IPreference {
   resourceKey: string;
   speedFactor: number;
+  mode: string;
 }
 export class CTPResourcePreference
   extends CTPPreference
@@ -55,12 +56,14 @@ export class CTPResourcePreference
 {
   public resourceKey: string;
   public speedFactor: number;
+  public mode: string;
 
-  constructor(k?: string, r?: number) {
+  constructor(k?: string, r?: number, m?: string) {
     super();
     this.resourceKey = k ? k : "";
     this.speedFactor = 1.0;
     this.rank = r ? r : 0;
+    this.mode = m ?? CTPResourcePreferenceModeConstants.AVAILABLE;
   }
 }
 export class CTPResourcePreferences extends List<CTPResourcePreference> {

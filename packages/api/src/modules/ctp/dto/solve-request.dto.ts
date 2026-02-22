@@ -124,6 +124,14 @@ export class SolveRequestDto {
   @IsOptional()
   @IsObject()
   materialModes?: Record<string, string>;
+
+  @ApiPropertyOptional({
+    description: 'Per-task resource preference overrides: { taskKey: { resourceKey: mode } }',
+    example: { 'OP-001': { 'CNC-01': 'EXCLUDED', 'CNC-02': 'PREFERRED' } },
+  })
+  @IsOptional()
+  @IsObject()
+  resourcePreferenceOverrides?: Record<string, Record<string, string>>;
 }
 
 export class UnscheduleTaskDto {

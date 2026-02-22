@@ -1,7 +1,7 @@
 "strict";
 import { DateTime } from "luxon";
 import { CTPInterval } from "../Core/window";
-import { CTPResourceModeConstants, CTPTaskStateConstants } from "../Core/constants";
+import { CTPResourceModeConstants, CTPResourcePreferenceModeConstants, CTPTaskStateConstants } from "../Core/constants";
 import { CTPAppSettings, IAppSettings } from "./appsettings";
 import { CTPHorizon } from "./horizon";
 import { CTPTask, CTPTasks } from "./task";
@@ -226,6 +226,29 @@ export class SchedulingLandscape implements ILandscape {
         if (tr.resource === resourceKey || tr.scheduledResource === resourceKey) {
           tr.mode = newMode;
         }
+      });
+    }
+  }
+
+  /**
+   * Apply per-task resource preference overrides.
+   * Input: { taskKey: { resourceKey: mode } } where mode is REQUIRED/PREFERRED/AVAILABLE/EXCLUDED.
+   * Sets mode on matching CTPResourcePreference objects within the task's capacity resources.
+   */
+  public applyResourcePreferenceOverrides(
+    overrides: Record<string, Record<string, string>>
+  ): void {
+    for (const [taskKey, resourceModes] of Object.entries(overrides)) {
+      const task = this.tasks?.getEntity(taskKey);
+      if (!task || !task.capacityResources) continue;
+
+      task.capacityResources.forEach((taskResource) => {
+        taskResource.preferences.forEach((pref) => {
+          const prefMode = resourceModes[pref.resourceKey];
+          if (prefMode) {
+            pref.mode = prefMode;
+          }
+        });
       });
     }
   }

@@ -95,9 +95,17 @@ export class CTPScheduleDirectionConstants {
   public static BACKWARD = 2;
 }
 
-// Resource requirement modes
+// Resource requirement modes (task-resource slot level: ON/TRACK/OFF)
 export class CTPResourceModeConstants {
   public static REQUIRED = 'ON';      // Hard constraint — solver won't schedule without it
   public static MONITORED = 'TRACK';  // Track usage for reporting, don't constrain solver
   public static IGNORED = 'OFF';      // Skip entirely
+}
+
+// Individual resource preference modes (preference level: which candidates to consider)
+export class CTPResourcePreferenceModeConstants {
+  public static REQUIRED = "REQUIRED";     // Must use this resource. Fail if unavailable.
+  public static PREFERRED = "PREFERRED";   // Try first. Fall back to others if full.
+  public static AVAILABLE = "AVAILABLE";   // Default. Solver picks freely.
+  public static EXCLUDED = "EXCLUDED";     // Do not use for this task.
 }

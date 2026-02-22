@@ -76,7 +76,9 @@ export class ScheduleEvaluator {
 
     task.capacityResources.forEach((res) => {
       if (res.isIgnored()) return;
-      resourceArr.push(res.preferences);
+      const effective = res.getEffectivePreferences();
+      if (effective.length === 0) return;  // All preferences excluded
+      resourceArr.push(effective);
     });
 
     if (resourceArr.length === 0) return contexts;

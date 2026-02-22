@@ -143,6 +143,11 @@ export class CTPService {
       this.applyMaterialModes(landscape, request.materialModes);
     }
 
+    // 1g. Per-task resource preference overrides (REQUIRED/PREFERRED/AVAILABLE/EXCLUDED)
+    if (request?.resourcePreferenceOverrides) {
+      landscape.applyResourcePreferenceOverrides(request.resourcePreferenceOverrides);
+    }
+
     // ─── 2. Constraint propagation ───
     const propStart = Date.now();
     stats.windowsTightened = landscape.propagateConstraints();
@@ -855,6 +860,24 @@ export class CTPService {
         taskResult.blendedScore = task.score !== Number.MAX_VALUE ? task.score : null;
         taskResult.windowStart = task.window ? CTPDateTime.toDateTime(task.window.startW).toISO() : null;
         taskResult.windowEnd = task.window ? CTPDateTime.toDateTime(task.window.endW).toISO() : null;
+
+        // Compatible resources — full preference list for each capacity slot
+        const compatibleResources: any[] = [];
+        task.capacityResources?.forEach((entry) => {
+          entry.preferences.forEach((pref) => {
+            if (!compatibleResources.find(c => c.resourceKey === pref.resourceKey)) {
+              const resEntity = landscape.resources.getEntity(pref.resourceKey);
+              compatibleResources.push({
+                resourceKey: pref.resourceKey,
+                resourceName: resEntity?.name ?? null,
+                mode: pref.mode,
+                rank: pref.rank,
+                speedFactor: pref.speedFactor,
+              });
+            }
+          });
+        });
+        taskResult.compatibleResources = compatibleResources;
       }
 
       tasks.push(taskResult);

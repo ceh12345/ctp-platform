@@ -5,6 +5,7 @@ import { IResourcePreference } from "../Entities/resource";
 import { CTPKeyEntity, IKeyEntity } from "../Core/entity";
 import {
   CTPResourceModeConstants,
+  CTPResourcePreferenceModeConstants,
   CTPStateChangeConstants,
   CTPTaskStateConstants,
   CTPTaskTypeConstants,
@@ -53,6 +54,32 @@ export class CTPTaskResource implements ITaskResource {
 
   public isIgnored(): boolean {
     return this.mode === CTPResourceModeConstants.IGNORED;
+  }
+
+  /**
+   * Return the effective preference list after applying preference modes.
+   * EXCLUDED preferences are removed. If any REQUIRED exist, keep only those.
+   * Sort: REQUIRED > PREFERRED > AVAILABLE, then by original rank.
+   */
+  public getEffectivePreferences(): IResourcePreference[] {
+    // Remove EXCLUDED
+    let prefs = this.preferences.filter(
+      p => p.mode !== CTPResourcePreferenceModeConstants.EXCLUDED
+    );
+    // If any REQUIRED exist, keep ONLY required (hard constraint)
+    const required = prefs.filter(
+      p => p.mode === CTPResourcePreferenceModeConstants.REQUIRED
+    );
+    if (required.length > 0) prefs = required;
+    // Sort: REQUIRED > PREFERRED > AVAILABLE, then by original rank
+    prefs.sort((a, b) => {
+      const order = (m: string) =>
+        m === CTPResourcePreferenceModeConstants.REQUIRED ? 0 :
+        m === CTPResourcePreferenceModeConstants.PREFERRED ? 1 : 2;
+      const d = order(a.mode) - order(b.mode);
+      return d !== 0 ? d : a.rank - b.rank;
+    });
+    return prefs;
   }
 }
 
