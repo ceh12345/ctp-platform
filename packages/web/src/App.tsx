@@ -3670,7 +3670,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   onApiUnschedule, onApiPin, onApiBulkUnschedule, onApiBulkPin,
   experienceLevel = 'novice',
   onWhereTo, whereToTaskKey, caseFilter, onClearCaseFilter, onNavigateToOrders,
-  resourceFilter, timeFilter, onResourceFilterChange, onTimeFilterChange,
+  resourceFilter, resourceFilterName, timeFilter, onResourceFilterChange, onTimeFilterChange,
   selectedTasks, onToggleSelect, onSetSelectedTasks,
   onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected }: {
   tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void;
@@ -3690,6 +3690,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   onClearCaseFilter?: () => void;
   onNavigateToOrders?: (orderKey: string) => void;
   resourceFilter?: string | null;
+  resourceFilterName?: string | null;
   timeFilter?: { after?: string; before?: string };
   onResourceFilterChange?: (key: string | null) => void;
   onTimeFilterChange?: (f: { after?: string; before?: string }) => void;
@@ -3895,9 +3896,13 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
           </span>
         </div>
       )}
-      {/* Time filter — presets + active chips, anchored directly above this table */}
+      <FilterBar filter={filter} statusOptions={statusOptions} />
+      {/* Filter controls — presets + active chips, directly above the table */}
       {onTimeFilterChange && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+          {resourceFilterName && onResourceFilterChange && (
+            <FilterChip label={`Resource: ${resourceFilterName}`} onClear={() => onResourceFilterChange(null)} />
+          )}
           <div style={{ display: 'flex', gap: 4 }}>
             <button style={presetBtnStyle} onClick={() => onTimeFilterChange({ after: new Date(snapMidnightMs(schedStart)).toISOString() })}>Schedule Start</button>
             <button style={presetBtnStyle} onClick={() => onTimeFilterChange({ after: new Date(schedStart).toISOString() })}>Now →</button>
@@ -3916,7 +3921,6 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
           )}
         </div>
       )}
-      <FilterBar filter={filter} statusOptions={statusOptions} />
 
       {/* Task Type Chips */}
       {distinctTypes.length > 1 && (
@@ -4971,24 +4975,12 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   const [resourceFilter, setResourceFilter] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<{ after?: string; before?: string }>({});
 
-  const resourceName = resourceFilter
-    ? (resources.find((r: any) => r.resourceKey === resourceFilter)?.resourceName || resourceFilter)
-    : null;
-
   // Force Task List when case filter is active
   const effectiveIdx = caseFilter ? 2 : subIdx;
-
-  // Resource chip: always visible above all sub-tabs
-  const resourceChipBar = resourceName ? (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-      <FilterChip label={`Resource: ${resourceName}`} onClear={() => setResourceFilter(null)} />
-    </div>
-  ) : null;
 
   return (
     <div>
       <SubTabs tabs={tabNames} active={tabNames[effectiveIdx]} onChange={(s) => { setSubIdx(tabNames.indexOf(s)); if (caseFilter) onClearCaseFilter?.(); }} />
-      {resourceChipBar}
       {effectiveIdx === 0 ? (
         <Card>
           <GanttChart tasks={tasks} resources={resources} products={products} colors={colors}
@@ -5038,7 +5030,9 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey}
             caseFilter={caseFilter} onClearCaseFilter={onClearCaseFilter}
             onNavigateToOrders={onNavigateToOrders}
-            resourceFilter={resourceFilter} timeFilter={timeFilter}
+            resourceFilter={resourceFilter}
+            resourceFilterName={resourceFilter ? (resources.find((r: any) => r.resourceKey === resourceFilter)?.resourceName || resourceFilter) : null}
+            timeFilter={timeFilter}
             onResourceFilterChange={(key) => setResourceFilter(key)}
             onTimeFilterChange={(f) => setTimeFilter(f)}
             selectedTasks={selectedTasks} onToggleSelect={onToggleSelect} onSetSelectedTasks={onSetSelectedTasks}
