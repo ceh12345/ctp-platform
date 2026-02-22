@@ -2664,20 +2664,16 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                     <span
                       onClick={() => onResourceFilter(res.resourceKey)}
                       title={isFiltered
-                        ? `Task List filtered to ${res.resourceName} (${rTasks.length} tasks) — click to clear`
-                        : `Filter Task List to ${res.resourceName} (${rTasks.length} tasks)`}
+                        ? `Task List filtered to ${res.resourceName} — click to clear`
+                        : `Filter Task List to ${res.resourceName}`}
                       style={{
-                        cursor: 'pointer', fontSize: 10, lineHeight: 1, padding: '2px 5px', borderRadius: 4,
+                        cursor: 'pointer', fontSize: 10, lineHeight: 1, padding: '2px 4px', borderRadius: 4,
                         color: isFiltered ? C.accent : C.textDim,
                         background: isFiltered ? `${C.accent}18` : 'transparent',
                         border: `1px solid ${isFiltered ? C.accent + '44' : 'transparent'}`,
-                        flexShrink: 0, userSelect: 'none', fontWeight: isFiltered ? 700 : 400,
-                        display: 'flex', alignItems: 'center', gap: 2,
+                        flexShrink: 0, userSelect: 'none',
                       }}
-                    >
-                      <span>☰</span>
-                      <span>{rTasks.length}</span>
-                    </span>
+                    >⊡</span>
                   )}
                 </div>
                 <div style={{ flex: 1, position: 'relative', height: LANE_H, overflow: 'hidden' }}>
