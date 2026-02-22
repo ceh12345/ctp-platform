@@ -24,6 +24,7 @@
 |--------|------|------------|
 | Solver Prompt 2 | Snapshot/Restore | Solver Prompt 1 |
 | UI Sprint 4 | Redirect Work | — |
+| UI Sprint 5 | Reprioritize | — |
 
 ## Backlog
 
@@ -31,7 +32,6 @@
 |--------|------|------------|
 | Solver Prompt 3 | Balanced Strategy | Solver Prompt 2 |
 | Solver Prompt 4 | Stress Tests | Solver Prompt 3 |
-| UI Sprint 5 | Reprioritize | — |
 | UI Sprint 6 | What-If Mode | UI Sprints 3-5, Solver Prompt 2 |
 | UI Sprint 7 | Time Fence | — |
 | UI Sprint 8 | Task Swap | UI Sprint 4 |
