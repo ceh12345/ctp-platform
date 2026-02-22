@@ -3896,42 +3896,35 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
           </span>
         </div>
       )}
-      {/* Row 1: active filter chips — only visible when a filter is set */}
-      {(resourceFilterName || timeFilter?.after || timeFilter?.before) && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-          {resourceFilterName && onResourceFilterChange && (
-            <FilterChip label={`Resource: ${resourceFilterName}`} onClear={() => onResourceFilterChange(null)} />
-          )}
-          {resourceFilterName && (timeFilter?.after || timeFilter?.before) && (
-            <span style={{ color: C.textDim, fontSize: 12, userSelect: 'none' }}>·</span>
-          )}
-          {timeFilter?.after && (
-            <FilterChip label={`After: ${fmtPreset(timeFilter.after)}`} onClear={() => onTimeFilterChange?.({ ...timeFilter, after: undefined })} />
-          )}
-          {timeFilter?.after && timeFilter?.before && (
-            <span style={{ color: C.textDim, fontSize: 12, userSelect: 'none' }}>·</span>
-          )}
-          {timeFilter?.before && (
-            <FilterChip label={`Before: ${fmtPreset(timeFilter.before)}`} onClear={() => onTimeFilterChange?.({ ...timeFilter, before: undefined })} />
-          )}
-          <div style={{ flex: 1 }} />
-          <button onClick={() => { onResourceFilterChange?.(null); onTimeFilterChange?.({}); }}
-            style={{ fontSize: 11, color: C.textMuted, background: 'none', border: 'none', cursor: 'pointer', fontFamily: FONT }}>
-            Clear all
-          </button>
-        </div>
-      )}
-      {/* Row 2: time preset buttons — always visible when time filter is wired */}
+      {/* Single filter row: presets + active chips inline, Clear all far right */}
       {onTimeFilterChange && (
-        <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
           <button style={presetBtnStyle} onClick={() => onTimeFilterChange({ after: new Date(snapMidnightMs(schedStart)).toISOString() })}>Schedule Start</button>
           <button style={presetBtnStyle} onClick={() => onTimeFilterChange({ after: new Date(schedStart).toISOString() })}>Now →</button>
           <button style={presetBtnStyle} onClick={() => onTimeFilterChange({ after: new Date(schedStart).toISOString(), before: new Date(schedStart + 4 * 3600_000).toISOString() })}>Next 4h</button>
           <button style={presetBtnStyle} onClick={() => { const d = snapMidnightMs(schedStart); onTimeFilterChange({ after: new Date(d).toISOString(), before: new Date(d + 86_400_000).toISOString() }); }}>Today</button>
           <button style={presetBtnStyle} onClick={() => { const d = snapMidnightMs(schedStart) + 86_400_000; onTimeFilterChange({ after: new Date(d).toISOString(), before: new Date(d + 86_400_000).toISOString() }); }}>Tomorrow</button>
+          {resourceFilterName && onResourceFilterChange && <>
+            <span style={{ color: C.textDim, fontSize: 12, userSelect: 'none' }}>·</span>
+            <FilterChip label={`Resource: ${resourceFilterName}`} onClear={() => onResourceFilterChange(null)} />
+          </>}
+          {timeFilter?.after && <>
+            <span style={{ color: C.textDim, fontSize: 12, userSelect: 'none' }}>·</span>
+            <FilterChip label={`After: ${fmtPreset(timeFilter.after)}`} onClear={() => onTimeFilterChange({ ...timeFilter, after: undefined })} />
+          </>}
+          {timeFilter?.before && <>
+            <span style={{ color: C.textDim, fontSize: 12, userSelect: 'none' }}>·</span>
+            <FilterChip label={`Before: ${fmtPreset(timeFilter.before)}`} onClear={() => onTimeFilterChange({ ...timeFilter, before: undefined })} />
+          </>}
+          {(resourceFilterName || timeFilter?.after || timeFilter?.before) && <>
+            <div style={{ flex: 1 }} />
+            <button onClick={() => { onResourceFilterChange?.(null); onTimeFilterChange({}); }}
+              style={{ fontSize: 11, color: C.textMuted, background: 'none', border: 'none', cursor: 'pointer', fontFamily: FONT }}>
+              Clear all
+            </button>
+          </>}
         </div>
       )}
-      {/* Row 3: search + status */}
       <FilterBar filter={filter} statusOptions={statusOptions} />
 
       {/* Task Type Chips */}
