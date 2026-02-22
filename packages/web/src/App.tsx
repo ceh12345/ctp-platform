@@ -4914,11 +4914,9 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
     return inTz.getTime() - tzOff;
   };
 
-  const clearAllFilters = () => { setResourceFilter(null); setTimeFilter({}); };
   const resourceName = resourceFilter
     ? (resources.find((r: any) => r.resourceKey === resourceFilter)?.resourceName || resourceFilter)
     : null;
-  const hasFilter = !!(resourceFilter || timeFilter.after || timeFilter.before);
   const fmtTime = (iso: string) => new Date(iso).toLocaleString(undefined, {
     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
   });
@@ -4931,16 +4929,21 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   // Force Task List when case filter is active
   const effectiveIdx = caseFilter ? 2 : subIdx;
 
-  const filterBar = (
+  // Resource chip: always visible (set by clicking Gantt, clear from anywhere)
+  const resourceChipBar = resourceName ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+      <FilterChip label={`Resource: ${resourceName}`} onClear={() => setResourceFilter(null)} />
+    </div>
+  ) : null;
+
+  // Time presets + chips: only on Task List sub-tab
+  const timeFilterBar = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-      {/* Time preset buttons — all relative to schedule data, not browser clock */}
       <div style={{ display: 'flex', gap: 4 }}>
         <button style={presetStyle} onClick={() => {
-          // Horizon beginning: midnight of the first schedule day
           setTimeFilter({ after: new Date(snapMidnightMs(schedStart)).toISOString() });
         }}>Schedule Start</button>
         <button style={presetStyle} onClick={() => {
-          // "Now" in schedule time: from the first actual task start
           setTimeFilter({ after: new Date(schedStart).toISOString() });
         }}>Now →</button>
         <button style={presetStyle} onClick={() => {
@@ -4950,29 +4953,23 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
           });
         }}>Next 4h</button>
         <button style={presetStyle} onClick={() => {
-          // "Today" = the calendar day containing the first scheduled task
           const dayStartMs = snapMidnightMs(schedStart);
           setTimeFilter({ after: new Date(dayStartMs).toISOString(), before: new Date(dayStartMs + 86_400_000).toISOString() });
         }}>Today</button>
         <button style={presetStyle} onClick={() => {
-          // "Tomorrow" = the second calendar day of the schedule
           const day2StartMs = snapMidnightMs(schedStart) + 86_400_000;
           setTimeFilter({ after: new Date(day2StartMs).toISOString(), before: new Date(day2StartMs + 86_400_000).toISOString() });
         }}>Tomorrow</button>
       </div>
-      {/* Active filter chips */}
-      {resourceName && (
-        <FilterChip label={`Resource: ${resourceName}`} onClear={() => setResourceFilter(null)} />
-      )}
       {timeFilter.after && (
         <FilterChip label={`After: ${fmtTime(timeFilter.after)}`} onClear={() => setTimeFilter(prev => ({ ...prev, after: undefined }))} />
       )}
       {timeFilter.before && (
         <FilterChip label={`Before: ${fmtTime(timeFilter.before)}`} onClear={() => setTimeFilter(prev => ({ ...prev, before: undefined }))} />
       )}
-      {hasFilter && (
-        <button onClick={clearAllFilters} style={{ fontSize: 11, color: C.textMuted, background: 'none', border: 'none', cursor: 'pointer', fontFamily: FONT }}>
-          Clear all
+      {(timeFilter.after || timeFilter.before) && (
+        <button onClick={() => setTimeFilter({})} style={{ fontSize: 11, color: C.textMuted, background: 'none', border: 'none', cursor: 'pointer', fontFamily: FONT }}>
+          Clear
         </button>
       )}
     </div>
@@ -4981,7 +4978,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   return (
     <div>
       <SubTabs tabs={tabNames} active={tabNames[effectiveIdx]} onChange={(s) => { setSubIdx(tabNames.indexOf(s)); if (caseFilter) onClearCaseFilter?.(); }} />
-      {filterBar}
+      {resourceChipBar}
+      {effectiveIdx === 2 && timeFilterBar}
       {effectiveIdx === 0 ? (
         <Card>
           <GanttChart tasks={tasks} resources={resources} products={products} colors={colors}
