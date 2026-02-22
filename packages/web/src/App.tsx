@@ -4899,9 +4899,20 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   const [resourceFilter, setResourceFilter] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<{ after?: string; before?: string }>({});
 
-  // Compute data timezone offset for Today/Tomorrow presets
+  // Compute data timezone offset and schedule reference points
   const scheduledForTz = useMemo(() => tasks.filter((tk: any) => tk.scheduledStart), [tasks]);
   const { offsetMs: tzOff } = scheduledForTz.length > 0 ? detectGanttTz(scheduledForTz) : { offsetMs: 0 };
+  // Earliest scheduled task start — anchor for all time presets
+  const schedStart = useMemo(() => {
+    if (scheduledForTz.length === 0) return Date.now();
+    return Math.min(...scheduledForTz.map((tk: any) => new Date(tk.scheduledStart).getTime()));
+  }, [scheduledForTz]);
+  // Snap any ms timestamp to midnight in data timezone
+  const snapMidnightMs = (ms: number) => {
+    const inTz = new Date(ms + tzOff);
+    inTz.setUTCHours(0, 0, 0, 0);
+    return inTz.getTime() - tzOff;
+  };
 
   const clearAllFilters = () => { setResourceFilter(null); setTimeFilter({}); };
   const resourceName = resourceFilter
@@ -4922,27 +4933,31 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
 
   const filterBar = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-      {/* Time preset buttons */}
+      {/* Time preset buttons — all relative to schedule data, not browser clock */}
       <div style={{ display: 'flex', gap: 4 }}>
-        <button style={presetStyle} onClick={() => setTimeFilter({ after: new Date().toISOString() })}>Now →</button>
-        <button style={presetStyle} onClick={() => setTimeFilter({
-          after: new Date().toISOString(),
-          before: new Date(Date.now() + 4 * 3600_000).toISOString(),
-        })}>Next 4h</button>
         <button style={presetStyle} onClick={() => {
-          const nowInTz = new Date(Date.now() + tzOff);
-          nowInTz.setUTCHours(0, 0, 0, 0);
-          const dayStart = new Date(nowInTz.getTime() - tzOff);
-          const dayEnd = new Date(dayStart.getTime() + 86_400_000);
-          setTimeFilter({ after: dayStart.toISOString(), before: dayEnd.toISOString() });
+          // Horizon beginning: midnight of the first schedule day
+          setTimeFilter({ after: new Date(snapMidnightMs(schedStart)).toISOString() });
+        }}>Schedule Start</button>
+        <button style={presetStyle} onClick={() => {
+          // "Now" in schedule time: from the first actual task start
+          setTimeFilter({ after: new Date(schedStart).toISOString() });
+        }}>Now →</button>
+        <button style={presetStyle} onClick={() => {
+          setTimeFilter({
+            after: new Date(schedStart).toISOString(),
+            before: new Date(schedStart + 4 * 3600_000).toISOString(),
+          });
+        }}>Next 4h</button>
+        <button style={presetStyle} onClick={() => {
+          // "Today" = the calendar day containing the first scheduled task
+          const dayStartMs = snapMidnightMs(schedStart);
+          setTimeFilter({ after: new Date(dayStartMs).toISOString(), before: new Date(dayStartMs + 86_400_000).toISOString() });
         }}>Today</button>
         <button style={presetStyle} onClick={() => {
-          const tomorrowInTz = new Date(Date.now() + tzOff);
-          tomorrowInTz.setUTCHours(0, 0, 0, 0);
-          tomorrowInTz.setUTCDate(tomorrowInTz.getUTCDate() + 1);
-          const dayStart = new Date(tomorrowInTz.getTime() - tzOff);
-          const dayEnd = new Date(dayStart.getTime() + 86_400_000);
-          setTimeFilter({ after: dayStart.toISOString(), before: dayEnd.toISOString() });
+          // "Tomorrow" = the second calendar day of the schedule
+          const day2StartMs = snapMidnightMs(schedStart) + 86_400_000;
+          setTimeFilter({ after: new Date(day2StartMs).toISOString(), before: new Date(day2StartMs + 86_400_000).toISOString() });
         }}>Tomorrow</button>
       </div>
       {/* Active filter chips */}
