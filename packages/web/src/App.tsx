@@ -5608,6 +5608,8 @@ function ConflictsTab({ tasks, resources, materials, onTaskClick }: {
           color={conflicts.length > 0 ? C.red : C.green} />
         <KPI label="Critical" value={criticalCount} icon="🔴"
           color={criticalCount > 0 ? C.red : C.green} />
+        <KPI label="Warnings" value={warningCount} icon="🟡"
+          color={warningCount > 0 ? C.yellow : C.green} />
         <KPI label={`${t('infeasibleStatus', 'Infeasible')} ${t('tasks', 'Tasks')}`} value={infeasible} icon="✕"
           color={infeasible > 0 ? C.red : C.green} />
       </div>
