@@ -3705,7 +3705,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   onIncludeSelected?: (keys: string[]) => void;
 }) {
   const { sortKey, sortDir, toggle, sorted } = useSort('key');
-  const [activeTypeChips, setActiveTypeChips] = useState<Set<string>>(new Set(['PROCESS']));
+  const [selectedType, setSelectedType] = useState<string>('all');
 
   const caseTasks = useMemo(() => caseFilter ? tasks.filter(tk => tk.orderRef === caseFilter) : tasks, [tasks, caseFilter]);
 
@@ -3734,25 +3734,9 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
     return Array.from(types).sort();
   }, [enriched]);
 
-  const allTypesActive = activeTypeChips.size >= distinctTypes.length;
-  const toggleTypeChip = useCallback((key: string) => {
-    setActiveTypeChips(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
-  const toggleAllTypes = useCallback(() => {
-    if (allTypesActive) setActiveTypeChips(new Set(['PROCESS']));
-    else setActiveTypeChips(new Set(distinctTypes));
-  }, [allTypesActive, distinctTypes]);
-
-  // Type chip filter applied before useFilter so column dropdowns reflect type-filtered data
-  const typeFiltered = useMemo(() => {
-    if (activeTypeChips.size === 0) return [];
-    return enriched.filter(tk => activeTypeChips.has(tk._type));
-  }, [enriched, activeTypeChips]);
+  const typeFiltered = useMemo(() => (
+    selectedType === 'all' ? enriched : enriched.filter(tk => tk._type === selectedType)
+  ), [enriched, selectedType]);
 
   const statusDeriver = useCallback((row: any) => row._status, []);
   const filter = useFilter(typeFiltered, { statusDeriver });
@@ -3773,6 +3757,11 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   const presetBtnStyle: CSSProperties = {
     padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
     fontFamily: FONT, border: `1px solid ${C.border}`, background: C.surface2, color: C.textMuted,
+  };
+  const dropdownStyle: CSSProperties = {
+    padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+    fontFamily: FONT, border: `1px solid ${C.border}`, background: C.surface2, color: C.text,
+    outline: 'none',
   };
 
   // Sync resourceFilter chip ↔ _resource column dropdown (ref prevents loop)
@@ -3896,7 +3885,33 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
           </span>
         </div>
       )}
-      {/* Single filter row: presets + active chips inline, Clear all far right */}
+      {/* Row 1: Search (full width) */}
+      <div style={{ marginBottom: 8 }}>
+        <SearchBox value={filter.search} onChange={filter.setSearch} placeholder="Search tasks..." />
+      </div>
+      {/* Row 2: Status + Type dropdowns */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+        <select value={filter.status} onChange={e => filter.setStatus(e.target.value)} style={dropdownStyle}>
+          {statusOptions.map(opt => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}{opt.count != null ? ` (${opt.count})` : ''}
+            </option>
+          ))}
+        </select>
+        {distinctTypes.length > 1 && (
+          <select value={selectedType} onChange={e => setSelectedType(e.target.value)} style={dropdownStyle}>
+            <option value="all">All Types</option>
+            {distinctTypes.map(typ => {
+              const count = enriched.filter(tk => tk._type === typ).length;
+              const label = typ.charAt(0) + typ.slice(1).toLowerCase().replace(/_/g, ' ');
+              return <option key={typ} value={typ}>{label} ({count})</option>;
+            })}
+          </select>
+        )}
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: C.textDim }}>{rows.length} results</span>
+      </div>
+      <ActiveFilters filter={filter} />
+      {/* Row 3: Time presets + active chips + Clear */}
       {onTimeFilterChange && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
           <button style={presetBtnStyle} onClick={() => onTimeFilterChange({ after: new Date(snapMidnightMs(schedStart)).toISOString() })}>Schedule Start</button>
@@ -3920,46 +3935,11 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
             <div style={{ flex: 1 }} />
             <button onClick={() => { onResourceFilterChange?.(null); onTimeFilterChange({}); }}
               style={{ fontSize: 11, color: C.textMuted, background: 'none', border: 'none', cursor: 'pointer', fontFamily: FONT }}>
-              Clear all
+              Clear
             </button>
           </>}
         </div>
       )}
-      <FilterBar filter={filter} statusOptions={statusOptions} />
-
-      {/* Task Type Chips */}
-      {distinctTypes.length > 1 && (
-        <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
-          <button onClick={toggleAllTypes} style={{
-            padding: '4px 12px', borderRadius: 6, cursor: 'pointer',
-            fontSize: 12, fontWeight: 600, fontFamily: FONT,
-            background: allTypesActive ? C.accent + '22' : 'transparent',
-            color: allTypesActive ? C.accent : C.textMuted,
-            border: allTypesActive ? `1px solid ${C.accent}44` : '1px solid transparent',
-          }}>
-            All Types
-          </button>
-          {distinctTypes.map(typ => {
-            const isActive = activeTypeChips.has(typ);
-            const count = enriched.filter(tk => tk._type === typ).length;
-            const label = typ.charAt(0) + typ.slice(1).toLowerCase().replace(/_/g, ' ');
-            return (
-              <button key={typ} onClick={() => toggleTypeChip(typ)} style={{
-                padding: '4px 12px', borderRadius: 6, cursor: 'pointer',
-                fontSize: 12, fontWeight: 600, fontFamily: FONT,
-                background: isActive ? C.accent + '22' : 'transparent',
-                color: isActive ? C.accent : C.textMuted,
-                border: isActive ? `1px solid ${C.accent}44` : '1px solid transparent',
-              }}>
-                {label}
-                <span style={{ marginLeft: 4, opacity: 0.7 }}>({count})</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      <ActiveFilters filter={filter} />
       {selectedTasks && selectedTasks.size > 0 ? (() => {
         const selArr = Array.from(selectedTasks);
         const selObjs = selArr.map(k => tasks.find((tt: any) => tt.key === k)).filter(Boolean);
