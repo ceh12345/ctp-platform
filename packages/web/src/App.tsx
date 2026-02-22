@@ -186,6 +186,7 @@ const TIME_RANGE_OPTIONS = [
 ];
 const ZOOM_LEVELS = [
   ...TIME_RANGE_OPTIONS,
+  { label: 'Day', days: 1 },
   { label: '3 Day', days: 3 },
   { label: 'Week', days: 7 },
   { label: '2 Week', days: 14 },
@@ -3490,6 +3491,7 @@ function CaseGanttChart({ tasks, orders, products, colors, onTaskClick,
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [caseSearch, setCaseSearch] = useState('');
   const [sortBy, setSortBy] = useState<'start' | 'priority' | 'worstGap' | 'name'>('start');
+  const [lastTimeRange, setLastTimeRange] = useState('3 hours');
 
   // Filter scheduled tasks (same as GanttChart)
   const scheduled = tasks.filter((tk: any) => {
