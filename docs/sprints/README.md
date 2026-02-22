@@ -16,13 +16,13 @@
 | UI Sprint 1 — Select & Act | Checkboxes, selection toolbar, unscheduled panel, visual indicators | 2026-02-21 |
 | UI Sprint 1.1 — Immediate Actions | Single-task and bulk unschedule/pin/schedule via API; toast; loading state; Unschedule Order context menu | 2026-02-21 |
 | UI Sprint 2 — Solve Selected | Covered by 1.1 bulk immediate actions (Schedule N, Unschedule N, Pin N from selection toolbar) | 2026-02-21 |
+| UI Sprint 3 — Resource + Time Filter | Click resource label → filter task table; time presets (Now, Next 4h, Today, Tomorrow); filter chips with ✕; Gantt row highlight; unscheduled panel respects filter | 2026-02-22 |
 
 ## Up Next
 
 | Sprint | Name | Blocked By |
 |--------|------|------------|
 | Solver Prompt 2 | Snapshot/Restore | Solver Prompt 1 |
-| UI Sprint 3 | Resource + Time Filter | — |
 | UI Sprint 4 | Redirect Work | — |
 
 ## Backlog
@@ -46,8 +46,8 @@ SOLVER TRACK                          UI TRACK
 Prompt 1: Ranked Contexts             ✓ Sprint 1: Select & Act
          │                            ✓ Sprint 1.1: Immediate Actions
          ▼                            ✓ Sprint 2: Solve Selected (via 1.1)
-Prompt 2: Snapshot/Restore ───────┐           │
-         │                        │           ├──→ Sprint 3: Resource + Time Filter
+Prompt 2: Snapshot/Restore ───────┐   ✓ Sprint 3: Resource + Time Filter
+         │                        │           │
          ▼                        │           ├──→ Sprint 4: Redirect Work
 Prompt 3: Balanced Strategy       │           ├──→ Sprint 5: Reprioritize
          │                        │           └──→ Sprint 7: Time Fence

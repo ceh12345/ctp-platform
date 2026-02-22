@@ -2319,6 +2319,23 @@ const cellStyle: CSSProperties = {
 };
 
 /* ═══════════════════════════════════════════════════════════════
+   FILTER CHIP
+   ═══════════════════════════════════════════════════════════════ */
+
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '3px 10px', borderRadius: 12, fontSize: 12, fontFamily: FONT,
+      background: C.surface2, border: `1px solid ${C.border}`, color: C.text,
+    }}>
+      {label}
+      <span onClick={onClear} style={{ cursor: 'pointer', color: C.textMuted, fontWeight: 700, marginLeft: 2 }}>✕</span>
+    </span>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    GANTT CHART
    ═══════════════════════════════════════════════════════════════ */
 
@@ -2326,6 +2343,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   taskPins, taskExcludes, taskUnschedules, orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask,
   onApiUnschedule, onApiPin, onApiBulkUnschedule, actionLoading,
+  onResourceFilter, resourceFilter,
   onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
   whereToCurrentAssignment, onMoveTo, onCancelWhereTo,
   zoomLevel, setZoomLevel, scrollOffset, setScrollOffset }: {
@@ -2340,6 +2358,8 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   onApiPin?: (key: string, pinned: boolean) => Promise<void>;
   onApiBulkUnschedule?: (keys: string[]) => Promise<void>;
   actionLoading?: string | null;
+  onResourceFilter?: (resourceKey: string) => void;
+  resourceFilter?: string | null;
   onWhereTo?: (key: string) => void;
   whereToTaskKey?: string | null;
   whereToOptions?: any[];
@@ -2618,18 +2638,29 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
           {/* Resource lanes within this work center */}
           {wcResources.map((res: any) => {
             const rTasks = resMap.get(res.resourceKey) || [];
+            const isFiltered = resourceFilter === res.resourceKey;
             return (
-              <div key={res.resourceKey} style={{ display: 'flex', borderTop: `1px solid ${C.border}` }}>
+              <div key={res.resourceKey} style={{
+                display: 'flex', borderTop: `1px solid ${C.border}`,
+                ...(isFiltered && { background: `${C.accent}08`, borderLeft: `3px solid ${C.accent}` }),
+              }}>
                 <div
-                  onClick={() => onResourceClick?.(res)}
+                  onClick={() => {
+                    if (onResourceFilter) {
+                      onResourceFilter(res.resourceKey);
+                    } else {
+                      onResourceClick?.(res);
+                    }
+                  }}
                   style={{
                     width: LABEL_W, minWidth: LABEL_W, padding: '10px 12px', fontSize: 12,
-                    color: C.textMuted, fontWeight: 500, display: 'flex', alignItems: 'center',
-                    cursor: onResourceClick ? 'pointer' : 'default',
+                    color: isFiltered ? C.accent : C.textMuted, fontWeight: isFiltered ? 600 : 500,
+                    display: 'flex', alignItems: 'center',
+                    cursor: (onResourceFilter || onResourceClick) ? 'pointer' : 'default',
                     transition: 'color 0.1s',
                   }}
-                  onMouseEnter={e => { if (onResourceClick) e.currentTarget.style.color = C.accent; }}
-                  onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; }}
+                  onMouseEnter={e => { if (onResourceFilter || onResourceClick) e.currentTarget.style.color = C.accent; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = isFiltered ? C.accent : C.textMuted; }}
                 >
                   {res.resourceName}
                 </div>
@@ -3627,6 +3658,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   onApiUnschedule, onApiPin, onApiBulkUnschedule, onApiBulkPin,
   experienceLevel = 'novice',
   onWhereTo, whereToTaskKey, caseFilter, onClearCaseFilter, onNavigateToOrders,
+  resourceFilter, timeFilter,
   selectedTasks, onToggleSelect, onSetSelectedTasks,
   onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected }: {
   tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void;
@@ -3645,6 +3677,8 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   caseFilter?: string | null;
   onClearCaseFilter?: () => void;
   onNavigateToOrders?: (orderKey: string) => void;
+  resourceFilter?: string | null;
+  timeFilter?: { after?: string; before?: string };
   selectedTasks?: Set<string>;
   onToggleSelect?: (key: string) => void;
   onSetSelectedTasks?: (s: Set<string>) => void;
@@ -3779,7 +3813,21 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
     }
   }, [onApiBulkUnschedule, onUnscheduleTask]);
 
-  const rows = sorted(filter.filtered);
+  let preRows = filter.filtered;
+  if (resourceFilter) {
+    preRows = preRows.filter((t: any) =>
+      t.assignedResources?.some((r: any) => r.resourceKey === resourceFilter)
+    );
+  }
+  if (timeFilter?.after) {
+    const afterMs = new Date(timeFilter.after).getTime();
+    preRows = preRows.filter((t: any) => !t.scheduledEnd || new Date(t.scheduledEnd).getTime() > afterMs);
+  }
+  if (timeFilter?.before) {
+    const beforeMs = new Date(timeFilter.before).getTime();
+    preRows = preRows.filter((t: any) => !t.scheduledStart || new Date(t.scheduledStart).getTime() < beforeMs);
+  }
+  const rows = sorted(preRows);
   // Derive case name for the filter chip
   const caseFilterName = caseFilter ? (caseTasks[0]?.orderName || caseFilter) : null;
   return (
@@ -4644,7 +4692,7 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
 
 function UnscheduledPanel({ tasks, colors, taskExcludes, taskUnschedules,
   onTaskClick, onWhereTo, onApiSchedule, actionLoading,
-  selectedTasks, onToggleSelect }: {
+  resourceFilter, selectedTasks, onToggleSelect }: {
   tasks: any[]; products?: any[]; colors: any;
   taskExcludes?: Record<string, boolean>;
   taskUnschedules?: Set<string>;
@@ -4653,6 +4701,7 @@ function UnscheduledPanel({ tasks, colors, taskExcludes, taskUnschedules,
   onWhereTo?: (key: string) => void;
   onApiSchedule?: (key: string) => Promise<void>;
   actionLoading?: string | null;
+  resourceFilter?: string | null;
   selectedTasks?: Set<string>;
   onToggleSelect?: (key: string) => void;
 }) {
@@ -4664,9 +4713,15 @@ function UnscheduledPanel({ tasks, colors, taskExcludes, taskUnschedules,
       const isPendingUnsched = taskUnschedules?.has(t.key);
       const isExcluded = taskExcludes?.[t.key];
       if (t.type && t.type !== 'PROCESS') return false;
+      if (resourceFilter) {
+        const matchesResource = t.assignedResources?.some(
+          (r: any) => r.resourceKey === resourceFilter || r.requestedResource === resourceFilter
+        );
+        if (!matchesResource) return false;
+      }
       return isUnscheduled || isPendingUnsched || isExcluded;
     });
-  }, [tasks, taskUnschedules, taskExcludes]);
+  }, [tasks, taskUnschedules, taskExcludes, resourceFilter]);
 
   if (unscheduled.length === 0) return null;
 
@@ -4841,11 +4896,77 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   const [subIdx, setSubIdx] = useState(0);
   const [zoomLevel, setZoomLevel] = useState('Day');
   const [scrollOffset, setScrollOffset] = useState(0);
+  const [resourceFilter, setResourceFilter] = useState<string | null>(null);
+  const [timeFilter, setTimeFilter] = useState<{ after?: string; before?: string }>({});
+
+  // Compute data timezone offset for Today/Tomorrow presets
+  const scheduledForTz = useMemo(() => tasks.filter((tk: any) => tk.scheduledStart), [tasks]);
+  const { offsetMs: tzOff } = scheduledForTz.length > 0 ? detectGanttTz(scheduledForTz) : { offsetMs: 0 };
+
+  const clearAllFilters = () => { setResourceFilter(null); setTimeFilter({}); };
+  const resourceName = resourceFilter
+    ? (resources.find((r: any) => r.resourceKey === resourceFilter)?.resourceName || resourceFilter)
+    : null;
+  const hasFilter = !!(resourceFilter || timeFilter.after || timeFilter.before);
+  const fmtTime = (iso: string) => new Date(iso).toLocaleString(undefined, {
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+
+  const presetStyle: CSSProperties = {
+    padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+    fontFamily: FONT, border: `1px solid ${C.border}`, background: C.surface2, color: C.textMuted,
+  };
+
   // Force Task List when case filter is active
   const effectiveIdx = caseFilter ? 2 : subIdx;
+
+  const filterBar = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+      {/* Time preset buttons */}
+      <div style={{ display: 'flex', gap: 4 }}>
+        <button style={presetStyle} onClick={() => setTimeFilter({ after: new Date().toISOString() })}>Now →</button>
+        <button style={presetStyle} onClick={() => setTimeFilter({
+          after: new Date().toISOString(),
+          before: new Date(Date.now() + 4 * 3600_000).toISOString(),
+        })}>Next 4h</button>
+        <button style={presetStyle} onClick={() => {
+          const nowInTz = new Date(Date.now() + tzOff);
+          nowInTz.setUTCHours(0, 0, 0, 0);
+          const dayStart = new Date(nowInTz.getTime() - tzOff);
+          const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+          setTimeFilter({ after: dayStart.toISOString(), before: dayEnd.toISOString() });
+        }}>Today</button>
+        <button style={presetStyle} onClick={() => {
+          const tomorrowInTz = new Date(Date.now() + tzOff);
+          tomorrowInTz.setUTCHours(0, 0, 0, 0);
+          tomorrowInTz.setUTCDate(tomorrowInTz.getUTCDate() + 1);
+          const dayStart = new Date(tomorrowInTz.getTime() - tzOff);
+          const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+          setTimeFilter({ after: dayStart.toISOString(), before: dayEnd.toISOString() });
+        }}>Tomorrow</button>
+      </div>
+      {/* Active filter chips */}
+      {resourceName && (
+        <FilterChip label={`Resource: ${resourceName}`} onClear={() => setResourceFilter(null)} />
+      )}
+      {timeFilter.after && (
+        <FilterChip label={`After: ${fmtTime(timeFilter.after)}`} onClear={() => setTimeFilter(prev => ({ ...prev, after: undefined }))} />
+      )}
+      {timeFilter.before && (
+        <FilterChip label={`Before: ${fmtTime(timeFilter.before)}`} onClear={() => setTimeFilter(prev => ({ ...prev, before: undefined }))} />
+      )}
+      {hasFilter && (
+        <button onClick={clearAllFilters} style={{ fontSize: 11, color: C.textMuted, background: 'none', border: 'none', cursor: 'pointer', fontFamily: FONT }}>
+          Clear all
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div>
       <SubTabs tabs={tabNames} active={tabNames[effectiveIdx]} onChange={(s) => { setSubIdx(tabNames.indexOf(s)); if (caseFilter) onClearCaseFilter?.(); }} />
+      {filterBar}
       {effectiveIdx === 0 ? (
         <Card>
           <GanttChart tasks={tasks} resources={resources} products={products} colors={colors}
@@ -4855,6 +4976,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask}
             onApiUnschedule={onApiUnschedule} onApiPin={onApiPin}
             onApiBulkUnschedule={onApiBulkUnschedule} actionLoading={actionLoading}
+            onResourceFilter={(key) => setResourceFilter(prev => prev === key ? null : key)}
+            resourceFilter={resourceFilter}
             onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey} whereToOptions={whereToOptions}
             whereToLoading={whereToLoading} whereToCurrentAssignment={whereToCurrentAssignment}
             onMoveTo={onMoveTo} onCancelWhereTo={onCancelWhereTo}
@@ -4864,6 +4987,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             onTaskClick={onTaskClick} onWhereTo={onWhereTo}
             onApiSchedule={onApiSchedule} actionLoading={actionLoading}
+            resourceFilter={resourceFilter}
             selectedTasks={selectedTasks} onToggleSelect={onToggleSelect} />
         </Card>
       ) : effectiveIdx === 1 ? (
@@ -4878,6 +5002,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             onTaskClick={onTaskClick} onWhereTo={onWhereTo}
             onApiSchedule={onApiSchedule} actionLoading={actionLoading}
+            resourceFilter={resourceFilter}
             selectedTasks={selectedTasks} onToggleSelect={onToggleSelect} />
         </Card>
       ) : (
@@ -4891,6 +5016,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey}
             caseFilter={caseFilter} onClearCaseFilter={onClearCaseFilter}
             onNavigateToOrders={onNavigateToOrders}
+            resourceFilter={resourceFilter} timeFilter={timeFilter}
             selectedTasks={selectedTasks} onToggleSelect={onToggleSelect} onSetSelectedTasks={onSetSelectedTasks}
             onScheduleSelected={onScheduleSelected} onUnscheduleSelected={onUnscheduleSelected}
             onPinSelected={onPinSelected} onUnpinSelected={onUnpinSelected}
