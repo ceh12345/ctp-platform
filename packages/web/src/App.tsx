@@ -5880,7 +5880,7 @@ export default function App() {
         if (result.requiresResolve) setSolveStale(true);
         // Refresh from live landscape state (not cached results — moveTo modifies landscape directly)
         const updated = await api('/ctp/state');
-        if (updated.tasks) setSolveResult(updated);
+        applyStateRefresh(updated);
       } else {
         alert(result.reason || 'Position no longer available. Refreshing options...');
         handleWhereTo(taskKey);
@@ -5892,6 +5892,15 @@ export default function App() {
 
   // ─── Immediate single-task API actions ───
 
+  // After any immediate action refreshes /ctp/state, apply the result and
+  // invalidate analytics so KPIs reflect the new landscape state.
+  const applyStateRefresh = useCallback((updated: any) => {
+    if (!updated.tasks) return;
+    setSolveResult(updated);
+    setAnalyticsKpis([]);
+    setAnalyticsDetail(null);
+  }, []);
+
   const handleApiUnschedule = useCallback(async (taskKey: string) => {
     setActionLoading(taskKey);
     try {
@@ -5901,7 +5910,7 @@ export default function App() {
       });
       if (res.success) {
         const updated = await api('/ctp/state');
-        if (updated.tasks) setSolveResult(updated);
+        applyStateRefresh(updated);
       } else {
         showToast(`Cannot unschedule: ${res.message || 'Unknown error'}`);
       }
@@ -5922,7 +5931,7 @@ export default function App() {
       });
       if (res.success || res.taskKey) {
         const updated = await api('/ctp/state');
-        if (updated.tasks) setSolveResult(updated);
+        applyStateRefresh(updated);
         setTaskPins(prev => ({ ...prev, [taskKey]: pinned }));
       } else {
         showToast(`Cannot ${pinned ? 'pin' : 'unpin'}: ${res.message || 'Unknown error'}`);
@@ -5943,7 +5952,7 @@ export default function App() {
       });
       if (res.success) {
         const updated = await api('/ctp/state');
-        if (updated.tasks) setSolveResult(updated);
+        applyStateRefresh(updated);
       } else {
         showToast(`Cannot schedule: ${res.errors?.[0]?.reason || res.message || 'No feasible slot'}`);
       }
