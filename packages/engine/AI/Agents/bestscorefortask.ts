@@ -29,30 +29,30 @@ export class BestScoreForTaskAgent
       let et: number | undefined = undefined;
       if (schedule.contexts) {
         schedule.contexts.forEach((context) => {
+          // Skip infeasible contexts — their default score of 0 would
+          // incorrectly beat real scores from feasible contexts.
+          if (!context.slot.hasStartTimes()) return;
+
           if (!schedule.value.hasScore()) {
             schedule.value.score = context.blendedScore.score;
-            if (context.slot.hasStartTimes()) {
-              st = context?.slot.startTimes?.head?.data.eStartW;
-              et = context?.slot.startTimes?.tail?.data.lStartW;
-            }
+            st = context?.slot.startTimes?.head?.data.eStartW;
+            et = context?.slot.startTimes?.tail?.data.lStartW;
           } else {
             if (schedule.value.score > context.blendedScore.score) {
               schedule.value.score = context.blendedScore.score;
             }
-            if (context.slot.hasStartTimes()) {
-              if (
-                context?.slot.startTimes?.head?.data.eStartW &&
-                st &&
-                context?.slot.startTimes?.head?.data.eStartW < st
-              )
-                st = context?.slot.startTimes?.head?.data.eStartW;
-              if (
-                context?.slot.startTimes?.tail?.data.lStartW &&
-                et &&
-                context?.slot.startTimes?.tail?.data.lStartW < et
-              )
-                et = context?.slot.startTimes?.tail?.data.lStartW;
-            }
+            if (
+              context?.slot.startTimes?.head?.data.eStartW &&
+              st &&
+              context?.slot.startTimes?.head?.data.eStartW < st
+            )
+              st = context?.slot.startTimes?.head?.data.eStartW;
+            if (
+              context?.slot.startTimes?.tail?.data.lStartW &&
+              et &&
+              context?.slot.startTimes?.tail?.data.lStartW < et
+            )
+              et = context?.slot.startTimes?.tail?.data.lStartW;
           }
         });
       }

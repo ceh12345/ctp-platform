@@ -76,19 +76,36 @@ describe('BestScoreForTaskAgent', () => {
     expect(() => agent.solve(null as any)).not.toThrow();
   });
 
-  it('handles contexts without start times', () => {
+  it('skips contexts without start times', () => {
     const agent = new BestScoreForTaskAgent();
     const task = new CTPTask('PROCESS', 'Task1', 'T1');
 
-    // Context with no startTimes on slot
+    // Context with no startTimes on slot (infeasible)
     const ctx = makeContext(task, 10);
     const tsc = makeTaskContexts(task, [ctx]);
     agent.solve([tsc]);
 
-    // Score should still be set even without start times
-    expect(task.score).toBe(10);
-    // But feasible should remain null since no start times
+    // Infeasible contexts should NOT set the score — their default score
+    // of 0 would incorrectly beat real scores from feasible contexts.
+    expect(task.score).toBe(Number.MAX_VALUE);
     expect(task.feasible).toBeNull();
+  });
+
+  it('picks best score only from feasible contexts', () => {
+    const agent = new BestScoreForTaskAgent();
+    const task = new CTPTask('PROCESS', 'Task1', 'T1');
+
+    // Mix of infeasible (no start times) and feasible contexts
+    const infeasible = makeContext(task, 0);           // default score 0, no start times
+    const feasible1 = makeContext(task, 8, 100, 200);  // scored, has start times
+    const feasible2 = makeContext(task, 5, 150, 250);  // scored, has start times
+
+    const tsc = makeTaskContexts(task, [infeasible, feasible1, feasible2]);
+    agent.solve([tsc]);
+
+    // Should pick score 5 from feasible2, NOT score 0 from infeasible
+    expect(task.score).toBe(5);
+    expect(task.feasible).not.toBeNull();
   });
 
   it('resets score before computing', () => {

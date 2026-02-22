@@ -78,7 +78,7 @@ export class ComputeScheduleContextsAgent extends AIAgent {
         // Remove invalid
         this.removeInvalidStartTimes(schedule);
 
-        if (schedule.slot && schedule.slot.hasStartTimes()) 
+        if (schedule.slot && schedule.slot.hasStartTimes())
           computescores.push(schedule);
 
         const durationStr = Duration.fromObject({

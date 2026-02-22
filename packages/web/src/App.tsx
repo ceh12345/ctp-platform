@@ -831,6 +831,169 @@ function Modal({ open, onClose, title, children }: {
   );
 }
 
+function ResourcePreferenceDialog({ open, onClose, selectedTaskKeys, tasks, resourcePreferenceOverrides, onApply, onApplyAndSolve }: {
+  open: boolean; onClose: () => void; selectedTaskKeys: string[]; tasks: any[];
+  resourcePreferenceOverrides: Record<string, Record<string, string>>;
+  onApply: (taskKeys: string[], resourceModes: Record<string, string>) => void;
+  onApplyAndSolve: (taskKeys: string[], resourceModes: Record<string, string>) => void;
+}) {
+  const [localModes, setLocalModes] = useState<Record<string, string>>({});
+  const compatResources = useMemo(() => getCompatibleResources(selectedTaskKeys, tasks), [selectedTaskKeys, tasks]);
+  const hasCompatData = useMemo(() => selectedTaskKeys.some(k => {
+    const t = tasks.find((tk: any) => tk.key === k);
+    return t?.compatibleResources?.length > 0;
+  }), [selectedTaskKeys, tasks]);
+
+  // Initialize local modes from existing overrides on open
+  useEffect(() => {
+    if (!open) return;
+    const modes: Record<string, string> = {};
+    for (const cr of compatResources) {
+      // Check if any selected task has an existing override for this resource
+      let existingMode: string | null = null;
+      for (const taskKey of selectedTaskKeys) {
+        const m = resourcePreferenceOverrides[taskKey]?.[cr.resourceKey];
+        if (m && !existingMode) existingMode = m;
+      }
+      modes[cr.resourceKey] = existingMode || 'AVAILABLE';
+    }
+    setLocalModes(modes);
+  }, [open, compatResources, selectedTaskKeys, resourcePreferenceOverrides]);
+
+  if (!open) return null;
+
+  const total = selectedTaskKeys.length;
+  const allExcluded = compatResources.length > 0 && compatResources.every(cr => localModes[cr.resourceKey] === 'EXCLUDED');
+  const hasChanges = Object.values(localModes).some(m => m !== 'AVAILABLE');
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 1000, display: 'flex',
+      alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16,
+        padding: 28, minWidth: 400, maxWidth: 640, width: '90%', fontFamily: FONT,
+        maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.text }}>
+            🔀 Resource Preferences
+          </h3>
+          <button onClick={onClose} style={{
+            background: 'none', border: 'none', color: C.textMuted, fontSize: 20,
+            cursor: 'pointer', padding: '4px 8px', lineHeight: 1,
+          }}>✕</button>
+        </div>
+
+        <p style={{ margin: '0 0 16px', fontSize: 12, color: C.textMuted }}>
+          Redirect <strong style={{ color: C.text }}>{total}</strong> selected task{total !== 1 ? 's' : ''} to different resources. The solver will respect these preferences on the next solve.
+        </p>
+
+        {!hasCompatData && (
+          <div style={{ padding: '8px 12px', borderRadius: 8, background: C.yellowDim, border: `1px solid ${C.yellow}33`, marginBottom: 12, fontSize: 11, color: C.yellow }}>
+            Full compatibility data not available. Showing assigned resources only.
+          </div>
+        )}
+
+        {/* Resource table */}
+        <div style={{ overflowY: 'auto', flex: 1, maxHeight: 400, marginBottom: 16 }}>
+          {/* Header row */}
+          <div style={{ display: 'flex', padding: '6px 10px', fontSize: 10, fontWeight: 700, color: C.textDim, textTransform: 'uppercase', borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ flex: 2 }}>Resource</div>
+            <div style={{ width: 60, textAlign: 'center' }}>Now</div>
+            <div style={{ width: 80, textAlign: 'center' }}>Compatible</div>
+            <div style={{ flex: 1, textAlign: 'right' }}>Preference</div>
+          </div>
+
+          {compatResources.length === 0 ? (
+            <div style={{ padding: '20px 10px', textAlign: 'center', color: C.textDim, fontSize: 12 }}>
+              No compatible resources found for selected tasks.
+            </div>
+          ) : compatResources.map(cr => {
+            const mode = localModes[cr.resourceKey] || 'AVAILABLE';
+            const modeDef = RESOURCE_PREF_MODES.find(m => m.value === mode) || RESOURCE_PREF_MODES[2];
+            const isPartial = cr.compatibleCount < total;
+            return (
+              <div key={cr.resourceKey} style={{
+                display: 'flex', alignItems: 'center', padding: '8px 10px',
+                borderBottom: `1px solid ${C.border}15`,
+              }}>
+                <div style={{ flex: 2 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{cr.resourceKey}</span>
+                  {cr.resourceName !== cr.resourceKey && (
+                    <span style={{ fontSize: 11, color: C.textDim, marginLeft: 6 }}>{cr.resourceName}</span>
+                  )}
+                </div>
+                <div style={{ width: 60, textAlign: 'center', fontSize: 12, color: cr.currentCount > 0 ? C.text : C.textDim }}>
+                  {cr.currentCount}/{total}
+                </div>
+                <div style={{ width: 80, textAlign: 'center', fontSize: 12, color: isPartial ? C.yellow : C.text }}>
+                  {cr.compatibleCount}/{total}
+                  {isPartial && <span style={{ fontSize: 10 }}> ⚠</span>}
+                </div>
+                <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                  <select
+                    value={mode}
+                    onChange={e => setLocalModes(prev => ({ ...prev, [cr.resourceKey]: e.target.value }))}
+                    style={{
+                      background: C.surface2, color: modeDef.color, border: `1px solid ${C.border}`,
+                      borderRadius: 6, padding: '4px 8px', fontSize: 11, fontWeight: 600,
+                      fontFamily: FONT, cursor: 'pointer', outline: 'none',
+                    }}
+                  >
+                    {RESOURCE_PREF_MODES.map(m => (
+                      <option key={m.value} value={m.value}>{m.icon} {m.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Warnings */}
+        {allExcluded && (
+          <div style={{ padding: '8px 12px', borderRadius: 8, background: C.redDim, border: `1px solid ${C.red}33`, marginBottom: 12, fontSize: 11, color: C.red }}>
+            All resources excluded — solver cannot schedule these tasks.
+          </div>
+        )}
+
+        {/* Footer legend */}
+        <div style={{ fontSize: 10, color: C.textDim, marginBottom: 16 }}>
+          <strong>Now</strong> = tasks currently assigned here &nbsp;·&nbsp; <strong>Compatible</strong> = tasks that can run here
+        </div>
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{
+            padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+            fontFamily: FONT, border: `1px solid ${C.border}`, background: C.surface2, color: C.text, cursor: 'pointer',
+          }}>Cancel</button>
+          <button onClick={() => onApply(selectedTaskKeys, localModes)}
+            disabled={!hasChanges}
+            style={{
+              padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+              fontFamily: FONT, border: `1px solid ${C.purple}55`, background: `${C.purple}22`,
+              color: hasChanges ? C.purple : C.textDim, cursor: hasChanges ? 'pointer' : 'default',
+              opacity: hasChanges ? 1 : 0.5,
+            }}>Apply</button>
+          <button onClick={() => onApplyAndSolve(selectedTaskKeys, localModes)}
+            disabled={allExcluded}
+            style={{
+              padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+              fontFamily: FONT, border: `1px solid ${C.accent}55`, background: `${C.accent}22`,
+              color: allExcluded ? C.textDim : C.accent, cursor: allExcluded ? 'default' : 'pointer',
+              opacity: allExcluded ? 0.5 : 1,
+            }}>Apply & Solve</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SlidePanel({ open, onClose, title, children }: {
   open: boolean; onClose: () => void; title: string; children: ReactNode;
 }) {
@@ -906,6 +1069,51 @@ const RESOURCE_MODES = [
   { value: 'TRACK', label: 'Monitored', icon: '◐', color: C.cyan },
   { value: 'OFF', label: 'Ignored', icon: '○', color: C.textDim },
 ];
+const RESOURCE_PREF_MODES = [
+  { value: 'REQUIRED',  label: 'Required',  icon: '◉', color: C.green,     desc: 'Must use this resource' },
+  { value: 'PREFERRED', label: 'Preferred', icon: '●', color: C.cyan,      desc: 'Try first, fall back if full' },
+  { value: 'AVAILABLE', label: 'Available', icon: '○', color: C.textMuted,  desc: 'Solver picks freely (default)' },
+  { value: 'EXCLUDED',  label: 'Excluded',  icon: '⊘', color: C.red,       desc: 'Do not use for this task' },
+];
+
+function getCompatibleResources(selectedTaskKeys: string[], tasks: any[]): {
+  resourceKey: string; resourceName: string; currentCount: number; compatibleCount: number;
+}[] {
+  const resourceMap = new Map<string, {
+    resourceKey: string; resourceName: string;
+    currentCount: number; compatibleCount: number;
+  }>();
+
+  for (const taskKey of selectedTaskKeys) {
+    const task = tasks.find((t: any) => t.key === taskKey);
+    if (!task) continue;
+
+    // Use compatibleResources from API response; fall back to assignedResources
+    const compatResources = task.compatibleResources?.length > 0
+      ? task.compatibleResources
+      : (task.assignedResources ?? []);
+
+    for (const cr of compatResources) {
+      if (!resourceMap.has(cr.resourceKey)) {
+        resourceMap.set(cr.resourceKey, {
+          resourceKey: cr.resourceKey,
+          resourceName: cr.resourceName ?? cr.resourceKey,
+          currentCount: 0, compatibleCount: 0,
+        });
+      }
+      resourceMap.get(cr.resourceKey)!.compatibleCount++;
+    }
+
+    // Count current assignments
+    for (const ar of (task.assignedResources ?? [])) {
+      const entry = resourceMap.get(ar.resourceKey);
+      if (entry) entry.currentCount++;
+    }
+  }
+
+  return Array.from(resourceMap.values())
+    .sort((a, b) => b.currentCount - a.currentCount || b.compatibleCount - a.compatibleCount);
+}
 
 function ClickableModeBadge({ mode, modes, onChange }: {
   mode: string;
@@ -1893,7 +2101,9 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   onPinTask, onExcludeTask, onUnscheduleTask, onCancelUnschedule,
   onApiUnschedule, onApiPin,
   resourceModeOverrides, onResourceModeChange, experienceLevel = 'novice',
-  whereToTaskKey, whereToOptions, onMoveTo, onNavigateToOrders, onTaskClick }: {
+  whereToTaskKey, whereToOptions, onMoveTo, onNavigateToOrders, onTaskClick,
+  resourcePreferenceOverrides, onResourcePrefChange, onClearResourceOverrides,
+  onApiSchedule, actionLoading }: {
   task: any; tasks: any[]; products: any[]; colors: any;
   onClose: () => void; onResourceClick: (r: any) => void;
   taskPins?: Record<string, boolean>;
@@ -1914,6 +2124,11 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   onMoveTo?: (key: string, option: any) => void;
   onNavigateToOrders?: (orderKey: string) => void;
   onTaskClick?: (task: any) => void;
+  resourcePreferenceOverrides?: Record<string, Record<string, string>>;
+  onResourcePrefChange?: (taskKey: string, resourceKey: string, mode: string) => void;
+  onClearResourceOverrides?: (taskKey: string) => void;
+  onApiSchedule?: (key: string) => Promise<void>;
+  actionLoading?: string | null;
 }) {
   const prodName = task.outputProductKey
     ? (products.find((p: any) => p.key === task.outputProductKey)?.name || task.outputProductKey)
@@ -1953,6 +2168,21 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
         )}
         {task.process && <Badge label={task.process} color={C.accent} />}
       </div>
+
+      {/* Schedule button for unscheduled tasks */}
+      {!task.feasible && !isExcluded && onApiSchedule && (
+        <button
+          onClick={() => { if (actionLoading !== task.key) onApiSchedule(task.key); }}
+          disabled={actionLoading === task.key}
+          style={{
+            ...actionBtnBase,
+            width: '100%', marginBottom: 12, justifyContent: 'center',
+            background: C.greenDim, border: `1px solid ${C.green}55`,
+            color: actionLoading === task.key ? C.textDim : C.green,
+            cursor: actionLoading === task.key ? 'wait' : 'pointer',
+          }}
+        >{actionLoading === task.key ? '⏳ Scheduling...' : '▶ Schedule This Task'}</button>
+      )}
 
       {/* Action buttons */}
       {(onApiPin || onPinTask) && (
@@ -2091,6 +2321,45 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
                     onChange={(m) => onResourceModeChange(capKey, m)} />
                 ) : (
                   showAt(experienceLevel, 'intermediate') ? <ModeBadge mode={displayMode} /> : null
+                )}
+              </div>
+            );
+          })}
+        </>
+      )}
+
+      {/* Resource Preference Overrides */}
+      {task.compatibleResources?.length > 0 && showAt(experienceLevel, 'intermediate') && (
+        <>
+          <SectionLabel label="Resource Preference Overrides" />
+          {resourcePreferenceOverrides?.[task.key] && Object.keys(resourcePreferenceOverrides[task.key]).length > 0 && (
+            <button onClick={() => onClearResourceOverrides?.(task.key)} style={{
+              background: 'none', border: 'none', color: C.accent, fontSize: 11,
+              cursor: 'pointer', fontFamily: FONT, marginBottom: 8, padding: 0, textDecoration: 'underline',
+            }}>Clear Overrides</button>
+          )}
+          {task.compatibleResources.map((cr: any) => {
+            const currentMode = resourcePreferenceOverrides?.[task.key]?.[cr.resourceKey] || 'AVAILABLE';
+            const isOverridden = currentMode !== 'AVAILABLE';
+            return (
+              <div key={cr.resourceKey} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '8px 10px', marginBottom: 4, borderRadius: 8,
+                background: isOverridden ? `${C.purple}08` : C.surface,
+                border: `1px solid ${isOverridden ? C.purple + '33' : C.border}`,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{cr.resourceKey}</span>
+                  {cr.resourceName && cr.resourceName !== cr.resourceKey && (
+                    <span style={{ fontSize: 12, color: C.textDim }}>{cr.resourceName}</span>
+                  )}
+                  {isOverridden && <span style={{ fontSize: 10, color: C.purple }}>(override)</span>}
+                </div>
+                {onResourcePrefChange ? (
+                  <ModeToggle mode={currentMode} modes={RESOURCE_PREF_MODES}
+                    onChange={(m) => onResourcePrefChange(task.key, cr.resourceKey, m)} />
+                ) : (
+                  <ModeBadge mode={currentMode} />
                 )}
               </div>
             );
@@ -2346,7 +2615,8 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   onResourceFilter, resourceFilter,
   onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
   whereToCurrentAssignment, onMoveTo, onCancelWhereTo,
-  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset }: {
+  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset,
+  onSetResourcePrefForTask }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
@@ -2369,6 +2639,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   onCancelWhereTo?: () => void;
   zoomLevel?: string; setZoomLevel?: (v: string) => void;
   scrollOffset?: number; setScrollOffset?: React.Dispatch<React.SetStateAction<number>>;
+  onSetResourcePrefForTask?: (taskKey: string) => void;
 }) {
   // Local fallback state when props aren't provided (e.g. Overview tab)
   const [localZoom, setLocalZoom] = useState('Day');
@@ -3003,6 +3274,19 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                 </button>
               );
             })()}
+            {onSetResourcePrefForTask && (
+              <button onClick={() => {
+                onSetResourcePrefForTask(contextMenu.task.key);
+                setContextMenu(null);
+              }} style={{
+                width: '100%', padding: '7px 10px', background: 'none', border: 'none',
+                color: C.text, fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
+                borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
+              }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
+                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                🔀 Set Resource Preference
+              </button>
+            )}
             {onApiPin && contextMenu.task.feasible && (
               <button onClick={async () => {
                 const isPinned = contextMenu.task.pinned || false;
@@ -3557,7 +3841,8 @@ function BulkBtn({ icon, label, color, onClick }: {
 }
 
 function TaskRowActions({ task, taskPins, taskExcludes, taskUnschedules, orderModes,
-  onPin, onExclude, onUnschedule, onWhereTo, whereToTaskKey }: {
+  onPin, onExclude, onUnschedule, onWhereTo, whereToTaskKey,
+  onApiSchedule, actionLoading }: {
   task: any;
   taskPins: Record<string, boolean>; taskExcludes: Record<string, boolean>;
   taskUnschedules?: Set<string>;
@@ -3566,12 +3851,15 @@ function TaskRowActions({ task, taskPins, taskExcludes, taskUnschedules, orderMo
   onUnschedule: (taskKey: string) => void;
   onWhereTo?: (taskKey: string, source?: 'gantt' | 'table') => void;
   whereToTaskKey?: string | null;
+  onApiSchedule?: (key: string) => Promise<void>;
+  actionLoading?: string | null;
 }) {
   const isPinned = taskPins[task.key] || task.pinned || false;
   const isExcluded = taskExcludes[task.key] || false;
   const isScheduled = task.feasible && task.scheduledStart;
   const orderMode = orderModes[task.orderRef] || 'INCLUDE';
   const isLocked = orderMode === 'LOCKED';
+  const isLoading = actionLoading === task.key;
 
   if (isLocked) {
     return (
@@ -3584,6 +3872,12 @@ function TaskRowActions({ task, taskPins, taskExcludes, taskUnschedules, orderMo
   return (
     <div style={{ display: 'flex', justifyContent: 'center', gap: 2 }}
       onClick={(e) => e.stopPropagation()}>
+      {!isScheduled && !isExcluded && !isPinned && onApiSchedule && (
+        <IconBtn icon={isLoading ? '⏳' : '▶'}
+          title="Schedule this task"
+          active={false} activeColor={C.green}
+          onClick={() => { if (!isLoading) onApiSchedule(task.key); }} />
+      )}
       {task.type === 'PROCESS' && !isExcluded && onWhereTo && (
         <IconBtn icon="🗺️"
           title={isScheduled ? 'Where can this go?' : 'Find available positions'}
@@ -3672,7 +3966,9 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   onWhereTo, whereToTaskKey, caseFilter, onClearCaseFilter, onNavigateToOrders,
   resourceFilter, resourceFilterName, timeFilter, onResourceFilterChange, onTimeFilterChange,
   selectedTasks, onToggleSelect, onSetSelectedTasks,
-  onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected }: {
+  onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected,
+  onSetResourcePreference, resourcePreferenceOverrides,
+  onApiSchedule, actionLoading }: {
   tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
   orderModes?: Record<string, string>;
@@ -3683,6 +3979,8 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   onApiPin?: (key: string, pinned: boolean) => Promise<void>;
   onApiBulkUnschedule?: (keys: string[]) => Promise<void>;
   onApiBulkPin?: (keys: string[], pinned: boolean) => Promise<void>;
+  onApiSchedule?: (key: string) => Promise<void>;
+  actionLoading?: string | null;
   experienceLevel?: ExperienceLevel;
   onWhereTo?: (key: string, source?: 'gantt' | 'table') => void;
   whereToTaskKey?: string | null;
@@ -3703,6 +4001,8 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   onUnpinSelected?: (keys: string[]) => void;
   onExcludeSelected?: (keys: string[]) => void;
   onIncludeSelected?: (keys: string[]) => void;
+  onSetResourcePreference?: () => void;
+  resourcePreferenceOverrides?: Record<string, Record<string, string>>;
 }) {
   const { sortKey, sortDir, toggle, sorted } = useSort('key');
   const [activeTypeChips, setActiveTypeChips] = useState<Set<string>>(new Set(['PROCESS']));
@@ -4027,6 +4327,11 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                 {'\uD83D\uDDFA'} Where To
               </button>
             )}
+            {onSetResourcePreference && (
+              <button style={{ ...btnStyle, color: C.purple }} onClick={() => onSetResourcePreference()}>
+                {'\uD83D\uDD00'} Set Resource Pref
+              </button>
+            )}
             <div style={{ flex: 1 }} />
             <button onClick={() => onSetSelectedTasks?.(new Set())}
               style={{ background: 'none', border: 'none', color: C.textMuted, fontSize: 11, cursor: 'pointer', fontFamily: FONT }}>
@@ -4154,6 +4459,9 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                     {taskExcludes?.[tk.key] && !taskUnschedules?.has(tk.key) && (
                       <span style={{ fontSize: 10, color: C.textDim, fontWeight: 600, marginLeft: 4 }}>{'\u2192'} EXCLUDE</span>
                     )}
+                    {resourcePreferenceOverrides?.[tk.key] && Object.keys(resourcePreferenceOverrides[tk.key]).length > 0 && (
+                      <span style={{ fontSize: 10, color: C.purple, fontWeight: 600, marginLeft: 4, padding: '1px 5px', borderRadius: 3, border: `1px solid ${C.purple}33` }}>{'\uD83D\uDD00'} REDIRECT</span>
+                    )}
                   </td>
                   {hasActions && (
                     <td style={{ ...cellStyle, textAlign: 'center', padding: '4px 6px' }}>
@@ -4161,7 +4469,8 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                         taskPins={safePins} taskExcludes={safeExcludes} taskUnschedules={taskUnschedules}
                         orderModes={safeOrderModes}
                         onPin={handlePin} onExclude={handleExclude} onUnschedule={handleUnschedule}
-                        onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey} />
+                        onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey}
+                        onApiSchedule={onApiSchedule} actionLoading={actionLoading} />
                     </td>
                   )}
                 </tr>
@@ -4940,7 +5249,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   whereToCurrentAssignment, onMoveTo, onCancelWhereTo,
   caseFilter, onClearCaseFilter, onNavigateToOrders,
   selectedTasks, onToggleSelect, onSetSelectedTasks,
-  onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected }: {
+  onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected,
+  onSetResourcePreference, onSetResourcePrefForTask, resourcePreferenceOverrides }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
@@ -4975,6 +5285,9 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   onUnpinSelected?: (keys: string[]) => void;
   onExcludeSelected?: (keys: string[]) => void;
   onIncludeSelected?: (keys: string[]) => void;
+  onSetResourcePreference?: () => void;
+  onSetResourcePrefForTask?: (taskKey: string) => void;
+  resourcePreferenceOverrides?: Record<string, Record<string, string>>;
 }) {
   const tabNames = [`Gantt by ${t('resource', 'Resource')}`, `Gantt by ${t('order', 'Order')}`, t('tasks', 'Task List')];
   const [subIdx, setSubIdx] = useState(0);
@@ -5004,7 +5317,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             whereToLoading={whereToLoading} whereToCurrentAssignment={whereToCurrentAssignment}
             onMoveTo={onMoveTo} onCancelWhereTo={onCancelWhereTo}
             zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
-            scrollOffset={scrollOffset} setScrollOffset={setScrollOffset} />
+            scrollOffset={scrollOffset} setScrollOffset={setScrollOffset}
+            onSetResourcePrefForTask={onSetResourcePrefForTask} />
           <UnscheduledPanel tasks={tasks} colors={colors}
             taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             onTaskClick={onTaskClick} onWhereTo={onWhereTo}
@@ -5046,7 +5360,9 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             selectedTasks={selectedTasks} onToggleSelect={onToggleSelect} onSetSelectedTasks={onSetSelectedTasks}
             onScheduleSelected={onScheduleSelected} onUnscheduleSelected={onUnscheduleSelected}
             onPinSelected={onPinSelected} onUnpinSelected={onUnpinSelected}
-            onExcludeSelected={onExcludeSelected} onIncludeSelected={onIncludeSelected} />
+            onExcludeSelected={onExcludeSelected} onIncludeSelected={onIncludeSelected}
+            onSetResourcePreference={onSetResourcePreference} resourcePreferenceOverrides={resourcePreferenceOverrides}
+            onApiSchedule={onApiSchedule} actionLoading={actionLoading} />
         </Card>
       )}
     </div>
@@ -5797,6 +6113,8 @@ export default function App() {
   const [tierOptions, setTierOptions] = useState<SolverTierOption[]>(FALLBACK_TIERS);
   const [solveStale, setSolveStale] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+  const [resourcePreferenceOverrides, setResourcePreferenceOverrides] = useState<Record<string, Record<string, string>>>({});
+  const [showResourcePrefDialog, setShowResourcePrefDialog] = useState(false);
   // Immediate action state
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -5923,6 +6241,7 @@ export default function App() {
 
       if (Object.keys(resourceModeOverrides).length > 0) body.resourceModes = resourceModeOverrides;
       if (Object.keys(materialModeOverrides).length > 0) body.materialModes = materialModeOverrides;
+      if (Object.keys(resourcePreferenceOverrides).length > 0) body.resourcePreferenceOverrides = resourcePreferenceOverrides;
 
       body.strategy = solverStrategy;
       body.detailLevel = experienceLevel;
@@ -5947,6 +6266,7 @@ export default function App() {
       setOrderModes({});
       setMaterialModeOverrides({});
       setResourceModeOverrides({});
+      setResourcePreferenceOverrides({});
       setSelectedTasks(new Set());
 
       if (result.colors) setColors(result.colors);
@@ -5960,10 +6280,136 @@ export default function App() {
     } finally {
       setSolving(false);
     }
-  }, [orderModes, taskPins, taskExcludes, taskUnschedules, materialModeOverrides, resourceModeOverrides, solverStrategy, experienceLevel, solveResult]);
+  }, [orderModes, taskPins, taskExcludes, taskUnschedules, materialModeOverrides, resourceModeOverrides, resourcePreferenceOverrides, solverStrategy, experienceLevel, solveResult]);
 
   const handleSolveCancel = useCallback(() => {
     setShowSolvePreview(false);
+  }, []);
+
+  // Resource Preference handlers
+  const handleApplyPreferences = useCallback((
+    selectedTaskKeys: string[],
+    resourceModes: Record<string, string>,
+  ) => {
+    const newOverrides = { ...resourcePreferenceOverrides };
+    for (const taskKey of selectedTaskKeys) {
+      const taskOverrides: Record<string, string> = {};
+      for (const [resourceKey, mode] of Object.entries(resourceModes)) {
+        if (mode !== 'AVAILABLE') {
+          taskOverrides[resourceKey] = mode;
+        }
+      }
+      if (Object.keys(taskOverrides).length > 0) {
+        newOverrides[taskKey] = taskOverrides;
+      } else {
+        delete newOverrides[taskKey];
+      }
+    }
+    setResourcePreferenceOverrides(newOverrides);
+    setShowResourcePrefDialog(false);
+    setSolveStale(true);
+    showToast(`Resource preferences applied for ${selectedTaskKeys.length} task(s)`);
+  }, [resourcePreferenceOverrides, showToast]);
+
+  const handleApplyAndSolve = useCallback(async (
+    selectedTaskKeys: string[],
+    resourceModes: Record<string, string>,
+  ) => {
+    // Apply preferences first (compute inline to avoid stale closure)
+    const newOverrides = { ...resourcePreferenceOverrides };
+    for (const taskKey of selectedTaskKeys) {
+      const taskOverrides: Record<string, string> = {};
+      for (const [resourceKey, mode] of Object.entries(resourceModes)) {
+        if (mode !== 'AVAILABLE') {
+          taskOverrides[resourceKey] = mode;
+        }
+      }
+      if (Object.keys(taskOverrides).length > 0) {
+        newOverrides[taskKey] = taskOverrides;
+      } else {
+        delete newOverrides[taskKey];
+      }
+    }
+    setResourcePreferenceOverrides(newOverrides);
+    setShowResourcePrefDialog(false);
+
+    // Snapshot current assignments for post-solve comparison
+    const beforeAssignments: Record<string, string> = {};
+    for (const key of selectedTaskKeys) {
+      const task = tasks.find((t: any) => t.key === key);
+      if (task?.assignedResources?.[0]) {
+        beforeAssignments[key] = task.assignedResources[0].resourceKey;
+      }
+    }
+
+    setSolving(true);
+    try {
+      setError(null);
+      const body: any = {
+        resourcePreferenceOverrides: newOverrides,
+        strategy: solverStrategy,
+        detailLevel: experienceLevel,
+      };
+      // Include other active overrides
+      const activeOrderModes = Object.fromEntries(Object.entries(orderModes).filter(([, v]) => v !== 'INCLUDE'));
+      if (Object.keys(activeOrderModes).length > 0) body.orderModes = activeOrderModes;
+      const activePins = Object.fromEntries(Object.entries(taskPins).filter(([, v]) => v));
+      if (Object.keys(activePins).length > 0) body.taskPins = activePins;
+      const activeExcludes = Object.fromEntries(Object.entries(taskExcludes).filter(([, v]) => v));
+      if (Object.keys(activeExcludes).length > 0) body.taskExcludes = activeExcludes;
+      if (taskUnschedules.size > 0) body.taskUnschedules = Array.from(taskUnschedules);
+      if (Object.keys(resourceModeOverrides).length > 0) body.resourceModes = resourceModeOverrides;
+      if (Object.keys(materialModeOverrides).length > 0) body.materialModes = materialModeOverrides;
+
+      const result = await api('/ctp/solve', { method: 'POST', body: JSON.stringify(body) });
+      setSolveResult(result);
+      setSolveStale(false);
+
+      // Build redirect summary toast
+      const moved: string[] = [];
+      for (const key of selectedTaskKeys) {
+        const newTask = result.tasks?.find((t: any) => t.key === key);
+        const before = beforeAssignments[key] || '(none)';
+        const after = newTask?.assignedResources?.[0]?.resourceKey || '(none)';
+        if (before !== after) moved.push(`${key}: ${before} → ${after}`);
+      }
+      if (moved.length > 0) {
+        showToast(`Redirect: ${moved.length} task(s) moved. ${moved.slice(0, 3).join('; ')}${moved.length > 3 ? '...' : ''}`);
+      } else {
+        showToast('Solve complete. No resource changes.');
+      }
+
+      // Clear all overrides — server state is now truth
+      setResourcePreferenceOverrides({});
+      setTaskUnschedules(new Set());
+      setTaskPins({});
+      setTaskExcludes({});
+      setOrderModes({});
+      setMaterialModeOverrides({});
+      setResourceModeOverrides({});
+      setSelectedTasks(new Set());
+
+      if (result.colors) setColors(result.colors);
+      if (result.terminology) _terminology = result.terminology;
+      if (result.locale) _locale = result.locale;
+
+      setShowSolveResults(true);
+    } catch (e: any) {
+      setError(e.message || 'Solve failed');
+    } finally {
+      setSolving(false);
+    }
+  }, [resourcePreferenceOverrides, tasks, solverStrategy, experienceLevel,
+      orderModes, taskPins, taskExcludes, taskUnschedules, resourceModeOverrides,
+      materialModeOverrides, showToast]);
+
+  const handleClearResourceOverrides = useCallback((taskKey: string) => {
+    setResourcePreferenceOverrides(prev => {
+      const next = { ...prev };
+      delete next[taskKey];
+      return next;
+    });
+    setSolveStale(true);
   }, []);
 
   // Click handlers for detail panels
@@ -6105,6 +6551,10 @@ export default function App() {
       if (res.success) {
         const updated = await api('/ctp/state');
         applyStateRefresh(updated);
+        const resource = res.assignedResources?.[0]?.resourceKey;
+        const time = res.scheduledStart ? new Date(res.scheduledStart).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+        showToast(`✓ Task scheduled${resource ? ` on ${resource}` : ''}${time ? ` at ${time}` : ''}`);
+        setSolveStale(true);
       } else {
         showToast(`Cannot schedule: ${res.errors?.[0]?.reason || res.message || 'No feasible slot'}`);
       }
@@ -6580,7 +7030,13 @@ export default function App() {
               setTaskExcludes(prev => { const next = { ...prev }; keys.forEach(k => { next[k] = false; }); return next; });
               setSelectedTasks(new Set());
               setSolveStale(true);
-            }} />
+            }}
+            onSetResourcePreference={() => setShowResourcePrefDialog(true)}
+            onSetResourcePrefForTask={(taskKey) => {
+              setSelectedTasks(new Set([taskKey]));
+              setShowResourcePrefDialog(true);
+            }}
+            resourcePreferenceOverrides={resourcePreferenceOverrides} />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} tasks={tasks}
           orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}
@@ -6606,6 +7062,101 @@ export default function App() {
       </Modal>
       <Modal open={userOpen} onClose={() => setUserOpen(false)} title="User Profile">
         <UserProfileContent />
+        <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 16, paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button
+            onClick={async () => {
+              setUserOpen(false);
+              setSolving(true);
+              showToast('Syncing...');
+              try {
+                setError(null);
+                await api('/state/sync', { method: 'POST' });
+                const freshState = await api('/ctp/state');
+                setSolveResult(freshState);
+                setSolveStale(false);
+                setResourcePreferenceOverrides({});
+                setTaskUnschedules(new Set());
+                setTaskPins({});
+                setTaskExcludes({});
+                setOrderModes({});
+                setMaterialModeOverrides({});
+                setResourceModeOverrides({});
+                setSelectedTasks(new Set());
+                setSelectedTask(null);
+                setSelectedResource(null);
+                setWhereToTaskKey(null); setWhereToOptions([]); setWhereToCurrentAssignment(null);
+                setAnalyticsKpis([]); setAnalyticsDetail(null); setSelectedKpi(null);
+                if (freshState.colors) setColors(freshState.colors);
+                if (freshState.terminology) _terminology = freshState.terminology;
+                if (freshState.locale) _locale = freshState.locale;
+                showToast('Data reloaded — all tasks unscheduled');
+              } catch (e: any) {
+                setError(e.message || 'Sync failed');
+                showToast('Sync failed');
+              } finally {
+                setSolving(false);
+              }
+            }}
+            disabled={solving}
+            style={{
+              width: '100%', padding: '10px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+              fontFamily: FONT, border: `1px solid ${C.border}`, background: C.surface2,
+              color: solving ? C.textDim : C.text, cursor: solving ? 'default' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            {solving ? '⏳ Syncing...' : '🔄 Sync'}
+          </button>
+          <button
+            onClick={async () => {
+              setUserOpen(false);
+              setSolving(true);
+              showToast('Syncing and solving...');
+              try {
+                setError(null);
+                const result = await api('/ctp/solve-and-sync', {
+                  method: 'POST',
+                  body: JSON.stringify({ detailLevel: experienceLevel }),
+                });
+                setSolveResult(result);
+                setSolveStale(false);
+                setResourcePreferenceOverrides({});
+                setTaskUnschedules(new Set());
+                setTaskPins({});
+                setTaskExcludes({});
+                setOrderModes({});
+                setMaterialModeOverrides({});
+                setResourceModeOverrides({});
+                setSelectedTasks(new Set());
+                setSelectedTask(null);
+                setSelectedResource(null);
+                setWhereToTaskKey(null); setWhereToOptions([]); setWhereToCurrentAssignment(null);
+                setAnalyticsKpis([]); setAnalyticsDetail(null); setSelectedKpi(null);
+                if (result.colors) setColors(result.colors);
+                if (result.terminology) _terminology = result.terminology;
+                if (result.locale) _locale = result.locale;
+                showToast('Data reloaded and solved');
+              } catch (e: any) {
+                setError(e.message || 'Sync & Solve failed');
+                showToast('Sync & Solve failed');
+              } finally {
+                setSolving(false);
+              }
+            }}
+            disabled={solving}
+            style={{
+              width: '100%', padding: '10px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+              fontFamily: FONT, border: `1px solid ${C.border}`, background: C.surface2,
+              color: solving ? C.textDim : C.accent, cursor: solving ? 'default' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            {solving ? '⏳ Solving...' : '🔄 Sync & Solve'}
+          </button>
+          <div style={{ fontSize: 10, color: C.textDim, textAlign: 'center' }}>
+            Sync reloads config from disk. Sync & Solve also runs the scheduler.
+          </div>
+        </div>
       </Modal>
 
       {/* Detail Panels */}
@@ -6658,6 +7209,28 @@ export default function App() {
             setActiveTab('Orders');
           }}
           onTaskClick={(t) => setSelectedTask(t)}
+          resourcePreferenceOverrides={resourcePreferenceOverrides}
+          onResourcePrefChange={(taskKey, resourceKey, mode) => {
+            setResourcePreferenceOverrides(prev => {
+              const next = { ...prev };
+              const taskOverrides = { ...(next[taskKey] || {}) };
+              if (mode === 'AVAILABLE') {
+                delete taskOverrides[resourceKey];
+              } else {
+                taskOverrides[resourceKey] = mode;
+              }
+              if (Object.keys(taskOverrides).length > 0) {
+                next[taskKey] = taskOverrides;
+              } else {
+                delete next[taskKey];
+              }
+              return next;
+            });
+            setSolveStale(true);
+          }}
+          onClearResourceOverrides={handleClearResourceOverrides}
+          onApiSchedule={handleApiSchedule}
+          actionLoading={actionLoading}
         />
       )}
       {selectedResource && (
@@ -6669,6 +7242,17 @@ export default function App() {
           onTaskClick={handleTaskClick}
         />
       )}
+
+      {/* Resource Preference Dialog */}
+      <ResourcePreferenceDialog
+        open={showResourcePrefDialog}
+        onClose={() => setShowResourcePrefDialog(false)}
+        selectedTaskKeys={Array.from(selectedTasks)}
+        tasks={tasks}
+        resourcePreferenceOverrides={resourcePreferenceOverrides}
+        onApply={handleApplyPreferences}
+        onApplyAndSolve={handleApplyAndSolve}
+      />
 
       {/* Solve Preview */}
       {showSolvePreview && (
