@@ -2719,6 +2719,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   // Local fallback state when props aren't provided (e.g. Overview tab)
   const [localZoom, setLocalZoom] = useState('3 hours');
   const [localScroll, setLocalScroll] = useState(0);
+  const [lastTimeRange, setLastTimeRange] = useState('3 hours');
   const effectiveZoom = zoomLevel ?? localZoom;
   const effectiveSetZoom = setZoomLevel ?? setLocalZoom;
   const effectiveScroll = scrollOffset ?? localScroll;
@@ -2922,7 +2923,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
 
       {/* Zoom controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 12 }}>
-        <select value={TIME_RANGE_OPTIONS.some(t => t.label === effectiveZoom) ? effectiveZoom : '3 hours'} onChange={e => { effectiveSetZoom(e.target.value); effectiveSetScroll(0); }} style={{
+        <select value={lastTimeRange} onChange={e => { setLastTimeRange(e.target.value); effectiveSetZoom(e.target.value); effectiveSetScroll(0); }} style={{
           padding: '5px 14px', paddingRight: 24, borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: FONT,
           border: 'none', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none',
           backgroundColor: TIME_RANGE_OPTIONS.some(t => t.label === effectiveZoom) ? '#3b82f6' : 'transparent',
@@ -3657,7 +3658,7 @@ function CaseGanttChart({ tasks, orders, products, colors, onTaskClick,
 
       {/* Zoom controls */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-        <select value={TIME_RANGE_OPTIONS.some(t => t.label === zoomLevel) ? zoomLevel : '3 hours'} onChange={e => { setZoomLevel(e.target.value); setScrollOffset(0); }} style={{
+        <select value={lastTimeRange} onChange={e => { setLastTimeRange(e.target.value); setZoomLevel(e.target.value); setScrollOffset(0); }} style={{
           padding: '5px 14px', paddingRight: 24, borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: FONT,
           border: 'none', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none',
           backgroundColor: TIME_RANGE_OPTIONS.some(t => t.label === zoomLevel) ? '#3b82f6' : 'transparent',
@@ -5439,6 +5440,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   const [subIdx, setSubIdx] = useState(0);
   const [zoomLevel, setZoomLevel] = useState('3 hours');
   const [scrollOffset, setScrollOffset] = useState(0);
+  const [lastTimeRange, setLastTimeRange] = useState('3 hours');
   const [resourceFilter, setResourceFilter] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<{ after?: string; before?: string }>({});
 
