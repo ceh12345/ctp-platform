@@ -2536,7 +2536,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   });
 
   const LANE_H = 44;
-  const LABEL_W = 140;
+  const LABEL_W = 170;
 
   return (
     <div style={{ position: 'relative' }}>
