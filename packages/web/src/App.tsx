@@ -125,6 +125,41 @@ function fmtNum(v: number | null | undefined): string {
   return v.toLocaleString(loc);
 }
 
+/** Get human-readable priority label from a task.
+ *  Prefers typedAttributes.priority text (URGENT, ADD-ON, ELECTIVE, etc.)
+ *  Falls back to numeric tier: 1-10 RUSH, 11-25 HIGH, 26-75 NORMAL, 76-100 LOW */
+function priorityLabel(task: any, overridePriority?: number): string {
+  const textPri = Array.isArray(task?.typedAttributes)
+    ? task.typedAttributes.find((a: any) => a.name === 'priority')?.value?.value
+    : task?.typedAttributes?.priority;
+  if (textPri && typeof textPri === 'string' && isNaN(Number(textPri))) return textPri;
+  const num = overridePriority ?? task?.priority ?? 100;
+  if (num <= 10) return 'RUSH';
+  if (num <= 25) return 'HIGH';
+  if (num <= 75) return 'NORMAL';
+  return 'LOW';
+}
+
+function priorityLabelColor(label: string): string {
+  switch (label.toUpperCase()) {
+    case 'URGENT': case 'RUSH': return '#f44336';
+    case 'ADD-ON': case 'HIGH': return '#ff9800';
+    case 'ELECTIVE': case 'NORMAL': return '#94a3b8';
+    case 'LOW': return '#64748b';
+    default: return '#94a3b8';
+  }
+}
+
+/** Numeric rank for sorting by priority label (lower = higher priority) */
+function priorityRank(label: string): number {
+  const u = label.toUpperCase();
+  if (u === 'URGENT' || u === 'RUSH') return 0;
+  if (u === 'ADD-ON' || u === 'HIGH') return 1;
+  if (u === 'ELECTIVE' || u === 'NORMAL') return 2;
+  if (u === 'LOW') return 3;
+  return 2;
+}
+
 /** Detect timezone offset from task ISO dates for Gantt axis labels */
 function detectGanttTz(tasks: any[]): { offsetMs: number; tz: string } {
   const iso = tasks.find((tk: any) => tk.scheduledStart)?.scheduledStart || '';
@@ -2311,9 +2346,11 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
             fontWeight: priorityOverrides?.[task.key] !== undefined ? 700 : 400,
             textAlign: 'center',
           }} />
-        {(priorityOverrides?.[task.key] ?? task.priority) === 1 && (
-          <span style={{ fontSize: 10, color: C.red, fontWeight: 600, padding: '1px 5px', borderRadius: 3, border: `1px solid ${C.red}33` }}>{'\u26A1'} RUSH</span>
-        )}
+        {(() => {
+          const lbl = priorityLabel(task, priorityOverrides?.[task.key]);
+          const clr = priorityLabelColor(lbl);
+          return <span style={{ fontSize: 10, color: clr, fontWeight: 600, padding: '1px 5px', borderRadius: 3, border: `1px solid ${clr}33` }}>{lbl}</span>;
+        })()}
         {priorityOverrides?.[task.key] !== undefined && (
           <span onClick={() => onSetPriority?.(task.key, task.priority ?? 100)}
             style={{ fontSize: 11, color: C.textMuted, cursor: 'pointer', textDecoration: 'underline' }}>Reset</span>
@@ -3616,7 +3653,7 @@ function CaseGanttChart({ tasks, orders, products, colors, onTaskClick,
     }
     const order = orders?.find((o: any) => o.orderKey === caseKey);
     const caseName = order?.name ?? caseKey;
-    const priority = phases[0]?.typedAttributes?.find((a: any) => a.name === 'priority')?.value?.value || '';
+    const priority = priorityLabel(phases[0]);
     const earliestStart = phases.length > 0 ? new Date(phases[0].scheduledStart).getTime() : Infinity;
     caseRows.push({ caseKey, caseName, priority, phases, unscheduledPhases: unsched, gaps, earliestStart, worstGap });
   }
@@ -3628,7 +3665,6 @@ function CaseGanttChart({ tasks, orders, products, colors, onTaskClick,
   }
 
   // Sort
-  const priorityRank = (p: string) => p === 'URGENT' ? 0 : p === 'ADD-ON' ? 1 : 2;
   if (sortBy === 'start') caseRows.sort((a, b) => a.earliestStart - b.earliestStart);
   else if (sortBy === 'priority') caseRows.sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority));
   else if (sortBy === 'worstGap') caseRows.sort((a, b) => b.worstGap - a.worstGap);
@@ -3711,13 +3747,15 @@ function CaseGanttChart({ tasks, orders, products, colors, onTaskClick,
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.text, fontWeight: 600, fontSize: 11 }}
               title={row.caseName}>{row.caseName}</span>
             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              {row.priority && (
-                <span style={{
-                  fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
-                  background: row.priority === 'URGENT' ? '#f4433620' : row.priority === 'ADD-ON' ? '#ff980020' : `${C.border}`,
-                  color: row.priority === 'URGENT' ? '#f44336' : row.priority === 'ADD-ON' ? '#ff9800' : C.textDim,
-                }}>{row.priority}</span>
-              )}
+              {row.priority && (() => {
+                const clr = priorityLabelColor(row.priority);
+                return (
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
+                    background: `${clr}20`, color: clr,
+                  }}>{row.priority}</span>
+                );
+              })()}
               {row.worstGap > 0 && (
                 <span style={{ fontSize: 9, color: C.red, fontWeight: 600 }}>{fmtDuration(row.worstGap)} gap</span>
               )}
@@ -4116,6 +4154,8 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
       ? (products.find((p: any) => p.key === tk.outputProductKey)?.name || tk.outputProductKey)
       : '';
     const _priority = priorityOverrides?.[tk.key] ?? tk.priority ?? 100;
+    const _priorityLabel = priorityLabel(tk, priorityOverrides?.[tk.key]);
+    const _priorityRank = priorityRank(_priorityLabel);
     const _type = tk.type || 'PROCESS';
     return {
       ...tk,
@@ -4124,6 +4164,8 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
       _orderMode,
       _productName,
       _priority,
+      _priorityLabel,
+      _priorityRank,
       _type,
     };
   }), [caseTasks, taskPins, taskExcludes, taskUnschedules, orderModes, products, priorityOverrides]);
@@ -4506,8 +4548,8 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
               <SortHeader label="Start" k="scheduledStart" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label="End" k="scheduledEnd" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label={t('duration', 'Duration')} k="durationSeconds" current={sortKey} dir={sortDir} onSort={toggle} />
-              <SortHeader label="Priority" k="_priority" current={sortKey} dir={sortDir} onSort={toggle}
-                filterProps={colFilter('_priority')} />
+              <SortHeader label="Priority" k="_priorityRank" current={sortKey} dir={sortDir} onSort={toggle}
+                filterProps={colFilter('_priorityLabel')} />
               <SortHeader label="Type" k="_type" current={sortKey} dir={sortDir} onSort={toggle} />
               {showAt(experienceLevel, 'intermediate') && <SortHeader label={t('score', 'Score')} k="score" current={sortKey} dir={sortDir} onSort={toggle} />}
               <SortHeader label="Status" k="_status" current={sortKey} dir={sortDir} onSort={toggle} />
@@ -4570,21 +4612,11 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                   <td style={cellStyle}>{fmtDate(tk.scheduledStart)}</td>
                   <td style={cellStyle}>{fmtDate(tk.scheduledEnd)}</td>
                   <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtDuration(tk.durationSeconds)}</td>
-                  <td style={cellStyle} onClick={e => e.stopPropagation()}>
-                    <input type="number" min={1} max={100} value={tk._priority}
-                      onChange={e => {
-                        const v = Math.max(1, Math.min(100, parseInt(e.target.value) || 100));
-                        onSetPriority?.(tk.key, v);
-                      }}
-                      style={{
-                        width: 48, padding: '2px 4px', fontSize: 12, fontFamily: FONT,
-                        border: `1px solid ${priorityOverrides?.[tk.key] !== undefined ? C.purple : C.border}`,
-                        borderRadius: 4,
-                        background: priorityOverrides?.[tk.key] !== undefined ? C.purple + '08' : 'transparent',
-                        color: priorityOverrides?.[tk.key] !== undefined ? C.purple : C.text,
-                        fontWeight: priorityOverrides?.[tk.key] !== undefined ? 700 : 400,
-                        textAlign: 'center',
-                      }} />
+                  <td style={cellStyle}>
+                    {(() => {
+                      const clr = priorityLabelColor(tk._priorityLabel);
+                      return <span style={{ fontSize: 11, color: clr, fontWeight: 600 }}>{tk._priorityLabel}</span>;
+                    })()}
                   </td>
                   <td style={cellStyle}>{tk._type}</td>
                   {showAt(experienceLevel, 'intermediate') && <td style={{ ...cellStyle, textAlign: 'right' }}>
@@ -4604,8 +4636,8 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                     {resourcePreferenceOverrides?.[tk.key] && Object.keys(resourcePreferenceOverrides[tk.key]).length > 0 && (
                       <span style={{ fontSize: 10, color: C.purple, fontWeight: 600, marginLeft: 4, padding: '1px 5px', borderRadius: 3, border: `1px solid ${C.purple}33` }}>{'\uD83D\uDD00'} REDIRECT</span>
                     )}
-                    {(priorityOverrides?.[tk.key] ?? tk.priority) === 1 && (
-                      <span style={{ fontSize: 10, color: C.red, fontWeight: 600, marginLeft: 4, padding: '1px 5px', borderRadius: 3, border: `1px solid ${C.red}33` }}>{'\u26A1'} RUSH</span>
+                    {(priorityOverrides?.[tk.key] ?? tk.priority) <= 10 && (
+                      <span style={{ fontSize: 10, color: '#f44336', fontWeight: 600, marginLeft: 4, padding: '1px 5px', borderRadius: 3, border: '1px solid #f4433633' }}>{'\u26A1'} {priorityLabel(tk, priorityOverrides?.[tk.key])}</span>
                     )}
                   </td>
                   {hasActions && (
@@ -4687,6 +4719,10 @@ function OrderTable({ orders, products, tasks, orderModes, taskPins, taskExclude
     const starts = orderTasks.filter((tk: any) => tk.feasible && tk.scheduledStart).map((tk: any) => tk.scheduledStart);
     const ends = orderTasks.filter((tk: any) => tk.feasible && tk.scheduledEnd).map((tk: any) => tk.scheduledEnd);
 
+    const firstTask = orderTasks[0];
+    const _priorityLabel = priorityLabel(firstTask, undefined);
+    const _priorityColor = priorityLabelColor(_priorityLabel);
+
     return {
       ...o,
       _status: deriveOrderStatus(o),
@@ -4698,6 +4734,8 @@ function OrderTable({ orders, products, tasks, orderModes, taskPins, taskExclude
       _scheduleProgress: total > 0 ? placed / total : 0,
       _scheduledStart: starts.length ? starts.sort()[0] : null,
       _scheduledEnd: ends.length ? ends.sort().pop() : null,
+      _priorityLabel,
+      _priorityColor,
     };
   }), [orders, tasks, taskPins, taskExcludes, products]);
 
@@ -4785,8 +4823,8 @@ function OrderTable({ orders, products, tasks, orderModes, taskPins, taskExclude
                   <td style={cellStyle}>{fmtDateShort(o.dueDate)}</td>
                   <td style={cellStyle}>
                     <Badge
-                      label={`P${o.priority}`}
-                      color={o.priority <= 1 ? C.red : o.priority <= 2 ? C.yellow : C.textMuted}
+                      label={o._priorityLabel}
+                      color={o._priorityColor}
                     />
                   </td>
                   <td style={cellStyle}>
