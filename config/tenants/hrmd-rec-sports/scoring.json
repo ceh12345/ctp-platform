@@ -1,0 +1,27 @@
+{
+  "name": "HRMD Sports Scheduling",
+  "key": "hrmd-sports-default",
+  "rules": [
+    {
+      "ruleName": "EarliestStartTimeScoringRule",
+      "weight": 0.5,
+      "objective": 0,
+      "includeInSolve": true,
+      "penaltyFactor": 0
+    },
+    {
+      "ruleName": "ResourceUtilizationScoringRule",
+      "weight": 0.3,
+      "objective": 1,
+      "includeInSolve": true,
+      "penaltyFactor": 0
+    },
+    {
+      "ruleName": "LatestStartTimeScoringRule",
+      "weight": 0.2,
+      "objective": 0,
+      "includeInSolve": true,
+      "penaltyFactor": 0
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "typedAttributes": [
+    { "name": "sport", "dataType": "enum", "category": "game", "sequence": 1,
+      "enumValues": ["baseball", "flag-football", "pickleball"] },
+    { "name": "division", "dataType": "string", "category": "game", "sequence": 2 },
+    { "name": "homeTeam", "dataType": "string", "category": "game", "sequence": 3 },
+    { "name": "awayTeam", "dataType": "string", "category": "game", "sequence": 4 },
+    { "name": "gameWeek", "dataType": "integer", "category": "game", "sequence": 5 },
+    { "name": "phase", "dataType": "enum", "category": "game", "sequence": 6,
+      "enumValues": ["prep", "play", "reset"] }
+  ]
+}

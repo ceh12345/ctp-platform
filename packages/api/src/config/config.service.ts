@@ -91,6 +91,10 @@ export class ConfigService {
     return this.store.getMaterials();
   }
 
+  getProcesses(): any[] {
+    return this.store.getProcesses();
+  }
+
   getColors(): any {
     return this.store.getColors();
   }

@@ -1,0 +1,15 @@
+{
+  "resource": "Resource",
+  "task": "Activity",
+  "tasks": "Activity List",
+  "order": "Game",
+  "duration": "Duration",
+  "stateChange": "Field Prep",
+  "demand": "Game Request",
+  "process": "Game Type",
+  "schedule": "Game Schedule",
+  "solve": "Build Schedule",
+  "landscape": "HRMD Sports Complex",
+  "product": "Program",
+  "processCategory": "Sport"
+}

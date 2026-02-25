@@ -1,0 +1,60 @@
+[
+  {
+    "name": "fieldUtilization",
+    "displayName": "Field Utilization",
+    "description": "Percentage of available field-hours used by scheduled games",
+    "computationType": "built-in",
+    "sourceEntity": "resource",
+    "objective": "maximize",
+    "targetValue": 75,
+    "warningThreshold": 60,
+    "criticalThreshold": 40,
+    "unit": "%",
+    "visualizationType": "gauge",
+    "category": "efficiency",
+    "sequence": 1
+  },
+  {
+    "name": "gamesScheduled",
+    "displayName": "Games Scheduled",
+    "description": "Number of games/reservations successfully placed on the schedule",
+    "computationType": "built-in",
+    "sourceEntity": "task",
+    "objective": "maximize",
+    "targetValue": 77,
+    "warningThreshold": 60,
+    "criticalThreshold": 45,
+    "unit": "games",
+    "visualizationType": "gauge",
+    "category": "coverage",
+    "sequence": 2
+  },
+  {
+    "name": "umpireUtilization",
+    "displayName": "Umpire Utilization",
+    "description": "Average umpire usage across scheduled baseball games",
+    "computationType": "built-in",
+    "sourceEntity": "resource",
+    "objective": "maximize",
+    "targetValue": 80,
+    "warningThreshold": 60,
+    "criticalThreshold": 40,
+    "unit": "%",
+    "visualizationType": "gauge",
+    "category": "staffing",
+    "sequence": 3
+  },
+  {
+    "name": "makespan",
+    "displayName": "Makespan",
+    "description": "Total time from first activity to last activity end",
+    "computationType": "built-in",
+    "sourceEntity": "schedule",
+    "objective": "minimize",
+    "unit": "hours",
+    "format": "0.1f",
+    "visualizationType": "gauge",
+    "category": "efficiency",
+    "sequence": 4
+  }
+]

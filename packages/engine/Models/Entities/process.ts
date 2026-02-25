@@ -8,16 +8,19 @@ import { EntityHashMap } from "../Core/hashmap";
 
 export interface IProcess extends IKeyEntity {
   tasks: CTPTaskList | undefined;
+  category: string | undefined;
 }
 
 
 export class CTPProcess extends CTPKeyEntity implements IProcess {
   tasks: CTPTaskList | undefined;
+  category: string | undefined;
 
   constructor(n:string)
   {
     super('',n,n);
     this.tasks = new CTPTaskList();
+    this.category = undefined;
   }
 
   

@@ -4152,11 +4152,12 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
     const _orderMode = orderModes?.[tk.orderRef] || 'INCLUDE';
     const _productName = tk.outputProductKey
       ? (products.find((p: any) => p.key === tk.outputProductKey)?.name || tk.outputProductKey)
-      : '';
+      : (tk.processName || '');
     const _priority = priorityOverrides?.[tk.key] ?? tk.priority ?? 100;
     const _priorityLabel = priorityLabel(tk, priorityOverrides?.[tk.key]);
     const _priorityRank = priorityRank(_priorityLabel);
     const _type = tk.type || 'PROCESS';
+    const _processCategory = tk.processCategory || '';
     return {
       ...tk,
       _resource: tk.assignedResources?.[0]?.resourceKey || '',
@@ -4167,6 +4168,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
       _priorityLabel,
       _priorityRank,
       _type,
+      _processCategory,
     };
   }), [caseTasks, taskPins, taskExcludes, taskUnschedules, orderModes, products, priorityOverrides]);
 
@@ -4550,7 +4552,8 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
               <SortHeader label={t('duration', 'Duration')} k="durationSeconds" current={sortKey} dir={sortDir} onSort={toggle} />
               <SortHeader label="Priority" k="_priorityRank" current={sortKey} dir={sortDir} onSort={toggle}
                 filterProps={colFilter('_priorityLabel')} />
-              <SortHeader label="Type" k="_type" current={sortKey} dir={sortDir} onSort={toggle} />
+              <SortHeader label={t('processCategory', 'Category')} k="_processCategory" current={sortKey} dir={sortDir} onSort={toggle}
+                filterProps={colFilter('_processCategory')} />
               {showAt(experienceLevel, 'intermediate') && <SortHeader label={t('score', 'Score')} k="score" current={sortKey} dir={sortDir} onSort={toggle} />}
               <SortHeader label="Status" k="_status" current={sortKey} dir={sortDir} onSort={toggle} />
               {hasActions && <th style={{
@@ -4618,7 +4621,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                       return <span style={{ fontSize: 11, color: clr, fontWeight: 600 }}>{tk._priorityLabel}</span>;
                     })()}
                   </td>
-                  <td style={cellStyle}>{tk._type}</td>
+                  <td style={cellStyle}>{tk._processCategory || '—'}</td>
                   {showAt(experienceLevel, 'intermediate') && <td style={{ ...cellStyle, textAlign: 'right' }}>
                     {tk.score != null ? tk.score.toFixed(2) : '—'}
                   </td>}

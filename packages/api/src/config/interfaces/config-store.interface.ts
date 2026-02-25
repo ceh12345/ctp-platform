@@ -181,6 +181,12 @@ export interface IStateChangeData {
   penalty?: number;
 }
 
+export interface IProcessData {
+  key: string;
+  name: string;
+  category?: string;
+}
+
 export interface IHorizonConfig {
   startDate: string;
   endDate: string;
@@ -222,6 +228,7 @@ export interface IConfigStore {
   getProducts(): IProductData[];
   getOrders(): IOrderData[];
   getMaterials(): IMaterialData[];
+  getProcesses(): IProcessData[];
 
   // Save entity data
   saveResources(resources: IResourceData[]): void;

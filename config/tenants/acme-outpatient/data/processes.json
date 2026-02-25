@@ -1,0 +1,9 @@
+[
+  { "key": "ORTHO-KR", "name": "Knee Replacement", "category": "Orthopedic" },
+  { "key": "ORTHO-AR", "name": "Arthroscopic Repair", "category": "Orthopedic" },
+  { "key": "GEN-LAP", "name": "Laparoscopy", "category": "General Surgery" },
+  { "key": "GEN-HERNIA", "name": "Hernia Repair", "category": "General Surgery" },
+  { "key": "PAIN-INJ", "name": "Pain Injection", "category": "Pain Management" },
+  { "key": "EYE-CAT", "name": "Cataract Surgery", "category": "Ophthalmology" },
+  { "key": "RECOVERY", "name": "Recovery", "category": "Recovery" }
+]

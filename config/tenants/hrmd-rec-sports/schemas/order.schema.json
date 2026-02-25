@@ -1,0 +1,9 @@
+{
+  "typedAttributes": [
+    { "name": "sport", "dataType": "string", "category": "game", "sequence": 1 },
+    { "name": "division", "dataType": "string", "category": "game", "sequence": 2 },
+    { "name": "gameWeek", "dataType": "integer", "category": "game", "sequence": 3 },
+    { "name": "homeTeam", "dataType": "string", "category": "game", "sequence": 4 },
+    { "name": "awayTeam", "dataType": "string", "category": "game", "sequence": 5 }
+  ]
+}

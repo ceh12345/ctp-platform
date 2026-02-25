@@ -1,0 +1,11 @@
+[
+  { "key": "baseball-tball", "name": "T-Ball Game", "unitOfMeasure": "game" },
+  { "key": "baseball-coachpitch", "name": "Coach Pitch Game", "unitOfMeasure": "game" },
+  { "key": "baseball-minors", "name": "Minors Game", "unitOfMeasure": "game" },
+  { "key": "baseball-majors", "name": "Majors Game", "unitOfMeasure": "game" },
+  { "key": "flag-football-k2", "name": "Flag Football K-2", "unitOfMeasure": "game" },
+  { "key": "flag-football-35", "name": "Flag Football 3-5", "unitOfMeasure": "game" },
+  { "key": "flag-football-68", "name": "Flag Football 6-8", "unitOfMeasure": "game" },
+  { "key": "pickleball-open", "name": "Pickleball Open Doubles", "unitOfMeasure": "match" },
+  { "key": "pickleball-dropin", "name": "Pickleball Drop-In Reservation", "unitOfMeasure": "rental" }
+]

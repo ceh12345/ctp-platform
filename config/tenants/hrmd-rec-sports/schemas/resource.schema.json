@@ -1,0 +1,13 @@
+{
+  "typedAttributes": [
+    { "name": "sport", "dataType": "enum", "category": "classification", "sequence": 1,
+      "enumValues": ["baseball", "flag-football", "pickleball", "multi-use"] },
+    { "name": "park", "dataType": "string", "category": "location", "sequence": 2 },
+    { "name": "surface", "dataType": "enum", "category": "physical", "sequence": 3,
+      "enumValues": ["dirt-infield", "grass", "synthetic-turf", "hard-court"] },
+    { "name": "lightingAvailable", "dataType": "boolean", "category": "physical", "sequence": 4 },
+    { "name": "fenced", "dataType": "boolean", "category": "physical", "sequence": 5 },
+    { "name": "certificationLevel", "dataType": "enum", "category": "staff", "sequence": 6,
+      "enumValues": ["volunteer", "certified", "chsaa-certified", "head-umpire", "head-referee", "coordinator"] }
+  ]
+}

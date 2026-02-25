@@ -797,6 +797,15 @@ export class CTPService {
     // Track material consumption (materialKey → consumed qty)
     const materialConsumed = new Map<string, number>();
 
+    // Build process-key → category/name lookup from processes config
+    const processCategoryMap = new Map<string, string>();
+    const processNameMap = new Map<string, string>();
+    const processesConfig = this.configService.getProcesses();
+    for (const p of processesConfig) {
+      if (p.key && p.category) processCategoryMap.set(p.key, p.category);
+      if (p.key && p.name) processNameMap.set(p.key, p.name);
+    }
+
     landscape.tasks.forEach((task) => {
       const isScheduled = task.state === CTPTaskStateConstants.SCHEDULED;
       if (isScheduled) scheduledCount++;
@@ -841,6 +850,8 @@ export class CTPService {
       const outputQty = task.outputQty > 0 ? task.outputQty : null;
       const outputScrapRate = task.outputScrapRate > 0 ? task.outputScrapRate : null;
       const process = task.process ?? null;
+      const processCategory = process ? (processCategoryMap.get(process) ?? null) : null;
+      const processName = process ? (processNameMap.get(process) ?? null) : null;
 
       // Build input materials array
       const inputMaterials: any[] = [];
@@ -890,6 +901,8 @@ export class CTPService {
         outputScrapRate,
         inputMaterials,
         process,
+        processName,
+        processCategory,
         type: task.type || CTPTaskTypeConstants.PROCESS,
         subType: task.subType ?? null,
         materialResources,

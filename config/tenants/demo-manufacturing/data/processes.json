@@ -1,0 +1,7 @@
+[
+  { "key": "cnc-machine", "name": "CNC Machining", "category": "Machining" },
+  { "key": "cnc-deburr", "name": "Deburring", "category": "Machining" },
+  { "key": "assembly", "name": "Assembly", "category": "Assembly" },
+  { "key": "qc-inspect", "name": "Quality Inspection", "category": "Quality" },
+  { "key": "packaging", "name": "Packaging", "category": "Packaging" }
+]

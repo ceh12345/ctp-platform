@@ -1,0 +1,10 @@
+{
+  "flowAround": false,
+  "maxLateness": 0,
+  "tasksPerLoop": 100,
+  "topTasksToSchedule": 2,
+  "resetUsageAfterProcessChange": false,
+  "scheduleDirection": 1,
+  "requiresPreds": true,
+  "solverStrategy": "Chain"
+}

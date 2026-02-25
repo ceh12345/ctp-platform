@@ -1,0 +1,2424 @@
+[
+  {
+    "key": "RS-ROXBOROUGH",
+    "name": "Redstone - Roxborough Field",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Redstone Park Diamonds"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "baseball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Redstone Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "dirt-infield"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RS-FLATIRONS",
+    "name": "Redstone - Flatirons Field",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Redstone Park Diamonds"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "baseball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Redstone Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "dirt-infield"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RS-REDROCKS",
+    "name": "Redstone - Red Rocks Field",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Redstone Park Diamonds"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "baseball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Redstone Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "dirt-infield"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RS-SOUTH-GREEN",
+    "name": "Redstone - South Green",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Redstone Park Diamonds"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "baseball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Redstone Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "dirt-infield"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RS-FIELD5",
+    "name": "Redstone - Field 5",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Redstone Park Diamonds"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "baseball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Redstone Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "grass"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RS-FIELD6",
+    "name": "Redstone - Field 6",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Redstone Park Diamonds"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "baseball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Redstone Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "grass"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "FP-FIELD1",
+    "name": "Falcon Park - Field 1",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Satellite Diamonds"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "baseball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Falcon Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "dirt-infield"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "FP-FIELD2",
+    "name": "Falcon Park - Field 2",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Satellite Diamonds"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "baseball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Falcon Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "dirt-infield"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "NR-FIELD1",
+    "name": "Northridge - Field 1",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Satellite Diamonds"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "baseball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Northridge Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "dirt-infield"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "NR-FIELD2",
+    "name": "Northridge - Field 2",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Satellite Diamonds"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "baseball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Northridge Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "dirt-infield"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "HH-FIELD1",
+    "name": "Heritage - Field 1",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Satellite Diamonds"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "baseball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Highland Heritage Regional Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "dirt-infield"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "HH-FIELD2",
+    "name": "Heritage - Field 2",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Satellite Diamonds"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "baseball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Highland Heritage Regional Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "dirt-infield"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "MP-FIELD1",
+    "name": "Marcy Park - Upper Field",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Satellite Diamonds"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "baseball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Marcy Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "dirt-infield"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "KP-FIELD1",
+    "name": "Kistler Park - Field 1",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Satellite Diamonds"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "baseball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Kistler Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "dirt-infield"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RS-STADIUM",
+    "name": "HR Stadium at Redstone (Turf)",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Multi-Use Fields"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "multi-use"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Redstone Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "synthetic-turf"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "TP-FIELD1",
+    "name": "Toepfer Park - Field 1",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Multi-Use Fields"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "multi-use"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Toepfer Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "grass"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "CR-FIELD1",
+    "name": "Cougar Run - Field 1",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Multi-Use Fields"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "multi-use"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Cougar Run Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "grass"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "BDC-FIELD1",
+    "name": "Big Dry Creek - Field 1",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Multi-Use Fields"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "multi-use"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Big Dry Creek Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "grass"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "PV-FIELD1",
+    "name": "Plum Valley - Field 1",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Multi-Use Fields"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "multi-use"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Plum Valley Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "grass"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "SP-COURT11",
+    "name": "Southpark Court 11",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Southpark Courts"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "pickleball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Southpark Pickleball Complex"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "hard-court"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "SP-COURT12",
+    "name": "Southpark Court 12",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Southpark Courts"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "pickleball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Southpark Pickleball Complex"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "hard-court"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "SP-COURT13",
+    "name": "Southpark Court 13",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Southpark Courts"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "pickleball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Southpark Pickleball Complex"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "hard-court"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "SP-COURT14",
+    "name": "Southpark Court 14",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Southpark Courts"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "pickleball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Southpark Pickleball Complex"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "hard-court"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "SP-COURT15",
+    "name": "Southpark Court 15",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Southpark Courts"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "pickleball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Southpark Pickleball Complex"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "hard-court"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "SP-COURT16",
+    "name": "Southpark Court 16",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Southpark Courts"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "pickleball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Southpark Pickleball Complex"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "hard-court"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "SP-COURT17",
+    "name": "Southpark Court 17",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Southpark Courts"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "pickleball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Southpark Pickleball Complex"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "hard-court"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "SP-COURT18",
+    "name": "Southpark Court 18 (Drop-In)",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Southpark Courts"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "pickleball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Southpark Pickleball Complex"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "hard-court"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "SP-COURT19",
+    "name": "Southpark Court 19 (Drop-In)",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Southpark Courts"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "pickleball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Southpark Pickleball Complex"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "hard-court"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": true
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "TK-COURT1",
+    "name": "Tanks Park Court 1",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Tanks Park Courts"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "pickleball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Tanks Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "hard-court"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "TK-COURT2",
+    "name": "Tanks Park Court 2",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Tanks Park Courts"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "pickleball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Tanks Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "hard-court"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "TK-COURT3",
+    "name": "Tanks Park Court 3",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Tanks Park Courts"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "pickleball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Tanks Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "hard-court"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "TK-COURT4",
+    "name": "Tanks Park Court 4",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Tanks Park Courts"
+    },
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "pickleball"
+        },
+        "category": "classification",
+        "sequence": 1
+      },
+      {
+        "name": "park",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Tanks Park"
+        },
+        "category": "location",
+        "sequence": 2
+      },
+      {
+        "name": "surface",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "hard-court"
+        },
+        "category": "physical",
+        "sequence": 3
+      },
+      {
+        "name": "lightingAvailable",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 4
+      },
+      {
+        "name": "fenced",
+        "dataType": "boolean",
+        "value": {
+          "type": "boolean",
+          "value": false
+        },
+        "category": "physical",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "PB-TIMESLOT",
+    "name": "Pickleball 30-Min Slot Clock",
+    "type": "POOLED",
+    "class": "REUSABLE",
+    "capacity": 13,
+    "hierarchy": {
+      "level1": "System"
+    },
+    "typedAttributes": []
+  },
+  {
+    "key": "EQ-BASES-A",
+    "name": "Bases Set A",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Equipment"
+    },
+    "typedAttributes": []
+  },
+  {
+    "key": "EQ-BASES-B",
+    "name": "Bases Set B",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Equipment"
+    },
+    "typedAttributes": []
+  },
+  {
+    "key": "EQ-BASES-C",
+    "name": "Bases Set C",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Equipment"
+    },
+    "typedAttributes": []
+  },
+  {
+    "key": "EQ-PITCHMACHINE-1",
+    "name": "Pitching Machine 1",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Equipment"
+    },
+    "typedAttributes": []
+  },
+  {
+    "key": "EQ-PITCHMACHINE-2",
+    "name": "Pitching Machine 2",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Equipment"
+    },
+    "typedAttributes": []
+  },
+  {
+    "key": "EQ-SCOREBOARD",
+    "name": "Portable Scoreboard",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Equipment"
+    },
+    "typedAttributes": []
+  },
+  {
+    "key": "STAFF-COLEEN",
+    "name": "Coleen W. (Rec Coordinator)",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Staff"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "coordinator"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "STAFF-LUKE",
+    "name": "Luke R. (Baseball Coordinator)",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Staff"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "coordinator"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "STAFF-BRENDA",
+    "name": "Brenda W. (Rec Assistant)",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Staff"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "certified"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "STAFF-FIELD-1",
+    "name": "Field Crew - Tom",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Staff"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "volunteer"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "STAFF-FIELD-2",
+    "name": "Field Crew - Jess",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Staff"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "volunteer"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "UMP-01",
+    "name": "Umpire Harris",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Umpires"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "chsaa-certified"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "UMP-02",
+    "name": "Umpire Jacobs",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Umpires"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "chsaa-certified"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "UMP-03",
+    "name": "Umpire Lee",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Umpires"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "chsaa-certified"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "UMP-04",
+    "name": "Umpire Martinez",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Umpires"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "certified"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "UMP-05",
+    "name": "Umpire O'Brien",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Umpires"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "certified"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "UMP-06",
+    "name": "Umpire Patel",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Umpires"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "volunteer"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "UMP-07",
+    "name": "Umpire Quinn",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Umpires"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "volunteer"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "UMP-08",
+    "name": "Umpire Rivera",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Umpires"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "volunteer"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "REF-01",
+    "name": "Ref Adams",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Referees"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "head-referee"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "REF-02",
+    "name": "Ref Brooks",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Referees"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "certified"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "REF-03",
+    "name": "Ref Chen",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Referees"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "certified"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "REF-04",
+    "name": "Ref Davis",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Referees"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "certified"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "REF-05",
+    "name": "Ref Evans",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Referees"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "volunteer"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  },
+  {
+    "key": "REF-06",
+    "name": "Ref Foster",
+    "type": "INDIVIDUAL",
+    "class": "REUSABLE",
+    "hierarchy": {
+      "level1": "Referees"
+    },
+    "typedAttributes": [
+      {
+        "name": "certificationLevel",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "volunteer"
+        },
+        "category": "staff",
+        "sequence": 6
+      }
+    ]
+  }
+]

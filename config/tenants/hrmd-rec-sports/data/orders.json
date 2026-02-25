@@ -1,0 +1,4622 @@
+[
+  {
+    "key": "GAME-BB-TB-W1-01",
+    "name": "T-Ball: Rockies vs Nuggets (Wk1)",
+    "productKey": "baseball-tball",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 4,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "T-Ball"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Rockies"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Nuggets"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-02",
+    "name": "T-Ball: Broncos vs Avalanche (Wk1)",
+    "productKey": "baseball-tball",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 4,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "T-Ball"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Broncos"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Avalanche"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-03",
+    "name": "T-Ball: Rapids vs Mammoth (Wk1)",
+    "productKey": "baseball-tball",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 4,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "T-Ball"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Rapids"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Mammoth"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-04",
+    "name": "T-Ball: Thunder vs Lightning (Wk1)",
+    "productKey": "baseball-tball",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 4,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "T-Ball"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Thunder"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Lightning"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-05",
+    "name": "T-Ball: Rockets vs Comets (Wk1)",
+    "productKey": "baseball-tball",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 4,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "T-Ball"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Rockets"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Comets"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-06",
+    "name": "T-Ball: Tigers vs Bears (Wk1)",
+    "productKey": "baseball-tball",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 4,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "T-Ball"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Tigers"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Bears"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-01",
+    "name": "Coach Pitch: Blazers vs Strikers (Wk1)",
+    "productKey": "baseball-coachpitch",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 3,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Coach Pitch"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Blazers"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Strikers"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-02",
+    "name": "Coach Pitch: Rebels vs Mavericks (Wk1)",
+    "productKey": "baseball-coachpitch",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 3,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Coach Pitch"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Rebels"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Mavericks"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-03",
+    "name": "Coach Pitch: Knights vs Titans (Wk1)",
+    "productKey": "baseball-coachpitch",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 3,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Coach Pitch"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Knights"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Titans"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-04",
+    "name": "Coach Pitch: Rangers vs Spartans (Wk1)",
+    "productKey": "baseball-coachpitch",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 3,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Coach Pitch"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Rangers"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Spartans"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-05",
+    "name": "Coach Pitch: Warriors vs Crusaders (Wk1)",
+    "productKey": "baseball-coachpitch",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 3,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Coach Pitch"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Warriors"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Crusaders"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-MN-W1-01",
+    "name": "Minors: Aces vs Diamondbacks (Wk1)",
+    "productKey": "baseball-minors",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 2,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Minors"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Aces"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Diamondbacks"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-MN-W1-02",
+    "name": "Minors: Storm vs Phantoms (Wk1)",
+    "productKey": "baseball-minors",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 2,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Minors"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Storm"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Phantoms"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-MN-W1-03",
+    "name": "Minors: Huskies vs Outlaws (Wk1)",
+    "productKey": "baseball-minors",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 2,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Minors"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Huskies"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Outlaws"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-MN-W1-04",
+    "name": "Minors: Legends vs Fury (Wk1)",
+    "productKey": "baseball-minors",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 2,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Minors"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Legends"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Fury"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-MJ-W1-01",
+    "name": "Majors: Mustangs vs Stallions (Wk1)",
+    "productKey": "baseball-majors",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 1,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Majors"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Mustangs"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Stallions"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-MJ-W1-02",
+    "name": "Majors: Gladiators vs Centurions (Wk1)",
+    "productKey": "baseball-majors",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 1,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Majors"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Gladiators"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Centurions"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-MJ-W1-03",
+    "name": "Majors: Falcons vs Jaguars (Wk1)",
+    "productKey": "baseball-majors",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 1,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Majors"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Falcons"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Jaguars"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-BB-MJ-W1-04",
+    "name": "Majors: Ironmen vs Hammers (Wk1)",
+    "productKey": "baseball-majors",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 1,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "baseball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Majors"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Ironmen"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Hammers"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-FF-K2-W1-01",
+    "name": "Flag K-2: Chiefs vs Chargers (Wk1)",
+    "productKey": "flag-football-k2",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 4,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "flag-football"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Flag K-2"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Chiefs"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Chargers"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-FF-K2-W1-02",
+    "name": "Flag K-2: Packers vs Vikings (Wk1)",
+    "productKey": "flag-football-k2",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 4,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "flag-football"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Flag K-2"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Packers"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Vikings"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-FF-K2-W1-03",
+    "name": "Flag K-2: Ravens vs Steelers (Wk1)",
+    "productKey": "flag-football-k2",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 4,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "flag-football"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Flag K-2"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Ravens"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Steelers"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-FF-K2-W1-04",
+    "name": "Flag K-2: Patriots vs 49ers (Wk1)",
+    "productKey": "flag-football-k2",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 4,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "flag-football"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Flag K-2"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Patriots"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "49ers"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-FF-35-W1-01",
+    "name": "Flag 3-5: Broncos Orange vs Broncos Blue (Wk1)",
+    "productKey": "flag-football-35",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 3,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "flag-football"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Flag 3-5"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Broncos Orange"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Broncos Blue"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-FF-35-W1-02",
+    "name": "Flag 3-5: Bills vs Eagles (Wk1)",
+    "productKey": "flag-football-35",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 3,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "flag-football"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Flag 3-5"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Bills"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Eagles"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-FF-35-W1-03",
+    "name": "Flag 3-5: Lions vs Dolphins (Wk1)",
+    "productKey": "flag-football-35",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 3,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "flag-football"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Flag 3-5"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Lions"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Dolphins"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-FF-68-W1-01",
+    "name": "Flag 6-8: Team Alpha vs Team Beta (Wk1)",
+    "productKey": "flag-football-68",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 2,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "flag-football"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Flag 6-8"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Team Alpha"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Team Beta"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-FF-68-W1-02",
+    "name": "Flag 6-8: Team Gamma vs Team Delta (Wk1)",
+    "productKey": "flag-football-68",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 2,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "flag-football"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Flag 6-8"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Team Gamma"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Team Delta"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-PB-W1-01",
+    "name": "PB Open: Anderson/Baker vs Chen/Davis (Wk1)",
+    "productKey": "pickleball-open",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 5,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Open Doubles"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Anderson/Baker"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Chen/Davis"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-PB-W1-02",
+    "name": "PB Open: Evans/Foster vs Garcia/Hayes (Wk1)",
+    "productKey": "pickleball-open",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 5,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Open Doubles"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Evans/Foster"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Garcia/Hayes"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-PB-W1-03",
+    "name": "PB Open: Ito/Jones vs Kim/Lopez (Wk1)",
+    "productKey": "pickleball-open",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 5,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Open Doubles"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Ito/Jones"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Kim/Lopez"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "GAME-PB-W1-04",
+    "name": "PB Open: Moore/Nguyen vs Park/Quinn (Wk1)",
+    "productKey": "pickleball-open",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T21:00:00Z",
+    "priority": 5,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Open Doubles"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Moore/Nguyen"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Park/Quinn"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-01",
+    "name": "Court Reservation: Smith/Jones",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Smith"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Jones"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-02",
+    "name": "Court Reservation: Martinez/Garcia",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Martinez"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Garcia"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-03",
+    "name": "Court Reservation: Wilson/Taylor",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Wilson"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Taylor"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-04",
+    "name": "Court Reservation: Brown/Davis",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Brown"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Davis"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-05",
+    "name": "Court Reservation: Johnson/Williams",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Johnson"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Williams"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-06",
+    "name": "Court Reservation: Anderson/Thomas",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Anderson"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Thomas"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-07",
+    "name": "Court Reservation: Jackson/White",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Jackson"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "White"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-08",
+    "name": "Court Reservation: Harris/Thompson",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Harris"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Thompson"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-09",
+    "name": "Court Reservation: Clark/Robinson",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Clark"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Robinson"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-10",
+    "name": "Court Reservation: Lewis/Walker",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Lewis"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Walker"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-11",
+    "name": "Court Reservation: Young/Allen",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Young"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Allen"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-12",
+    "name": "Court Reservation: King/Wright",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "King"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Wright"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-13",
+    "name": "Court Reservation: Hill/Scott",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Hill"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Scott"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-14",
+    "name": "Court Reservation: Green/Adams",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Green"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Adams"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-15",
+    "name": "Court Reservation: Baker/Nelson",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Baker"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Nelson"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-16",
+    "name": "Court Reservation: Carter/Mitchell",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Carter"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Mitchell"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-17",
+    "name": "Court Reservation: Perez/Roberts",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Perez"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Roberts"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-18",
+    "name": "Court Reservation: Turner/Phillips",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Turner"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Phillips"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-19",
+    "name": "Court Reservation: Campbell/Parker",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Campbell"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Parker"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-20",
+    "name": "Court Reservation: Edwards/Collins",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Edwards"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Collins"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-21",
+    "name": "Court Reservation: Stewart/Sanchez",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Stewart"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Sanchez"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-22",
+    "name": "Court Reservation: Morris/Rogers",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Morris"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Rogers"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-23",
+    "name": "Court Reservation: Reed/Cook",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Reed"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Cook"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-24",
+    "name": "Court Reservation: Morgan/Bell",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Morgan"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Bell"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-25",
+    "name": "Court Reservation: Murphy/Bailey",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Murphy"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Bailey"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-26",
+    "name": "Court Reservation: Rivera/Cooper",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Rivera"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Cooper"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-27",
+    "name": "Court Reservation: Richardson/Cox",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Richardson"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Cox"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-28",
+    "name": "Court Reservation: Howard/Ward",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Howard"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Ward"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-29",
+    "name": "Court Reservation: Torres/Peterson",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Torres"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Peterson"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-30",
+    "name": "Court Reservation: Gray/Ramirez",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Gray"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Ramirez"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-31",
+    "name": "Court Reservation: Watson/Brooks",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Watson"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Brooks"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-32",
+    "name": "Court Reservation: Kelly/Sanders",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Kelly"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Sanders"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-33",
+    "name": "Court Reservation: Price/Bennett",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Price"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Bennett"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-34",
+    "name": "Court Reservation: Wood/Barnes",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Wood"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Barnes"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-35",
+    "name": "Court Reservation: Ross/Henderson",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Ross"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Henderson"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-36",
+    "name": "Court Reservation: Coleman/Jenkins",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Coleman"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Jenkins"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-37",
+    "name": "Court Reservation: Perry/Powell",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Perry"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Powell"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-38",
+    "name": "Court Reservation: Long/Patterson",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Long"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Patterson"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-39",
+    "name": "Court Reservation: Hughes/Flores",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Hughes"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Flores"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-40",
+    "name": "Court Reservation: Washington/Butler",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Washington"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Butler"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-41",
+    "name": "Court Reservation: Simmons/Foster",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Simmons"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Foster"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-42",
+    "name": "Court Reservation: Bryant/Alexander",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Bryant"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Alexander"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-43",
+    "name": "Court Reservation: Russell/Griffin",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Russell"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Griffin"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-44",
+    "name": "Court Reservation: Diaz/Hayes",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Diaz"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Hayes"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  },
+  {
+    "key": "RES-PB-45",
+    "name": "Court Reservation: Myers/Ford",
+    "productKey": "pickleball-dropin",
+    "demandQty": 1,
+    "dueDate": "2026-06-06T22:00:00Z",
+    "priority": 6,
+    "typedAttributes": [
+      {
+        "name": "sport",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "pickleball"
+        },
+        "category": "game",
+        "sequence": 1
+      },
+      {
+        "name": "division",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Drop-In"
+        },
+        "category": "game",
+        "sequence": 2
+      },
+      {
+        "name": "gameWeek",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 1
+        },
+        "category": "game",
+        "sequence": 3
+      },
+      {
+        "name": "homeTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Myers"
+        },
+        "category": "game",
+        "sequence": 4
+      },
+      {
+        "name": "awayTeam",
+        "dataType": "string",
+        "value": {
+          "type": "string",
+          "value": "Ford"
+        },
+        "category": "game",
+        "sequence": 5
+      }
+    ]
+  }
+]

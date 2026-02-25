@@ -36,5 +36,6 @@
   "solve": "Build Schedule",
   "scheduledStatus": "Scheduled",
   "infeasibleStatus": "Infeasible",
-  "tenantDisplayName": "Acme Outpatient Surgery Center"
+  "tenantDisplayName": "Acme Outpatient Surgery Center",
+  "processCategory": "Specialty"
 }
