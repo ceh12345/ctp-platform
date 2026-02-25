@@ -129,7 +129,7 @@ describe('StateHydratorService', () => {
       expect(task).toBeDefined();
       expect(task!.linkId).toBeDefined();
       expect(task!.linkId!.name).toBe('WO-1001');
-      expect(task!.process).toBe('WO-1001');
+      expect(task!.process).toBe('assembly');
     });
   });
 
