@@ -95,6 +95,8 @@ export * from './Factories/uniqueidfactory';
 
 // Solvers
 export * from './Solvers/evaluator';
+export * from './Solvers/RankedScheduleContexts';
+export * from './Solvers/SolverState';
 
 // Services
 export * from './Services/apiService';
