@@ -1952,17 +1952,6 @@
     ]
   },
   {
-    "key": "PB-TIMESLOT",
-    "name": "Pickleball 30-Min Slot Clock",
-    "type": "POOLED",
-    "class": "REUSABLE",
-    "capacity": 13,
-    "hierarchy": {
-      "level1": "System"
-    },
-    "typedAttributes": []
-  },
-  {
     "key": "EQ-BASES-A",
     "name": "Bases Set A",
     "type": "INDIVIDUAL",

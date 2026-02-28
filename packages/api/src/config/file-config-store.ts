@@ -17,6 +17,7 @@ import {
   IOrderData,
   IMaterialData,
   IProcessData,
+  ICadenceData,
 } from './interfaces/config-store.interface';
 import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
 
@@ -264,6 +265,14 @@ export class FileConfigStore implements IConfigStore {
     return this.getCached('processes', () =>
       this.readJsonFile<IProcessData[]>(
         path.join(this.tenantDir, 'data', 'processes.json'),
+      ) ?? [],
+    );
+  }
+
+  getCadences(): ICadenceData[] {
+    return this.getCached('cadences', () =>
+      this.readJsonFile<ICadenceData[]>(
+        path.join(this.tenantDir, 'cadences.json'),
       ) ?? [],
     );
   }

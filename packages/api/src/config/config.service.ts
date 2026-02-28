@@ -15,6 +15,7 @@ import {
   IProductData,
   IOrderData,
   IMaterialData,
+  ICadenceData,
 } from './interfaces/config-store.interface';
 import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
 import { FileConfigStore } from './file-config-store';
@@ -93,6 +94,14 @@ export class ConfigService {
 
   getProcesses(): any[] {
     return this.store.getProcesses();
+  }
+
+  getCadences(): ICadenceData[] {
+    return this.store.getCadences();
+  }
+
+  getCadence(key: string): ICadenceData | undefined {
+    return this.store.getCadences().find(c => c.key === key);
   }
 
   getColors(): any {

@@ -15,12 +15,14 @@ export interface IProcess extends IKeyEntity {
 export class CTPProcess extends CTPKeyEntity implements IProcess {
   tasks: CTPTaskList | undefined;
   category: string | undefined;
+  cadence: string | undefined;
 
   constructor(n:string)
   {
     super('',n,n);
     this.tasks = new CTPTaskList();
     this.category = undefined;
+    this.cadence = undefined;
   }
 
   

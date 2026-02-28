@@ -9,6 +9,7 @@ import { ResourceCombinationEngine } from '../Engines/combinationengine';
 import { CommonStartTimesAgent } from '../AI/Agents/commonstarttimes';
 import { StateChangeAgent } from '../AI/Agents/statechangeagent';
 import { ComputeScoreAgent } from '../AI/Agents/computescores';
+import { generateCadenceTicks, filterStartTimesByCadence } from '../AI/Agents/cadencefilter';
 
 export interface WhereToOption {
   rank: number;
@@ -248,6 +249,7 @@ export class ScheduleEvaluator {
 
     // 3. Compute start times for each context, collect feasible
     const feasibleContexts: ScheduleContext[] = [];
+    const cadenceTickCache = new Map<number, number[]>();
 
     for (const ctx of contexts) {
       ctx.recompute = true;
@@ -260,6 +262,23 @@ export class ScheduleEvaluator {
       if (!startTimes) {
         result.stats.infeasibleCount++;
         continue;
+      }
+
+      // Apply cadence filter — snap start times to boundary ticks
+      if (task.cadenceIntervalMinutes) {
+        const interval = task.cadenceIntervalMinutes;
+        let ticks = cadenceTickCache.get(interval);
+        if (!ticks) {
+          const wSt = task.window ? task.window.startW : landscape.horizon!.startW;
+          const wEt = task.window ? task.window.endW : landscape.horizon!.endW;
+          ticks = generateCadenceTicks(interval, wSt, wEt);
+          cadenceTickCache.set(interval, ticks);
+        }
+        filterStartTimesByCadence(startTimes, ticks);
+        if (!startTimes.atleastOne()) {
+          result.stats.infeasibleCount++;
+          continue;
+        }
       }
 
       // Apply time constraints by removing out-of-range start time entries

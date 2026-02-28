@@ -11662,15 +11662,6 @@
         "isPrimary": false,
         "preferences": [
           {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
             "resource": "STAFF-COLEEN",
             "rank": 1
           },
@@ -11790,15 +11781,6 @@
           {
             "resource": "SP-COURT17",
             "rank": 7
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       },
@@ -11932,15 +11914,6 @@
         "isPrimary": false,
         "preferences": [
           {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
             "resource": "STAFF-COLEEN",
             "rank": 1
           },
@@ -12060,15 +12033,6 @@
           {
             "resource": "SP-COURT17",
             "rank": 7
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       },
@@ -12197,15 +12161,6 @@
             "rank": 7
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -12317,15 +12272,6 @@
           {
             "resource": "SP-COURT17",
             "rank": 7
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -12441,15 +12387,6 @@
             "rank": 7
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -12561,15 +12498,6 @@
           {
             "resource": "SP-COURT17",
             "rank": 7
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -12685,15 +12613,6 @@
             "rank": 7
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -12805,15 +12724,6 @@
           {
             "resource": "SP-COURT17",
             "rank": 7
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -12929,15 +12839,6 @@
             "rank": 7
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -13049,15 +12950,6 @@
           {
             "resource": "SP-COURT17",
             "rank": 7
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -13173,15 +13065,6 @@
             "rank": 7
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -13293,15 +13176,6 @@
           {
             "resource": "SP-COURT17",
             "rank": 7
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -13417,15 +13291,6 @@
             "rank": 7
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -13537,15 +13402,6 @@
           {
             "resource": "SP-COURT17",
             "rank": 7
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -13661,15 +13517,6 @@
             "rank": 7
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -13781,15 +13628,6 @@
           {
             "resource": "SP-COURT17",
             "rank": 7
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -13905,15 +13743,6 @@
             "rank": 7
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -14025,15 +13854,6 @@
           {
             "resource": "SP-COURT17",
             "rank": 7
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -14149,15 +13969,6 @@
             "rank": 7
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -14269,15 +14080,6 @@
           {
             "resource": "SP-COURT17",
             "rank": 7
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -14393,15 +14195,6 @@
             "rank": 7
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -14513,15 +14306,6 @@
           {
             "resource": "SP-COURT17",
             "rank": 7
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -14637,15 +14421,6 @@
             "rank": 7
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -14757,15 +14532,6 @@
           {
             "resource": "SP-COURT17",
             "rank": 7
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -14881,15 +14647,6 @@
             "rank": 7
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -15001,15 +14758,6 @@
           {
             "resource": "SP-COURT17",
             "rank": 7
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -15125,15 +14873,6 @@
             "rank": 7
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -15245,15 +14984,6 @@
           {
             "resource": "SP-COURT17",
             "rank": 7
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -15369,15 +15099,6 @@
             "rank": 7
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -15489,15 +15210,6 @@
           {
             "resource": "SP-COURT17",
             "rank": 7
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -15613,15 +15325,6 @@
             "rank": 7
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -15735,15 +15438,6 @@
             "rank": 7
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -15835,15 +15529,6 @@
           {
             "resource": "SP-COURT19",
             "rank": 2
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -15939,15 +15624,6 @@
             "rank": 2
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -16039,15 +15715,6 @@
           {
             "resource": "SP-COURT19",
             "rank": 2
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -16143,15 +15810,6 @@
             "rank": 2
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -16243,15 +15901,6 @@
           {
             "resource": "SP-COURT19",
             "rank": 2
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -16347,15 +15996,6 @@
             "rank": 2
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -16447,15 +16087,6 @@
           {
             "resource": "SP-COURT19",
             "rank": 2
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -16551,15 +16182,6 @@
             "rank": 2
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -16653,15 +16275,6 @@
             "rank": 2
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -16753,15 +16366,6 @@
           {
             "resource": "SP-COURT19",
             "rank": 2
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -16865,15 +16469,6 @@
             "rank": 4
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -16973,15 +16568,6 @@
           {
             "resource": "TK-COURT4",
             "rank": 4
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }
@@ -17085,15 +16671,6 @@
             "rank": 4
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -17195,15 +16772,6 @@
             "rank": 4
           }
         ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
-          }
-        ]
       }
     ],
     "typedAttributes": [
@@ -17303,15 +16871,6 @@
           {
             "resource": "TK-COURT4",
             "rank": 4
-          }
-        ]
-      },
-      {
-        "isPrimary": false,
-        "preferences": [
-          {
-            "resource": "PB-TIMESLOT",
-            "rank": 1
           }
         ]
       }

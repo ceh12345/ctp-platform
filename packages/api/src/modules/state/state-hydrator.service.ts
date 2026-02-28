@@ -63,7 +63,55 @@ export class StateHydratorService {
     landscape.stateChanges = stateChanges;
     landscape.buildProcesses();
 
+    // Resolve cadence profiles per task
+    this.hydrateCadences(landscape);
+
     return landscape;
+  }
+
+  private hydrateCadences(landscape: SchedulingLandscape): void {
+    // Build cadence key → intervalMinutes lookup
+    const cadences = this.configService.getCadences();
+    const cadenceMap = new Map<string, number>();
+    for (const c of cadences) {
+      cadenceMap.set(c.key, c.intervalMinutes);
+    }
+    if (cadenceMap.size === 0) return;
+
+    // Build process key → cadence key lookup
+    const processConfigs = this.configService.getProcesses();
+    const processCadenceMap = new Map<string, string>();
+    for (const p of processConfigs) {
+      if (p.cadence) processCadenceMap.set(p.key, p.cadence);
+    }
+
+    // Build task key → cadence override lookup
+    const taskConfigs = this.configService.getTasks();
+    const taskCadenceMap = new Map<string, string | null>();
+    for (const t of taskConfigs) {
+      if (t.cadence !== undefined) taskCadenceMap.set(t.key, t.cadence ?? null);
+    }
+
+    // Resolve effective cadence for each task
+    landscape.tasks?.forEach(task => {
+      // Task-level override takes priority
+      if (taskCadenceMap.has(task.key)) {
+        const override = taskCadenceMap.get(task.key);
+        if (override === null) return; // explicitly disabled
+        const interval = cadenceMap.get(override!);
+        if (interval) task.cadenceIntervalMinutes = interval;
+        return;
+      }
+
+      // Fall back to process-level cadence
+      if (task.process) {
+        const cadenceKey = processCadenceMap.get(task.process);
+        if (cadenceKey) {
+          const interval = cadenceMap.get(cadenceKey);
+          if (interval) task.cadenceIntervalMinutes = interval;
+        }
+      }
+    });
   }
 
   private hydrateHorizon(config: IHorizonConfig | null): CTPHorizon {

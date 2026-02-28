@@ -1,0 +1,12 @@
+[
+  {
+    "key": "CADENCE-30",
+    "name": "30-Minute Boundaries",
+    "intervalMinutes": 30
+  },
+  {
+    "key": "CADENCE-60",
+    "name": "Hourly Boundaries",
+    "intervalMinutes": 60
+  }
+]

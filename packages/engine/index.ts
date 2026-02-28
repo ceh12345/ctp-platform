@@ -49,6 +49,7 @@ export * from './Models/Lists/lists';
 // AI - Agents
 export * from './AI/Agents/agent';
 export * from './AI/Agents/bestscorefortask';
+export * from './AI/Agents/cadencefilter';
 export * from './AI/Agents/commonstarttimes';
 export * from './AI/Agents/computeschedulecontexts';
 export * from './AI/Agents/computescores';

@@ -12,6 +12,7 @@ import { AIAgent, IAIAgent } from "./agent";
 import { CommonStartTimesAgent } from "./commonstarttimes";
 import { ComputeScoreAgent } from "./computescores";
 import { StateChangeAgent } from "./statechangeagent";
+import { generateCadenceTicks, filterStartTimesByCadence } from "./cadencefilter";
 
 interface IComputeScheduleContextsAgent extends IAIAgent {
   solve(
@@ -60,6 +61,7 @@ export class ComputeScheduleContextsAgent extends AIAgent {
     let et = landscape!.horizon.endW;
 
     let computescores: ScheduleContext[] = [];
+    const cadenceTickCache = new Map<number, number[]>();
 
     scheduleContexts.forEach((schedule) => {
       if (
@@ -77,6 +79,17 @@ export class ComputeScheduleContextsAgent extends AIAgent {
 
         // Remove invalid
         this.removeInvalidStartTimes(schedule);
+
+        // Apply cadence filter — snap start times to boundary ticks
+        if (schedule.task?.cadenceIntervalMinutes && schedule.slot?.startTimes) {
+          const interval = schedule.task.cadenceIntervalMinutes;
+          let ticks = cadenceTickCache.get(interval);
+          if (!ticks) {
+            ticks = generateCadenceTicks(interval, taskSt, taskEt);
+            cadenceTickCache.set(interval, ticks);
+          }
+          filterStartTimesByCadence(schedule.slot.startTimes, ticks);
+        }
 
         if (schedule.slot && schedule.slot.hasStartTimes())
           computescores.push(schedule);

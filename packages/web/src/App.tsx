@@ -2215,6 +2215,7 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
           : <Badge label={task.orderRef} color={C.purple} />
         )}
         {task.process && <Badge label={task.process} color={C.accent} />}
+        {task.cadenceIntervalMinutes != null && <Badge label={`${task.cadenceIntervalMinutes}m cadence`} color={C.purple} />}
       </div>
 
       {/* Schedule button for unscheduled tasks */}

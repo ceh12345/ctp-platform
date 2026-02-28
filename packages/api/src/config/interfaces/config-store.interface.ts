@@ -155,6 +155,7 @@ export interface ITaskData {
   materialsResources?: { resource: string; isPrimary: boolean; qty?: number; mode?: string }[];
   process?: string;
   subType?: string;
+  cadence?: string | null;
   linkId?: { name: string; type: string; prevLink: string };
   typedAttributes?: ITypedAttribute[];
   [key: string]: any;
@@ -185,6 +186,13 @@ export interface IProcessData {
   key: string;
   name: string;
   category?: string;
+  cadence?: string;
+}
+
+export interface ICadenceData {
+  key: string;
+  name: string;
+  intervalMinutes: number;
 }
 
 export interface IHorizonConfig {
@@ -229,6 +237,7 @@ export interface IConfigStore {
   getOrders(): IOrderData[];
   getMaterials(): IMaterialData[];
   getProcesses(): IProcessData[];
+  getCadences(): ICadenceData[];
 
   // Save entity data
   saveResources(resources: IResourceData[]): void;

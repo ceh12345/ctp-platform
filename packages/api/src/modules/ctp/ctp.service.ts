@@ -903,6 +903,7 @@ export class CTPService {
         process,
         processName,
         processCategory,
+        cadenceIntervalMinutes: task.cadenceIntervalMinutes ?? null,
         type: task.type || CTPTaskTypeConstants.PROCESS,
         subType: task.subType ?? null,
         materialResources,

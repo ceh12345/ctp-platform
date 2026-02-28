@@ -3,7 +3,7 @@
  * Summer season Week 1: Baseball (4 divisions), Flag Football (3 divisions),
  * Pickleball league matches (4) + Drop-In reservations (45).
  *
- * Totals: 58 resources, 58 calendars, 77 orders, 133 tasks.
+ * Totals: 57 resources, 57 calendars, 77 orders, 133 tasks, 2 cadences.
  *
  * Run: node config/tenants/hrmd-rec-sports/generate-data.mjs
  */
@@ -30,7 +30,7 @@ function ranked(keys) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// 1. RESOURCES (58 total)
+// 1. RESOURCES (57 total)
 // ══════════════════════════════════════════════════════════════════════════════
 const resources = [];
 
@@ -120,15 +120,6 @@ for (let i = 1; i <= 4; i++) {
   });
 }
 
-// ── Pickleball 30-Min Slot Clock (1 POOLED resource) ──
-resources.push({
-  key: 'PB-TIMESLOT', name: 'Pickleball 30-Min Slot Clock',
-  type: 'POOLED', class: 'REUSABLE',
-  capacity: 13,
-  hierarchy: { level1: 'System' },
-  typedAttributes: [],
-});
-
 // ── Equipment (6) ──
 const eqDefs = [
   { key: 'EQ-BASES-A', name: 'Bases Set A' },
@@ -199,7 +190,7 @@ for (const r of refDefs) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// 2. CALENDARS (58 entries — one per resource)
+// 2. CALENDARS (57 entries — one per resource)
 // ══════════════════════════════════════════════════════════════════════════════
 const calendars = [];
 
@@ -265,30 +256,6 @@ for (let i = 11; i <= 19; i++) {
 // Pickleball Courts — Tanks Park (no lights, Saturday only)
 for (let i = 1; i <= 4; i++) {
   calendars.push({ resourceKey: `TK-COURT${i}`, intervals: [iv(SAT, 7, 0, 18, 0)] });
-}
-
-// PB-TIMESLOT — discrete 30-min intervals covering all PB operating hours
-{
-  const pbIntervals = [];
-  // Saturday: 7:00 AM - 10:00 PM (30 intervals)
-  for (let h = 7; h < 22; h++) {
-    pbIntervals.push(iv(SAT, h, 0, h, 30, 13));
-    pbIntervals.push(iv(SAT, h, 30, h + 1, 0, 13));
-  }
-  // Sunday: 12:00 PM - 6:00 PM (12 intervals)
-  for (let h = 12; h < 18; h++) {
-    pbIntervals.push(iv(SUN, h, 0, h, 30, 13));
-    pbIntervals.push(iv(SUN, h, 30, h + 1, 0, 13));
-  }
-  // Weeknights Mon-Fri: 5:30 PM - 10:00 PM (9 intervals each)
-  for (const day of WEEKNIGHTS) {
-    pbIntervals.push(iv(day, 17, 30, 18, 0, 13));
-    for (let h = 18; h < 22; h++) {
-      pbIntervals.push(iv(day, h, 0, h, 30, 13));
-      pbIntervals.push(iv(day, h, 30, h + 1, 0, 13));
-    }
-  }
-  calendars.push({ resourceKey: 'PB-TIMESLOT', intervals: pbIntervals });
 }
 
 // Equipment — Sat + Sun + weeknights
@@ -562,8 +529,6 @@ const pitchMachines = [{ resource: 'EQ-PITCHMACHINE-1', rank: 1 }, { resource: '
 const scoreboard = [{ resource: 'EQ-SCOREBOARD', rank: 1 }];
 const allUmps = umpDefs.map((u, i) => ({ resource: u.key, rank: i + 1 }));
 const allRefs = refDefs.map((r, i) => ({ resource: r.key, rank: i + 1 }));
-const pbTimeslot = { isPrimary: false, preferences: [{ resource: 'PB-TIMESLOT', rank: 1 }] };
-
 function taskAttrs(sport, division, home, away, gameWeek, phase) {
   return [
     attr('sport', 'enum', sport, 'game', 1),
@@ -667,7 +632,7 @@ for (const game of chainedGames) {
 // ── Generate single-task pickleball games (league + drop-in = 49 tasks) ──
 for (const di of dropinGames) {
   const courtCR = { isPrimary: true, preferences: ranked(di.courtPrefs) };
-  const cr = [courtCR, { ...pbTimeslot }];
+  const cr = [courtCR];
   if (di.isLeaguePB) cr.push({ isPrimary: false, preferences: [...coordStaff] });
   const name = di.isLeaguePB
     ? `PB Open: ${di.home} vs ${di.away}`
@@ -720,6 +685,29 @@ const kpis = [
 ];
 
 // ══════════════════════════════════════════════════════════════════════════════
+// 6. CADENCES
+// ══════════════════════════════════════════════════════════════════════════════
+const cadences = [
+  { key: 'CADENCE-30', name: '30-Minute Boundaries', intervalMinutes: 30 },
+  { key: 'CADENCE-60', name: 'Hourly Boundaries', intervalMinutes: 60 },
+];
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 7. PROCESSES (with cadence references)
+// ══════════════════════════════════════════════════════════════════════════════
+const processes = [
+  { key: 'baseball-tball', name: 'T-Ball Game', category: 'Baseball', cadence: 'CADENCE-60' },
+  { key: 'baseball-coachpitch', name: 'Coach Pitch Game', category: 'Baseball', cadence: 'CADENCE-60' },
+  { key: 'baseball-minors', name: 'Minors Game', category: 'Baseball', cadence: 'CADENCE-60' },
+  { key: 'baseball-majors', name: 'Majors Game', category: 'Baseball', cadence: 'CADENCE-60' },
+  { key: 'flag-football-k2', name: 'Flag Football K-2', category: 'Flag Football', cadence: 'CADENCE-60' },
+  { key: 'flag-football-35', name: 'Flag Football 3-5', category: 'Flag Football', cadence: 'CADENCE-60' },
+  { key: 'flag-football-68', name: 'Flag Football 6-8', category: 'Flag Football', cadence: 'CADENCE-60' },
+  { key: 'pickleball-open', name: 'Pickleball Open Doubles', category: 'Pickleball', cadence: 'CADENCE-30' },
+  { key: 'pickleball-dropin', name: 'Pickleball Drop-In Reservation', category: 'Pickleball', cadence: 'CADENCE-30' },
+];
+
+// ══════════════════════════════════════════════════════════════════════════════
 // WRITE ALL FILES
 // ══════════════════════════════════════════════════════════════════════════════
 console.log('Generating hrmd-rec-sports data (baseball + flag football + pickleball)...');
@@ -727,16 +715,20 @@ writeJson(dataDir, 'resources.json', resources);
 writeJson(dataDir, 'calendars.json', calendars);
 writeJson(dataDir, 'orders.json', orders);
 writeJson(dataDir, 'tasks.json', tasks);
+writeJson(dataDir, 'processes.json', processes);
 writeJson(kpisDir, 'kpis.json', kpis);
+writeJson(__dirname, 'cadences.json', cadences);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // VERIFICATION
 // ══════════════════════════════════════════════════════════════════════════════
 console.log('\n══ Verification ══');
-console.log(`Resources:  ${resources.length} (expected 58)`);
-console.log(`Calendars:  ${calendars.length} (expected 58)`);
+console.log(`Resources:  ${resources.length} (expected 57)`);
+console.log(`Calendars:  ${calendars.length} (expected 57)`);
 console.log(`Orders:     ${orders.length} (expected 77: 19 BB + 9 FF + 4 PB league + 45 PB drop-in)`);
 console.log(`Tasks:      ${tasks.length} (expected 133: 28×3 chain + 49 PB single)`);
+console.log(`Cadences:   ${cadences.length} (expected 2)`);
+console.log(`Processes:  ${processes.length} (expected 9)`);
 
 let allPass = true;
 function check(label, ok) {
@@ -745,8 +737,8 @@ function check(label, ok) {
 }
 
 // Count checks
-check('58 resources', resources.length === 58);
-check('58 calendars', calendars.length === 58);
+check('57 resources', resources.length === 57);
+check('57 calendars', calendars.length === 57);
 check('77 orders', orders.length === 77);
 check('133 tasks', tasks.length === 133);
 
@@ -783,7 +775,7 @@ check('Hierarchy set on all resources', noH.length === 0);
 
 // Scoring weights
 // (read from the scoring.json that's already written)
-check('Scoring weights sum to 1.0', 0.5 + 0.3 + 0.2 === 1.0);
+check('Scoring weights sum to 1.0', 0.7 + 0.3 + 0 === 1.0);
 
 // Duration checks
 let durOk = true;
@@ -833,18 +825,17 @@ for (let i = 30; i < 40; i++) {
 }
 check('Courts 18/19 drop-ins limited to SP-COURT18/19', court1819ok);
 
-// Every PB task includes PB-TIMESLOT
-let pbSlotOk = true;
-const pbTasks = tasks.filter(t => t.process?.startsWith('pickleball'));
-for (const t of pbTasks) {
-  const hasSlot = t.capacityResources.some(cr => cr.preferences.some(p => p.resource === 'PB-TIMESLOT'));
-  if (!hasSlot) { console.error(`  Missing PB-TIMESLOT: ${t.key}`); pbSlotOk = false; }
-}
-check('All PB tasks include PB-TIMESLOT', pbSlotOk);
+// No PB-TIMESLOT resource remains
+check('No PB-TIMESLOT resource', !resources.some(r => r.key === 'PB-TIMESLOT'));
+check('No PB-TIMESLOT calendar', !calendars.some(c => c.resourceKey === 'PB-TIMESLOT'));
 
-// PB-TIMESLOT interval count
-const pbCal = calendars.find(c => c.resourceKey === 'PB-TIMESLOT');
-check('PB-TIMESLOT has 87 intervals', pbCal?.intervals?.length === 87);
+// Cadence checks
+check('2 cadence profiles', cadences.length === 2);
+check('9 process definitions', processes.length === 9);
+const pbProcs = processes.filter(p => p.cadence === 'CADENCE-30');
+check('PB processes use CADENCE-30', pbProcs.length === 2);
+const bbProcs = processes.filter(p => p.cadence === 'CADENCE-60');
+check('BB/FF processes use CADENCE-60', bbProcs.length === 7);
 
 // 2-ump slots for Minors/Majors
 let umpOk = true;
