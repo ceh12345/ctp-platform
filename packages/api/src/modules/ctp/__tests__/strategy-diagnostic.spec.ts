@@ -185,8 +185,8 @@ describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (requiresPreds=false
     expect(greedy.violations.length).toBe(9);
   });
 
-  it('lists all 4 ChainFirstFit violations', () => {
-    console.log('\n=== CHAINFIRSTFIT VIOLATIONS (4) ===');
+  it('lists all 3 ChainFirstFit violations', () => {
+    console.log('\n=== CHAINFIRSTFIT VIOLATIONS (3) ===');
     console.log('Task                              | Pred                              | Chain    | Task Start | Pred End  | Gap');
     console.log('----------------------------------|-----------------------------------|----------|------------|-----------|--------');
     for (const v of cff.violations) {
@@ -195,7 +195,7 @@ describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (requiresPreds=false
       const chain = v.chain.padEnd(8);
       console.log(`${task} | ${pred} | ${chain} | ${v.taskStart}    | ${v.predEnd}    | ${v.gapMinutes}m`);
     }
-    expect(cff.violations.length).toBe(4);
+    expect(cff.violations.length).toBe(3);
   });
 
   it('identifies violations unique to Greedy', () => {

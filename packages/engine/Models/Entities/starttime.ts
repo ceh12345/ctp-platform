@@ -33,7 +33,7 @@ export class CTPStartTime {
   }
 
   public stillFeasible() : boolean {
-    return (this.lStartW - this.eStartW) > this.processChangeDuration;
+    return (this.lStartW - this.eStartW) >= this.processChangeDuration;
   }
 
   public debug(showdates: boolean = true) {

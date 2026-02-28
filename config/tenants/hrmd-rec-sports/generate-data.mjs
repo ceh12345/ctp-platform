@@ -3,7 +3,7 @@
  * Summer season Week 1: Baseball (4 divisions), Flag Football (3 divisions),
  * Pickleball league matches (4) + Drop-In reservations (45).
  *
- * Totals: 58 resources, 58 calendars, 77 orders, 141 tasks.
+ * Totals: 58 resources, 58 calendars, 77 orders, 133 tasks.
  *
  * Run: node config/tenants/hrmd-rec-sports/generate-data.mjs
  */
@@ -436,10 +436,11 @@ for (const m of pbLeagueMatches) {
     dueDate: DUE_GAME, priority: 5,
     typedAttributes: orderAttrs('pickleball', 'Open Doubles', 1, m.home, m.away),
   });
-  chainedGames.push({
+  dropinGames.push({
     key, sport: 'pickleball', division: 'Open Doubles',
     productKey: 'pickleball-open', home: m.home, away: m.away,
     priority: 5, durationSec: m.durSec, isLeaguePB: true,
+    courtPrefs: ['SP-COURT11', 'SP-COURT12', 'SP-COURT13', 'SP-COURT14', 'SP-COURT15', 'SP-COURT16', 'SP-COURT17'],
   });
 }
 
@@ -538,7 +539,6 @@ const ffDurations = {
   'Flag 3-5':  { prep: 600, play: 3600, reset: 600 },
   'Flag 6-8':  { prep: 600, play: 3600, reset: 600 },
 };
-const pbLeagueDurations = { prep: 300, reset: 300 };  // play varies per match
 
 // Field preference lists
 const fieldPrefs = {
@@ -575,11 +575,10 @@ function taskAttrs(sport, division, home, away, gameWeek, phase) {
   ];
 }
 
-// ── Generate 3-task chains for all chained games (32 games × 3 = 96 tasks) ──
+// ── Generate 3-task chains for all chained games (28 games × 3 = 84 tasks) ──
 for (const game of chainedGames) {
   const isBaseball = game.sport === 'baseball';
   const isFF = game.sport === 'flag-football';
-  const isLeaguePB = game.isLeaguePB === true;
   const isCoachPitch = game.division === 'Coach Pitch';
   const isMajors = game.division === 'Majors';
   const isMinors = game.division === 'Minors';
@@ -587,10 +586,7 @@ for (const game of chainedGames) {
   const needsTwoRefs = game.division === 'Flag 3-5' || game.division === 'Flag 6-8';
 
   let dur, fPrefs;
-  if (isLeaguePB) {
-    dur = { prep: pbLeagueDurations.prep, play: game.durationSec, reset: pbLeagueDurations.reset };
-    fPrefs = ranked(pbLeagueCourtPrefs);
-  } else if (isFF) {
+  if (isFF) {
     dur = ffDurations[game.division];
     fPrefs = ranked(fieldPrefs[game.division]);
   } else {
@@ -607,9 +603,6 @@ for (const game of chainedGames) {
     if (isMajors) prepCR.push({ isPrimary: false, preferences: [...scoreboard] });
   } else if (isFF) {
     prepCR.push({ isPrimary: false, preferences: [...fieldCrew] });
-  } else if (isLeaguePB) {
-    prepCR.push({ isPrimary: false, preferences: [...coordStaff] });
-    prepCR.push({ ...pbTimeslot });
   }
 
   tasks.push({
@@ -634,13 +627,9 @@ for (const game of chainedGames) {
   } else if (isFF) {
     playCR.push({ isPrimary: false, preferences: [...allRefs] });
     if (needsTwoRefs) playCR.push({ isPrimary: false, preferences: [...allRefs] });
-  } else if (isLeaguePB) {
-    playCR.push({ ...pbTimeslot });
   }
 
-  const playName = isLeaguePB
-    ? `PB Open: ${game.home} vs ${game.away}`
-    : `${game.division}: ${game.home} vs ${game.away}`;
+  const playName = `${game.division}: ${game.home} vs ${game.away}`;
 
   tasks.push({
     key: `${game.key}-PLAY`,
@@ -660,8 +649,6 @@ for (const game of chainedGames) {
     resetCR.push({ isPrimary: false, preferences: [...fieldCrew] });
   } else if (isFF) {
     resetCR.push({ isPrimary: false, preferences: [...fieldCrew] });
-  } else if (isLeaguePB) {
-    resetCR.push({ ...pbTimeslot });
   }
 
   tasks.push({
@@ -677,18 +664,23 @@ for (const game of chainedGames) {
   });
 }
 
-// ── Generate single-task drop-in reservations (45 tasks) ──
+// ── Generate single-task pickleball games (league + drop-in = 49 tasks) ──
 for (const di of dropinGames) {
   const courtCR = { isPrimary: true, preferences: ranked(di.courtPrefs) };
+  const cr = [courtCR, { ...pbTimeslot }];
+  if (di.isLeaguePB) cr.push({ isPrimary: false, preferences: [...coordStaff] });
+  const name = di.isLeaguePB
+    ? `PB Open: ${di.home} vs ${di.away}`
+    : `Drop-In: ${di.home}/${di.away}`;
   tasks.push({
     key: `${di.key}-PLAY`,
-    name: `Drop-In: ${di.home}/${di.away}`,
+    name,
     type: 'PROCESS', subType: 'play', sequence: 1,
     process: di.productKey,
     linkId: { name: di.key, type: 'game', prevLink: '' },
     windowStart: WINDOW_START, windowEnd: WINDOW_END,
     durationSeconds: di.durationSec,
-    capacityResources: [courtCR, { ...pbTimeslot }],
+    capacityResources: cr,
     typedAttributes: taskAttrs(di.sport, di.division, di.home, di.away, 1, 'play'),
   });
 }
@@ -744,7 +736,7 @@ console.log('\n══ Verification ══');
 console.log(`Resources:  ${resources.length} (expected 58)`);
 console.log(`Calendars:  ${calendars.length} (expected 58)`);
 console.log(`Orders:     ${orders.length} (expected 77: 19 BB + 9 FF + 4 PB league + 45 PB drop-in)`);
-console.log(`Tasks:      ${tasks.length} (expected 141: 32×3 chain + 45 drop-in)`);
+console.log(`Tasks:      ${tasks.length} (expected 133: 28×3 chain + 49 PB single)`);
 
 let allPass = true;
 function check(label, ok) {
@@ -756,7 +748,7 @@ function check(label, ok) {
 check('58 resources', resources.length === 58);
 check('58 calendars', calendars.length === 58);
 check('77 orders', orders.length === 77);
-check('141 tasks', tasks.length === 141);
+check('133 tasks', tasks.length === 133);
 
 // Chain integrity for chained games
 let chainOk = true;
@@ -773,7 +765,7 @@ for (const game of chainedGames) {
   const rf = JSON.stringify(reset.capacityResources[0].preferences);
   if (pf !== plf || plf !== rf) { console.error(`  Field prefs mismatch: ${game.key}`); chainOk = false; }
 }
-check('Chain integrity (32 games)', chainOk);
+check('Chain integrity (28 games)', chainOk);
 
 // Drop-in single-task checks
 let diOk = true;
@@ -783,7 +775,7 @@ for (const di of dropinGames) {
   if (play.linkId.prevLink !== '') { console.error(`  Drop-in prevLink not empty: ${di.key}`); diOk = false; }
   if (play.type !== 'PROCESS') { console.error(`  Drop-in type not PROCESS: ${di.key}`); diOk = false; }
 }
-check('Drop-in single tasks (45)', diOk);
+check('PB single tasks (49 = 45 drop-in + 4 league)', diOk);
 
 // Hierarchy check
 const noH = resources.filter(r => !r.hierarchy?.level1);
@@ -799,11 +791,7 @@ for (const game of chainedGames) {
   const prep = tasks.find(t => t.key === `${game.key}-PREP`);
   const play = tasks.find(t => t.key === `${game.key}-PLAY`);
   const reset = tasks.find(t => t.key === `${game.key}-RESET`);
-  if (game.isLeaguePB) {
-    if (prep.durationSeconds !== 300) { console.error(`  PB league prep dur: ${game.key}`); durOk = false; }
-    if (play.durationSeconds !== game.durationSec) { console.error(`  PB league play dur: ${game.key}`); durOk = false; }
-    if (reset.durationSeconds !== 300) { console.error(`  PB league reset dur: ${game.key}`); durOk = false; }
-  } else if (game.sport === 'baseball') {
+  if (game.sport === 'baseball') {
     const d = bbDurations[game.division];
     if (prep.durationSeconds !== d.prep || play.durationSeconds !== d.play || reset.durationSeconds !== d.reset) {
       console.error(`  BB dur: ${game.key}`); durOk = false;
@@ -834,8 +822,9 @@ check('Drop-in mix: 8×120m', durCount[7200] === 8);
 
 // Courts 18/19 drop-ins only have SP-COURT18/19 prefs
 let court1819ok = true;
+const diOnly = dropinGames.filter(d => !d.isLeaguePB);
 for (let i = 30; i < 40; i++) {
-  const di = dropinGames[i];
+  const di = diOnly[i];
   const play = tasks.find(t => t.key === `${di.key}-PLAY`);
   const courtPrefs = play.capacityResources[0].preferences.map(p => p.resource);
   if (courtPrefs.length !== 2 || !courtPrefs.includes('SP-COURT18') || !courtPrefs.includes('SP-COURT19')) {

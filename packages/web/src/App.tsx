@@ -2757,11 +2757,13 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   // Local fallback state when props aren't provided (e.g. Overview tab)
   const [localZoom, setLocalZoom] = useState('3 hours');
   const [localScroll, setLocalScroll] = useState(0);
-  const [lastTimeRange, setLastTimeRange] = useState('3 hours');
   const effectiveZoom = zoomLevel ?? localZoom;
   const effectiveSetZoom = setZoomLevel ?? setLocalZoom;
   const effectiveScroll = scrollOffset ?? localScroll;
   const effectiveSetScroll = setScrollOffset ?? setLocalScroll;
+  // Derive lastTimeRange from effective zoom so dropdown stays in sync after remount
+  const isTimeRangeZoom = TIME_RANGE_OPTIONS.some(t => t.label === effectiveZoom);
+  const [lastTimeRange, setLastTimeRange] = useState(() => isTimeRangeZoom ? effectiveZoom : '3 hours');
   const [hovered, setHovered] = useState<any>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [contextMenu, setContextMenu] = useState<{ task: any; x: number; y: number } | null>(null);
@@ -3528,7 +3530,8 @@ function CaseGanttChart({ tasks, orders, products, colors, onTaskClick,
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [caseSearch, setCaseSearch] = useState('');
   const [sortBy, setSortBy] = useState<'start' | 'priority' | 'worstGap' | 'name'>('start');
-  const [lastTimeRange, setLastTimeRange] = useState('3 hours');
+  const isTimeRangeZoom = TIME_RANGE_OPTIONS.some(t => t.label === zoomLevel);
+  const [lastTimeRange, setLastTimeRange] = useState(() => isTimeRangeZoom ? zoomLevel : '3 hours');
 
   // Filter scheduled tasks (same as GanttChart)
   const scheduled = tasks.filter((tk: any) => {
@@ -5131,7 +5134,8 @@ function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskCli
 
 function OverviewTab({ summary, tasks, resources, orders, materials, products, colors, onTabChange, onTaskClick, onResourceClick, experienceLevel = 'novice',
   taskPins, taskExcludes, taskUnschedules, orderModes,
-  onPinTask, onExcludeTask, onUnscheduleTask, onWhereTo }: {
+  onPinTask, onExcludeTask, onUnscheduleTask, onWhereTo,
+  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset }: {
   summary: any; tasks: any[]; resources: any[]; orders: any[]; materials: any[];
   products: any[]; colors: any; onTabChange: (t: string) => void;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
@@ -5142,6 +5146,10 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
   onExcludeTask?: (key: string, excluded: boolean) => void;
   onUnscheduleTask?: (key: string) => void;
   onWhereTo?: (key: string) => void;
+  zoomLevel?: string;
+  setZoomLevel?: (v: string | ((prev: string) => string)) => void;
+  scrollOffset?: number;
+  setScrollOffset?: (v: number | ((prev: number) => number)) => void;
 }) {
   const avgUtil = resources.length > 0
     ? resources.reduce((s: number, r: any) => s + r.utilization, 0) / resources.length
@@ -5181,7 +5189,9 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
             taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             orderModes={orderModes}
             onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask}
-            onWhereTo={onWhereTo} />
+            onWhereTo={onWhereTo}
+            zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
+            scrollOffset={scrollOffset} setScrollOffset={setScrollOffset} />
         </Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card title={`${t('resource', 'Resource')} ${t('utilization', 'Utilization')}`}>
@@ -5437,7 +5447,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   selectedTasks, onToggleSelect, onSetSelectedTasks,
   onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected,
   onSetResourcePreference, onSetResourcePrefForTask, resourcePreferenceOverrides,
-  priorityOverrides, onSetPriority, onRushSelected }: {
+  priorityOverrides, onSetPriority, onRushSelected,
+  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
@@ -5478,12 +5489,13 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   priorityOverrides?: Record<string, number>;
   onSetPriority?: (key: string, priority: number) => void;
   onRushSelected?: (keys: string[]) => void;
+  zoomLevel: string;
+  setZoomLevel: (v: string | ((prev: string) => string)) => void;
+  scrollOffset: number;
+  setScrollOffset: (v: number | ((prev: number) => number)) => void;
 }) {
   const tabNames = [`Gantt by ${t('resource', 'Resource')}`, `Gantt by ${t('order', 'Order')}`, t('tasks', 'Task List')];
   const [subIdx, setSubIdx] = useState(0);
-  const [zoomLevel, setZoomLevel] = useState('3 hours');
-  const [scrollOffset, setScrollOffset] = useState(0);
-  const [lastTimeRange, setLastTimeRange] = useState('3 hours');
   const [resourceFilter, setResourceFilter] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<{ after?: string; before?: string }>({});
 
@@ -6318,6 +6330,9 @@ export default function App() {
     setToast(msg);
     setTimeout(() => setToast(null), 4000);
   }, []);
+  // Gantt zoom state — lifted to App so it persists across tab switches
+  const [ganttZoomLevel, setGanttZoomLevel] = useState('3 hours');
+  const [ganttScrollOffset, setGanttScrollOffset] = useState(0);
   // WhereTo state
   const [whereToTaskKey, setWhereToTaskKey] = useState<string | null>(null);
   const [whereToOptions, setWhereToOptions] = useState<any[]>([]);
@@ -7180,7 +7195,9 @@ export default function App() {
               });
               setSolveStale(true);
             }}
-            onWhereTo={handleWhereTo} />
+            onWhereTo={handleWhereTo}
+            zoomLevel={ganttZoomLevel} setZoomLevel={setGanttZoomLevel}
+            scrollOffset={ganttScrollOffset} setScrollOffset={setGanttScrollOffset} />
         )}
         {activeTab === 'Schedule' && (
           <ScheduleTab tasks={tasks} resources={resources} products={products} colors={colors}
@@ -7259,7 +7276,9 @@ export default function App() {
               setSelectedTasks(new Set());
               setSolveStale(true);
               showToast(`${keys.length} task(s) set to RUSH priority`);
-            }} />
+            }}
+            zoomLevel={ganttZoomLevel} setZoomLevel={setGanttZoomLevel}
+            scrollOffset={ganttScrollOffset} setScrollOffset={setGanttScrollOffset} />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} tasks={tasks}
           orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}

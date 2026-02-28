@@ -251,6 +251,10 @@ export class ScheduleEvaluator {
 
     for (const ctx of contexts) {
       ctx.recompute = true;
+      // Force fresh availability — cached matrices may be stale after a solve
+      ctx.slot.resources?.forEach(rs => {
+        if (rs.resource) rs.resource.recompute = true;
+      });
       const startTimes = this.computeStartTimes(ctx, landscape);
 
       if (!startTimes) {

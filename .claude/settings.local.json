@@ -25,7 +25,32 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd POST /v1/state/sync endpoint for scheduling landscape hydration\n\nImplements the state sync module that accepts a full scheduling payload\n\\(horizon, resources, tasks, state changes, scoring, settings\\), transforms\nDTOs into engine objects, builds a SchedulingLandscape, and stores it\nkeyed by tenant ID. Also enables engine compilation with composite project\nreferences and fixes pre-existing build issues \\(ES2022 target, duplicate\nexport, empty module\\).\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git commit:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(cmd //c \"cd /d \"\"C:\\\\Users\\\\ussbo\\\\FAST\\\\VS 2022\\\\CTP\\\\Typescript\\\\ctp-platform\"\" && backup.bat\")",
+      "Bash(cmd //c \"C:\\\\Users\\\\ussbo\\\\FAST\\\\VS 2022\\\\CTP\\\\Typescript\\\\ctp-platform\\\\backup.bat\")",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(xargs:*)",
+      "Bash(to [name] — click to clear\" to communicate what gets filtered.:*)",
+      "Bash(findstr:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(npm run start:dev:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npm test:*)",
+      "Bash(cmd //c backup.bat)",
+      "Bash(cmd //c \".\\\\backup.bat\")",
+      "Bash(tasklist:*)",
+      "Bash(head:*)",
+      "Bash(taskkill:)",
+      "Bash(powershell:*)",
+      "Bash(cd \"C:/Users/ussbo/FAST/VS 2022/CTP/Typescript/ctp-platform\" && node config/tenants/rec-sports-league/generate-data.mjs21)",
+      "Bash(lsof -ti:3000 -ti:3001 2>/dev/null | sort -u | while read pid; do kill \"$pid\" 2>/dev/null && echo \"Killed PID $pid\"; done || echo \"No processes to kill1)",
+      "Bash(cd C:\\\\Users\\\\ussbo\\\\FAST\\\\VS 2022\\\\CTP\\\\Typescript\\\\ctp-platform:*)",
+      "Bash(npx tsx:*)",
+      "Bash(do taskkill:*)",
+      "Bash(wmic process:*)"
     ]
   }
 }

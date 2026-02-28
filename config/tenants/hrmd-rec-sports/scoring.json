@@ -4,7 +4,7 @@
   "rules": [
     {
       "ruleName": "EarliestStartTimeScoringRule",
-      "weight": 0.5,
+      "weight": 0.7,
       "objective": 0,
       "includeInSolve": true,
       "penaltyFactor": 0
@@ -18,7 +18,7 @@
     },
     {
       "ruleName": "LatestStartTimeScoringRule",
-      "weight": 0.2,
+      "weight": 0,
       "objective": 0,
       "includeInSolve": true,
       "penaltyFactor": 0

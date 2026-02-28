@@ -232,6 +232,15 @@ export class CTPSetEngine extends CTPBaseEngine implements ISetEngine {
       }
 
       if (this.mode == this.INTERSECT_MODE) {
+        // Zero-width A touching B's start: [t,t] ∩ [t,...] → include point
+        if (this.aPtr.data.startW == this.aPtr.data.endW) {
+          this.updateResult(
+            this.aPtr.data.startW,
+            this.aPtr.data.endW,
+            this.aPtr.data.qty,
+            0,
+          );
+        }
         this.moveA();
         return true;
       }
@@ -283,6 +292,15 @@ export class CTPSetEngine extends CTPBaseEngine implements ISetEngine {
         return true;
       }
       if (this.mode == this.INTERSECT_MODE) {
+        // Zero-width B touching A's start: [...,t] ∩ [t,t] → include point
+        if (this.bPtr.data.startW == this.bPtr.data.endW) {
+          this.updateResult(
+            this.bPtr.data.startW,
+            this.bPtr.data.endW,
+            this.aPtr.data.qty,
+            0,
+          );
+        }
         this.moveB();
         return true;
       }
