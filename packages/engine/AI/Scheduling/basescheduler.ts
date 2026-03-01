@@ -43,6 +43,8 @@ import { ChainFirstFitNeighborhood } from "../Neighborhoods/chainfirstfitneighbo
 import { DueDateNeighborhood } from "../Neighborhoods/duedateneighborhood";
 import { ShortestFirstNeighborhood } from "../Neighborhoods/shortestfirstneighborhood";
 import { CTPSolveResult } from "../../Models/Entities/solveresult";
+import { ChainFeasibilitySet } from "../Propagation/ChainFeasibilitySet";
+import { ChainPropagationAgent } from "../Propagation/ChainPropagationAgent";
 
 export interface IScheduler {
   initLandscape(
@@ -69,6 +71,10 @@ export abstract class CTPBaseScheduler {
   protected solverSequence: number = 0;
   protected neighborhoodAgent: NextNeighborhoodAgent | null = null;
   protected contextsEvaluated: number = 0;
+  protected chainsPropagated: number = 0;
+  protected chainsInfeasible: number = 0;
+  protected contextsEliminated: number = 0;
+  protected isChainAware: boolean = false;
 
   constructor() {
     this.landscape = new SchedulingLandscape();
@@ -182,8 +188,8 @@ export abstract class CTPBaseScheduler {
     });
     agent.solve(this.landscape, computescores, this.scoring);
 
-    // If Dependency adjust furture schedueled tasks
-    if (task && this.settings?.requiresPreds)
+    // If Dependency adjust future scheduled tasks
+    if (task && this.isChainAware)
       this.applyRequiredTiming(task);
 
     let taskscores: TaskScheduleContexts[] = [];
@@ -198,7 +204,7 @@ export abstract class CTPBaseScheduler {
 
   /**
    * Map a strategy name to an INeighborhoodStrategy instance.
-   * Falls back to Chain (requiresPreds) or Greedy (no requiresPreds).
+   * Default: Greedy. Chain-awareness is derived from the strategy's chainCompatible flag.
    */
   protected resolveStrategy(name: string | undefined): INeighborhoodStrategy {
     switch (name) {
@@ -207,11 +213,7 @@ export abstract class CTPBaseScheduler {
       case 'DueDate':        return new DueDateNeighborhood();
       case 'Greedy':         return new GreedyNeighborhood();
       case 'ShortestFirst':  return new ShortestFirstNeighborhood();
-      default:
-        // Default: Chain for chain-aware, Greedy otherwise
-        return this.settings?.requiresPreds
-          ? new ChainNeighborhood()
-          : new GreedyNeighborhood();
+      default:               return new GreedyNeighborhood();
     }
   }
 
@@ -222,15 +224,9 @@ export abstract class CTPBaseScheduler {
     if (!this.neighborhoodAgent) {
       this.neighborhoodAgent = this.getNextNeighborhoodAgent();
 
-      // Resolve strategy from settings
+      // Use strategy already resolved in schedule()
       const strategy = this.resolveStrategy(this.settings?.solverStrategy);
       this.neighborhoodAgent.setStrategy(strategy);
-
-      // Strategy compatibility guard
-      if (this.settings?.requiresPreds && !strategy.chainCompatible) {
-        console.log(`Strategy "${strategy.name}" is not chain-compatible — falling back to Chain`);
-        this.neighborhoodAgent.setStrategy(new ChainNeighborhood());
-      }
     }
 
     let next = this.neighborhoodAgent.solve(tasks, numOfTasks, this.settings, this.landscape);
@@ -244,7 +240,7 @@ export abstract class CTPBaseScheduler {
   }
   protected requiresPreds(task: CTPTask) : boolean
   {
-      return this.settings ? !!this.settings.requiresPreds : false;
+      return this.isChainAware;
   }
 
   protected selectBestScheduleForTask(
@@ -409,7 +405,7 @@ export abstract class CTPBaseScheduler {
   }
 
   /**
-   * Per-task scheduling for chain-aware mode (requiresPreds).
+   * Per-task scheduling for chain-aware mode.
    * Tightens each task's window from its predecessor before exploding contexts.
    */
   protected scheduleTasksChainAware(tasks: List<CTPTask>): void {
@@ -421,7 +417,16 @@ export abstract class CTPBaseScheduler {
         return; // Skip — predecessor not scheduled
       }
 
-      // Explode contexts for just this task
+      // Mark all existing contexts for recompute (window may have been tightened)
+      const existingCtx = this.scheduleContexts.byTask.getEntity(task.hashKey);
+      if (existingCtx) {
+        for (let ci = 0; ci < existingCtx.contexts.length; ci++) {
+          const ctx = existingCtx.contexts.at(ci);
+          if (ctx) ctx.recompute = true;
+        }
+      }
+
+      // Explode contexts for just this task (no-op if already exploded upfront)
       const singleTask = new List<CTPTask>();
       singleTask.add(task);
       this.explodeScheduleContexts(singleTask);
@@ -447,7 +452,7 @@ export abstract class CTPBaseScheduler {
   }
 
   protected tightenWindowFromPredecessor(task: CTPTask): boolean {
-    if (!this.settings?.requiresPreds) return true;
+    if (!this.isChainAware) return true;
 
     const predKey = task.linkId?.prevLink;
     if (!predKey || predKey === '') return true; // Chain root or standalone
@@ -465,11 +470,33 @@ export abstract class CTPBaseScheduler {
     }
 
     const predEnd = predecessor.scheduled.endW;
+    const maxGap = task.linkId?.maxGap ?? Number.MAX_VALUE;
+    const hasMG = task.linkId?.hasMaxGap() ?? false;
 
     if (task.window) {
+      // Floor: successor can't start before predecessor ends
       if (task.window.startW < predEnd) {
         console.log(`TIGHTEN: ${task.name} window.startW [${task.window.startW} → ${predEnd}] pred=${predecessor.name}`);
         task.window.startW = predEnd;
+      }
+
+      // Ceiling: with maxGap, successor must start no later than predEnd + maxGap
+      if (hasMG) {
+        const maxStart = predEnd + maxGap;
+        if (task.window.endW > maxStart + (task.duration?.duration() ?? 0)) {
+          const cappedEnd = maxStart + (task.duration?.duration() ?? 0);
+          if (cappedEnd < task.window.endW) {
+            console.log(`TIGHTEN: ${task.name} window.endW [${task.window.endW} → ${cappedEnd}] maxGap=${maxGap} pred=${predecessor.name}`);
+            task.window.endW = cappedEnd;
+          }
+        }
+      }
+
+      // Direct maxGap infeasibility: successor can't start within the gap window
+      if (hasMG && task.window.startW > predEnd + maxGap) {
+        task.addError('ChainConstraint',
+          `Cannot satisfy maxGap=${maxGap}: earliest feasible start ${task.window.startW} exceeds predEnd + maxGap = ${predEnd + maxGap}`);
+        return false;
       }
 
       if (task.window.startW >= task.window.endW) {
@@ -487,6 +514,110 @@ export abstract class CTPBaseScheduler {
     }
 
     return true;
+  }
+
+  /**
+   * Run chain constraint propagation for all chains that have maxGap constraints.
+   * Eliminates infeasible contexts and tightens start-time ranges upfront.
+   */
+  protected runChainPropagation(): void {
+    if (!this.landscape.processes) return;
+
+    const agent = new ChainPropagationAgent();
+
+    this.landscape.processes.forEach(process => {
+      if (!process.tasks || process.tasks.length < 2) return;
+
+      // Sort tasks by sequence within the chain
+      const tasks: CTPTask[] = [];
+      process.tasks.forEach(t => tasks.push(t));
+      tasks.sort((a, b) => a.sequence - b.sequence);
+
+      // Only propagate chains that have maxGap constraints
+      const hasConstraints = tasks.some(t => t.linkId?.hasMaxGap());
+      if (!hasConstraints) return;
+
+      // Build the feasibility set from pre-computed contexts
+      const chainSet = new ChainFeasibilitySet(process.name);
+      chainSet.build(
+        tasks,
+        (task) => {
+          const tc = this.scheduleContexts.byTask.getEntity(task.hashKey);
+          if (!tc) return [];
+          const arr: ScheduleContext[] = [];
+          for (let i = 0; i < tc.contexts.length; i++) {
+            const ctx = tc.contexts.at(i);
+            if (ctx) arr.push(ctx);
+          }
+          return arr;
+        },
+        (ctx) => {
+          if (!ctx.slot.startTimes) return [];
+          return ctx.slot.startTimes.toArray();
+        },
+      );
+
+      // Propagate
+      const result = agent.propagate(chainSet);
+      this.chainsPropagated++;
+
+      // Apply eliminations: clear startTimes on eliminated contexts
+      if (result.eliminated > 0) {
+        this.contextsEliminated += result.eliminated;
+        for (const phase of chainSet.phases) {
+          for (const entry of phase.entries) {
+            if (entry.eliminated && entry.context.slot.startTimes) {
+              entry.context.slot.startTimes.clear();
+              entry.context.slot.addToErrors('Eliminated by chain constraint propagation');
+            }
+          }
+        }
+      }
+
+      // Transfer propagation-tightened bounds to task.window
+      // so that reComputeScheduleContexts() uses them during per-task scheduling
+      if (result.feasible) {
+        for (const phase of chainSet.phases) {
+          const task = phase.task;
+          if (!task.window) continue;
+
+          let propEarliestStart = Number.MAX_VALUE;
+          let propLatestEnd = 0;
+
+          for (const entry of phase.entries) {
+            if (entry.eliminated) continue;
+            for (const st of entry.startTimes) {
+              if (st.eStartW < propEarliestStart) propEarliestStart = st.eStartW;
+              if (st.lEndW > propLatestEnd) propLatestEnd = st.lEndW;
+            }
+          }
+
+          if (propEarliestStart !== Number.MAX_VALUE && propEarliestStart > task.window.startW) {
+            console.log(`PROPAGATION→WINDOW: ${task.name} startW [${task.window.startW} → ${propEarliestStart}]`);
+            task.window.startW = propEarliestStart;
+          }
+          if (propLatestEnd > 0 && propLatestEnd < task.window.endW) {
+            console.log(`PROPAGATION→WINDOW: ${task.name} endW [${task.window.endW} → ${propLatestEnd}]`);
+            task.window.endW = propLatestEnd;
+          }
+        }
+      }
+
+      // Mark infeasible chains
+      if (!result.feasible) {
+        this.chainsInfeasible++;
+        for (const task of tasks) {
+          task.addError('ChainPropagation',
+            `Chain ${process.name} infeasible: ${result.infeasibleReason ?? 'unknown'} at ${result.infeasiblePhase ?? 'unknown'}`);
+          task.processed = true;
+        }
+      }
+
+      console.log(
+        `PROPAGATION ${process.name}: feasible=${result.feasible} ` +
+        `eliminated=${result.eliminated} truncated=${result.truncated} passes=${result.passes}`,
+      );
+    });
   }
 
   protected abstract initScheduling(tasks: List<CTPTask>): void;
@@ -525,21 +656,16 @@ export abstract class CTPBaseScheduler {
 
     this.neighborhoodAgent = null; // Reset for fresh strategy selection
     this.contextsEvaluated = 0;
+    this.chainsPropagated = 0;
+    this.chainsInfeasible = 0;
+    this.contextsEliminated = 0;
 
-    // Ensure default settings exist before auto-detection
+    // Ensure default settings exist
     if (!this.settings) this.settings = new CTPAppSettings();
 
-    // Auto-detect chains if requiresPreds not explicitly set (must run before initScheduling)
-    if (this.settings.requiresPreds === null || this.settings.requiresPreds === undefined) {
-      let hasChains = false;
-      this.landscape.tasks.forEach(task => {
-        if (task.hasLinkId()) hasChains = true;
-      });
-      this.settings.requiresPreds = hasChains;
-      if (hasChains) {
-        console.log('Auto-detected linked tasks — enabling requiresPreds');
-      }
-    }
+    // Resolve strategy early — chainCompatible drives chain-aware behavior
+    const strategy = this.resolveStrategy(this.settings?.solverStrategy);
+    this.isChainAware = strategy.chainCompatible;
 
     this.initScheduling(tasks);
 
@@ -553,6 +679,11 @@ export abstract class CTPBaseScheduler {
 
     this.reComputeScheduleContexts();
 
+    // Chain constraint propagation — eliminate infeasible contexts before scheduling
+    if (this.isChainAware) {
+      this.runChainPropagation();
+    }
+
     this.startScheduling();
 
     // PASS 1: Manual — schedule planner-prioritized tasks first
@@ -565,7 +696,7 @@ export abstract class CTPBaseScheduler {
     let next = this.nextTasksToSchedule(tasks, topTasksToSchedule);
 
     while (next.length > 0) {
-      if (this.settings?.requiresPreds) {
+      if (this.isChainAware) {
         // Chain-aware: per-task explosion with window tightening
         this.scheduleTasksChainAware(next);
       } else {
@@ -588,6 +719,9 @@ export abstract class CTPBaseScheduler {
     result.totalTasks = tasks.length;
     result.solveTimeMs = performance.now() - startTime;
     result.contextsEvaluated = this.contextsEvaluated;
+    result.chainsPropagated = this.chainsPropagated;
+    result.chainsInfeasible = this.chainsInfeasible;
+    result.contextsEliminated = this.contextsEliminated;
 
     tasks.forEach(task => {
       if (task.state === CTPTaskStateConstants.SCHEDULED) result.scheduled++;
@@ -634,7 +768,7 @@ export abstract class CTPBaseScheduler {
     }
 
     // Schedule using the same pipeline
-    if (this.settings?.requiresPreds) {
+    if (this.isChainAware) {
       this.scheduleTasksChainAware(orderedManual);
     } else {
       this.explodeScheduleContexts(orderedManual);

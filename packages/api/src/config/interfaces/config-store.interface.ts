@@ -156,7 +156,7 @@ export interface ITaskData {
   process?: string;
   subType?: string;
   cadence?: string | null;
-  linkId?: { name: string; type: string; prevLink: string };
+  linkId?: { name: string; type: string; prevLink: string; maxGap?: number };
   typedAttributes?: ITypedAttribute[];
   [key: string]: any;
 }

@@ -67,6 +67,10 @@ export * from './AI/Neighborhoods/duedateneighborhood';
 export * from './AI/Neighborhoods/shortestfirstneighborhood';
 export * from './AI/Neighborhoods/chainfirstfitneighborhood';
 
+// AI - Propagation
+export * from './AI/Propagation/ChainFeasibilitySet';
+export * from './AI/Propagation/ChainPropagationAgent';
+
 // AI - Scheduling
 export * from './AI/Scheduling/basescheduler';
 export * from './AI/Scheduling/defaultscheduler';
