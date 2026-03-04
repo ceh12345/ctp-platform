@@ -96,6 +96,8 @@ export class WhereToOptionDto {
   changeover!: WhereToChangeoverDto | null;
   @ApiProperty() impact!: { tightensWindow: string[] };
   @ApiProperty() contextHash!: string;
+  @ApiProperty({ description: 'True if this is the best-scored option for its primary resource' })
+  isBestOnResource!: boolean;
 }
 
 export class WhereToCurrentAssignmentDto {

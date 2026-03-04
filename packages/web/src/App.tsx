@@ -2147,7 +2147,7 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   resourcePreferenceOverrides, onResourcePrefChange, onClearResourceOverrides,
   windowOverrides, onSetWindowOverride,
   priorityOverrides, onSetPriority,
-  onApiSchedule, actionLoading }: {
+  onApiSchedule, actionLoading, onWhereTo, whereToSource, whereToLoading }: {
   task: any; tasks: any[]; products: any[]; colors: any;
   onClose: () => void; onResourceClick: (r: any) => void;
   taskPins?: Record<string, boolean>;
@@ -2177,6 +2177,9 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   onSetPriority?: (key: string, priority: number) => void;
   onApiSchedule?: (key: string) => Promise<void>;
   actionLoading?: string | null;
+  onWhereTo?: (key: string, source?: 'gantt' | 'table' | 'panel') => void;
+  whereToSource?: 'gantt' | 'table' | 'panel' | null;
+  whereToLoading?: boolean;
 }) {
   const prodName = task.outputProductKey
     ? (products.find((p: any) => p.key === task.outputProductKey)?.name || task.outputProductKey)
@@ -2218,19 +2221,35 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
         {task.cadenceIntervalMinutes != null && <Badge label={`${task.cadenceIntervalMinutes}m cadence`} color={C.purple} />}
       </div>
 
-      {/* Schedule button for unscheduled tasks */}
-      {!task.feasible && !isExcluded && onApiSchedule && (
-        <button
-          onClick={() => { if (actionLoading !== task.key) onApiSchedule(task.key); }}
-          disabled={actionLoading === task.key}
-          style={{
-            ...actionBtnBase,
-            width: '100%', marginBottom: 12, justifyContent: 'center',
-            background: C.greenDim, border: `1px solid ${C.green}55`,
-            color: actionLoading === task.key ? C.textDim : C.green,
-            cursor: actionLoading === task.key ? 'wait' : 'pointer',
-          }}
-        >{actionLoading === task.key ? '⏳ Scheduling...' : '▶ Schedule This Task'}</button>
+      {/* Schedule + WhereTo buttons for unscheduled tasks */}
+      {!task.feasible && !isExcluded && (onApiSchedule || onWhereTo) && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          {onApiSchedule && (
+            <button
+              onClick={() => { if (actionLoading !== task.key) onApiSchedule(task.key); }}
+              disabled={actionLoading === task.key}
+              style={{
+                ...actionBtnBase,
+                flex: 1, justifyContent: 'center',
+                background: C.greenDim, border: `1px solid ${C.green}55`,
+                color: actionLoading === task.key ? C.textDim : C.green,
+                cursor: actionLoading === task.key ? 'wait' : 'pointer',
+              }}
+            >{actionLoading === task.key ? '⏳ Scheduling...' : '▶ Schedule'}</button>
+          )}
+          {onWhereTo && (
+            <button
+              onClick={() => onWhereTo(task.key, 'panel')}
+              style={{
+                ...actionBtnBase,
+                flex: 1, justifyContent: 'center',
+                background: `${C.accent}15`, border: `1px solid ${C.accent}55`,
+                color: C.accent,
+                cursor: 'pointer',
+              }}
+            >🗺️ Where Can This Go?</button>
+          )}
+        </div>
       )}
 
       {/* Action buttons */}
@@ -2259,13 +2278,25 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
         </div>
       )}
 
+      {/* WhereTo loading in panel */}
+      {whereToSource === 'panel' && whereToTaskKey === task.key && whereToLoading && (
+        <div style={{ fontSize: 12, color: C.accent, marginTop: 16, textAlign: 'center' }}>
+          🗺️ Finding options...
+        </div>
+      )}
+      {/* WhereTo no options in panel */}
+      {whereToSource === 'panel' && whereToTaskKey === task.key && !whereToLoading && whereToOptions && whereToOptions.length === 0 && (
+        <div style={{ fontSize: 12, color: C.red, marginTop: 16, textAlign: 'center' }}>
+          No feasible options found
+        </div>
+      )}
       {/* WhereTo Available Positions */}
       {whereToTaskKey === task.key && whereToOptions && whereToOptions.length > 0 && (
         <>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginTop: 16, marginBottom: 8 }}>
             🗺️ Available Positions
           </div>
-          {whereToOptions.slice(0, 5).map((option: any) => {
+          {(whereToSource === 'panel' ? whereToOptions : whereToOptions.slice(0, 5)).map((option: any) => {
             const ghostColor = option.rank === 1 ? C.green : option.rank <= 3 ? C.accent : C.textDim;
             return (
               <div key={option.contextHash}
@@ -2284,6 +2315,9 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: 11, fontWeight: 600, color: C.text }}>
                     #{option.rank} {option.resources.map((r: any) => r.resourceName || r.resourceKey).join(' + ')}
+                    {option.isBestOnResource && option.rank > 1 && (
+                      <span style={{ fontSize: 9, color: C.accent, fontWeight: 600, marginLeft: 6 }}>best on resource</span>
+                    )}
                   </span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: ghostColor }}>
                     {option.score.toFixed(1)}
@@ -2308,7 +2342,7 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
           })}
           {whereToOptions.length > 5 && (
             <div style={{ fontSize: 10, color: C.textDim, textAlign: 'center', marginTop: 4 }}>
-              +{whereToOptions.length - 5} more on Gantt
+              +{whereToOptions.length - 5} more{whereToSource !== 'panel' ? ' on Gantt' : ''}
             </div>
           )}
         </>
@@ -2748,24 +2782,37 @@ function buildAgendaItems(
 
   if (workStart && workEnd) {
     let cursor = workStart;
-    for (const dt of dayTasks) {
-      // Gap before this assignment (within working hours)
-      if (dt.start > cursor) {
-        items.push({ type: 'available', startTime: toISO(cursor), endTime: toISO(dt.start), durationMinutes: toMin(dt.start - cursor) });
+    // Walk each availability window — insert off-shift for gaps between windows
+    for (let wi = 0; wi < dayAvail.length; wi++) {
+      const win = dayAvail[wi];
+      // Off-shift gap between previous window and this one
+      if (win.start > cursor) {
+        items.push({ type: 'off-shift', startTime: toISO(cursor), endTime: toISO(win.start), durationMinutes: toMin(win.start - cursor) });
+        cursor = win.start;
       }
-      // The assignment
-      const dur = toMin(dt.end - dt.start);
-      items.push({
-        type: 'assignment', startTime: toISO(dt.start), endTime: toISO(dt.end), durationMinutes: dur,
-        taskKey: dt.task.key, taskName: dt.task.name, orderRef: dt.task.orderRef,
-        priority: dt.task.priority, processCategory: dt.task.processCategory || dt.task.process,
-        task: dt.task,
-      });
-      cursor = Math.max(cursor, dt.end);
-    }
-    // Gap after last assignment
-    if (cursor < workEnd) {
-      items.push({ type: 'available', startTime: toISO(cursor), endTime: toISO(workEnd), durationMinutes: toMin(workEnd - cursor) });
+      // Process assignments within this availability window
+      for (const dt of dayTasks) {
+        if (dt.end <= cursor || dt.start >= win.end) continue; // outside this window
+        const effStart = Math.max(dt.start, cursor);
+        // Gap before this assignment (within this window)
+        if (effStart > cursor) {
+          items.push({ type: 'available', startTime: toISO(cursor), endTime: toISO(effStart), durationMinutes: toMin(effStart - cursor) });
+        }
+        const effEnd = Math.min(dt.end, win.end);
+        const dur = toMin(effEnd - effStart);
+        items.push({
+          type: 'assignment', startTime: toISO(effStart), endTime: toISO(effEnd), durationMinutes: dur,
+          taskKey: dt.task.key, taskName: dt.task.name, orderRef: dt.task.orderRef,
+          priority: dt.task.priority, processCategory: dt.task.processCategory || dt.task.process,
+          task: dt.task,
+        });
+        cursor = Math.max(cursor, effEnd);
+      }
+      // Available gap at end of this window
+      if (cursor < win.end) {
+        items.push({ type: 'available', startTime: toISO(cursor), endTime: toISO(win.end), durationMinutes: toMin(win.end - cursor) });
+        cursor = win.end;
+      }
     }
   }
 
@@ -3004,7 +3051,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   onApiUnschedule, onApiPin, onApiBulkUnschedule, actionLoading,
   onResourceFilter, resourceFilter,
   onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
-  whereToCurrentAssignment, onMoveTo, onCancelWhereTo,
+  whereToCurrentAssignment, whereToSource, onMoveTo, onCancelWhereTo,
   zoomLevel, setZoomLevel, scrollOffset, setScrollOffset,
   onSetResourcePrefForTask, onViewAgenda }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
@@ -3026,12 +3073,15 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   whereToOptions?: any[];
   whereToLoading?: boolean;
   whereToCurrentAssignment?: any;
+  whereToSource?: 'gantt' | 'table' | 'panel' | null;
   onMoveTo?: (key: string, option: any) => void;
   onCancelWhereTo?: () => void;
   zoomLevel?: string; setZoomLevel?: (v: string) => void;
   scrollOffset?: number; setScrollOffset?: React.Dispatch<React.SetStateAction<number>>;
   onSetResourcePrefForTask?: (taskKey: string) => void;
 }) {
+  // Suppress Gantt ghost bars/overlays when WhereTo triggered from task detail panel
+  const showGanttWhereTo = whereToSource !== 'panel';
   // Local fallback state when props aren't provided (e.g. Overview tab)
   const [localZoom, setLocalZoom] = useState('3 hours');
   const [localScroll, setLocalScroll] = useState(0);
@@ -3424,11 +3474,11 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                     );
                   })}
                   {/* WhereTo dim overlay on lane */}
-                  {whereToTaskKey && whereToOptions && whereToOptions.length > 0 && !whereToLoading && (
+                  {showGanttWhereTo && whereToTaskKey && whereToOptions && whereToOptions.length > 0 && !whereToLoading && (
                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)', pointerEvents: 'none', zIndex: 5 }} />
                   )}
                   {/* Ghost bars for this resource — start window + suggested placement */}
-                  {whereToTaskKey && whereToOptions && whereToOptions.length > 0 && !whereToLoading && (
+                  {showGanttWhereTo && whereToTaskKey && whereToOptions && whereToOptions.length > 0 && !whereToLoading && (
                     whereToOptions
                       .filter(opt => {
                         const primary = opt.resources?.find((r: any) => r.isPrimary) || opt.resources?.[0];
@@ -3523,7 +3573,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
 
       {/* ═══ WhereTo Overlay ═══ */}
       {/* Loading indicator */}
-      {whereToTaskKey && whereToLoading && (
+      {showGanttWhereTo && whereToTaskKey && whereToLoading && (
         <div style={{
           position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
           zIndex: 20, padding: '6px 16px', borderRadius: 8,
@@ -3535,7 +3585,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
         </div>
       )}
       {/* No options found */}
-      {whereToTaskKey && !whereToLoading && whereToOptions && whereToOptions.length === 0 && (
+      {showGanttWhereTo && whereToTaskKey && !whereToLoading && whereToOptions && whereToOptions.length === 0 && (
         <div style={{
           position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
           zIndex: 20, padding: '8px 20px', borderRadius: 8,
@@ -3552,7 +3602,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
         </div>
       )}
       {/* Info panel */}
-      {whereToTaskKey && whereToOptions && whereToOptions.length > 0 && !whereToLoading && (
+      {showGanttWhereTo && whereToTaskKey && whereToOptions && whereToOptions.length > 0 && !whereToLoading && (
         <div style={{
           position: 'absolute', top: 8, right: 8, zIndex: 20,
           width: 280, maxHeight: 400, overflow: 'auto',
@@ -3598,6 +3648,9 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                     <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>
                       {option.resources.map((r: any) => r.resourceName || r.resourceKey).join(' + ')}
                     </span>
+                    {option.isBestOnResource && option.rank > 1 && (
+                      <span style={{ fontSize: 9, color: C.accent, fontWeight: 600 }}>best on resource</span>
+                    )}
                   </div>
                   <span style={{ fontSize: 11, fontWeight: 700, color: ghostColor }}>
                     {option.score.toFixed(1)}
@@ -4346,7 +4399,7 @@ function TaskRowActions({ task, taskPins, taskExcludes, taskUnschedules, orderMo
       )}
       {task.type === 'PROCESS' && !isExcluded && onWhereTo && (
         <IconBtn icon="🗺️"
-          title={isScheduled ? 'Where can this go?' : 'Find available positions'}
+          title="Where can this go?"
           active={whereToTaskKey === task.key} activeColor={C.accent}
           onClick={() => onWhereTo(task.key, 'table')} />
       )}
@@ -5746,7 +5799,7 @@ function UnscheduledPanel({ tasks, colors, taskExcludes, taskUnschedules,
                 )}
                 {onWhereTo && !isExcluded && (
                   <button onClick={(e) => { e.stopPropagation(); onWhereTo(task.key); }}
-                    title="Find available positions"
+                    title="Where can this go?"
                     style={{
                       background: 'none', border: 'none', cursor: 'pointer',
                       fontSize: 12, padding: '0 2px', color: C.accent, opacity: 0.7,
@@ -5773,7 +5826,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   onApiUnschedule, onApiPin, onApiSchedule, onApiBulkUnschedule, onApiBulkPin, actionLoading,
   experienceLevel = 'novice',
   onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
-  whereToCurrentAssignment, onMoveTo, onCancelWhereTo,
+  whereToCurrentAssignment, whereToSource, onMoveTo, onCancelWhereTo,
   caseFilter, onClearCaseFilter, onNavigateToOrders,
   selectedTasks, onToggleSelect, onSetSelectedTasks,
   onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected,
@@ -5801,6 +5854,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   whereToOptions?: any[];
   whereToLoading?: boolean;
   whereToCurrentAssignment?: any;
+  whereToSource?: 'gantt' | 'table' | 'panel' | null;
   onMoveTo?: (key: string, option: any) => void;
   onCancelWhereTo?: () => void;
   caseFilter?: string | null;
@@ -5850,7 +5904,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             resourceFilter={resourceFilter}
             onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey} whereToOptions={whereToOptions}
             whereToLoading={whereToLoading} whereToCurrentAssignment={whereToCurrentAssignment}
-            onMoveTo={onMoveTo} onCancelWhereTo={onCancelWhereTo}
+            whereToSource={whereToSource} onMoveTo={onMoveTo} onCancelWhereTo={onCancelWhereTo}
             zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
             scrollOffset={scrollOffset} setScrollOffset={setScrollOffset}
             onSetResourcePrefForTask={onSetResourcePrefForTask}
@@ -6672,6 +6726,7 @@ export default function App() {
   const [whereToOptions, setWhereToOptions] = useState<any[]>([]);
   const [whereToLoading, setWhereToLoading] = useState(false);
   const [whereToCurrentAssignment, setWhereToCurrentAssignment] = useState<any>(null);
+  const [whereToSource, setWhereToSource] = useState<'gantt' | 'table' | 'panel' | null>(null);
   // Schedule case filter (set from Analytics chain links)
   const [scheduleCaseFilter, setScheduleCaseFilter] = useState<string | null>(null);
   // Orders case filter (set from task orderRef click)
@@ -6986,14 +7041,16 @@ export default function App() {
     setWhereToTaskKey(null);
     setWhereToOptions([]);
     setWhereToCurrentAssignment(null);
+    setWhereToSource(null);
   }, []);
 
-  const handleWhereTo = useCallback(async (taskKey: string, source: 'gantt' | 'table' = 'gantt') => {
+  const handleWhereTo = useCallback(async (taskKey: string, source: 'gantt' | 'table' | 'panel' = 'gantt') => {
     if (source === 'gantt') setActiveTab('Schedule');
-    // Open detail panel only from table — from Gantt the user already sees the task
+    // Open detail panel only from table — from Gantt/panel the user already sees the task
     if (source === 'table') {
       setSelectedTask(tasks.find((tk: any) => tk.key === taskKey) || null);
     }
+    setWhereToSource(source);
     setWhereToTaskKey(taskKey);
     setWhereToLoading(true);
     setWhereToOptions([]);
@@ -7394,7 +7451,7 @@ export default function App() {
           return (
             <button
               key={tab}
-              onClick={() => { setActiveTab(tab); if (tab !== 'Schedule') { if (whereToTaskKey) { setWhereToTaskKey(null); setWhereToOptions([]); setWhereToCurrentAssignment(null); } if (scheduleCaseFilter) setScheduleCaseFilter(null); } if (tab !== 'Orders' && ordersCaseFilter) setOrdersCaseFilter(null); }}
+              onClick={() => { setActiveTab(tab); if (tab !== 'Schedule') { if (whereToTaskKey && whereToSource !== 'panel') { setWhereToTaskKey(null); setWhereToOptions([]); setWhereToCurrentAssignment(null); setWhereToSource(null); } if (scheduleCaseFilter) setScheduleCaseFilter(null); } if (tab !== 'Orders' && ordersCaseFilter) setOrdersCaseFilter(null); }}
               style={{
                 padding: '12px 20px', background: 'none', border: 'none',
                 borderBottom: tab === activeTab ? `2px solid ${C.accent}` : '2px solid transparent',
@@ -7565,6 +7622,7 @@ export default function App() {
             onWhereTo={handleWhereTo} whereToTaskKey={whereToTaskKey}
             whereToOptions={whereToOptions} whereToLoading={whereToLoading}
             whereToCurrentAssignment={whereToCurrentAssignment}
+            whereToSource={whereToSource}
             onMoveTo={handleMoveTo} onCancelWhereTo={cancelWhereTo}
             caseFilter={scheduleCaseFilter} onClearCaseFilter={() => setScheduleCaseFilter(null)}
             onNavigateToOrders={(orderKey) => { setOrdersCaseFilter(orderKey); setActiveTab('Orders'); }}
@@ -7823,6 +7881,9 @@ export default function App() {
           }}
           onApiSchedule={handleApiSchedule}
           actionLoading={actionLoading}
+          onWhereTo={handleWhereTo}
+          whereToSource={whereToSource}
+          whereToLoading={whereToLoading}
         />
       )}
       {selectedResource && (

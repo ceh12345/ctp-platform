@@ -766,6 +766,7 @@ export class CTPService {
         changeover: o.changeover,
         impact: o.impact,
         contextHash: o.contextHash,
+        isBestOnResource: o.isBestOnResource,
       })),
       stats: result.stats,
     };

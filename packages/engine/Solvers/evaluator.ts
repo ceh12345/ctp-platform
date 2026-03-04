@@ -31,6 +31,7 @@ export interface WhereToOption {
     tightensWindow: string[];
   };
   contextHash: string;
+  isBestOnResource: boolean;
 }
 
 export interface WhereToResult {
@@ -310,19 +311,20 @@ export class ScheduleEvaluator {
     // 5. Sort by blended score ascending (lower is better)
     feasibleContexts.sort((a, b) => a.blendedScore.score - b.blendedScore.score);
 
-    // 6. Limit results
+    // 6. Resource-diverse selection: best per primary resource, then fill with globals
     const maxResults = constraints?.maxResults || 10;
-    const limited = feasibleContexts.slice(0, maxResults);
+    const minResults = 5;
+    const selected = this.buildDiverseResults(feasibleContexts, minResults, maxResults);
 
     // 7. Build options
-    result.options = limited.map((ctx, i) => {
-      const firstStart = ctx.slot.startTimes!.head!.data;
-      const { blendedScore, breakdown } = this.getScoreBreakdown(ctx);
-      const changeover = this.checkChangeover(task, ctx, landscape);
+    result.options = selected.map((entry, i) => {
+      const firstStart = entry.ctx.slot.startTimes!.head!.data;
+      const { blendedScore, breakdown } = this.getScoreBreakdown(entry.ctx);
+      const changeover = this.checkChangeover(task, entry.ctx, landscape);
 
       return {
         rank: i + 1,
-        resources: this.getResourceDetails(ctx),
+        resources: this.getResourceDetails(entry.ctx),
         startTime: firstStart.eStartW,
         endTime: firstStart.eEndW,
         latestStart: firstStart.lStartW,
@@ -332,7 +334,8 @@ export class ScheduleEvaluator {
         scoreBreakdown: breakdown,
         changeover,
         impact: { tightensWindow: [] },
-        contextHash: ctx.hashKey,
+        contextHash: entry.ctx.hashKey,
+        isBestOnResource: entry.isBestOnResource,
       };
     });
 
@@ -418,6 +421,52 @@ export class ScheduleEvaluator {
         startTimes.deleteNode(toRemove);
       }
     }
+  }
+
+  /**
+   * Resource-diverse selection: pick best option per primary resource first,
+   * then fill remaining slots with next-best globals.
+   * Input must be pre-sorted by blendedScore ascending.
+   */
+  private buildDiverseResults(
+    sorted: ScheduleContext[],
+    minResults: number,
+    maxResults: number,
+  ): { ctx: ScheduleContext; isBestOnResource: boolean }[] {
+    if (sorted.length === 0) return [];
+
+    // Step 1: Best per primary resource (first seen wins since list is sorted)
+    const bestByResource = new Map<string, ScheduleContext>();
+    for (const ctx of sorted) {
+      const primaryKey = ctx.slot.resources?.at(0)?.resource?.key ?? '';
+      if (!bestByResource.has(primaryKey)) {
+        bestByResource.set(primaryKey, ctx);
+      }
+    }
+
+    // Step 2: Sort per-resource picks by score
+    const perResource = Array.from(bestByResource.values())
+      .sort((a, b) => a.blendedScore.score - b.blendedScore.score);
+    const bestSet = new Set(perResource);
+
+    // Step 3: Target count — at least minResults, up to unique resource count, capped at maxResults
+    const targetCount = Math.min(Math.max(minResults, perResource.length), maxResults);
+
+    // Step 4: Build result starting with per-resource picks
+    const results: { ctx: ScheduleContext; isBestOnResource: boolean }[] =
+      perResource.map(ctx => ({ ctx, isBestOnResource: true }));
+
+    // Step 5: Fill remaining slots with next-best globals
+    if (results.length < targetCount) {
+      for (const ctx of sorted) {
+        if (results.length >= targetCount) break;
+        if (!bestSet.has(ctx)) {
+          results.push({ ctx, isBestOnResource: false });
+        }
+      }
+    }
+
+    return results;
   }
 
   /**
