@@ -45,7 +45,7 @@ interface Violation {
   gapMinutes: number; // negative = overlap
 }
 
-function solveManufacturing(strategy: INeighborhoodStrategy): {
+function solveManufacturing(strategy: INeighborhoodStrategy, opts?: { requiresPreds?: boolean }): {
   result: CTPSolveResult;
   tasks: TaskSnapshot[];
   violations: Violation[];
@@ -57,8 +57,10 @@ function solveManufacturing(strategy: INeighborhoodStrategy): {
   stateService.syncFromConfig();
   const landscape = stateService.getLandscape()!;
 
-  // Strategy drives chain-awareness — set it on settings
-  landscape.appSettings!.solverStrategy = strategy.name;
+  // Override requiresPreds if requested
+  if (opts?.requiresPreds !== undefined && landscape.appSettings) {
+    landscape.appSettings.requiresPreds = opts.requiresPreds;
+  }
 
   const scoringConfig = configService.getScoring()!;
   const scoring = new CTPScoring(scoringConfig.name, scoringConfig.key);
@@ -76,6 +78,17 @@ function solveManufacturing(strategy: INeighborhoodStrategy): {
   );
   scheduler.initSettings(landscape.appSettings);
   scheduler.initScoring(scoring);
+
+  // Inject strategy
+  (scheduler as any).nextTasksToSchedule = function (
+    tasks: List<CTPTask>, numOfTasks: number
+  ) {
+    if (!(this as any).neighborhoodAgent) {
+      (this as any).neighborhoodAgent = (this as any).getNextNeighborhoodAgent();
+      (this as any).neighborhoodAgent.setStrategy(strategy);
+    }
+    return (this as any).neighborhoodAgent.solve(tasks, numOfTasks, (this as any).settings, (this as any).landscape);
+  };
 
   const taskList = new List<CTPTask>();
   landscape.tasks.forEach((t) => taskList.add(t));
@@ -129,9 +142,9 @@ function solveManufacturing(strategy: INeighborhoodStrategy): {
   return { result: solveResult, tasks, violations };
 }
 
-describe('Manufacturing: Greedy (not chain-aware) vs ChainFirstFit (chain-aware)', () => {
-  const greedy = solveManufacturing(new GreedyNeighborhood());
-  const cff = solveManufacturing(new ChainFirstFitNeighborhood());
+describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (requiresPreds=false)', () => {
+  const greedy = solveManufacturing(new GreedyNeighborhood(), { requiresPreds: false });
+  const cff = solveManufacturing(new ChainFirstFitNeighborhood(), { requiresPreds: false });
 
   it('prints solve order for Greedy', () => {
     console.log('\n=== GREEDY — Solve Order (manufacturing) ===');
@@ -159,31 +172,50 @@ describe('Manufacturing: Greedy (not chain-aware) vs ChainFirstFit (chain-aware)
     });
   });
 
-  it('Greedy has violations (not chain-aware)', () => {
-    console.log('\n=== GREEDY VIOLATIONS ===');
+  it('lists all 9 Greedy violations', () => {
+    console.log('\n=== GREEDY VIOLATIONS (9) ===');
+    console.log('Task                              | Pred                              | Chain    | Task Start | Pred End  | Gap');
+    console.log('----------------------------------|-----------------------------------|----------|------------|-----------|--------');
     for (const v of greedy.violations) {
       const task = v.task.padEnd(33);
       const pred = v.pred.padEnd(33);
       const chain = v.chain.padEnd(8);
       console.log(`${task} | ${pred} | ${chain} | ${v.taskStart}    | ${v.predEnd}    | ${v.gapMinutes}m`);
     }
-    expect(greedy.violations.length).toBeGreaterThan(0);
+    expect(greedy.violations.length).toBe(9);
   });
 
-  it('ChainFirstFit has zero violations (chain-aware)', () => {
-    expect(cff.violations.length).toBe(0);
+  it('lists all 3 ChainFirstFit violations', () => {
+    console.log('\n=== CHAINFIRSTFIT VIOLATIONS (3) ===');
+    console.log('Task                              | Pred                              | Chain    | Task Start | Pred End  | Gap');
+    console.log('----------------------------------|-----------------------------------|----------|------------|-----------|--------');
+    for (const v of cff.violations) {
+      const task = v.task.padEnd(33);
+      const pred = v.pred.padEnd(33);
+      const chain = v.chain.padEnd(8);
+      console.log(`${task} | ${pred} | ${chain} | ${v.taskStart}    | ${v.predEnd}    | ${v.gapMinutes}m`);
+    }
+    expect(cff.violations.length).toBe(3);
   });
 
-  it('Greedy has more violations than ChainFirstFit', () => {
-    expect(greedy.violations.length).toBeGreaterThan(cff.violations.length);
+  it('identifies violations unique to Greedy', () => {
+    const cffViolationKeys = new Set(cff.violations.map(v => v.task));
+    const greedyOnly = greedy.violations.filter(v => !cffViolationKeys.has(v.task));
+
+    console.log('\n=== VIOLATIONS IN GREEDY BUT NOT IN CHAINFIRSTFIT ===');
+    for (const v of greedyOnly) {
+      console.log(`  ${v.task} (chain: ${v.chain}) — starts ${v.taskStart}, pred ${v.pred} ends ${v.predEnd}, gap: ${v.gapMinutes}m`);
+    }
+    console.log(`\n  Greedy-only violations: ${greedyOnly.length}`);
+    console.log(`  Shared violations: ${greedy.violations.length - greedyOnly.length}`);
   });
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// MANUFACTURING — ALL 5 STRATEGIES (chain-awareness from strategy)
+// MANUFACTURING WITH requiresPreds=true — ALL 5 STRATEGIES
 // ═══════════════════════════════════════════════════════════════════
 
-describe('Manufacturing — all strategies (chain-awareness from strategy)', () => {
+describe('Manufacturing with requiresPreds=true — all strategies', () => {
   const strategies: INeighborhoodStrategy[] = [
     new GreedyNeighborhood(),
     new ChainNeighborhood(),
@@ -200,14 +232,37 @@ describe('Manufacturing — all strategies (chain-awareness from strategy)', () 
     violations: number;
     worstGapMin: number;
     timeMs: number;
-    chainAware: boolean;
   }
 
   const rows: StrategyRow[] = [];
 
-  it('runs all 5 strategies', () => {
+  it('runs all 5 strategies with requiresPreds=true', () => {
     for (const strategy of strategies) {
-      const s = solveManufacturing(strategy);
+      const { result, violations } = solveManufacturing(strategy, { requiresPreds: true });
+
+      let worstGap = 0;
+      // recompute worst gap from the returned violations data isn't enough —
+      // we need all gaps, not just violations. But for the table the solve
+      // function already captures worst gap across all predecessor pairs.
+      // Let's re-derive from the full task set via solveManufacturing return.
+
+      rows.push({
+        name: strategy.name,
+        scheduled: result.scheduled,
+        total: result.totalTasks,
+        infeasible: result.infeasible,
+        violations: violations.length,
+        worstGapMin: 0, // filled below
+        timeMs: result.solveTimeMs,
+      });
+    }
+
+    // Re-run to also capture worst gap (positive gaps among scheduled chains)
+    // Actually we can compute from a second pass, but let's just enhance:
+    // Re-do with full gap tracking
+    rows.length = 0;
+    for (const strategy of strategies) {
+      const s = solveManufacturing(strategy, { requiresPreds: true });
 
       // Find worst positive gap across all predecessor pairs
       let worstGapSec = 0;
@@ -228,26 +283,24 @@ describe('Manufacturing — all strategies (chain-awareness from strategy)', () 
         violations: s.violations.length,
         worstGapMin: Math.round(worstGapSec / 60),
         timeMs: s.result.solveTimeMs,
-        chainAware: strategy.chainCompatible,
       });
     }
 
     // Print comparison table
-    console.log('\n=== MANUFACTURING — strategy drives chain-awareness ===\n');
-    console.log('┌────────────────┬──────────┬───────────┬──────────┬────────────┬──────────┬──────────┐');
-    console.log('│ Strategy       │ ChainAw. │ Scheduled │ Infeas.  │ Violations │ Worst Gap│ Time(ms) │');
-    console.log('├────────────────┼──────────┼───────────┼──────────┼────────────┼──────────┼──────────┤');
+    console.log('\n=== MANUFACTURING — requiresPreds=true ===\n');
+    console.log('┌────────────────┬───────────┬──────────┬────────────┬──────────┬──────────┐');
+    console.log('│ Strategy       │ Scheduled │ Infeas.  │ Violations │ Worst Gap│ Time(ms) │');
+    console.log('├────────────────┼───────────┼──────────┼────────────┼──────────┼──────────┤');
     for (const r of rows) {
       const name = r.name.padEnd(14);
-      const ca = (r.chainAware ? 'yes' : 'no').padStart(8);
       const sched = `${r.scheduled}/${r.total}`.padStart(9);
       const inf = String(r.infeasible).padStart(8);
       const viol = String(r.violations).padStart(10);
       const gap = `${r.worstGapMin}m`.padStart(8);
       const time = `${r.timeMs.toFixed(0)}`.padStart(8);
-      console.log(`│ ${name} │${ca} │${sched} │${inf} │${viol} │${gap} │${time} │`);
+      console.log(`│ ${name} │${sched} │${inf} │${viol} │${gap} │${time} │`);
     }
-    console.log('└────────────────┴──────────┴───────────┴──────────┴────────────┴──────────┴──────────┘');
+    console.log('└────────────────┴───────────┴──────────┴────────────┴──────────┴──────────┘');
     console.log('');
 
     // All strategies should schedule some tasks
@@ -256,15 +309,13 @@ describe('Manufacturing — all strategies (chain-awareness from strategy)', () 
     }
   });
 
-  it('chain-compatible strategies have zero violations', () => {
-    for (const r of rows) {
-      if (r.chainAware) {
-        expect(r.violations).toBe(0);
-      }
-    }
+  it('ChainFirstFit has zero violations with requiresPreds=true', () => {
+    const cff = rows.find(r => r.name === 'ChainFirstFit');
+    expect(cff).toBeDefined();
+    expect(cff!.violations).toBe(0);
   });
 
-  it('Chain has zero violations', () => {
+  it('Chain has zero violations with requiresPreds=true', () => {
     const chain = rows.find(r => r.name === 'Chain');
     expect(chain).toBeDefined();
     expect(chain!.violations).toBe(0);

@@ -148,8 +148,7 @@
     "linkId": {
       "name": "GAME-BB-TB-W1-01",
       "type": "game",
-      "prevLink": "GAME-BB-TB-W1-01-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-TB-W1-01-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -295,8 +294,7 @@
     "linkId": {
       "name": "GAME-BB-TB-W1-01",
       "type": "game",
-      "prevLink": "GAME-BB-TB-W1-01-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-TB-W1-01-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -557,8 +555,7 @@
     "linkId": {
       "name": "GAME-BB-TB-W1-02",
       "type": "game",
-      "prevLink": "GAME-BB-TB-W1-02-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-TB-W1-02-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -704,8 +701,7 @@
     "linkId": {
       "name": "GAME-BB-TB-W1-02",
       "type": "game",
-      "prevLink": "GAME-BB-TB-W1-02-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-TB-W1-02-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -966,8 +962,7 @@
     "linkId": {
       "name": "GAME-BB-TB-W1-03",
       "type": "game",
-      "prevLink": "GAME-BB-TB-W1-03-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-TB-W1-03-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -1113,8 +1108,7 @@
     "linkId": {
       "name": "GAME-BB-TB-W1-03",
       "type": "game",
-      "prevLink": "GAME-BB-TB-W1-03-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-TB-W1-03-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -1375,8 +1369,7 @@
     "linkId": {
       "name": "GAME-BB-TB-W1-04",
       "type": "game",
-      "prevLink": "GAME-BB-TB-W1-04-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-TB-W1-04-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -1522,8 +1515,7 @@
     "linkId": {
       "name": "GAME-BB-TB-W1-04",
       "type": "game",
-      "prevLink": "GAME-BB-TB-W1-04-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-TB-W1-04-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -1784,8 +1776,7 @@
     "linkId": {
       "name": "GAME-BB-TB-W1-05",
       "type": "game",
-      "prevLink": "GAME-BB-TB-W1-05-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-TB-W1-05-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -1931,8 +1922,7 @@
     "linkId": {
       "name": "GAME-BB-TB-W1-05",
       "type": "game",
-      "prevLink": "GAME-BB-TB-W1-05-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-TB-W1-05-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -2193,8 +2183,7 @@
     "linkId": {
       "name": "GAME-BB-TB-W1-06",
       "type": "game",
-      "prevLink": "GAME-BB-TB-W1-06-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-TB-W1-06-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -2340,8 +2329,7 @@
     "linkId": {
       "name": "GAME-BB-TB-W1-06",
       "type": "game",
-      "prevLink": "GAME-BB-TB-W1-06-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-TB-W1-06-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -2619,8 +2607,7 @@
     "linkId": {
       "name": "GAME-BB-CP-W1-01",
       "type": "game",
-      "prevLink": "GAME-BB-CP-W1-01-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-CP-W1-01-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -2783,8 +2770,7 @@
     "linkId": {
       "name": "GAME-BB-CP-W1-01",
       "type": "game",
-      "prevLink": "GAME-BB-CP-W1-01-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-CP-W1-01-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -3066,8 +3052,7 @@
     "linkId": {
       "name": "GAME-BB-CP-W1-02",
       "type": "game",
-      "prevLink": "GAME-BB-CP-W1-02-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-CP-W1-02-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -3230,8 +3215,7 @@
     "linkId": {
       "name": "GAME-BB-CP-W1-02",
       "type": "game",
-      "prevLink": "GAME-BB-CP-W1-02-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-CP-W1-02-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -3513,8 +3497,7 @@
     "linkId": {
       "name": "GAME-BB-CP-W1-03",
       "type": "game",
-      "prevLink": "GAME-BB-CP-W1-03-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-CP-W1-03-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -3677,8 +3660,7 @@
     "linkId": {
       "name": "GAME-BB-CP-W1-03",
       "type": "game",
-      "prevLink": "GAME-BB-CP-W1-03-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-CP-W1-03-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -3960,8 +3942,7 @@
     "linkId": {
       "name": "GAME-BB-CP-W1-04",
       "type": "game",
-      "prevLink": "GAME-BB-CP-W1-04-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-CP-W1-04-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -4124,8 +4105,7 @@
     "linkId": {
       "name": "GAME-BB-CP-W1-04",
       "type": "game",
-      "prevLink": "GAME-BB-CP-W1-04-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-CP-W1-04-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -4407,8 +4387,7 @@
     "linkId": {
       "name": "GAME-BB-CP-W1-05",
       "type": "game",
-      "prevLink": "GAME-BB-CP-W1-05-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-CP-W1-05-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -4571,8 +4550,7 @@
     "linkId": {
       "name": "GAME-BB-CP-W1-05",
       "type": "game",
-      "prevLink": "GAME-BB-CP-W1-05-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-CP-W1-05-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -4841,8 +4819,7 @@
     "linkId": {
       "name": "GAME-BB-MN-W1-01",
       "type": "game",
-      "prevLink": "GAME-BB-MN-W1-01-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-MN-W1-01-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -5029,8 +5006,7 @@
     "linkId": {
       "name": "GAME-BB-MN-W1-01",
       "type": "game",
-      "prevLink": "GAME-BB-MN-W1-01-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-MN-W1-01-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -5299,8 +5275,7 @@
     "linkId": {
       "name": "GAME-BB-MN-W1-02",
       "type": "game",
-      "prevLink": "GAME-BB-MN-W1-02-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-MN-W1-02-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -5487,8 +5462,7 @@
     "linkId": {
       "name": "GAME-BB-MN-W1-02",
       "type": "game",
-      "prevLink": "GAME-BB-MN-W1-02-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-MN-W1-02-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -5757,8 +5731,7 @@
     "linkId": {
       "name": "GAME-BB-MN-W1-03",
       "type": "game",
-      "prevLink": "GAME-BB-MN-W1-03-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-MN-W1-03-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -5945,8 +5918,7 @@
     "linkId": {
       "name": "GAME-BB-MN-W1-03",
       "type": "game",
-      "prevLink": "GAME-BB-MN-W1-03-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-MN-W1-03-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -6215,8 +6187,7 @@
     "linkId": {
       "name": "GAME-BB-MN-W1-04",
       "type": "game",
-      "prevLink": "GAME-BB-MN-W1-04-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-MN-W1-04-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -6403,8 +6374,7 @@
     "linkId": {
       "name": "GAME-BB-MN-W1-04",
       "type": "game",
-      "prevLink": "GAME-BB-MN-W1-04-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-MN-W1-04-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -6674,8 +6644,7 @@
     "linkId": {
       "name": "GAME-BB-MJ-W1-01",
       "type": "game",
-      "prevLink": "GAME-BB-MJ-W1-01-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-MJ-W1-01-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -6863,8 +6832,7 @@
     "linkId": {
       "name": "GAME-BB-MJ-W1-01",
       "type": "game",
-      "prevLink": "GAME-BB-MJ-W1-01-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-MJ-W1-01-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -7126,8 +7094,7 @@
     "linkId": {
       "name": "GAME-BB-MJ-W1-02",
       "type": "game",
-      "prevLink": "GAME-BB-MJ-W1-02-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-MJ-W1-02-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -7315,8 +7282,7 @@
     "linkId": {
       "name": "GAME-BB-MJ-W1-02",
       "type": "game",
-      "prevLink": "GAME-BB-MJ-W1-02-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-MJ-W1-02-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -7578,8 +7544,7 @@
     "linkId": {
       "name": "GAME-BB-MJ-W1-03",
       "type": "game",
-      "prevLink": "GAME-BB-MJ-W1-03-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-MJ-W1-03-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -7767,8 +7732,7 @@
     "linkId": {
       "name": "GAME-BB-MJ-W1-03",
       "type": "game",
-      "prevLink": "GAME-BB-MJ-W1-03-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-MJ-W1-03-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -8030,8 +7994,7 @@
     "linkId": {
       "name": "GAME-BB-MJ-W1-04",
       "type": "game",
-      "prevLink": "GAME-BB-MJ-W1-04-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-BB-MJ-W1-04-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -8219,8 +8182,7 @@
     "linkId": {
       "name": "GAME-BB-MJ-W1-04",
       "type": "game",
-      "prevLink": "GAME-BB-MJ-W1-04-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-BB-MJ-W1-04-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -8452,8 +8414,7 @@
     "linkId": {
       "name": "GAME-FF-K2-W1-01",
       "type": "game",
-      "prevLink": "GAME-FF-K2-W1-01-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-FF-K2-W1-01-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -8583,8 +8544,7 @@
     "linkId": {
       "name": "GAME-FF-K2-W1-01",
       "type": "game",
-      "prevLink": "GAME-FF-K2-W1-01-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-FF-K2-W1-01-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -8812,8 +8772,7 @@
     "linkId": {
       "name": "GAME-FF-K2-W1-02",
       "type": "game",
-      "prevLink": "GAME-FF-K2-W1-02-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-FF-K2-W1-02-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -8943,8 +8902,7 @@
     "linkId": {
       "name": "GAME-FF-K2-W1-02",
       "type": "game",
-      "prevLink": "GAME-FF-K2-W1-02-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-FF-K2-W1-02-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -9172,8 +9130,7 @@
     "linkId": {
       "name": "GAME-FF-K2-W1-03",
       "type": "game",
-      "prevLink": "GAME-FF-K2-W1-03-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-FF-K2-W1-03-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -9303,8 +9260,7 @@
     "linkId": {
       "name": "GAME-FF-K2-W1-03",
       "type": "game",
-      "prevLink": "GAME-FF-K2-W1-03-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-FF-K2-W1-03-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -9532,8 +9488,7 @@
     "linkId": {
       "name": "GAME-FF-K2-W1-04",
       "type": "game",
-      "prevLink": "GAME-FF-K2-W1-04-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-FF-K2-W1-04-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -9663,8 +9618,7 @@
     "linkId": {
       "name": "GAME-FF-K2-W1-04",
       "type": "game",
-      "prevLink": "GAME-FF-K2-W1-04-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-FF-K2-W1-04-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -9892,8 +9846,7 @@
     "linkId": {
       "name": "GAME-FF-35-W1-01",
       "type": "game",
-      "prevLink": "GAME-FF-35-W1-01-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-FF-35-W1-01-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -10052,8 +10005,7 @@
     "linkId": {
       "name": "GAME-FF-35-W1-01",
       "type": "game",
-      "prevLink": "GAME-FF-35-W1-01-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-FF-35-W1-01-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -10281,8 +10233,7 @@
     "linkId": {
       "name": "GAME-FF-35-W1-02",
       "type": "game",
-      "prevLink": "GAME-FF-35-W1-02-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-FF-35-W1-02-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -10441,8 +10392,7 @@
     "linkId": {
       "name": "GAME-FF-35-W1-02",
       "type": "game",
-      "prevLink": "GAME-FF-35-W1-02-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-FF-35-W1-02-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -10670,8 +10620,7 @@
     "linkId": {
       "name": "GAME-FF-35-W1-03",
       "type": "game",
-      "prevLink": "GAME-FF-35-W1-03-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-FF-35-W1-03-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -10830,8 +10779,7 @@
     "linkId": {
       "name": "GAME-FF-35-W1-03",
       "type": "game",
-      "prevLink": "GAME-FF-35-W1-03-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-FF-35-W1-03-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -11051,8 +10999,7 @@
     "linkId": {
       "name": "GAME-FF-68-W1-01",
       "type": "game",
-      "prevLink": "GAME-FF-68-W1-01-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-FF-68-W1-01-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -11203,8 +11150,7 @@
     "linkId": {
       "name": "GAME-FF-68-W1-01",
       "type": "game",
-      "prevLink": "GAME-FF-68-W1-01-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-FF-68-W1-01-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -11416,8 +11362,7 @@
     "linkId": {
       "name": "GAME-FF-68-W1-02",
       "type": "game",
-      "prevLink": "GAME-FF-68-W1-02-PREP",
-      "maxGap": 900
+      "prevLink": "GAME-FF-68-W1-02-PREP"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",
@@ -11568,8 +11513,7 @@
     "linkId": {
       "name": "GAME-FF-68-W1-02",
       "type": "game",
-      "prevLink": "GAME-FF-68-W1-02-PLAY",
-      "maxGap": 900
+      "prevLink": "GAME-FF-68-W1-02-PLAY"
     },
     "windowStart": "2026-06-06T06:00:00Z",
     "windowEnd": "2026-06-13T00:00:00Z",

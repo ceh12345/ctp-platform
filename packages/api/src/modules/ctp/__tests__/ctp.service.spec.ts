@@ -194,7 +194,7 @@ describe('CTPService', () => {
     expect(assembleTask!.outputProductKey).toBe('PROD-WA');
     expect(assembleTask!.outputQty).toBe(500);
     expect(assembleTask!.outputScrapRate).toBe(0.03);
-    expect(assembleTask!.process).toBe('assembly');
+    expect(assembleTask!.process).toBe('WO-1001');
     expect(assembleTask!.inputMaterials.length).toBe(3);
   });
 

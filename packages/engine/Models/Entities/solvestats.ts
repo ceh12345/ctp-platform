@@ -28,10 +28,6 @@ export class SolveStatistics {
 
   public windowsTightened: number = 0;
 
-  public chainsPropagated: number = 0;
-  public chainsInfeasible: number = 0;
-  public contextsEliminated: number = 0;
-
   constructor(strategy: string = 'quick') {
     this.strategy = strategy;
   }

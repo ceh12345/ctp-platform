@@ -137,8 +137,7 @@
     "linkId": {
       "name": "CASE-001",
       "type": "ES",
-      "prevLink": "C001-SETUP",
-      "maxGap": 0
+      "prevLink": "C001-SETUP"
     },
     "process": "ORTHO-KR",
     "sequence": 2
@@ -202,8 +201,7 @@
     "linkId": {
       "name": "CASE-001",
       "type": "ES",
-      "prevLink": "C001-PROC",
-      "maxGap": 900
+      "prevLink": "C001-PROC"
     },
     "process": "RECOVERY",
     "sequence": 3
@@ -345,8 +343,7 @@
     "linkId": {
       "name": "CASE-002",
       "type": "ES",
-      "prevLink": "C002-SETUP",
-      "maxGap": 0
+      "prevLink": "C002-SETUP"
     },
     "process": "ORTHO-AR",
     "sequence": 2
@@ -410,8 +407,7 @@
     "linkId": {
       "name": "CASE-002",
       "type": "ES",
-      "prevLink": "C002-PROC",
-      "maxGap": 900
+      "prevLink": "C002-PROC"
     },
     "process": "RECOVERY",
     "sequence": 3
@@ -545,8 +541,7 @@
     "linkId": {
       "name": "CASE-003",
       "type": "ES",
-      "prevLink": "C003-SETUP",
-      "maxGap": 0
+      "prevLink": "C003-SETUP"
     },
     "process": "GEN-LAP",
     "sequence": 2
@@ -610,8 +605,7 @@
     "linkId": {
       "name": "CASE-003",
       "type": "ES",
-      "prevLink": "C003-PROC",
-      "maxGap": 900
+      "prevLink": "C003-PROC"
     },
     "process": "RECOVERY",
     "sequence": 3
@@ -753,8 +747,7 @@
     "linkId": {
       "name": "CASE-004",
       "type": "ES",
-      "prevLink": "C004-SETUP",
-      "maxGap": 0
+      "prevLink": "C004-SETUP"
     },
     "process": "GEN-HERNIA",
     "sequence": 2
@@ -818,8 +811,7 @@
     "linkId": {
       "name": "CASE-004",
       "type": "ES",
-      "prevLink": "C004-PROC",
-      "maxGap": 900
+      "prevLink": "C004-PROC"
     },
     "process": "RECOVERY",
     "sequence": 3
@@ -957,8 +949,7 @@
     "linkId": {
       "name": "CASE-005",
       "type": "ES",
-      "prevLink": "C005-SETUP",
-      "maxGap": 0
+      "prevLink": "C005-SETUP"
     },
     "process": "PAIN-INJ",
     "sequence": 2
@@ -1022,8 +1013,7 @@
     "linkId": {
       "name": "CASE-005",
       "type": "ES",
-      "prevLink": "C005-PROC",
-      "maxGap": 900
+      "prevLink": "C005-PROC"
     },
     "process": "RECOVERY",
     "sequence": 3
@@ -1161,8 +1151,7 @@
     "linkId": {
       "name": "CASE-006",
       "type": "ES",
-      "prevLink": "C006-SETUP",
-      "maxGap": 0
+      "prevLink": "C006-SETUP"
     },
     "process": "EYE-CAT",
     "sequence": 2
@@ -1226,8 +1215,7 @@
     "linkId": {
       "name": "CASE-006",
       "type": "ES",
-      "prevLink": "C006-PROC",
-      "maxGap": 900
+      "prevLink": "C006-PROC"
     },
     "process": "RECOVERY",
     "sequence": 3
@@ -1370,8 +1358,7 @@
     "linkId": {
       "name": "CASE-007",
       "type": "ES",
-      "prevLink": "C007-SETUP",
-      "maxGap": 0
+      "prevLink": "C007-SETUP"
     },
     "process": "ORTHO-KR",
     "sequence": 2
@@ -1435,8 +1422,7 @@
     "linkId": {
       "name": "CASE-007",
       "type": "ES",
-      "prevLink": "C007-PROC",
-      "maxGap": 900
+      "prevLink": "C007-PROC"
     },
     "process": "RECOVERY",
     "sequence": 3
@@ -1578,8 +1564,7 @@
     "linkId": {
       "name": "CASE-008",
       "type": "ES",
-      "prevLink": "C008-SETUP",
-      "maxGap": 0
+      "prevLink": "C008-SETUP"
     },
     "process": "GEN-HERNIA",
     "sequence": 2
@@ -1643,8 +1628,7 @@
     "linkId": {
       "name": "CASE-008",
       "type": "ES",
-      "prevLink": "C008-PROC",
-      "maxGap": 900
+      "prevLink": "C008-PROC"
     },
     "process": "RECOVERY",
     "sequence": 3
@@ -1782,8 +1766,7 @@
     "linkId": {
       "name": "CASE-009",
       "type": "ES",
-      "prevLink": "C009-SETUP",
-      "maxGap": 0
+      "prevLink": "C009-SETUP"
     },
     "process": "PAIN-INJ",
     "sequence": 2
@@ -1847,8 +1830,7 @@
     "linkId": {
       "name": "CASE-009",
       "type": "ES",
-      "prevLink": "C009-PROC",
-      "maxGap": 900
+      "prevLink": "C009-PROC"
     },
     "process": "RECOVERY",
     "sequence": 3
@@ -1990,8 +1972,7 @@
     "linkId": {
       "name": "CASE-010",
       "type": "ES",
-      "prevLink": "C010-SETUP",
-      "maxGap": 0
+      "prevLink": "C010-SETUP"
     },
     "process": "ORTHO-AR",
     "sequence": 2
@@ -2055,8 +2036,7 @@
     "linkId": {
       "name": "CASE-010",
       "type": "ES",
-      "prevLink": "C010-PROC",
-      "maxGap": 900
+      "prevLink": "C010-PROC"
     },
     "process": "RECOVERY",
     "sequence": 3

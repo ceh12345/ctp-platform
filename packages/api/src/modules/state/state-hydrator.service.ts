@@ -290,7 +290,6 @@ export class StateHydratorService {
           item.linkId.name,
           item.linkId.type ?? '',
           item.linkId.prevLink,
-          item.linkId.maxGap,
         );
       }
 

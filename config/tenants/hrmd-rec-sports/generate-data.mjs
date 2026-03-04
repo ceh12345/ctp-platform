@@ -601,7 +601,7 @@ for (const game of chainedGames) {
     name: playName,
     type: 'PROCESS', subType: 'play', sequence: 2,
     process: game.productKey,
-    linkId: { name: game.key, type: 'game', prevLink: `${game.key}-PREP`, maxGap: 900 },
+    linkId: { name: game.key, type: 'game', prevLink: `${game.key}-PREP` },
     windowStart: WINDOW_START, windowEnd: WINDOW_END,
     durationSeconds: dur.play,
     capacityResources: playCR,
@@ -621,7 +621,7 @@ for (const game of chainedGames) {
     name: `Reset: ${game.home} vs ${game.away}`,
     type: 'TEARDOWN', subType: 'reset', sequence: 3,
     process: game.productKey,
-    linkId: { name: game.key, type: 'game', prevLink: `${game.key}-PLAY`, maxGap: 900 },
+    linkId: { name: game.key, type: 'game', prevLink: `${game.key}-PLAY` },
     windowStart: WINDOW_START, windowEnd: WINDOW_END,
     durationSeconds: dur.reset,
     capacityResources: resetCR,
@@ -756,8 +756,6 @@ for (const game of chainedGames) {
   const plf = JSON.stringify(play.capacityResources[0].preferences);
   const rf = JSON.stringify(reset.capacityResources[0].preferences);
   if (pf !== plf || plf !== rf) { console.error(`  Field prefs mismatch: ${game.key}`); chainOk = false; }
-  if (play.linkId.maxGap !== 900) { console.error(`  PLAY maxGap: ${game.key}`); chainOk = false; }
-  if (reset.linkId.maxGap !== 900) { console.error(`  RESET maxGap: ${game.key}`); chainOk = false; }
 }
 check('Chain integrity (28 games)', chainOk);
 
