@@ -2690,6 +2690,282 @@ function ResourceDetailPanel({ resource, tasks, colors, onClose, onTaskClick }: 
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   RESOURCE AGENDA PANEL
+   ═══════════════════════════════════════════════════════════════ */
+
+interface AgendaItem {
+  type: 'assignment' | 'available' | 'off-shift';
+  startTime: string;   // ISO datetime
+  endTime: string;     // ISO datetime
+  durationMinutes: number;
+  taskKey?: string;
+  taskName?: string;
+  orderRef?: string;
+  priority?: number;
+  processCategory?: string;
+  task?: any;          // full task object for click handler
+}
+
+function buildAgendaItems(
+  resource: any, tasks: any[], dayStartMs: number, dayEndMs: number,
+): AgendaItem[] {
+  // Find availability windows that overlap this day
+  const dayAvail: { start: number; end: number }[] = (resource.availability || [])
+    .map((iv: any) => ({ start: new Date(iv.start).getTime(), end: new Date(iv.end).getTime() }))
+    .filter((iv: { start: number; end: number }) => iv.start < dayEndMs && iv.end > dayStartMs)
+    .map((iv: { start: number; end: number }) => ({
+      start: Math.max(iv.start, dayStartMs),
+      end: Math.min(iv.end, dayEndMs),
+    }));
+
+  // Find tasks assigned to this resource on this day
+  const dayTasks = tasks
+    .filter((t: any) =>
+      t.scheduledStart && t.scheduledEnd &&
+      t.assignedResources?.some((r: any) => r.resourceKey === resource.resourceKey) &&
+      new Date(t.scheduledStart).getTime() < dayEndMs &&
+      new Date(t.scheduledEnd).getTime() > dayStartMs
+    )
+    .map((t: any) => ({
+      start: Math.max(new Date(t.scheduledStart).getTime(), dayStartMs),
+      end: Math.min(new Date(t.scheduledEnd).getTime(), dayEndMs),
+      task: t,
+    }))
+    .sort((a: any, b: any) => a.start - b.start);
+
+  const items: AgendaItem[] = [];
+  const toISO = (ms: number) => new Date(ms).toISOString();
+  const toMin = (ms: number) => Math.round(ms / 60000);
+
+  // Working hours bounds
+  const workStart = dayAvail.length > 0 ? dayAvail[0].start : null;
+  const workEnd = dayAvail.length > 0 ? dayAvail[dayAvail.length - 1].end : null;
+
+  // Off-shift before work
+  if (workStart && workStart > dayStartMs) {
+    items.push({ type: 'off-shift', startTime: toISO(dayStartMs), endTime: toISO(workStart), durationMinutes: toMin(workStart - dayStartMs) });
+  }
+
+  if (workStart && workEnd) {
+    let cursor = workStart;
+    for (const dt of dayTasks) {
+      // Gap before this assignment (within working hours)
+      if (dt.start > cursor) {
+        items.push({ type: 'available', startTime: toISO(cursor), endTime: toISO(dt.start), durationMinutes: toMin(dt.start - cursor) });
+      }
+      // The assignment
+      const dur = toMin(dt.end - dt.start);
+      items.push({
+        type: 'assignment', startTime: toISO(dt.start), endTime: toISO(dt.end), durationMinutes: dur,
+        taskKey: dt.task.key, taskName: dt.task.name, orderRef: dt.task.orderRef,
+        priority: dt.task.priority, processCategory: dt.task.processCategory || dt.task.process,
+        task: dt.task,
+      });
+      cursor = Math.max(cursor, dt.end);
+    }
+    // Gap after last assignment
+    if (cursor < workEnd) {
+      items.push({ type: 'available', startTime: toISO(cursor), endTime: toISO(workEnd), durationMinutes: toMin(workEnd - cursor) });
+    }
+  }
+
+  // Off-shift after work
+  if (workEnd && workEnd < dayEndMs) {
+    items.push({ type: 'off-shift', startTime: toISO(workEnd), endTime: toISO(dayEndMs), durationMinutes: toMin(dayEndMs - workEnd) });
+  }
+
+  // If no availability at all for this day, show full day off-shift
+  if (!workStart) {
+    items.push({ type: 'off-shift', startTime: toISO(dayStartMs), endTime: toISO(dayEndMs), durationMinutes: toMin(dayEndMs - dayStartMs) });
+  }
+
+  return items;
+}
+
+function ResourceAgendaPanel({ resource, tasks, colors, horizonStart, horizonEnd, onClose, onTaskClick }: {
+  resource: any; tasks: any[]; colors: any;
+  horizonStart?: string; horizonEnd?: string;
+  onClose: () => void; onTaskClick: (t: any) => void;
+}) {
+  // Build list of days in horizon that have availability or assignments for this resource
+  const days = useMemo(() => {
+    const hStart = horizonStart ? new Date(horizonStart) : new Date();
+    const hEnd = horizonEnd ? new Date(horizonEnd) : new Date(hStart.getTime() + 14 * 86400000);
+    const tz = _locale?.timezone;
+    const result: { label: string; startMs: number; endMs: number }[] = [];
+
+    // Walk day by day
+    const cursor = new Date(hStart);
+    while (cursor.getTime() < hEnd.getTime()) {
+      const dayLabel = cursor.toLocaleDateString(_locale?.locale || 'en-US', {
+        weekday: 'short', month: 'short', day: 'numeric', ...(tz ? { timeZone: tz } : {}),
+      });
+      const dayStartMs = cursor.getTime();
+      const nextDay = new Date(cursor);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const dayEndMs = nextDay.getTime();
+
+      // Check if resource has availability or assignments on this day
+      const hasAvail = resource.availability?.some((iv: any) =>
+        new Date(iv.start).getTime() < dayEndMs && new Date(iv.end).getTime() > dayStartMs
+      );
+      const hasAssign = tasks.some((t: any) =>
+        t.scheduledStart && t.scheduledEnd &&
+        t.assignedResources?.some((r: any) => r.resourceKey === resource.resourceKey) &&
+        new Date(t.scheduledStart).getTime() < dayEndMs &&
+        new Date(t.scheduledEnd).getTime() > dayStartMs
+      );
+
+      if (hasAvail || hasAssign) {
+        result.push({ label: dayLabel, startMs: dayStartMs, endMs: dayEndMs });
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return result;
+  }, [resource, tasks, horizonStart, horizonEnd]);
+
+  // Default to first day with assignments, or first day
+  const firstAssignIdx = useMemo(() => {
+    const idx = days.findIndex(d =>
+      tasks.some((t: any) =>
+        t.scheduledStart && t.assignedResources?.some((r: any) => r.resourceKey === resource.resourceKey) &&
+        new Date(t.scheduledStart).getTime() >= d.startMs && new Date(t.scheduledStart).getTime() < d.endMs
+      )
+    );
+    return idx >= 0 ? idx : 0;
+  }, [days, tasks, resource]);
+
+  const [dayIdx, setDayIdx] = useState(firstAssignIdx);
+  const currentDay = days[dayIdx];
+
+  const agendaItems = useMemo(() => {
+    if (!currentDay) return [];
+    return buildAgendaItems(resource, tasks, currentDay.startMs, currentDay.endMs);
+  }, [resource, tasks, currentDay]);
+
+  // Day utilization
+  const dayUtil = useMemo(() => {
+    const assigned = agendaItems.filter(i => i.type === 'assignment').reduce((s, i) => s + i.durationMinutes, 0);
+    const available = agendaItems.filter(i => i.type !== 'off-shift').reduce((s, i) => s + i.durationMinutes, 0);
+    return available > 0 ? Math.round(assigned / available * 100) : 0;
+  }, [agendaItems]);
+
+  if (days.length === 0) {
+    return (
+      <SlidePanel open={true} onClose={onClose} title={`${resource.resourceName} — Agenda`}>
+        <div style={{ color: C.textDim, fontSize: 13, padding: '20px 0', textAlign: 'center' }}>
+          No availability in the scheduling horizon
+        </div>
+      </SlidePanel>
+    );
+  }
+
+  return (
+    <SlidePanel open={true} onClose={onClose} title={`${resource.resourceName} — Agenda`}>
+      {/* Resource info */}
+      <div style={{ fontSize: 11, color: C.textDim, marginBottom: 12 }}>{resource.resourceKey}</div>
+
+      {/* Day navigation */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '8px 0', marginBottom: 16, borderBottom: `1px solid ${C.border}`,
+      }}>
+        <button
+          onClick={() => setDayIdx(i => Math.max(0, i - 1))}
+          disabled={dayIdx <= 0}
+          style={{
+            background: 'none', border: `1px solid ${C.border}`, borderRadius: 6,
+            color: dayIdx > 0 ? C.text : C.textDim, cursor: dayIdx > 0 ? 'pointer' : 'default',
+            padding: '4px 10px', fontSize: 14, fontFamily: FONT,
+          }}
+        >◀</button>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{currentDay?.label}</div>
+          <div style={{ fontSize: 11, color: dayUtil > 90 ? C.red : dayUtil > 70 ? C.yellow : C.green, fontWeight: 600 }}>
+            {dayUtil}% utilized
+          </div>
+        </div>
+        <button
+          onClick={() => setDayIdx(i => Math.min(days.length - 1, i + 1))}
+          disabled={dayIdx >= days.length - 1}
+          style={{
+            background: 'none', border: `1px solid ${C.border}`, borderRadius: 6,
+            color: dayIdx < days.length - 1 ? C.text : C.textDim,
+            cursor: dayIdx < days.length - 1 ? 'pointer' : 'default',
+            padding: '4px 10px', fontSize: 14, fontFamily: FONT,
+          }}
+        >▶</button>
+      </div>
+
+      {/* Agenda list */}
+      {agendaItems.map((item, i) => {
+        if (item.type === 'assignment') {
+          const taskColor = item.task && colors ? getTaskColor(item.task, colors) : C.accent;
+          return (
+            <div
+              key={i}
+              onClick={() => item.task && onTaskClick(item.task)}
+              style={{
+                padding: '10px 12px', marginBottom: 4, borderRadius: 8,
+                background: C.surface, border: `1px solid ${C.border}`,
+                borderLeft: `4px solid ${taskColor}`,
+                cursor: 'pointer', transition: 'background 0.1s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
+              onMouseLeave={e => (e.currentTarget.style.background = C.surface)}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
+                  {fmtTime(item.startTime)}–{fmtTime(item.endTime)} — {item.taskKey}
+                </span>
+                <span style={{ fontSize: 11, color: C.accent, fontWeight: 600 }}>
+                  {fmtDuration(item.durationMinutes * 60)}
+                </span>
+              </div>
+              <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 2 }}>{item.taskName}</div>
+              <div style={{ display: 'flex', gap: 12, fontSize: 11, color: C.textDim }}>
+                {item.orderRef && <span>{item.orderRef}</span>}
+                {item.priority != null && <span>Priority {item.priority}</span>}
+              </div>
+            </div>
+          );
+        }
+        if (item.type === 'available') {
+          return (
+            <div key={i} style={{
+              padding: '8px 12px', marginBottom: 4, borderRadius: 8,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <span style={{ fontSize: 12, color: C.green }}>
+                {fmtTime(item.startTime)}–{fmtTime(item.endTime)} — {t('available', 'Available')}
+              </span>
+              <span style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>
+                {fmtDuration(item.durationMinutes * 60)}
+              </span>
+            </div>
+          );
+        }
+        // off-shift
+        return (
+          <div key={i} style={{
+            padding: '8px 12px', marginBottom: 4, borderRadius: 8,
+            background: `${C.textDim}11`,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <span style={{ fontSize: 12, color: C.textDim }}>
+              {fmtTime(item.startTime)}–{fmtTime(item.endTime)} — {t('offShift', 'Off Shift')}
+            </span>
+            <span style={{ fontSize: 11, color: C.textDim }}>
+              {fmtDuration(item.durationMinutes * 60)}
+            </span>
+          </div>
+        );
+      })}
+    </SlidePanel>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    TABLE WRAPPER
    ═══════════════════════════════════════════════════════════════ */
 
@@ -2730,9 +3006,10 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
   whereToCurrentAssignment, onMoveTo, onCancelWhereTo,
   zoomLevel, setZoomLevel, scrollOffset, setScrollOffset,
-  onSetResourcePrefForTask }: {
+  onSetResourcePrefForTask, onViewAgenda }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
+  onViewAgenda?: (r: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
   orderModes?: Record<string, string>;
   onPinTask?: (key: string, pinned: boolean) => void;
@@ -2768,6 +3045,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   const [hovered, setHovered] = useState<any>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [contextMenu, setContextMenu] = useState<{ task: any; x: number; y: number } | null>(null);
+  const [resContextMenu, setResContextMenu] = useState<{ resource: any; x: number; y: number } | null>(null);
   const [ganttSearch, setGanttSearch] = useState('');
   const [hideEmpty, setHideEmpty] = useState(false);
   const [hiddenWorkCenters, setHiddenWorkCenters] = useState<Set<string>>(new Set());
@@ -3050,6 +3328,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                 >
                   <span
                     onClick={() => onResourceClick?.(res)}
+                    onContextMenu={e => { e.preventDefault(); setResContextMenu({ resource: res, x: e.clientX, y: e.clientY }); }}
                     style={{ cursor: onResourceClick ? 'pointer' : 'default', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}
                     onMouseEnter={e => { if (onResourceClick) (e.currentTarget as HTMLElement).style.color = C.accent; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = ''; }}
@@ -3473,6 +3752,55 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                 </button>
               );
             })()}
+          </div>
+        </>
+      )}
+
+      {/* Resource Context Menu */}
+      {resContextMenu && (
+        <>
+          <div onClick={() => setResContextMenu(null)} style={{
+            position: 'fixed', inset: 0, zIndex: 998,
+          }} />
+          <div style={{
+            position: 'fixed', left: resContextMenu.x, top: resContextMenu.y, zIndex: 999,
+            background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+            padding: 4, minWidth: 160, boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            fontFamily: FONT,
+          }}>
+            <div style={{ padding: '6px 10px', fontSize: 11, color: C.textDim, fontWeight: 600, borderBottom: `1px solid ${C.border}` }}>
+              {resContextMenu.resource.resourceName}
+            </div>
+            {onViewAgenda && (
+              <button onClick={() => { onViewAgenda(resContextMenu.resource); setResContextMenu(null); }} style={{
+                width: '100%', padding: '7px 10px', background: 'none', border: 'none',
+                color: C.text, fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
+                borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
+              }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
+                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                📋 View Agenda
+              </button>
+            )}
+            {onResourceClick && (
+              <button onClick={() => { onResourceClick(resContextMenu.resource); setResContextMenu(null); }} style={{
+                width: '100%', padding: '7px 10px', background: 'none', border: 'none',
+                color: C.text, fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
+                borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
+              }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
+                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                🔍 View Details
+              </button>
+            )}
+            {onResourceFilter && (
+              <button onClick={() => { onResourceFilter(resContextMenu.resource.resourceKey); setResContextMenu(null); }} style={{
+                width: '100%', padding: '7px 10px', background: 'none', border: 'none',
+                color: C.text, fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
+                borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
+              }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
+                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                ⊡ Filter Tasks
+              </button>
+            )}
           </div>
         </>
       )}
@@ -5136,10 +5464,11 @@ function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskCli
 function OverviewTab({ summary, tasks, resources, orders, materials, products, colors, onTabChange, onTaskClick, onResourceClick, experienceLevel = 'novice',
   taskPins, taskExcludes, taskUnschedules, orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask, onWhereTo,
-  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset }: {
+  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset, onViewAgenda }: {
   summary: any; tasks: any[]; resources: any[]; orders: any[]; materials: any[];
   products: any[]; colors: any; onTabChange: (t: string) => void;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
+  onViewAgenda?: (r: any) => void;
   experienceLevel?: ExperienceLevel;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
   orderModes?: Record<string, string>;
@@ -5192,7 +5521,8 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
             onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask}
             onWhereTo={onWhereTo}
             zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
-            scrollOffset={scrollOffset} setScrollOffset={setScrollOffset} />
+            scrollOffset={scrollOffset} setScrollOffset={setScrollOffset}
+            onViewAgenda={onViewAgenda} />
         </Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card title={`${t('resource', 'Resource')} ${t('utilization', 'Utilization')}`}>
@@ -5449,9 +5779,10 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected,
   onSetResourcePreference, onSetResourcePrefForTask, resourcePreferenceOverrides,
   priorityOverrides, onSetPriority, onRushSelected,
-  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset }: {
+  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset, onViewAgenda }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
+  onViewAgenda?: (r: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
   orderModes?: Record<string, string>;
   orders?: any[];
@@ -5522,7 +5853,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             onMoveTo={onMoveTo} onCancelWhereTo={onCancelWhereTo}
             zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
             scrollOffset={scrollOffset} setScrollOffset={setScrollOffset}
-            onSetResourcePrefForTask={onSetResourcePrefForTask} />
+            onSetResourcePrefForTask={onSetResourcePrefForTask}
+            onViewAgenda={onViewAgenda} />
           <UnscheduledPanel tasks={tasks} colors={colors}
             taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             onTaskClick={onTaskClick} onWhereTo={onWhereTo}
@@ -6302,6 +6634,7 @@ export default function App() {
   const [userOpen, setUserOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [selectedResource, setSelectedResource] = useState<any>(null);
+  const [agendaResource, setAgendaResource] = useState<any>(null);
   const [colors, setColors] = useState<any>(null);
 
   // Solve preview & override state
@@ -7198,7 +7531,8 @@ export default function App() {
             }}
             onWhereTo={handleWhereTo}
             zoomLevel={ganttZoomLevel} setZoomLevel={setGanttZoomLevel}
-            scrollOffset={ganttScrollOffset} setScrollOffset={setGanttScrollOffset} />
+            scrollOffset={ganttScrollOffset} setScrollOffset={setGanttScrollOffset}
+            onViewAgenda={(r: any) => { setSelectedTask(null); setSelectedResource(null); setAgendaResource(r); }} />
         )}
         {activeTab === 'Schedule' && (
           <ScheduleTab tasks={tasks} resources={resources} products={products} colors={colors}
@@ -7279,7 +7613,8 @@ export default function App() {
               showToast(`${keys.length} task(s) set to RUSH priority`);
             }}
             zoomLevel={ganttZoomLevel} setZoomLevel={setGanttZoomLevel}
-            scrollOffset={ganttScrollOffset} setScrollOffset={setGanttScrollOffset} />
+            scrollOffset={ganttScrollOffset} setScrollOffset={setGanttScrollOffset}
+            onViewAgenda={(r: any) => { setSelectedTask(null); setSelectedResource(null); setAgendaResource(r); }} />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} tasks={tasks}
           orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}
@@ -7497,6 +7832,17 @@ export default function App() {
           colors={colors}
           onClose={() => setSelectedResource(null)}
           onTaskClick={handleTaskClick}
+        />
+      )}
+      {agendaResource && (
+        <ResourceAgendaPanel
+          resource={agendaResource}
+          tasks={tasks}
+          colors={colors}
+          horizonStart={summary?.horizonStart}
+          horizonEnd={summary?.horizonEnd}
+          onClose={() => setAgendaResource(null)}
+          onTaskClick={(t: any) => { setAgendaResource(null); handleTaskClick(t); }}
         />
       )}
 
