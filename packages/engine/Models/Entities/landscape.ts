@@ -63,7 +63,7 @@ export class SchedulingLandscape implements ILandscape {
               }
           });
           this.processes.forEach(p => {
-              p.tasks?.sort();
+              p.tasks?.sortBySequence();
           });
 
       }

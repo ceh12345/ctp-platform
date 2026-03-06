@@ -12,6 +12,7 @@ export interface IAppSettings {
   solverStrategy: string;
   maxBacktrackAttempts: number;
   topNContexts: number;
+  maxChainCombos: number;
 }
 
 export class CTPAppSettings implements IAppSettings {
@@ -25,6 +26,7 @@ export class CTPAppSettings implements IAppSettings {
   public solverStrategy: string = 'Chain';
   public maxBacktrackAttempts: number = 3;
   public topNContexts: number = 5;
+  public maxChainCombos: number = 500;
 }
 
 export interface ITimingSetting {

@@ -9,7 +9,7 @@ import { List } from "../../Models/Core/list";
 import { CTPAppSettings } from "../../Models/Entities/appsettings";
 import { CTPHorizon } from "../../Models/Entities/horizon";
 import { SchedulingLandscape } from "../../Models/Entities/landscape";
-import { CTPProcesses } from "../../Models/Entities/process";
+import { CTPProcess, CTPProcesses } from "../../Models/Entities/process";
 import {
   CTPResourcePreference,
   CTPResources,
@@ -43,6 +43,14 @@ import { ChainFirstFitNeighborhood } from "../Neighborhoods/chainfirstfitneighbo
 import { DueDateNeighborhood } from "../Neighborhoods/duedateneighborhood";
 import { ShortestFirstNeighborhood } from "../Neighborhoods/shortestfirstneighborhood";
 import { CTPSolveResult } from "../../Models/Entities/solveresult";
+import {
+  ChainContextEngine,
+  BumpEvent,
+  findBlockers,
+  getChainPriority,
+  selectBumpCandidate,
+  markChainInfeasible,
+} from "../../Engines/chaincontextengine";
 
 export interface IScheduler {
   initLandscape(
@@ -69,6 +77,7 @@ export abstract class CTPBaseScheduler {
   protected solverSequence: number = 0;
   protected neighborhoodAgent: NextNeighborhoodAgent | null = null;
   protected contextsEvaluated: number = 0;
+  protected bumpEvents: BumpEvent[] = [];
 
   constructor() {
     this.landscape = new SchedulingLandscape();
@@ -525,6 +534,7 @@ export abstract class CTPBaseScheduler {
 
     this.neighborhoodAgent = null; // Reset for fresh strategy selection
     this.contextsEvaluated = 0;
+    this.bumpEvents = [];
 
     // Ensure default settings exist before auto-detection
     if (!this.settings) this.settings = new CTPAppSettings();
@@ -559,24 +569,23 @@ export abstract class CTPBaseScheduler {
     this.scheduleManualPass(tasks);
 
     // PASS 2: Solver — everything else, using the selected neighborhood strategy
-    let counter = 0;
-    let max = tasks.length + 10;
+    if (this.settings?.requiresPreds) {
+      // Chain-aware: ChainContextEngine + bump-and-retry
+      this.scheduleChainPass(tasks);
+    } else {
+      let counter = 0;
+      let max = tasks.length + 10;
 
-    let next = this.nextTasksToSchedule(tasks, topTasksToSchedule);
+      let next = this.nextTasksToSchedule(tasks, topTasksToSchedule);
 
-    while (next.length > 0) {
-      if (this.settings?.requiresPreds) {
-        // Chain-aware: per-task explosion with window tightening
-        this.scheduleTasksChainAware(next);
-      } else {
-        // Original: batch explosion + scheduling
+      while (next.length > 0) {
         this.explodeScheduleContexts(next);
         this.scheduleTasks(next);
-      }
 
-      next = this.nextTasksToSchedule(tasks, topTasksToSchedule);
-      counter += 1;
-      if (counter > max) break;
+        next = this.nextTasksToSchedule(tasks, topTasksToSchedule);
+        counter += 1;
+        if (counter > max) break;
+      }
     }
 
     this.endScheduling();
@@ -584,10 +593,15 @@ export abstract class CTPBaseScheduler {
     // Build solve result
     const result = new CTPSolveResult();
     const agent = this.neighborhoodAgent as NextNeighborhoodAgent | null;
-    result.strategy = agent ? agent.getStrategy().name : "";
+    result.strategy = this.settings?.requiresPreds
+      ? 'Chain'
+      : (agent ? agent.getStrategy().name : "");
     result.totalTasks = tasks.length;
     result.solveTimeMs = performance.now() - startTime;
     result.contextsEvaluated = this.contextsEvaluated;
+    result.bumps = this.bumpEvents;
+    result.totalBumps = this.bumpEvents.length;
+    result.maxBumpsReached = this.bumpEvents.length >= (this.settings?.maxBacktrackAttempts ?? 3);
 
     tasks.forEach(task => {
       if (task.state === CTPTaskStateConstants.SCHEDULED) result.scheduled++;
@@ -666,6 +680,267 @@ export abstract class CTPBaseScheduler {
       orderedList.add(predecessor);
       added.add(predecessor.hashKey);
     }
+  }
+
+  // ── Chain Context Engine integration ──────────────────────────────
+
+  /**
+   * Pass 1: Schedule chains as units via ChainContextEngine.
+   * Pass 2: Bump-and-retry for failed chains.
+   * Also handles standalone (unchained) tasks via greedy.
+   */
+  protected scheduleChainPass(tasks: List<CTPTask>): void {
+    const chainEngine = new ChainContextEngine();
+    const schedEngine = this.getScheduleEngine();
+    const direction = this.settings?.scheduleDirection ?? CTPScheduleDirectionConstants.FORWARD;
+    const failedChains: CTPProcess[] = [];
+
+    // Build set of submitted task keys to scope the chain pass
+    const submittedKeys = new Set<string>();
+    tasks.forEach(t => submittedKeys.add(t.key));
+
+    // Get chains sorted by priority (lowest number = highest priority)
+    const chains = this.getChainsInPriorityOrder();
+
+    // Pass 1: Schedule each chain
+    for (const chain of chains) {
+      const chainTasks = chain.tasks;
+      if (!chainTasks || chainTasks.length === 0) continue;
+
+      // Only process chains with at least one submitted task
+      let hasSubmitted = false;
+      chainTasks.forEach(t => { if (submittedKeys.has(t.key)) hasSubmitted = true; });
+      if (!hasSubmitted) continue;
+
+      // Skip chains where all tasks are already processed or pinned
+      let hasWork = false;
+      chainTasks.forEach(t => { if (!t.processed && t.canSolve()) hasWork = true; });
+      if (!hasWork) continue;
+
+      if (chainTasks.length === 1) {
+        // Single-task chain: use existing per-task greedy
+        const singleList = new List<CTPTask>();
+        chainTasks.forEach(t => { if (!t.processed && t.canSolve()) singleList.add(t); });
+        if (singleList.length > 0) {
+          this.scheduleTasksChainAware(singleList);
+        }
+      } else {
+        // Multi-task chain: use ChainContextEngine
+        const chainTaskList = new List<CTPTask>();
+        chainTasks.forEach(t => chainTaskList.add(t));
+
+        // Explode contexts for all tasks in the chain
+        this.explodeScheduleContexts(chainTaskList);
+        this.reComputeScheduleContexts();
+
+        const bestCombo = chainEngine.evaluateChain(
+          chain, this.scheduleContexts, this.landscape, this.scoring!,
+          this.settings?.maxChainCombos
+        );
+
+        if (bestCombo) {
+          // evaluateChain already called assignStartTimes and validated
+          const results = chainEngine.commitChain(bestCombo, schedEngine, this.landscape, direction);
+
+          for (const best of results) {
+            const task = best.best.task;
+            task.processed = true;
+            this.solverSequence += 1;
+            task.solverSequence = this.solverSequence;
+            this.scheduleStateChanges(task, best);
+            this.scheduleContexts.updateRecompute(best.best);
+          }
+
+          // Free contexts for this chain
+          chainTasks.forEach(t => this.scheduleContexts.removeByTask(t));
+        } else {
+          // No valid combo — check if chain has maxGap constraints
+          let hasMaxGap = false;
+          chainTasks.forEach(t => {
+            if (t.linkId?.maxGap !== null && t.linkId?.maxGap !== undefined) hasMaxGap = true;
+          });
+
+          chainTasks.forEach(t => this.scheduleContexts.removeByTask(t));
+
+          if (hasMaxGap) {
+            // Chain with maxGap constraints is infeasible — do not fall back to greedy
+            markChainInfeasible(chain, 'No valid chain placement — resource contention violates maxGap constraints');
+            failedChains.push(chain);
+          } else {
+            // Chain without maxGap — safe to fall back to per-task scheduling
+            const fallbackList = new List<CTPTask>();
+            chainTasks.forEach(t => {
+              if (!t.processed && t.canSolve()) fallbackList.add(t);
+            });
+            if (fallbackList.length > 0) {
+              this.scheduleTasksChainAware(fallbackList);
+            }
+            let anyFailed = false;
+            chainTasks.forEach(t => {
+              if (t.state !== CTPTaskStateConstants.SCHEDULED && !t.processed) anyFailed = true;
+            });
+            if (anyFailed) failedChains.push(chain);
+          }
+        }
+      }
+    }
+
+    // Schedule standalone tasks (not in any chain)
+    this.scheduleStandaloneTasks(tasks);
+
+    // Pass 2: Bump-and-retry for failed chains
+    this.bumpAndRetry(failedChains, chainEngine, schedEngine, direction);
+  }
+
+  /**
+   * Get all chains from landscape.processes sorted by priority (lowest = first).
+   */
+  private getChainsInPriorityOrder(): CTPProcess[] {
+    const chains: CTPProcess[] = [];
+    this.landscape.processes?.forEach(p => chains.push(p));
+    chains.sort((a, b) =>
+      getChainPriority(a, this.landscape) - getChainPriority(b, this.landscape)
+    );
+    return chains;
+  }
+
+  /**
+   * Schedule any tasks not belonging to a chain via greedy.
+   */
+  private scheduleStandaloneTasks(tasks: List<CTPTask>): void {
+    const standalone = new List<CTPTask>();
+    tasks.forEach(t => {
+      if (!t.processed && t.canSolve() && !t.hasLinkId()) {
+        standalone.add(t);
+      }
+    });
+    if (standalone.length === 0) return;
+
+    this.explodeScheduleContexts(standalone);
+    this.reComputeScheduleContexts();
+    this.scheduleTasks(standalone);
+  }
+
+  /**
+   * Pass 2: For each failed chain, try bumping a lower-priority blocker.
+   * If bump succeeds, retry both chains.
+   */
+  private bumpAndRetry(
+    failedChains: CTPProcess[],
+    chainEngine: ChainContextEngine,
+    schedEngine: ScheduleEngine,
+    direction: number,
+  ): void {
+    const maxBumps = this.settings?.maxBacktrackAttempts ?? 3;
+    const bumpedChains = new Set<string>();
+
+    for (const chain of failedChains) {
+      if (this.bumpEvents.length >= maxBumps) break;
+
+      const blockers = findBlockers(chain, this.landscape);
+      const candidate = selectBumpCandidate(blockers, bumpedChains);
+      if (!candidate) {
+        markChainInfeasible(chain, 'No bumpable blocker found');
+        continue;
+      }
+
+      const blockerChain = this.landscape.processes?.getEntity(candidate.blockerChainKey);
+      if (!blockerChain) {
+        markChainInfeasible(chain, 'Blocker chain not found');
+        continue;
+      }
+
+      // Unschedule the blocker chain (with state change cleanup)
+      blockerChain.tasks?.forEach(t => {
+        if (t.state === CTPTaskStateConstants.SCHEDULED) {
+          this.unScheduleStateChanges(t);
+          this.landscape.unscheduleTask(t.key);
+          t.processed = false;
+        }
+      });
+      bumpedChains.add(candidate.blockerChainKey);
+
+      // Retry the failed chain
+      const retryResult = this.retryChain(chain, chainEngine, schedEngine, direction);
+
+      // Retry the bumped chain
+      const bumperResult = this.retryChain(blockerChain, chainEngine, schedEngine, direction);
+      if (bumperResult === 'infeasible') {
+        markChainInfeasible(blockerChain, `Bumped for ${chain.key} — could not reschedule`);
+      }
+
+      // Record bump event
+      this.bumpEvents.push({
+        bumpedChainKey: candidate.blockerChainKey,
+        bumpedChainPriority: candidate.blockerChainPriority,
+        beneficiaryChainKey: chain.key || '',
+        beneficiaryChainPriority: candidate.blockedChainPriority,
+        contestedResource: candidate.resourceKey,
+        bumpedChainResult: bumperResult,
+      });
+    }
+  }
+
+  /**
+   * Re-explode, recompute, and retry a chain after a bump.
+   * Returns 'rescheduled' or 'infeasible'.
+   */
+  private retryChain(
+    chain: CTPProcess,
+    chainEngine: ChainContextEngine,
+    schedEngine: ScheduleEngine,
+    direction: number,
+  ): 'rescheduled' | 'infeasible' {
+    const chainTasks = chain.tasks;
+    if (!chainTasks) return 'infeasible';
+
+    // Reset tasks
+    const taskList = new List<CTPTask>();
+    chainTasks.forEach(t => {
+      t.processed = false;
+      t.errors = [];
+      taskList.add(t);
+    });
+
+    // Re-explode & recompute
+    this.scheduleContexts.removeByTask(chainTasks.at(0)!);
+    chainTasks.forEach(t => this.scheduleContexts.removeByTask(t));
+    this.explodeScheduleContexts(taskList);
+    this.reComputeScheduleContexts();
+
+    let result: 'rescheduled' | 'infeasible' = 'infeasible';
+
+    if (chainTasks.length > 1) {
+      const combo = chainEngine.evaluateChain(
+        chain, this.scheduleContexts, this.landscape, this.scoring!,
+        this.settings?.maxChainCombos
+      );
+      if (combo) {
+        // evaluateChain already called assignStartTimes
+        const results = chainEngine.commitChain(combo, schedEngine, this.landscape, direction);
+        for (const best of results) {
+          const task = best.best.task;
+          task.processed = true;
+          this.solverSequence += 1;
+          task.solverSequence = this.solverSequence;
+          this.scheduleStateChanges(task, best);
+          this.scheduleContexts.updateRecompute(best.best);
+        }
+        result = 'rescheduled';
+      }
+    } else {
+      // Single-task: use greedy
+      this.scheduleTasksChainAware(taskList);
+      let gotScheduled = true;
+      chainTasks.forEach(t => {
+        if (t.state !== CTPTaskStateConstants.SCHEDULED) gotScheduled = false;
+      });
+      result = gotScheduled ? 'rescheduled' : 'infeasible';
+    }
+
+    // Free contexts
+    chainTasks.forEach(t => this.scheduleContexts.removeByTask(t));
+    return result;
   }
 
   public unschedule(tasks: List<CTPTask>) {

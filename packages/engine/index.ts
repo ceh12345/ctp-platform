@@ -87,6 +87,7 @@ export * from './Engines/scoringengine';
 export * from './Engines/setengine';
 export * from './Engines/starttimeengine';
 export * from './Engines/statechangeerengine';
+export * from './Engines/chaincontextengine';
 
 // Factories
 export * from './Factories/resourcefactory';

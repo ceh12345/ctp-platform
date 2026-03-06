@@ -11,6 +11,12 @@ import { AvailableMatrix } from '../../Models/Intervals/availablematrix';
 import { List } from '../../Models/Core/list';
 import { CTPTaskResource, CTPTaskResourceList } from '../../Models/Entities/task';
 import { CTPResourcePreference } from '../../Models/Entities/resource';
+import { CTPLinkId } from '../../Models/Core/linkid';
+import { CTPProcess } from '../../Models/Entities/process';
+import { CTPResourceSlot, CTPResourceSlots } from '../../Models/Entities/slot';
+import { CTPStartTime, CTPStartTimes } from '../../Models/Entities/starttime';
+import { ScheduleContext, ScheduleContexts } from '../../Models/Entities/schedulecontext';
+import { SchedulingLandscape } from '../../Models/Entities/landscape';
 
 /** Create a single CTPInterval */
 export function makeInterval(startW: number, endW: number, qty?: number): CTPInterval {
@@ -168,4 +174,93 @@ export function buildTestLandscape(opts: {
   }
 
   return { horizon, resources, tasks };
+}
+
+// ── Chain-building helpers ────────────────────────────────────────────
+
+/** Create a CTPTask configured for chain membership */
+export function makeChainTask(opts: {
+  name: string;
+  key: string;
+  duration: number;
+  linkName: string;
+  prevLink?: string;
+  maxGap?: number | null;
+  sequence?: number;
+  priority?: number;
+  windowStart?: number;
+  windowEnd?: number;
+  resources: { key: string; isPrimary: boolean }[];
+}): CTPTask {
+  const task = new CTPTask('PROCESS', opts.name, opts.key);
+  task.duration = makeDuration(opts.duration);
+  task.linkId = new CTPLinkId(opts.linkName, 'ES', opts.prevLink ?? '', opts.maxGap ?? null);
+  task.sequence = opts.sequence ?? 1;
+  task.priority = opts.priority ?? 1;
+  if (opts.windowStart !== undefined && opts.windowEnd !== undefined) {
+    task.window = new CTPInterval(opts.windowStart, opts.windowEnd);
+  }
+  task.capacityResources = new CTPTaskResourceList();
+  for (const res of opts.resources) {
+    const tr = new CTPTaskResource('Resource', res.isPrimary);
+    tr.preferences.push(new CTPResourcePreference(res.key, 1));
+    task.capacityResources.add(tr);
+  }
+  return task;
+}
+
+/** Create a CTPProcess (chain) from tasks */
+export function makeChain(key: string, tasks: CTPTask[]): CTPProcess {
+  const process = new CTPProcess(key);
+  for (const task of tasks) {
+    process.tasks?.add(task);
+  }
+  process.tasks?.sort();
+  return process;
+}
+
+/** Build a ScheduleContext with explicit start time nodes */
+export function makeScheduleContext(
+  landscape: SchedulingLandscape,
+  task: CTPTask,
+  resource: CTPResource,
+  startTimeSpecs: { eStartW: number; lStartW: number; duration: number }[],
+): ScheduleContext {
+  const slot = new CTPResourceSlots();
+  slot.resources?.add(new CTPResourceSlot(resource, 0));
+  slot.startTimes = new CTPStartTimes();
+  for (const spec of startTimeSpecs) {
+    slot.startTimes.insertAtEnd(new CTPStartTime(
+      spec.eStartW,
+      spec.eStartW + spec.duration,
+      spec.lStartW,
+      spec.lStartW + spec.duration,
+      spec.duration,
+    ));
+  }
+  return new ScheduleContext(landscape, task, slot);
+}
+
+/** Build a ScheduleContext with multiple resources (for lane detection) */
+export function makeMultiResourceContext(
+  landscape: SchedulingLandscape,
+  task: CTPTask,
+  resources: CTPResource[],
+  startTimeSpecs: { eStartW: number; lStartW: number; duration: number }[],
+): ScheduleContext {
+  const slot = new CTPResourceSlots();
+  resources.forEach((r, i) => {
+    slot.resources?.add(new CTPResourceSlot(r, i));
+  });
+  slot.startTimes = new CTPStartTimes();
+  for (const spec of startTimeSpecs) {
+    slot.startTimes.insertAtEnd(new CTPStartTime(
+      spec.eStartW,
+      spec.eStartW + spec.duration,
+      spec.lStartW,
+      spec.lStartW + spec.duration,
+      spec.duration,
+    ));
+  }
+  return new ScheduleContext(landscape, task, slot);
 }

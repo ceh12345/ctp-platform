@@ -103,8 +103,8 @@ export class StateHydratorService {
         return;
       }
 
-      // Fall back to process-level cadence
-      if (task.process) {
+      // Fall back to process-level cadence (skip SETUP/TEARDOWN — only PROCESS tasks)
+      if (task.process && task.type !== 'SETUP' && task.type !== 'TEARDOWN') {
         const cadenceKey = processCadenceMap.get(task.process);
         if (cadenceKey) {
           const interval = cadenceMap.get(cadenceKey);
@@ -290,6 +290,7 @@ export class StateHydratorService {
           item.linkId.name,
           item.linkId.type ?? '',
           item.linkId.prevLink,
+          item.linkId.maxGap ?? null,
         );
       }
 
@@ -328,11 +329,12 @@ export class StateHydratorService {
           : attrs.priority;
         if (rawPriority) {
           const priorityRank: Record<string, number> = { URGENT: 1, 'ADD-ON': 2, ELECTIVE: 3 };
-          task.rank = priorityRank[String(rawPriority).toUpperCase()] ?? 3;
+          const rank = priorityRank[String(rawPriority).toUpperCase()] ?? 3;
+          task.priority = rank;
         }
       }
 
-      // Numeric priority from config (separate from URGENT/ADD-ON/ELECTIVE rank)
+      // Numeric priority from config overrides text-based rank
       if (item.typedAttributes) {
         const attrs: any = item.typedAttributes;
         const numPri = Array.isArray(attrs)

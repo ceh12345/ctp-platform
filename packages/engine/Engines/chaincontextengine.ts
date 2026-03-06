@@ -1,0 +1,925 @@
+import { CTPProcess } from '../Models/Entities/process';
+import { CTPTask, CTPTaskList } from '../Models/Entities/task';
+import { ScheduleContext, ScheduleContexts, BestScheduleContext } from '../Models/Entities/schedulecontext';
+import { SchedulingLandscape } from '../Models/Entities/landscape';
+import { CTPScoring } from '../Models/Entities/score';
+import { CTPStartTime } from '../Models/Entities/starttime';
+import { ScoringEngine } from './scoringengine';
+import { ScheduleEngine } from './scheduleengine';
+import { CTPTaskStateConstants } from '../Models/Core/constants';
+
+// ── Interfaces ──────────────────────────────────────────────────────
+
+export interface ChainStartTime {
+  taskKey: string;
+  eStartW: number;
+  lStartW: number;
+  eEndW: number;
+  lEndW: number;
+  assignedStart: number;
+  assignedEnd: number;
+}
+
+export interface ChainContextCombo {
+  chainKey: string;
+  contexts: ScheduleContext[];
+  laneResources: Map<number, string>;
+  startTimes: ChainStartTime[];
+  chainScore: number;
+  feasible: boolean;
+  totalGap: number;
+}
+
+export interface LaneDefinition {
+  laneIndex: number;
+  taskKeys: string[];
+  resourceKeys: string[];
+}
+
+interface ContextTimeBounds {
+  eStartW: number;
+  lStartW: number;
+  eEndW: number;
+  lEndW: number;
+  duration: number;
+  processChangeDuration: number;  // max state-change offset across start-time nodes
+}
+
+export interface BlockerInfo {
+  blockedChainKey: string;
+  blockedChainPriority: number;
+  resourceKey: string;
+  blockerTaskKey: string;
+  blockerChainKey: string;
+  blockerChainPriority: number;
+  blockWindow: { start: number; end: number };
+}
+
+export interface BumpEvent {
+  bumpedChainKey: string;
+  bumpedChainPriority: number;
+  beneficiaryChainKey: string;
+  beneficiaryChainPriority: number;
+  contestedResource: string;
+  bumpedChainResult: 'rescheduled' | 'infeasible';
+}
+
+// ── ChainContextEngine ─────────────────────────────────────────────
+
+export class ChainContextEngine {
+
+  /**
+   * Evaluate an entire chain and return the best ChainContextCombo.
+   * Returns null if no feasible combination exists.
+   */
+  public evaluateChain(
+    chain: CTPProcess,
+    allContexts: ScheduleContexts,
+    landscape: SchedulingLandscape,
+    scoring: CTPScoring,
+    maxCombos?: number,
+  ): ChainContextCombo | null {
+    const tasks = chain.tasks;
+    if (!tasks || tasks.length === 0) return null;
+
+    // Step 1: Collect feasible contexts per task
+    const taskContextsMap = this.getContextsPerTask(tasks, allContexts);
+
+    // Build task array sorted by sequence (chain order)
+    const taskArray: CTPTask[] = [];
+    tasks.forEach(t => taskArray.push(t));
+    taskArray.sort((a, b) => a.sequence - b.sequence);
+    for (const task of taskArray) {
+      const ctxs = taskContextsMap.get(task.key);
+      if (!ctxs || ctxs.length === 0) return null;
+    }
+
+    // Step 2: Detect lane resources
+    const lanes = this.detectLanes(tasks);
+
+    // Step 3: Build cross-product grouped by lane
+    const cap = maxCombos ?? landscape.appSettings?.maxChainCombos ?? 500;
+    const combos = this.buildLaneCombos(taskArray, taskContextsMap, lanes, cap);
+    if (combos.length === 0) return null;
+
+    // Step 4: Propagate timing constraints
+    this.propagateAll(combos, taskArray);
+
+    // Step 5: Eliminate infeasible combos
+    const feasible = combos.filter(c => c.feasible);
+    if (feasible.length === 0) return null;
+
+    // Step 6: Score surviving combos
+    this.scoreChainCombos(feasible, landscape, scoring);
+
+    // Step 7: Try all combos — assign start times and collect valid placements
+    feasible.sort((a, b) => a.chainScore - b.chainScore);
+
+    const validCombos: ChainContextCombo[] = [];
+    for (const candidate of feasible) {
+      this.assignStartTimes(candidate);
+
+      const allAssigned = candidate.startTimes.every(
+        st => st.assignedStart > 0 && st.assignedEnd > st.assignedStart
+      );
+      if (!allAssigned) continue;
+      validCombos.push(candidate);
+    }
+
+    if (validCombos.length === 0) return null;
+
+    // Pick the combo with the earliest first-task assignedStart.
+    // Among ties, prefer lower chainScore.
+    validCombos.sort((a, b) => {
+      const startDiff = a.startTimes[0].assignedStart - b.startTimes[0].assignedStart;
+      if (startDiff !== 0) return startDiff;
+      return a.chainScore - b.chainScore;
+    });
+
+    return validCombos[0];
+  }
+
+  // ── Step 1: Contexts per task ──
+
+  private getContextsPerTask(
+    tasks: CTPTaskList,
+    allContexts: ScheduleContexts,
+  ): Map<string, ScheduleContext[]> {
+    const map = new Map<string, ScheduleContext[]>();
+
+    tasks.forEach(task => {
+      const taskContexts = allContexts.byTask.getEntity(task.hashKey);
+      if (taskContexts) {
+        const contexts: ScheduleContext[] = [];
+        taskContexts.contexts.forEach(ctx => {
+          if (ctx.slot.hasStartTimes()) {
+            contexts.push(ctx);
+          }
+        });
+        map.set(task.key, contexts);
+      } else {
+        map.set(task.key, []);
+      }
+    });
+
+    return map;
+  }
+
+  // ── Step 2: Lane detection ──
+
+  public detectLanes(tasks: CTPTaskList): LaneDefinition[] {
+    const lanes: LaneDefinition[] = [];
+
+    // Collect primary resource preferences from each task
+    const primaryByTask = new Map<string, { index: number; prefKeys: string[] }[]>();
+    tasks.forEach(task => {
+      const primaries: { index: number; prefKeys: string[] }[] = [];
+      task.capacityResources?.forEach((tr, idx) => {
+        if (tr.isPrimary) {
+          const prefKeys = tr.getEffectivePreferences().map(p => p.resourceKey);
+          if (tr.resource && prefKeys.length === 0) prefKeys.push(tr.resource);
+          primaries.push({ index: idx, prefKeys });
+        }
+      });
+      primaryByTask.set(task.key, primaries);
+    });
+
+    // Find shared primary resources across task pairs
+    const taskKeys = Array.from(primaryByTask.keys());
+    const visited = new Set<string>();
+
+    for (let i = 0; i < taskKeys.length; i++) {
+      for (let j = i + 1; j < taskKeys.length; j++) {
+        const taskA = primaryByTask.get(taskKeys[i])!;
+        const taskB = primaryByTask.get(taskKeys[j])!;
+
+        for (const primA of taskA) {
+          for (const primB of taskB) {
+            const overlap = primA.prefKeys.filter(k => primB.prefKeys.includes(k));
+            if (overlap.length > 0) {
+              const laneKey = overlap.sort().join(',');
+              if (!visited.has(laneKey)) {
+                visited.add(laneKey);
+
+                const laneTasks: string[] = [];
+                const allPrefKeys = new Set<string>();
+
+                tasks.forEach(task => {
+                  const prims = primaryByTask.get(task.key) || [];
+                  for (const p of prims) {
+                    if (p.prefKeys.some(k => overlap.includes(k))) {
+                      laneTasks.push(task.key);
+                      p.prefKeys.forEach(k => allPrefKeys.add(k));
+                      break;
+                    }
+                  }
+                });
+
+                lanes.push({
+                  laneIndex: primA.index,
+                  taskKeys: laneTasks,
+                  resourceKeys: Array.from(allPrefKeys),
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return lanes;
+  }
+
+  // ── Step 3: Build lane combos (cross-product) ──
+
+  private buildLaneCombos(
+    tasks: CTPTask[],
+    taskContextsMap: Map<string, ScheduleContext[]>,
+    lanes: LaneDefinition[],
+    maxCombos: number,
+  ): ChainContextCombo[] {
+    if (lanes.length === 0) {
+      return this.simpleCrossProduct(tasks, taskContextsMap, maxCombos);
+    }
+
+    const combos: ChainContextCombo[] = [];
+
+    for (const lane of lanes) {
+      for (const resourceKey of lane.resourceKeys) {
+        const contextSets: ScheduleContext[][] = [];
+        let viable = true;
+
+        for (const task of tasks) {
+          const taskContexts = taskContextsMap.get(task.key) || [];
+
+          if (lane.taskKeys.includes(task.key)) {
+            // Lane task — only contexts using this lane resource
+            const filtered = taskContexts.filter(ctx =>
+              this.contextUsesResource(ctx, resourceKey)
+            );
+            if (filtered.length === 0) { viable = false; break; }
+            contextSets.push(filtered);
+          } else {
+            // Non-lane task — all contexts
+            if (taskContexts.length === 0) { viable = false; break; }
+            contextSets.push(taskContexts);
+          }
+        }
+
+        if (!viable) continue;
+
+        // Safety cap individual sets if cross-product would be enormous (>10k)
+        this.preCapContextSets(contextSets, 10000);
+
+        const crossProduct = this.crossProductContexts(contextSets);
+
+        for (const combo of crossProduct) {
+          const laneMap = new Map<number, string>();
+          laneMap.set(lane.laneIndex, resourceKey);
+
+          combos.push({
+            chainKey: tasks[0].linkId?.name || '',
+            contexts: combo,
+            laneResources: laneMap,
+            startTimes: [],
+            chainScore: Number.MAX_VALUE,
+            feasible: true,
+            totalGap: 0,
+          });
+        }
+      }
+    }
+
+    return this.capCombos(combos, maxCombos);
+  }
+
+  private simpleCrossProduct(
+    tasks: CTPTask[],
+    taskContextsMap: Map<string, ScheduleContext[]>,
+    maxCombos: number,
+  ): ChainContextCombo[] {
+    const contextSets: ScheduleContext[][] = [];
+    for (const task of tasks) {
+      const taskContexts = taskContextsMap.get(task.key) || [];
+      if (taskContexts.length === 0) return [];
+      contextSets.push(taskContexts);
+    }
+
+    this.preCapContextSets(contextSets, 10000);
+
+    const crossProduct = this.crossProductContexts(contextSets);
+
+    const combos = crossProduct.map(combo => ({
+      chainKey: tasks[0].linkId?.name || '',
+      contexts: combo,
+      laneResources: new Map<number, string>(),
+      startTimes: [] as ChainStartTime[],
+      chainScore: Number.MAX_VALUE,
+      feasible: true,
+      totalGap: 0,
+    }));
+
+    return this.capCombos(combos, maxCombos);
+  }
+
+  /**
+   * Safety cap: if cross-product would exceed hardLimit, trim each set
+   * using nth-root sizing so diversity is preserved across all sets.
+   */
+  private preCapContextSets(contextSets: ScheduleContext[][], hardLimit: number): void {
+    let estimate = 1;
+    for (const set of contextSets) estimate *= set.length;
+    if (estimate <= hardLimit) return;
+
+    const n = contextSets.length;
+    const perSetCap = Math.max(3, Math.floor(Math.pow(hardLimit, 1 / n)));
+    for (let i = 0; i < contextSets.length; i++) {
+      if (contextSets[i].length > perSetCap) {
+        contextSets[i].sort((a, b) => a.blendedScore.score - b.blendedScore.score);
+        contextSets[i] = contextSets[i].slice(0, perSetCap);
+      }
+    }
+  }
+
+  /**
+   * Stratified sampling: guarantee at least one combo per lane resource
+   * for coverage, then fill remaining slots with strided sampling for diversity.
+   */
+  private capCombos(combos: ChainContextCombo[], maxCombos: number): ChainContextCombo[] {
+    if (combos.length <= maxCombos) return combos;
+
+    const result: ChainContextCombo[] = [];
+    const used = new Set<number>();
+
+    // 1. Guarantee one combo per lane resource (coverage)
+    const byLane = new Map<string, number[]>();
+    combos.forEach((combo, idx) => {
+      const laneKey = Array.from(combo.laneResources.values()).join(',') || 'none';
+      if (!byLane.has(laneKey)) byLane.set(laneKey, []);
+      byLane.get(laneKey)!.push(idx);
+    });
+
+    for (const [, indices] of byLane) {
+      // Pick the middle element deterministically for each lane group
+      const pick = indices[Math.floor(indices.length / 2)];
+      result.push(combos[pick]);
+      used.add(pick);
+    }
+
+    // 2. Fill remaining slots with strided sampling across the full array
+    const remaining = maxCombos - result.length;
+    if (remaining > 0) {
+      const stride = combos.length / remaining;
+      for (let i = 0; i < remaining; i++) {
+        const pick = Math.floor(i * stride);
+        if (!used.has(pick)) {
+          result.push(combos[pick]);
+          used.add(pick);
+        } else {
+          // Find nearest unused
+          for (let j = pick + 1; j < combos.length; j++) {
+            if (!used.has(j)) {
+              result.push(combos[j]);
+              used.add(j);
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    return result;
+  }
+
+  private contextUsesResource(ctx: ScheduleContext, resourceKey: string): boolean {
+    let found = false;
+    ctx.slot.resources?.forEach(slot => {
+      if (slot.resource?.key === resourceKey) found = true;
+    });
+    return found;
+  }
+
+  private crossProductContexts(contextSets: ScheduleContext[][]): ScheduleContext[][] {
+    if (contextSets.length === 0) return [];
+    if (contextSets.length === 1) return contextSets[0].map(c => [c]);
+
+    let result: ScheduleContext[][] = contextSets[0].map(c => [c]);
+
+    for (let i = 1; i < contextSets.length; i++) {
+      const newResult: ScheduleContext[][] = [];
+      for (const existing of result) {
+        for (const ctx of contextSets[i]) {
+          newResult.push([...existing, ctx]);
+        }
+      }
+      result = newResult;
+    }
+
+    return result;
+  }
+
+  // ── Step 4: Timing propagation ──
+
+  private propagateAll(combos: ChainContextCombo[], tasks: CTPTask[]): void {
+    for (const combo of combos) {
+      this.propagateCombo(combo, tasks);
+    }
+  }
+
+  private propagateCombo(combo: ChainContextCombo, tasks: CTPTask[]): void {
+    const bounds: (ContextTimeBounds | null)[] = combo.contexts.map(
+      ctx => this.getContextTimeBounds(ctx)
+    );
+
+    for (let i = 0; i < bounds.length; i++) {
+      if (!bounds[i]) { combo.feasible = false; return; }
+    }
+
+    // Working copies for propagation
+    const working: ChainStartTime[] = bounds.map((b, i) => ({
+      taskKey: tasks[i].key,
+      eStartW: b!.eStartW,
+      lStartW: b!.lStartW,
+      eEndW: b!.eEndW,
+      lEndW: b!.lEndW,
+      assignedStart: 0,
+      assignedEnd: 0,
+    }));
+
+    // FORWARD PASS: tighten successor based on predecessor
+    for (let i = 1; i < working.length; i++) {
+      const pred = working[i - 1];
+      const succ = working[i];
+      const task = tasks[i];
+      const maxGap = task.linkId?.maxGap ?? null;
+      const duration = bounds[i]!.duration;
+      // State-change offset shifts the predecessor's actual end on the resource
+      const predOffset = bounds[i - 1]!.processChangeDuration;
+
+      // Floor: successor can't start before predecessor's effective end
+      const predEffectiveEEnd = pred.eEndW + predOffset;
+      const predEffectiveLEnd = pred.lEndW + predOffset;
+      if (predEffectiveEEnd > succ.eStartW) {
+        succ.eStartW = predEffectiveEEnd;
+        succ.eEndW = succ.eStartW + duration;
+      }
+
+      // Ceiling: if maxGap is set, successor must start within maxGap of predecessor's latest effective end
+      if (maxGap !== null) {
+        const ceiling = predEffectiveLEnd + maxGap;
+        if (ceiling < succ.lStartW) {
+          succ.lStartW = ceiling;
+          succ.lEndW = succ.lStartW + duration;
+        }
+      }
+
+      if (succ.eStartW > succ.lStartW) { combo.feasible = false; return; }
+    }
+
+    // BACKWARD PASS: tighten predecessor based on successor
+    for (let i = working.length - 2; i >= 0; i--) {
+      const pred = working[i];
+      const succ = working[i + 1];
+      const succTask = tasks[i + 1];
+      const maxGap = succTask.linkId?.maxGap ?? null;
+      const predDuration = bounds[i]!.duration;
+      const predOffset = bounds[i]!.processChangeDuration;
+
+      // Predecessor must finish (including state-change offset) before successor's latest start
+      const latestPredStart = succ.lStartW - predDuration - predOffset;
+      if (latestPredStart < pred.lStartW) {
+        pred.lStartW = latestPredStart;
+        pred.lEndW = pred.lStartW + predDuration;
+      }
+
+      // If maxGap is set: predecessor's effective end can't be earlier than succ.eStartW - maxGap
+      if (maxGap !== null) {
+        const earliestPredEffEnd = succ.eStartW - maxGap;
+        const earliestPredStart = earliestPredEffEnd - predDuration - predOffset;
+        if (earliestPredStart > pred.eStartW) {
+          pred.eStartW = earliestPredStart;
+          pred.eEndW = pred.eStartW + predDuration;
+        }
+      }
+
+      if (pred.eStartW > pred.lStartW) { combo.feasible = false; return; }
+    }
+
+    combo.startTimes = working;
+
+    // Calculate total gap (accounting for state-change offsets)
+    combo.totalGap = 0;
+    for (let i = 1; i < working.length; i++) {
+      const predOffset = bounds[i - 1]!.processChangeDuration;
+      const gap = working[i].eStartW - (working[i - 1].eEndW + predOffset);
+      if (gap > 0) combo.totalGap += gap;
+    }
+  }
+
+  private getContextTimeBounds(ctx: ScheduleContext): ContextTimeBounds | null {
+    const st = ctx.slot.startTimes;
+    if (!st) return null;
+
+    let node = st.head;
+    if (!node) return null;
+
+    let eStartW = Number.MAX_VALUE;
+    let lStartW = -Number.MAX_VALUE;
+    let eEndW = Number.MAX_VALUE;
+    let lEndW = -Number.MAX_VALUE;
+    let duration = 0;
+    let processChangeDuration = 0;
+
+    while (node) {
+      if (node.data.eStartW < eStartW) eStartW = node.data.eStartW;
+      if (node.data.lStartW > lStartW) lStartW = node.data.lStartW;
+      if (node.data.eEndW < eEndW) eEndW = node.data.eEndW;
+      if (node.data.lEndW > lEndW) lEndW = node.data.lEndW;
+      duration = node.data.duration;
+      if (node.data.processChangeDuration > processChangeDuration) {
+        processChangeDuration = node.data.processChangeDuration;
+      }
+      node = node.next;
+    }
+
+    return { eStartW, lStartW, eEndW, lEndW, duration, processChangeDuration };
+  }
+
+  private truncateContextStartTimes(
+    ctx: ScheduleContext,
+    newEStartW: number,
+    newLStartW: number,
+  ): void {
+    const st = ctx.slot.startTimes;
+    if (!st) return;
+
+    let node = st.head;
+    while (node) {
+      const next = node.next;
+
+      if (node.data.lStartW < newEStartW || node.data.eStartW > newLStartW) {
+        st.deleteNode(node);
+      } else {
+        if (node.data.eStartW < newEStartW) {
+          node.data.eStartW = newEStartW;
+          node.data.eEndW = newEStartW + node.data.duration;
+        }
+        if (node.data.lStartW > newLStartW) {
+          node.data.lStartW = newLStartW;
+          node.data.lEndW = newLStartW + node.data.duration;
+        }
+        if (!node.data.stillFeasible()) {
+          st.deleteNode(node);
+        }
+      }
+
+      node = next;
+    }
+  }
+
+  // ── Step 6: Chain scoring ──
+
+  private scoreChainCombos(
+    combos: ChainContextCombo[],
+    landscape: SchedulingLandscape,
+    scoring: CTPScoring,
+  ): void {
+    const scoringEngine = new ScoringEngine();
+
+    for (const combo of combos) {
+      scoringEngine.computeScores(landscape, combo.contexts, scoring);
+
+      let chainScore = 0;
+      for (const ctx of combo.contexts) {
+        chainScore += ctx.blendedScore.score;
+      }
+
+      // Gap penalty: 0.1 per minute of total gap
+      const gapPenalty = (combo.totalGap / 60) * 0.1;
+      chainScore += gapPenalty;
+
+      combo.chainScore = chainScore;
+    }
+  }
+
+  // ── Step 7: Assign start times ──
+
+  public assignStartTimes(combo: ChainContextCombo): void {
+    const task0St = combo.contexts[0]?.slot.startTimes;
+    if (!task0St?.head) return;
+
+    const propagatedEStart0 = combo.startTimes[0].eStartW;
+    const propagatedLStart0 = combo.startTimes[0].lStartW;
+    const task0Duration = task0St.head.data.duration;
+
+    // Collect candidate starts for Task 0:
+    // 1. Earliest and latest per start-time node (direct availability)
+    // 2. Successor-derived: work backwards from each successor's start-time
+    //    node boundaries to compute what Task 0 start would align the chain
+    const candidateSet = new Set<number>();
+    let node = task0St.head as (typeof task0St.head) | null;
+    while (node) {
+      const earliest = Math.max(node.data.eStartW, propagatedEStart0);
+      const latest = Math.min(node.data.lStartW, propagatedLStart0);
+      if (earliest <= latest) {
+        candidateSet.add(earliest);
+        candidateSet.add(latest);
+      }
+      node = node.next;
+    }
+
+    // Backward-derived candidates: for each successor's start-time node,
+    // walk backward through the chain to compute the required Task 0 start.
+    // Only add if the derived start falls within a Task 0 start-time node.
+    for (let s = 1; s < combo.contexts.length; s++) {
+      const succSt = combo.contexts[s].slot.startTimes;
+      if (!succSt) continue;
+      let sNode = succSt.head as (typeof succSt.head) | null;
+      while (sNode) {
+        let targetStart = sNode.data.eStartW;
+        for (let p = s - 1; p >= 0; p--) {
+          const predDuration = combo.contexts[p].task.duration?.duration() ?? 0;
+          targetStart = targetStart - predDuration;
+        }
+        if (targetStart >= propagatedEStart0 && targetStart <= propagatedLStart0
+            && this.isWithinStartTimeNode(task0St, targetStart)) {
+          candidateSet.add(targetStart);
+        }
+        sNode = sNode.next;
+      }
+    }
+
+    const candidates = Array.from(candidateSet).sort((a, b) => a - b);
+
+    // For each Task 0 candidate, simulate forward — collect all valid placements
+    const validPlacements: { start: number; end: number }[][] = [];
+
+    for (const t0Start of candidates) {
+      const trial: { start: number; end: number }[] = [
+        { start: t0Start, end: t0Start + task0Duration },
+      ];
+
+      let feasible = true;
+      for (let i = 1; i < combo.contexts.length; i++) {
+        const prevEnd = trial[i - 1].end;
+        const prevOffset = this.getAssignedProcessChangeDuration(
+          combo.contexts[i - 1], trial[i - 1].start);
+        const predEffectiveEnd = prevEnd + prevOffset;
+        const maxGap = combo.contexts[i].task.linkId?.maxGap ?? null;
+        const propagatedEStart = combo.startTimes[i].eStartW;
+
+        const succStart = this.findEarliestFeasibleStart(
+          combo.contexts[i], predEffectiveEnd, propagatedEStart);
+        if (succStart === null) { feasible = false; break; }
+
+        if (maxGap !== null && succStart > predEffectiveEnd + maxGap) {
+          feasible = false;
+          break;
+        }
+
+        const duration = combo.contexts[i].task.duration?.duration() ?? 0;
+        trial.push({ start: succStart, end: succStart + duration });
+      }
+
+      if (feasible) {
+        validPlacements.push(trial);
+      }
+    }
+
+    if (validPlacements.length === 0) return;
+
+    // Pick the placement with smallest total gap (tightest chain)
+    let bestPlacement = validPlacements[0];
+    let bestGap = Number.MAX_VALUE;
+    for (const placement of validPlacements) {
+      let totalGap = 0;
+      for (let i = 1; i < placement.length; i++) {
+        const gap = placement[i].start - placement[i - 1].end;
+        if (gap > 0) totalGap += gap;
+      }
+      if (totalGap < bestGap) {
+        bestGap = totalGap;
+        bestPlacement = placement;
+      }
+    }
+
+    for (let i = 0; i < bestPlacement.length; i++) {
+      combo.startTimes[i].assignedStart = bestPlacement[i].start;
+      combo.startTimes[i].assignedEnd = bestPlacement[i].end;
+    }
+  }
+
+  /**
+   * Check if a given start time falls within any start-time node's [eStartW, lStartW] range.
+   */
+  private isWithinStartTimeNode(startTimes: any, start: number): boolean {
+    let node = startTimes.head;
+    while (node) {
+      if (start >= node.data.eStartW && start <= node.data.lStartW) return true;
+      node = node.next;
+    }
+    return false;
+  }
+
+  /**
+   * Find the earliest start from a context's start-time nodes that is
+   * >= predEffectiveEnd and >= propagatedEStart.
+   * Respects cadence: if the task has cadenceIntervalMinutes, snaps up
+   * to the next cadence boundary within the node's range.
+   */
+  private findEarliestFeasibleStart(
+    ctx: ScheduleContext, predEffectiveEnd: number, propagatedEStart: number,
+  ): number | null {
+    const st = ctx.slot.startTimes;
+    if (!st) return null;
+
+    const cadence = ctx.task?.cadenceIntervalMinutes;
+    const cadenceSec = cadence ? cadence * 60 : 0;
+
+    let best = Number.MAX_VALUE;
+    let node = st.head;
+    while (node) {
+      let candidateStart = Math.max(node.data.eStartW, predEffectiveEnd, propagatedEStart);
+
+      // Snap to next cadence boundary if needed
+      if (cadenceSec > 0 && candidateStart % cadenceSec !== 0) {
+        candidateStart = Math.ceil(candidateStart / cadenceSec) * cadenceSec;
+      }
+
+      if (candidateStart <= node.data.lStartW && candidateStart < best) {
+        best = candidateStart;
+      }
+      node = node.next;
+    }
+    return best < Number.MAX_VALUE ? best : null;
+  }
+
+  /**
+   * Get the processChangeDuration for a specific assigned start time within a context.
+   * Finds the startTime node that covers the assigned start and returns its offset.
+   */
+  private getAssignedProcessChangeDuration(ctx: ScheduleContext, assignedStart: number): number {
+    const st = ctx.slot.startTimes;
+    if (!st) return 0;
+
+    let node = st.head;
+    while (node) {
+      if (assignedStart >= node.data.eStartW && assignedStart <= node.data.lStartW) {
+        return node.data.processChangeDuration;
+      }
+      node = node.next;
+    }
+
+    // Fallback: return head's processChangeDuration
+    return st.head?.data.processChangeDuration ?? 0;
+  }
+
+  // ── Commit chain ──
+
+  public commitChain(
+    combo: ChainContextCombo,
+    scheduleEngine: ScheduleEngine,
+    landscape: SchedulingLandscape,
+    direction: number,
+  ): BestScheduleContext[] {
+    const results: BestScheduleContext[] = [];
+
+    for (let i = 0; i < combo.contexts.length; i++) {
+      const ctx = combo.contexts[i];
+      const assignedStart = combo.startTimes[i].assignedStart;
+
+      const startTimeNode = this.findStartTimeNode(ctx, assignedStart);
+      if (!startTimeNode) continue;
+
+      const best = new BestScheduleContext(ctx, startTimeNode, assignedStart);
+      scheduleEngine.schedule(landscape, ctx.task, best, direction);
+      results.push(best);
+    }
+
+    return results;
+  }
+
+  private findStartTimeNode(ctx: ScheduleContext, assignedStart: number): CTPStartTime | null {
+    const st = ctx.slot.startTimes;
+    if (!st) return null;
+
+    let node = st.head;
+    while (node) {
+      if (assignedStart >= node.data.eStartW && assignedStart <= node.data.lStartW) {
+        return node.data;
+      }
+      node = node.next;
+    }
+
+    // Fallback: return head if available
+    return st.head?.data ?? null;
+  }
+}
+
+// ── Standalone Bump-and-Retry Functions ─────────────────────────────
+
+export function findBlockers(
+  chain: CTPProcess,
+  landscape: SchedulingLandscape,
+): BlockerInfo[] {
+  const blockers: BlockerInfo[] = [];
+  const chainPriority = getChainPriority(chain, landscape);
+
+  chain.tasks?.forEach(task => {
+    if (!task.capacityResources) return;
+
+    task.capacityResources.forEach(tr => {
+      const prefs = tr.getEffectivePreferences();
+
+      for (const pref of prefs) {
+        const resource = landscape.resources?.getEntity(pref.resourceKey);
+        if (!resource || !resource.assignments) continue;
+
+        let node = resource.assignments.head;
+        while (node) {
+          const assignment = node.data;
+
+          if (task.window && assignment.endW > task.window.startW && assignment.startW < task.window.endW) {
+            const blockerTaskKey = assignment.name;
+            if (!blockerTaskKey) { node = node.next; continue; }
+
+            const blockerTask = landscape.tasks?.getEntity(blockerTaskKey);
+            if (!blockerTask) { node = node.next; continue; }
+
+            const blockerChainKey = blockerTask.linkId?.name || blockerTaskKey;
+            if (blockerChainKey === (chain.key || chain.tasks?.at(0)?.linkId?.name)) {
+              node = node.next;
+              continue;
+            }
+
+            const blockerChain = landscape.processes?.getEntity(blockerChainKey);
+            const blockerPriority = getChainPriority(blockerChain, landscape);
+
+            blockers.push({
+              blockedChainKey: chain.key || chain.tasks?.at(0)?.linkId?.name || '',
+              blockedChainPriority: chainPriority,
+              resourceKey: pref.resourceKey,
+              blockerTaskKey,
+              blockerChainKey,
+              blockerChainPriority: blockerPriority,
+              blockWindow: { start: assignment.startW, end: assignment.endW },
+            });
+          }
+          node = node.next;
+        }
+      }
+    });
+  });
+
+  return blockers;
+}
+
+export function getChainPriority(
+  chain: CTPProcess | undefined,
+  landscape: SchedulingLandscape,
+): number {
+  if (!chain?.tasks) return Number.MAX_VALUE;
+  let best = Number.MAX_VALUE;
+  chain.tasks.forEach(task => {
+    if (task.priority < best) best = task.priority;
+  });
+  return best;
+}
+
+export function selectBumpCandidate(
+  blockers: BlockerInfo[],
+  bumpedChains: Set<string>,
+): BlockerInfo | null {
+  const candidates = blockers.filter(b =>
+    b.blockerChainPriority > b.blockedChainPriority &&
+    !bumpedChains.has(b.blockerChainKey)
+  );
+
+  if (candidates.length === 0) return null;
+
+  // Pick the lowest-priority blocker (most expendable)
+  candidates.sort((a, b) => b.blockerChainPriority - a.blockerChainPriority);
+  return candidates[0];
+}
+
+export function unscheduleChain(
+  chain: CTPProcess,
+  landscape: SchedulingLandscape,
+  allContexts: ScheduleContexts,
+): void {
+  chain.tasks?.forEach(task => {
+    if (task.state === CTPTaskStateConstants.SCHEDULED) {
+      task.window?.reset();
+      landscape.unscheduleTask(task.key);
+      allContexts.updateRecomputeByTask(task);
+    }
+  });
+}
+
+export function markChainInfeasible(chain: CTPProcess, reason: string): void {
+  chain.tasks?.forEach(task => {
+    if (task.state !== CTPTaskStateConstants.SCHEDULED) {
+      task.addError('ChainContextEngine', reason);
+    }
+  });
+}

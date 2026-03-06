@@ -1,3 +1,5 @@
+import { BumpEvent } from '../../Engines/chaincontextengine';
+
 export interface ISolveResult {
   strategy: string;
   totalTasks: number;
@@ -6,6 +8,9 @@ export interface ISolveResult {
   infeasible: number;
   contextsEvaluated: number;
   solveTimeMs: number;
+  bumps: BumpEvent[];
+  totalBumps: number;
+  maxBumpsReached: boolean;
 }
 
 export class CTPSolveResult implements ISolveResult {
@@ -16,6 +21,9 @@ export class CTPSolveResult implements ISolveResult {
   public infeasible: number = 0;
   public contextsEvaluated: number = 0;
   public solveTimeMs: number = 0;
+  public bumps: BumpEvent[] = [];
+  public totalBumps: number = 0;
+  public maxBumpsReached: boolean = false;
 
   public debug(): void {
     console.log("=== Solve Results ===");
@@ -26,6 +34,12 @@ export class CTPSolveResult implements ISolveResult {
     console.log(`Infeasible:         ${this.infeasible}`);
     console.log(`Contexts Evaluated: ${this.contextsEvaluated}`);
     console.log(`Solve Time:         ${this.solveTimeMs.toFixed(0)}ms`);
+    if (this.totalBumps > 0) {
+      console.log(`Bumps:              ${this.totalBumps}${this.maxBumpsReached ? ' (max reached)' : ''}`);
+      for (const b of this.bumps) {
+        console.log(`  ${b.bumpedChainKey} bumped for ${b.beneficiaryChainKey} → ${b.bumpedChainResult}`);
+      }
+    }
     console.log("=====================");
   }
 }
