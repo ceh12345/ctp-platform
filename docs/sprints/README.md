@@ -34,6 +34,7 @@ _No sprints currently in progress._
 | UI Sprint 16 — WhereTo Resource Diversity | Best-per-resource selection; isBestOnResource flag; panel-only WhereTo; HRMD field availability | 2026-03-04 |
 | Solver Phase 3 — Chain Context Engine | Lane detection, cross-product combos, forward/backward propagation, bump-and-retry, earliest-start selection, stratified combo sampling, cadence-aware placement | 2026-03-06 |
 | Engine — Cadence Fix | Process-level cadence skips SETUP/TEARDOWN types; chain engine cadence-aware placement; HRMD switched to 30-min cadence | 2026-03-06 |
+| Timezone-Aware Scheduling | Hydrator reads tenant timezone from locale.json for shift expansion; Agenda panel uses tz-aware day boundaries; all 3 tenants converted to America/Denver | 2026-03-06 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
