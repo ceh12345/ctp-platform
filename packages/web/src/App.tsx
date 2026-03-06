@@ -2835,24 +2835,43 @@ function ResourceAgendaPanel({ resource, tasks, colors, horizonStart, horizonEnd
   onClose: () => void; onTaskClick: (t: any) => void;
 }) {
   // Build list of days in horizon that have availability or assignments for this resource
+  // Day boundaries are in the tenant timezone so "Monday Feb 16" means local midnight-to-midnight
   const days = useMemo(() => {
-    const hStart = horizonStart ? new Date(horizonStart) : new Date();
-    const hEnd = horizonEnd ? new Date(horizonEnd) : new Date(hStart.getTime() + 14 * 86400000);
-    const tz = _locale?.timezone;
+    const tz = _locale?.timezone || 'UTC';
+    const loc = _locale?.locale || 'en-US';
+    const hStartMs = horizonStart ? new Date(horizonStart).getTime() : Date.now();
+    const hEndMs = horizonEnd ? new Date(horizonEnd).getTime() : hStartMs + 14 * 86400000;
+
+    // Helper: get UTC offset in minutes for a given UTC timestamp in the tenant tz
+    const getOffsetMin = (utcMs: number): number => {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz, hour: 'numeric', minute: 'numeric', hour12: false,
+      }).formatToParts(new Date(utcMs));
+      const h = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
+      const m = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
+      const utcH = new Date(utcMs).getUTCHours();
+      const utcM = new Date(utcMs).getUTCMinutes();
+      return (h * 60 + m) - (utcH * 60 + utcM);
+    };
+
+    // Helper: get local midnight as UTC ms for the local date containing utcMs
+    const localMidnight = (utcMs: number): number => {
+      const off = getOffsetMin(utcMs);
+      const localMs = utcMs + off * 60000;
+      const dayMs = localMs - (localMs % 86400000); // floor to UTC day
+      return dayMs - off * 60000; // back to UTC
+    };
+
     const result: { label: string; startMs: number; endMs: number }[] = [];
+    let dayStartMs = localMidnight(hStartMs);
 
-    // Walk day by day
-    const cursor = new Date(hStart);
-    while (cursor.getTime() < hEnd.getTime()) {
-      const dayLabel = cursor.toLocaleDateString(_locale?.locale || 'en-US', {
-        weekday: 'short', month: 'short', day: 'numeric', ...(tz ? { timeZone: tz } : {}),
+    while (dayStartMs < hEndMs) {
+      const dayEndMs = localMidnight(dayStartMs + 86400000 + 3600000); // +25h to cross midnight safely
+
+      const dayLabel = new Date(dayStartMs + 12 * 3600000).toLocaleDateString(loc, {
+        weekday: 'short', month: 'short', day: 'numeric', timeZone: tz,
       });
-      const dayStartMs = cursor.getTime();
-      const nextDay = new Date(cursor);
-      nextDay.setDate(nextDay.getDate() + 1);
-      const dayEndMs = nextDay.getTime();
 
-      // Check if resource has availability or assignments on this day
       const hasAvail = resource.availability?.some((iv: any) =>
         new Date(iv.start).getTime() < dayEndMs && new Date(iv.end).getTime() > dayStartMs
       );
@@ -2866,7 +2885,8 @@ function ResourceAgendaPanel({ resource, tasks, colors, horizonStart, horizonEnd
       if (hasAvail || hasAssign) {
         result.push({ label: dayLabel, startMs: dayStartMs, endMs: dayEndMs });
       }
-      cursor.setDate(cursor.getDate() + 1);
+
+      dayStartMs = dayEndMs;
     }
     return result;
   }, [resource, tasks, horizonStart, horizonEnd]);

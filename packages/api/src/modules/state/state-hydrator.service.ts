@@ -49,7 +49,9 @@ export class StateHydratorService {
     const resources = this.hydrateResources(resourceData);
     const tasks = this.hydrateTasks(taskData, horizon);
 
-    this.hydrateCalendars(calendarData, resources, horizon);
+    const locale = this.configService.getLocale();
+    const tenantTimezone: string = locale?.timezone ?? 'UTC';
+    this.hydrateCalendars(calendarData, resources, horizon, tenantTimezone);
 
     const stateChanges = this.hydrateStateChanges(stateChangeData);
 
@@ -357,6 +359,7 @@ export class StateHydratorService {
     data: ICalendarData[],
     resources: CTPResources,
     horizon: CTPHorizon,
+    tenantTimezone: string = 'UTC',
   ): void {
     for (const cal of data) {
       const resource = resources.getEntity(cal.resourceKey);
@@ -376,9 +379,10 @@ export class StateHydratorService {
       }
 
       // Shift-based format — expand across horizon
+      // Shift times are in tenant-local time; convert to UTC for the engine
       if (cal.shifts) {
-        const hStart = horizon.startDate;
-        const hEnd = horizon.endDate;
+        const hStart = horizon.startDate.setZone(tenantTimezone);
+        const hEnd = horizon.endDate.setZone(tenantTimezone);
         for (const shift of cal.shifts) {
           const dayNums = shift.days.map(d => StateHydratorService.DAY_MAP[d]).filter(Boolean);
           const [startH, startM] = shift.start.split(':').map(Number);
@@ -387,8 +391,8 @@ export class StateHydratorService {
           let day = hStart.startOf('day');
           while (day < hEnd) {
             if (dayNums.includes(day.weekday)) {
-              const intervalStart = day.set({ hour: startH, minute: startM, second: 0 });
-              const intervalEnd = day.set({ hour: endH, minute: endM, second: 0 });
+              const intervalStart = day.set({ hour: startH, minute: startM, second: 0 }).toUTC();
+              const intervalEnd = day.set({ hour: endH, minute: endM, second: 0 }).toUTC();
               const startW = CTPDateTime.fromDateTime(intervalStart);
               const endW = CTPDateTime.fromDateTime(intervalEnd);
               available.add(new CTPInterval(startW, endW, 1));

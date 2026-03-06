@@ -4,10 +4,10 @@
     "name": "Machine Housing (WO-1001)",
     "type": "PROCESS",
     "process": "cnc-machine",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-14T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-14T07:00:00Z",
     "durationSeconds": 14400,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -62,10 +62,10 @@
     "name": "Deburr Housing (WO-1001)",
     "type": "PROCESS",
     "process": "cnc-deburr",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-14T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-14T07:00:00Z",
     "durationSeconds": 3600,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -88,10 +88,10 @@
     "name": "Assemble Widget-A (WO-1001)",
     "type": "PROCESS",
     "process": "assembly",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-14T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-14T07:00:00Z",
     "durationSeconds": 10800,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -113,7 +113,7 @@
       {
         "productKey": "PROD-HOUSING",
         "requiredQty": 500,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       },
       {
@@ -125,7 +125,7 @@
       {
         "productKey": "MAT-SEAL",
         "requiredQty": 500,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       }
     ],
@@ -148,10 +148,10 @@
     "name": "QC Widget-A (WO-1001)",
     "type": "PROCESS",
     "process": "qc-inspect",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-14T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-14T07:00:00Z",
     "durationSeconds": 1800,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -174,10 +174,10 @@
     "name": "Machine Bracket (WO-1002)",
     "type": "PROCESS",
     "process": "cnc-machine",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-16T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-16T07:00:00Z",
     "durationSeconds": 9000,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -222,10 +222,10 @@
     "name": "Assemble Widget-B (WO-1002)",
     "type": "PROCESS",
     "process": "assembly",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-16T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-16T07:00:00Z",
     "durationSeconds": 7200,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -247,7 +247,7 @@
       {
         "productKey": "PROD-BRACKET",
         "requiredQty": 300,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       },
       {
@@ -259,7 +259,7 @@
       {
         "productKey": "MAT-FAST",
         "requiredQty": 600,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       }
     ],
@@ -282,10 +282,10 @@
     "name": "QC Widget-B (WO-1002)",
     "type": "PROCESS",
     "process": "qc-inspect",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-16T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-16T07:00:00Z",
     "durationSeconds": 1800,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -308,10 +308,10 @@
     "name": "Machine Housing (WO-1003)",
     "type": "PROCESS",
     "process": "cnc-machine",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-13T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-13T07:00:00Z",
     "durationSeconds": 7200,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -356,10 +356,10 @@
     "name": "Machine Bracket (WO-1003)",
     "type": "PROCESS",
     "process": "cnc-machine",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-13T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-13T07:00:00Z",
     "durationSeconds": 6000,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -404,10 +404,10 @@
     "name": "Assemble Widget-C (WO-1003)",
     "type": "PROCESS",
     "process": "assembly",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-13T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-13T07:00:00Z",
     "durationSeconds": 7200,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -429,19 +429,19 @@
       {
         "productKey": "PROD-HOUSING",
         "requiredQty": 200,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       },
       {
         "productKey": "PROD-BRACKET",
         "requiredQty": 200,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       },
       {
         "productKey": "MAT-SEALKIT",
         "requiredQty": 200,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       }
     ],
@@ -464,10 +464,10 @@
     "name": "QC Widget-C (WO-1003)",
     "type": "PROCESS",
     "process": "qc-inspect",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-13T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-13T07:00:00Z",
     "durationSeconds": 1800,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -490,10 +490,10 @@
     "name": "Machine Housing (WO-1004)",
     "type": "PROCESS",
     "process": "cnc-machine",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-18T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-18T07:00:00Z",
     "durationSeconds": 12000,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -538,10 +538,10 @@
     "name": "Deburr Housing (WO-1004)",
     "type": "PROCESS",
     "process": "cnc-deburr",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-18T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-18T07:00:00Z",
     "durationSeconds": 2700,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -564,10 +564,10 @@
     "name": "Assemble Widget-A (WO-1004)",
     "type": "PROCESS",
     "process": "assembly",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-18T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-18T07:00:00Z",
     "durationSeconds": 9000,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -589,7 +589,7 @@
       {
         "productKey": "PROD-HOUSING",
         "requiredQty": 400,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       },
       {
@@ -601,7 +601,7 @@
       {
         "productKey": "MAT-SEAL",
         "requiredQty": 400,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       }
     ],
@@ -624,10 +624,10 @@
     "name": "QC Widget-A (WO-1004)",
     "type": "PROCESS",
     "process": "qc-inspect",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-18T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-18T07:00:00Z",
     "durationSeconds": 1800,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -650,10 +650,10 @@
     "name": "Machine Housing (WO-1005)",
     "type": "PROCESS",
     "process": "cnc-machine",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-12T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-12T07:00:00Z",
     "durationSeconds": 9000,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -698,10 +698,10 @@
     "name": "Machine Bracket (WO-1005)",
     "type": "PROCESS",
     "process": "cnc-machine",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-12T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-12T07:00:00Z",
     "durationSeconds": 7500,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -746,10 +746,10 @@
     "name": "Assemble Widget-C (WO-1005)",
     "type": "PROCESS",
     "process": "assembly",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-12T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-12T07:00:00Z",
     "durationSeconds": 9000,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -771,19 +771,19 @@
       {
         "productKey": "PROD-HOUSING",
         "requiredQty": 250,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       },
       {
         "productKey": "PROD-BRACKET",
         "requiredQty": 250,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       },
       {
         "productKey": "MAT-SEALKIT",
         "requiredQty": 250,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       }
     ],
@@ -806,10 +806,10 @@
     "name": "QC Widget-C (WO-1005)",
     "type": "PROCESS",
     "process": "qc-inspect",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-12T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-12T07:00:00Z",
     "durationSeconds": 1800,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -832,10 +832,10 @@
     "name": "Machine Bracket (WO-1006)",
     "type": "PROCESS",
     "process": "cnc-machine",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-20T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-20T07:00:00Z",
     "durationSeconds": 4500,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -880,10 +880,10 @@
     "name": "Assemble Widget-B (WO-1006)",
     "type": "PROCESS",
     "process": "assembly",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-20T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-20T07:00:00Z",
     "durationSeconds": 3600,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -905,7 +905,7 @@
       {
         "productKey": "PROD-BRACKET",
         "requiredQty": 150,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       },
       {
@@ -917,7 +917,7 @@
       {
         "productKey": "MAT-FAST",
         "requiredQty": 300,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       }
     ],
@@ -940,10 +940,10 @@
     "name": "QC Widget-B (WO-1006)",
     "type": "PROCESS",
     "process": "qc-inspect",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-20T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-20T07:00:00Z",
     "durationSeconds": 1800,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -966,10 +966,10 @@
     "name": "Pack Widget-B (WO-1006)",
     "type": "PROCESS",
     "process": "packaging",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-20T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-20T07:00:00Z",
     "durationSeconds": 1800,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -992,10 +992,10 @@
     "name": "Pack Widget-A (WO-1001)",
     "type": "PROCESS",
     "process": "packaging",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-14T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-14T07:00:00Z",
     "durationSeconds": 3600,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -1018,10 +1018,10 @@
     "name": "Pack Widget-C (WO-1005)",
     "type": "PROCESS",
     "process": "packaging",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-12T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-12T07:00:00Z",
     "durationSeconds": 3600,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -1044,10 +1044,10 @@
     "name": "Machine Flex Part (WO-FLEX)",
     "type": "PROCESS",
     "process": "cnc-machine",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-18T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-18T07:00:00Z",
     "durationSeconds": 10800,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -1116,10 +1116,10 @@
     "name": "Assemble Flex Widget (WO-FLEX)",
     "type": "PROCESS",
     "process": "assembly",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-18T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-18T07:00:00Z",
     "durationSeconds": 5400,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -1141,13 +1141,13 @@
       {
         "productKey": "PROD-HOUSING",
         "requiredQty": 75,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       },
       {
         "productKey": "MAT-SEALKIT",
         "requiredQty": 75,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       }
     ],
@@ -1170,10 +1170,10 @@
     "name": "Machine Float Part (WO-FLOAT)",
     "type": "PROCESS",
     "process": "cnc-machine",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-20T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-20T07:00:00Z",
     "durationSeconds": 7200,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -1242,10 +1242,10 @@
     "name": "Assemble Float Widget (WO-FLOAT)",
     "type": "PROCESS",
     "process": "assembly",
-    "windowStart": "2026-02-10T00:00:00Z",
-    "windowEnd": "2026-02-20T00:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-20T07:00:00Z",
     "durationSeconds": 3600,
-    "durationQty": 1.0,
+    "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
@@ -1267,13 +1267,13 @@
       {
         "productKey": "PROD-BRACKET",
         "requiredQty": 100,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       },
       {
         "productKey": "MAT-SEALKIT",
         "requiredQty": 100,
-        "scrapRate": 0.0,
+        "scrapRate": 0,
         "unitOfMeasure": "pcs"
       }
     ],

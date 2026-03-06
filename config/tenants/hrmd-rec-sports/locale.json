@@ -1,6 +1,6 @@
 {
   "locale": "en-US",
-  "timezone": "UTC",
+  "timezone": "America/Denver",
   "actions": {
     "solveAll": "Build Schedule"
   }
