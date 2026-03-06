@@ -1,189 +1,32 @@
-# Parking Lot
+# Parking Lot — Deferred Items
 
-Ideas, features, and improvements that aren't yet assigned to a sprint. Review periodically and promote to sprints as priorities shift.
+## Timing Constraints
+1. **Negative maxGap (overlap support)** — Allow successor to start BEFORE predecessor ends. `maxGap = -1800` means successor can start up to 30 minutes before predecessor completes. Use cases: QC sampling during production run, prepping recovery bay before procedure ends, starting concrete pour while final rebar is being tied. Requires two-value model (minGap + maxGap) or reinterpretation of negative values. V1 reserves negative values — treats them as null (unconstrained). Implementation: update propagation forward pass floor to `succ.start >= pred.end + maxGap` (negative maxGap allows starting before pred ends), update backward pass ceiling accordingly. Affects: chaincontextengine.ts propagation, assignStartTimes, truncation logic. **Do NOT implement until a customer needs it** — the propagation math is straightforward but testing overlap across all engine paths needs care.
 
----
+## Neighborhood Strategies
+2. **ProcessNeighborhood** — Schedule by process/work center across all orders. Group tasks by `task.process`, sort groups by priority, sort within group by due date/rank. Manufacturing pattern: "run all Milling first, then all Drilling." No new data fields needed — uses existing `task.process`, `task.rank`, `task.sequence`. Use with non-chain strategies.
 
-## Solver Ideas
+3. **CTPNeighborhood** — Single chain, earliest feasible, fast exit. For `POST /v1/ctp/query`.
 
-### Thorough Strategy (Tabu Search)
-- V2 solver tier after Balanced
-- TabuList class preventing recently-visited solutions
-- Neighborhood exploration with diversification
-- Target: 10-15% improvement over Balanced on complex scenarios
-- **Prereqs:** Solver Prompts 1-3 complete
+4. **BottleneckNeighborhood** — Schedule tasks on scarcest resource first. Requires resource availability check before sorting.
 
-### Best Quality Strategy (ILS / RBRS)
-- V3 solver tier
-- Iterated Local Search with random perturbation
-- Ruin-and-Recreate with adaptive destruction
-- Population-based approaches
-- **Prereqs:** Thorough strategy complete, significant testing
+## Lane Enhancements
+5. **Multi-lane support** — Allow `lane: true` on non-primary resources. Crane + Operator must stay paired across tasks. V1: isPrimary = lane. V2: explicit lane flag on any resource. Update `getLaneResources()` to check both.
 
-### Constraint Propagation Improvements
-- Arc consistency beyond simple window tightening
-- Resource capacity propagation (detect infeasibility earlier)
-- Chain-aware propagation (predecessor/successor windows)
+6. **Soft affinity scoring rule** — "Prefer the same nurse across phases, but allow substitution." Scoring penalty for resource switches between chain phases, not a hard constraint.
 
-### Multi-Objective Optimization
-- Pareto frontier instead of single blended score
-- Let planner choose trade-off point
-- "Show me the schedule that minimizes lateness vs maximizes utilization"
+## Error Reporting / Diagnostics
+7. **Rich infeasibility messages** — When a task is infeasible, report the intersection failure: "OR-01 available at 7:15 ✓, AN-JONES booked 7:00-10:30 ✗ (conflict: CASE-002, CASE-001)." Currently reports per-resource independently without showing which combination failed.
 
----
+## Performance / Monitoring
+8. **Solve time in API response** — Return `solveTimeMs` and `strategy` name in the solve response. Useful for SLA monitoring, strategy comparison, and client-facing performance metrics.
 
-## UI Ideas
+## Future Solver
+9. **Inter-chain optimization** — Chain 1 grabs a slot Chain 2 needed more. Tabu search / ILS across chains. Beyond Phase 3 bump-and-retry.
 
-### Drag-and-Drop on Gantt
-- Drag task bars to new time positions
-- Drop on different resource row to reassign
-- Visual snapping to available windows
-- Translates to MoveTo API call
-- **Complexity:** High (Gantt interaction, collision detection)
+10. **AI Chat Assistant** — Natural language queries against analytics and scheduling endpoints.
 
-### Resource Comparison View
-- Side-by-side view of 2-3 resources
-- Compare utilization, task mix, availability
-- Useful for deciding where to redirect work (Sprint 4)
+11. **Constraint Propagation Visualization** — Show window tightening visually on Gantt as solver runs.
 
-### Order Timeline View
-- Horizontal timeline per order showing all its tasks in sequence
-- Visualize the critical path through an order
-- Highlight bottleneck task
-
-### Notification / Alert System
-- "Task X is about to breach its due date"
-- "Resource Y is at 95% utilization"
-- "Material Z will run out before Task W"
-- Push notifications or polling-based alerts
-
-### Undo/Redo Stack
-- Beyond What-If (Sprint 6) — a full undo/redo for every action
-- Stack of snapshots with descriptions
-- "Undo: Excluded Order-009" / "Redo"
-- **Complexity:** Medium (snapshot per action, stack management)
-
-### Multi-User Awareness
-- Show when another planner is viewing/editing the same schedule
-- Lock indicators on tasks being edited by others
-- Real-time updates via WebSocket
-- **Complexity:** High (requires backend WebSocket support)
-
-### Schedule Templates
-- Save a schedule configuration (pins, excludes, priorities, capacity adjustments) as a template
-- "Apply Monday template" / "Apply rush-order template"
-- Useful for recurring scheduling patterns
-
-### Export / Report Generation
-- Export Gantt as PDF or image
-- Export schedule to Excel
-- Automated shift report: "Here's what's scheduled for second shift"
-- Email integration for sharing schedules
-
-### Dark/Light Theme Toggle
-- Currently dark theme only
-- Some planners prefer light theme (factory floor screens)
-- Already structured with C (color) constants — swap palette
-
-### Mobile View
-- Responsive layout for tablet
-- Planner walking the factory floor checking schedule
-- Simplified view: task list + status, no full Gantt
-- Approve/reject actions via mobile
-
----
-
-## API / Platform Ideas
-
-### Webhook Notifications
-- Fire webhooks on: solve complete, task becomes late, resource overloaded
-- Client systems can react to scheduling events
-
-### Scheduling History
-- Store every solve result with timestamp
-- Compare any two historical solves
-- "What changed between Monday's schedule and Tuesday's?"
-- Audit trail for regulatory compliance
-
-### Multi-Scenario Management
-- Named scenarios: "Baseline", "Rush Order", "Maintenance Window"
-- Switch between scenarios
-- Compare scenarios side-by-side
-- Promote scenario to "active" schedule
-
-### Batch / Async Solve
-- Large solve jobs run asynchronously
-- Return job ID, poll for completion
-- Progress updates via WebSocket or SSE
-- Important for large factories (500+ tasks)
-
-### Rate Limiting / Quotas
-- Per-tenant API rate limits
-- Usage tracking and billing
-- Throttle during peak periods
-
-### Data Validation Layer
-- Validate incoming data before solve
-- "Resource X referenced by Task Y doesn't exist"
-- "Task window ends before it starts"
-- Return actionable validation errors
-
----
-
-## Data Model Ideas
-
-### Skill-Based Resource Matching
-- Resources have skills (certifications, capabilities)
-- Tasks require specific skills
-- Solver matches based on skill compatibility
-- Example: "This task needs a certified welder"
-
-### Resource Groups / Pools
-- Group of interchangeable resources
-- Solver picks best available from the pool
-- Example: "Any of the 3 CNC machines can do this"
-
-### Sequence-Dependent Setup Times
-- Setup time depends on what ran before AND what runs next
-- State change matrix already supports this
-- Need UI for visualizing and editing the matrix
-
-### Calendar Templates
-- Reusable shift patterns: "3-shift rotation", "Mon-Fri 8-5"
-- Apply to resources instead of defining availability per resource
-- Override specific dates (holidays, planned outage)
-
----
-
-## Technical Debt
-
-### Single-File Component
-- App.tsx is 5,900+ lines
-- Consider splitting into modules when a natural seam appears
-- Don't force it — wait until it hurts
-
-### Test Coverage
-- Engine: 480 tests (good)
-- API: 87 tests (adequate)
-- UI: 0 tests (needs attention after Sprint 1)
-- Add Playwright or Cypress for critical flows
-
-### Performance
-- Gantt rendering with 500+ tasks
-- Virtual scrolling for task table
-- Debounce filter inputs
-- Memoize expensive computations (useMemo already used in places)
-
-### Accessibility
-- Keyboard navigation for task selection
-- Screen reader support for Gantt
-- ARIA labels on interactive elements
-- Color-blind safe palette option
-
----
-
-## Review Log
-
-| Date | Action | Notes |
-|------|--------|-------|
-| _TBD_ | _Initial review_ | _Promote items as sprints complete_ |
+## Data Model
+12. **requiresPreds deprecation** — No longer needed. Chain-aware strategies and linkId.prevLink handle predecessor ordering. Leave in appSettings for backward compatibility but stop checking it. The neighborhood strategy + linkId data handles everything.
