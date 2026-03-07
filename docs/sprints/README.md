@@ -43,6 +43,7 @@ _No sprints currently in progress._
 | AI Sprint 2b — query_resources | 7th tool: query resources by typed attributes with time-windowed availability; GET /ctp/resources/query endpoint; system prompt routing guidance | 2026-03-07 |
 | AI Sprint 2C — Chat Action Buttons | 6 action types (whereTo, openTask, openResource, filterChain, openTab, navigateOrder); auto-collapse to strip; manual collapse chevron; action tag parsing | 2026-03-07 |
 | AI Sprint 2C amendments | WhereTo time constraints (startAfter/startBefore) on tool + action buttons + handleWhereTo; time window resolution guidance; better error messages | 2026-03-07 |
+| Logging Sprint 1 — Backend Logger | Pluggable LoggerService with 4 transports (memory/console/file/azure), 4 event types, AllExceptionsFilter, debug endpoint, solve + AI instrumentation | 2026-03-07 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -129,6 +130,11 @@ SOLVER TRACK                          UI TRACK                              AI T
                                            (needs Phase 3 steps)          + AI-2b: query_resources
                                                                                  │
                                                                            └──→ AI-3: Chat Actions (planned)
+
+INFRA TRACK
+───────────
+✓ Logging 1: Backend Logger (memory/console/file/azure transports, debug endpoint)
+  └──→ Logging 2: Frontend Debug Panel (planned)
 ```
 
 ## File Index
@@ -180,6 +186,9 @@ SOLVER TRACK                          UI TRACK                              AI T
   ai-2b-query-resources-tool_1.md    ← query_resources tool with time-windowed availability
   ai-2c-chat-actions.md              ← Chat action buttons (original spec)
   ai-2c-chat-actions_1.md            ← Chat action buttons (updated spec with auto-collapse)
+
+  Infrastructure:
+  logging-1-backend.md               ← Pluggable LoggerService with transports + debug endpoint
 ```
 
 ## Review Cadence
@@ -193,4 +202,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 7, 2026 (AI Sprint 2C)*
+*Last updated: Mar 7, 2026 (Logging Sprint 1)*
