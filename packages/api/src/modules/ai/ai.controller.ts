@@ -6,7 +6,7 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 export class AIController {
   @Post('chat')
   @ApiOperation({ summary: 'Proxy chat request to Anthropic API' })
-  async chat(@Body() body: { model?: string; max_tokens?: number; system?: string; messages?: any[] }) {
+  async chat(@Body() body: { model?: string; max_tokens?: number; system?: string; messages?: any[]; tools?: any[] }) {
     const apiKey = process.env.CTP_ANTHROPIC_API_KEY;
     if (!apiKey) {
       throw new HttpException('CTP_ANTHROPIC_API_KEY not configured', HttpStatus.SERVICE_UNAVAILABLE);
@@ -21,9 +21,10 @@ export class AIController {
       },
       body: JSON.stringify({
         model: body.model || process.env.CTP_AI_MODEL || 'claude-haiku-4-5-20251001',
-        max_tokens: Math.min(body.max_tokens || 1000, 4000),
+        max_tokens: Math.min(body.max_tokens || 1500, 4000),
         system: body.system,
         messages: body.messages,
+        ...(body.tools?.length ? { tools: body.tools } : {}),
       }),
     });
 

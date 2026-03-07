@@ -618,6 +618,135 @@ export class CTPService {
     };
   }
 
+  queryResources(
+    attribute: string,
+    value: string | undefined,
+    includeAvailability: boolean,
+    startTime?: string,
+    endTime?: string,
+  ): any {
+    const landscape = this.ensureLandscape();
+    const resourceConfigs = this.configService.getResources();
+
+    const windowStart = startTime ? new Date(startTime).getTime() : 0;
+    const windowEnd = endTime ? new Date(endTime).getTime() : 0;
+    const hasWindow = windowStart > 0 && windowEnd > windowStart;
+
+    const results: any[] = [];
+
+    for (const resConfig of resourceConfigs) {
+      const attr = resConfig.typedAttributes?.find(
+        (a: any) => a.name.toLowerCase() === attribute.toLowerCase()
+      );
+      if (!attr) continue;
+
+      if (value !== undefined) {
+        const attrVal = attr.value?.value;
+        const match =
+          String(attrVal).toLowerCase() === value.toLowerCase() ||
+          (attrVal === true && (value === 'true' || value === '1')) ||
+          (attrVal === false && (value === 'false' || value === '0'));
+        if (!match) continue;
+      }
+
+      const h = (resConfig as any).hierarchy ?? {};
+      const hierarchy: Record<string, string> = {};
+      if (h.level1) hierarchy.level1 = h.level1;
+      if (h.level2) hierarchy.level2 = h.level2;
+      if (h.level3) hierarchy.level3 = h.level3;
+      if (h.level4) hierarchy.level4 = h.level4;
+      if (h.level5) hierarchy.level5 = h.level5;
+
+      const entry: any = {
+        resourceKey: resConfig.key,
+        resourceName: resConfig.name,
+        hierarchy,
+        [attribute]: attr.value?.value,
+      };
+
+      if (includeAvailability || hasWindow) {
+        const resource = landscape.resources.getEntity(resConfig.key);
+        if (resource) {
+          // Build net-available intervals (availability minus assignments)
+          type Iv = { s: number; e: number };
+          const availability: Iv[] = [];
+          if (resource.original) {
+            let node = resource.original.head;
+            while (node) {
+              availability.push({
+                s: node.data.AbsoluteStartTime.toMillis(),
+                e: node.data.AbsoluteEndTime.toMillis(),
+              });
+              node = node.next;
+            }
+          }
+          const assignments: Iv[] = [];
+          if (resource.available?.staticAssignments) {
+            let node = resource.available.staticAssignments.head;
+            while (node) {
+              assignments.push({
+                s: node.data.AbsoluteStartTime.toMillis(),
+                e: node.data.AbsoluteEndTime.toMillis(),
+              });
+              node = node.next;
+            }
+          }
+
+          // Subtract assignments from availability
+          let netSlices: Iv[] = [];
+          for (const orig of availability) {
+            let slices: Iv[] = [{ s: orig.s, e: orig.e }];
+            for (const asgn of assignments) {
+              const next: Iv[] = [];
+              for (const sl of slices) {
+                if (asgn.e <= sl.s || asgn.s >= sl.e) { next.push(sl); continue; }
+                if (asgn.s > sl.s) next.push({ s: sl.s, e: asgn.s });
+                if (asgn.e < sl.e) next.push({ s: asgn.e, e: sl.e });
+              }
+              slices = next;
+            }
+            netSlices.push(...slices);
+          }
+
+          if (hasWindow) {
+            // Clip to requested time window
+            const clipped: Iv[] = [];
+            for (const sl of netSlices) {
+              const cs = Math.max(sl.s, windowStart);
+              const ce = Math.min(sl.e, windowEnd);
+              if (ce > cs) clipped.push({ s: cs, e: ce });
+            }
+            const windowFreeMin = Math.round(clipped.reduce((sum, sl) => sum + (sl.e - sl.s), 0) / 60000);
+            entry.availableMinutes = windowFreeMin;
+            entry.availableGaps = clipped.map(sl => ({
+              start: DateTime.fromMillis(sl.s).toISO(),
+              end: DateTime.fromMillis(sl.e).toISO(),
+              durationMinutes: Math.round((sl.e - sl.s) / 60000),
+            }));
+          } else {
+            // Overall availability
+            let totalAvailSec = availability.reduce((s, iv) => s + (iv.e - iv.s) / 1000, 0);
+            let totalAssignSec = assignments.reduce((s, iv) => s + (iv.e - iv.s) / 1000, 0);
+            entry.utilization = totalAvailSec > 0
+              ? Math.round((totalAssignSec / totalAvailSec) * 10000) / 100
+              : 0;
+            entry.availableMinutes = Math.round(netSlices.reduce((s, sl) => s + (sl.e - sl.s), 0) / 60000);
+          }
+        }
+      }
+
+      results.push(entry);
+    }
+
+    return {
+      attribute,
+      value: value ?? null,
+      ...(hasWindow ? { startTime, endTime } : {}),
+      count: results.length,
+      resources: results,
+    };
+  }
+
   // ═══════════════════════════════════════
   // Private helpers
   // ═══════════════════════════════════════

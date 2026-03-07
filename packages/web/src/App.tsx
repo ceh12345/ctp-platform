@@ -7076,6 +7076,7 @@ interface ChatMessage {
   content: string;
   timestamp: number;
   loading?: boolean;
+  toolCallInProgress?: string;
 }
 
 function buildSystemPrompt(solveResult: any, selectedTask?: any): string {
@@ -7210,6 +7211,27 @@ If you don't have enough information to answer, say so.
     }
   }
 
+  // Tool usage guidance
+  prompt += `\n## Tools Available\n`;
+  prompt += `You have tools to investigate the schedule further:\n`;
+  prompt += `- where_can_task_go: Find placement options for a task (calls WhereTo)\n`;
+  prompt += `- get_resource_agenda: See a resource's full day (assignments + gaps)\n`;
+  prompt += `- get_chain_detail: See all phases of a case/order chain\n`;
+  prompt += `- analyze_impact: See what happens if a task/chain is unscheduled\n`;
+  prompt += `- find_available_resources: Search for free resources in a time window\n`;
+  prompt += `- compare_tasks: Compare multiple tasks side by side\n`;
+  prompt += `- query_resources: Find resources by attribute (lights, surface, park, certification, capability, etc.)\n`;
+  prompt += `\n## Attribute Questions — Where to Look\n`;
+  prompt += `Task attributes (sport, division, homeTeam, phase, procedureType, operation, etc.) are already in the schedule summary above. Answer task attribute questions directly from context — do NOT call query_resources for tasks.\n`;
+  prompt += `Resource attributes (lighting, surface, park, certification, capability, fencing, etc.) are NOT in the schedule summary. Always call query_resources for questions about resource properties.\n`;
+  prompt += `Examples:\n`;
+  prompt += `  "Which games are baseball?" → answer from task context (sport on tasks)\n`;
+  prompt += `  "Which fields have lights?" → call query_resources (lightingAvailable on resources)\n`;
+  prompt += `  "Which cases are cardiology?" → answer from task context (procedureType on tasks)\n`;
+  prompt += `  "Which ORs have laparoscopic equipment?" → call query_resources (capability on resources)\n`;
+  prompt += `\nUse tools when the planner's question requires fresher or more detailed data than what's in the schedule summary above. For simple questions about the current state, answer from the summary directly without calling tools.\n`;
+  prompt += `\nAlways explain tool results in plain language. Don't just dump raw data — interpret it, highlight the key finding, and suggest next steps when appropriate.\n`;
+
   return prompt;
 }
 
@@ -7237,6 +7259,342 @@ function getSuggestedQuestions(solveResult: any): string[] {
   return suggestions.slice(0, 4);
 }
 
+// ═══ AI Tool Definitions ═══
+const AI_TOOLS = [
+  {
+    name: 'where_can_task_go',
+    description: 'Find feasible scheduling options for a task. Returns ranked placement options with resources, start/end times, and scores. Use when the planner asks where a task can be placed, what options exist, or how to resolve an infeasible task.',
+    input_schema: { type: 'object' as const, properties: { task_key: { type: 'string' as const, description: 'The task key (e.g., "C004-PROC")' } }, required: ['task_key'] },
+  },
+  {
+    name: 'get_resource_agenda',
+    description: "Get a resource's daily schedule showing all assignments, available gaps, and off-shift periods. Use when the planner asks about a specific resource's availability or what's booked on a resource.",
+    input_schema: { type: 'object' as const, properties: { resource_key: { type: 'string' as const, description: 'The resource key (e.g., "OR-01", "AN-JONES")' }, date: { type: 'string' as const, description: 'Optional date (ISO format). Defaults to first horizon day.' } }, required: ['resource_key'] },
+  },
+  {
+    name: 'get_chain_detail',
+    description: 'Get detailed information about a chain (case/order) including all phases, scheduled times, gaps between phases, and resource assignments.',
+    input_schema: { type: 'object' as const, properties: { chain_key: { type: 'string' as const, description: 'The chain/order key (e.g., "CASE-002")' } }, required: ['chain_key'] },
+  },
+  {
+    name: 'analyze_impact',
+    description: 'Analyze the impact of unscheduling a task or chain. Shows which resources would be freed, which infeasible tasks might benefit, and chain disruptions.',
+    input_schema: { type: 'object' as const, properties: { task_key: { type: 'string' as const, description: 'The task key or chain key to analyze' } }, required: ['task_key'] },
+  },
+  {
+    name: 'find_available_resources',
+    description: 'Find resources with availability in a given time window. Use when the planner asks which resources are free or needs to find capacity.',
+    input_schema: { type: 'object' as const, properties: { start_time: { type: 'string' as const, description: 'Start of search window (ISO datetime)' }, end_time: { type: 'string' as const, description: 'End of search window (ISO datetime)' }, resource_group: { type: 'string' as const, description: 'Optional filter by resource group/work center' }, min_duration_minutes: { type: 'number' as const, description: 'Minimum contiguous availability needed (default 30)' } }, required: ['start_time', 'end_time'] },
+  },
+  {
+    name: 'compare_tasks',
+    description: 'Compare two or more tasks side by side showing resources, timing, priority, scores, and conflicts.',
+    input_schema: { type: 'object' as const, properties: { task_keys: { type: 'array' as const, items: { type: 'string' as const }, description: 'Array of task keys to compare' } }, required: ['task_keys'] },
+  },
+  {
+    name: 'query_resources',
+    description: 'Query RESOURCES by their typed attributes — physical properties, capabilities, certifications, location. Use when the planner asks which resources have a certain characteristic: lights, surface type, park location, sport type, certification level, fencing, capacity, machine capability, etc. Returns matching resources with full hierarchy and optional availability data. Can filter availability to a specific time window. Do NOT use this for task/game/operation questions — task attributes are already in context.',
+    input_schema: { type: 'object' as const, properties: { attribute: { type: 'string' as const, description: 'The attribute name to filter on (e.g. "lightingAvailable", "surface", "park", "certificationLevel", "sport", "fenced", "capability")' }, value: { type: 'string' as const, description: 'Optional value to match. For booleans use "true" or "false". For enums use the enum value. Omit to return all resources that HAVE this attribute regardless of value.' }, include_availability: { type: 'boolean' as const, description: 'Set true to include current utilization and available minutes for each matching resource.' }, start_time: { type: 'string' as const, description: 'Optional: filter availability to this window start (ISO datetime). Use with end_time for time-specific queries like "Monday night".' }, end_time: { type: 'string' as const, description: 'Optional: filter availability to this window end (ISO datetime). Use with start_time.' } }, required: ['attribute'] },
+  },
+];
+
+// ═══ AI Tool Implementations ═══
+async function executeWhereTo(taskKey: string): Promise<string> {
+  try {
+    const data = await api(`/ctp/tasks/${encodeURIComponent(taskKey)}/where-to`, { method: 'POST' });
+    if (!data.options || data.options.length === 0) {
+      return `No feasible options found for ${taskKey}.${data.reason ? ` Reason: ${data.reason}` : ''}`;
+    }
+    let result = `Found ${data.options.length} options for ${data.taskName || taskKey}:\n\n`;
+    for (const opt of data.options) {
+      const resources = (opt.resources || []).map((r: any) => r.resourceName || r.resourceKey).join(', ');
+      result += `Option ${opt.rank}: ${resources}\n`;
+      result += `  Time: ${opt.start} – ${opt.end}\n`;
+      result += `  Score: ${opt.score?.toFixed(2) || 'N/A'}`;
+      if (opt.isBestOnResource) result += ' ★ Best on this resource';
+      result += '\n\n';
+    }
+    if (data.currentAssignment) {
+      result += `Currently assigned: ${(data.currentAssignment.resources || []).join(', ')} at ${data.currentAssignment.start}–${data.currentAssignment.end}\n`;
+    }
+    return result;
+  } catch (err: any) {
+    return `Error looking up options for ${taskKey}: ${err.message}`;
+  }
+}
+
+function executeResourceAgenda(resourceKey: string, date: string | undefined, solveResult: any): string {
+  const resources = solveResult?.resourceUtilization || [];
+  const resource = resources.find((r: any) =>
+    r.resourceKey === resourceKey ||
+    r.resourceKey.toLowerCase() === resourceKey.toLowerCase() ||
+    r.resourceName.toLowerCase().includes(resourceKey.toLowerCase())
+  );
+  if (!resource) {
+    return `Resource "${resourceKey}" not found. Available: ${resources.map((r: any) => `${r.resourceName} (${r.resourceKey})`).join(', ')}`;
+  }
+
+  let result = `${resource.resourceName} (${resource.resourceKey})\nUtilization: ${resource.utilization?.toFixed(0) || 0}%\nWork Center: ${resource.workCenter || 'N/A'}\n\n`;
+
+  // Find tasks assigned to this resource
+  const assignedTasks = (solveResult.tasks || []).filter((t: any) =>
+    t.feasible && (t.assignedResources || []).some((r: any) => r.resourceKey === resource.resourceKey)
+  ).sort((a: any, b: any) => (a.scheduledStart || '').localeCompare(b.scheduledStart || ''));
+
+  const filterByDate = (items: any[]) => {
+    if (!date) return items;
+    return items.filter((t: any) => t.scheduledStart?.startsWith(date));
+  };
+
+  const dayTasks = filterByDate(assignedTasks);
+  if (dayTasks.length > 0) {
+    result += 'Assignments:\n';
+    for (const t of dayTasks) {
+      result += `  ${t.scheduledStart} – ${t.scheduledEnd}: ${t.name} (${t.key})${t.orderRef ? ` [${t.orderRef}]` : ''}\n`;
+    }
+  }
+
+  // Net available gaps
+  const dayAvailable = (resource.netAvailable || []).filter((a: any) => !date || a.start?.startsWith(date));
+  if (dayAvailable.length > 0) {
+    result += '\nAvailable gaps:\n';
+    for (const a of dayAvailable) {
+      const durMin = Math.round((a.durationSec || 0) / 60);
+      result += `  ${a.start} – ${a.end}: ${durMin} min free\n`;
+    }
+  }
+
+  if (dayTasks.length === 0 && dayAvailable.length === 0) result += 'No data for this date.\n';
+  return result;
+}
+
+function executeChainDetail(chainKey: string, solveResult: any): string {
+  const chainTasks = (solveResult.tasks || [])
+    .filter((t: any) => t.orderRef === chainKey)
+    .sort((a: any, b: any) => (a.scheduledStart || '').localeCompare(b.scheduledStart || ''));
+  if (chainTasks.length === 0) {
+    const available = [...new Set((solveResult.tasks || []).map((t: any) => t.orderRef).filter(Boolean))];
+    return `Chain "${chainKey}" not found. Available: ${available.join(', ')}`;
+  }
+  const order = (solveResult.orders || []).find((o: any) => o.orderKey === chainKey);
+  let result = `Chain: ${chainKey}`;
+  if (order) result += ` — ${order.name} (Priority ${order.priority})`;
+  result += `\nPhases: ${chainTasks.length}\n\n`;
+
+  let prevEnd: string | null = null;
+  for (const task of chainTasks) {
+    const status = task.feasible ? '✓ Scheduled' : '✗ Infeasible';
+    const resources = (task.assignedResources || []).map((r: any) => r.resourceName || r.resourceKey).join(', ');
+    result += `${task.type || 'PROCESS'}: ${task.name} (${task.key}) — ${status}\n`;
+    if (task.feasible && task.scheduledStart) {
+      result += `  Time: ${task.scheduledStart} – ${task.scheduledEnd}\n`;
+      result += `  Resources: ${resources}\n`;
+      if (prevEnd) {
+        const gapMin = Math.round((new Date(task.scheduledStart).getTime() - new Date(prevEnd).getTime()) / 60000);
+        result += `  Gap from previous: ${gapMin} min${gapMin === 0 ? ' (back-to-back ✓)' : ''}\n`;
+      }
+      prevEnd = task.scheduledEnd;
+    } else {
+      for (const err of (task.errors || [])) result += `  Error: ${err.reason || err}\n`;
+      if (task.infeasibilityReport) {
+        result += `  Conflict: ${task.infeasibilityReport.conflictType}\n`;
+        if (task.infeasibilityReport.bottleneckSlot) result += `  Bottleneck: ${task.infeasibilityReport.bottleneckSlot}\n`;
+      }
+      prevEnd = null;
+    }
+    result += '\n';
+  }
+  if (order) {
+    result += `Order: ${order.demandQty} demanded, ${order.scheduledQty} scheduled (${((order.fillRate || 0) * 100).toFixed(0)}% fill)\n`;
+    if (order.dueDate) result += `Due: ${order.dueDate}\n`;
+  }
+  return result;
+}
+
+function executeImpactAnalysis(taskKey: string, solveResult: any): string {
+  const chainTasks = (solveResult.tasks || []).filter((t: any) => t.orderRef === taskKey);
+  const isChain = chainTasks.length > 1;
+  const targetTasks = isChain
+    ? chainTasks.filter((t: any) => t.feasible)
+    : (solveResult.tasks || []).filter((t: any) => t.key === taskKey && t.feasible);
+  if (targetTasks.length === 0) return `${taskKey} is not currently scheduled — nothing to unschedule.`;
+
+  let result = isChain
+    ? `Impact of unscheduling chain ${taskKey} (${targetTasks.length} tasks):\n\n`
+    : `Impact of unscheduling ${targetTasks[0].name} (${taskKey}):\n\n`;
+
+  const freedResources = new Map<string, { name: string; minutes: number }>();
+  for (const task of targetTasks) {
+    if (!task.scheduledStart || !task.scheduledEnd) continue;
+    const durMin = Math.round((new Date(task.scheduledEnd).getTime() - new Date(task.scheduledStart).getTime()) / 60000);
+    for (const res of (task.assignedResources || [])) {
+      const existing = freedResources.get(res.resourceKey);
+      if (existing) existing.minutes += durMin;
+      else freedResources.set(res.resourceKey, { name: res.resourceName || res.resourceKey, minutes: durMin });
+    }
+  }
+
+  result += 'Resources freed:\n';
+  for (const [, info] of freedResources) result += `  ${info.name}: ${info.minutes} min freed\n`;
+
+  const infeasible = (solveResult.tasks || []).filter((t: any) => !t.feasible && t.infeasibilityReport);
+  const wouldBenefit: string[] = [];
+  for (const task of infeasible) {
+    const bottleneck = task.infeasibilityReport?.slots?.find((s: any) => s.isBottleneck);
+    if (!bottleneck) continue;
+    for (const res of (bottleneck.resources || [])) {
+      if (freedResources.has(res.resourceKey)) { wouldBenefit.push(`${task.name} (${task.key}) — needs ${res.resourceName}`); break; }
+    }
+  }
+
+  if (wouldBenefit.length > 0) {
+    result += '\nInfeasible tasks that might benefit:\n';
+    for (const b of wouldBenefit) result += `  → ${b}\n`;
+  } else {
+    result += '\nNo currently infeasible tasks would directly benefit from this capacity.\n';
+  }
+
+  if (!isChain && targetTasks[0].orderRef) {
+    const chainPeers = (solveResult.tasks || []).filter((t: any) => t.orderRef === targetTasks[0].orderRef && t.key !== taskKey);
+    if (chainPeers.length > 0) {
+      result += `\n⚠ Part of chain ${targetTasks[0].orderRef}. Unscheduling may break the chain for:\n`;
+      for (const peer of chainPeers) result += `  ${peer.name} (${peer.key}) — ${peer.feasible ? 'scheduled' : 'infeasible'}\n`;
+    }
+  }
+  return result;
+}
+
+function executeFindAvailableResources(startTime: string, endTime: string, resourceGroup: string | undefined, minDurationMinutes: number | undefined, solveResult: any): string {
+  const minDur = minDurationMinutes || 30;
+  let resources = solveResult?.resourceUtilization || [];
+  if (resourceGroup) {
+    const gl = resourceGroup.toLowerCase();
+    resources = resources.filter((r: any) =>
+      (r.workCenter || '').toLowerCase().includes(gl) ||
+      (r.resourceName || '').toLowerCase().includes(gl) ||
+      (r.resourceClass || '').toLowerCase().includes(gl)
+    );
+  }
+  if (resources.length === 0) return `No resources found${resourceGroup ? ` matching "${resourceGroup}"` : ''}.`;
+
+  const results: { name: string; key: string; totalMin: number; gaps: { start: string; end: string; durMin: number }[] }[] = [];
+  for (const res of resources) {
+    const gaps: { start: string; end: string; durMin: number }[] = [];
+    for (const avail of (res.netAvailable || [])) {
+      const oStart = Math.max(new Date(avail.start).getTime(), new Date(startTime).getTime());
+      const oEnd = Math.min(new Date(avail.end).getTime(), new Date(endTime).getTime());
+      const oMin = (oEnd - oStart) / 60000;
+      if (oMin >= minDur) gaps.push({ start: new Date(oStart).toISOString(), end: new Date(oEnd).toISOString(), durMin: Math.round(oMin) });
+    }
+    if (gaps.length > 0) {
+      const totalMin = gaps.reduce((s, g) => s + g.durMin, 0);
+      results.push({ name: res.resourceName, key: res.resourceKey, totalMin, gaps });
+    }
+  }
+  if (results.length === 0) return `No resources have ${minDur}+ minutes of availability between ${startTime} and ${endTime}.`;
+  results.sort((a, b) => b.totalMin - a.totalMin);
+
+  let result = `${results.length} resources with ${minDur}+ min availability:\n\n`;
+  for (const r of results) {
+    result += `${r.name} (${r.key}) — ${r.totalMin} min total:\n`;
+    for (const gap of r.gaps) result += `  ${gap.start} – ${gap.end} (${gap.durMin} min)\n`;
+    result += '\n';
+  }
+  return result;
+}
+
+function executeCompareTasks(taskKeys: string[], solveResult: any): string {
+  const tasks = taskKeys.map(key => (solveResult.tasks || []).find((t: any) => t.key === key)).filter(Boolean);
+  if (tasks.length === 0) return `No tasks found for keys: ${taskKeys.join(', ')}`;
+
+  let result = `Comparing ${tasks.length} tasks:\n\n`;
+  for (const task of tasks) {
+    result += `${task.key}: ${task.name}\n`;
+    result += `  Status: ${task.feasible ? 'Scheduled' : 'Infeasible'}\n`;
+    result += `  Priority: ${task.priority}\n  Type: ${task.type || 'PROCESS'}\n  Chain: ${task.orderRef || 'standalone'}\n`;
+    if (task.feasible) {
+      result += `  Time: ${task.scheduledStart} – ${task.scheduledEnd}\n`;
+      result += `  Resources: ${(task.assignedResources || []).map((r: any) => r.resourceName || r.resourceKey).join(', ')}\n`;
+    } else {
+      if (task.infeasibilityReport) result += `  Conflict: ${task.infeasibilityReport.conflictType}\n`;
+      for (const err of (task.errors || [])) result += `  Error: ${err.reason || err}\n`;
+    }
+    result += '\n';
+  }
+
+  // Shared resources
+  const resMap = new Map<string, string[]>();
+  for (const task of tasks) {
+    for (const res of (task.assignedResources || [])) {
+      if (!resMap.has(res.resourceKey)) resMap.set(res.resourceKey, []);
+      resMap.get(res.resourceKey)!.push(task.key);
+    }
+  }
+  const shared = Array.from(resMap.entries()).filter(([, tks]) => tks.length > 1);
+  if (shared.length > 0) {
+    result += 'Shared resources:\n';
+    for (const [rk, tks] of shared) result += `  ${rk}: used by ${tks.join(', ')}\n`;
+  }
+  return result;
+}
+
+async function executeQueryResources(attribute: string, value: string | undefined, includeAvailability: boolean, startTime?: string, endTime?: string): Promise<string> {
+  try {
+    const params = new URLSearchParams({ attribute });
+    if (value !== undefined) params.set('value', value);
+    if (includeAvailability || startTime) params.set('includeAvailability', 'true');
+    if (startTime) params.set('startTime', startTime);
+    if (endTime) params.set('endTime', endTime);
+
+    const data = await api(`/ctp/resources/query?${params}`);
+
+    if (data.count === 0) {
+      return value
+        ? `No resources found with ${attribute} = "${value}".`
+        : `No resources have a "${attribute}" attribute defined.`;
+    }
+
+    let result = `${data.count} resource${data.count !== 1 ? 's' : ''} `;
+    result += `with ${attribute}${value ? ` = ${value}` : ''}:\n\n`;
+
+    for (const r of data.resources) {
+      const hierarchyParts = Object.values(r.hierarchy ?? {}).filter(Boolean);
+      const location = hierarchyParts.join(' \u203A ');
+
+      result += `${r.resourceName} (${r.resourceKey})`;
+      if (location) result += ` — ${location}`;
+      result += '\n';
+
+      if (r.availableGaps) {
+        // Time-windowed response
+        result += `  Free: ${r.availableMinutes} min in window\n`;
+        for (const g of r.availableGaps) {
+          result += `    ${g.start} – ${g.end} (${g.durationMinutes} min)\n`;
+        }
+      } else if (includeAvailability && r.availableMinutes !== undefined) {
+        result += `  Availability: ${r.availableMinutes} min free (${r.utilization}% utilized)\n`;
+      }
+    }
+
+    return result;
+  } catch (err: any) {
+    return `Error querying resources: ${err.message}`;
+  }
+}
+
+async function executeTool(toolName: string, input: any, solveResult: any): Promise<string> {
+  switch (toolName) {
+    case 'where_can_task_go': return await executeWhereTo(input.task_key);
+    case 'get_resource_agenda': return executeResourceAgenda(input.resource_key, input.date, solveResult);
+    case 'get_chain_detail': return executeChainDetail(input.chain_key, solveResult);
+    case 'analyze_impact': return executeImpactAnalysis(input.task_key, solveResult);
+    case 'find_available_resources': return executeFindAvailableResources(input.start_time, input.end_time, input.resource_group, input.min_duration_minutes, solveResult);
+    case 'compare_tasks': return executeCompareTasks(input.task_keys, solveResult);
+    case 'query_resources': return await executeQueryResources(input.attribute, input.value, input.include_availability ?? false, input.start_time, input.end_time);
+    default: return `Unknown tool: ${toolName}`;
+  }
+}
+
 function ChatBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user';
   return (
@@ -7257,7 +7615,11 @@ function ChatBubble({ message }: { message: ChatMessage }) {
         fontFamily: FONT,
       }}>
         {message.loading ? (
-          <span style={{ opacity: 0.6 }}>Thinking...</span>
+          <span style={{ opacity: 0.6 }}>
+            {message.toolCallInProgress
+              ? `🔍 Investigating: ${message.toolCallInProgress}...`
+              : 'Thinking...'}
+          </span>
         ) : (
           message.content
         )}
@@ -7329,35 +7691,69 @@ function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput }: {
 
     try {
       const systemPrompt = buildSystemPrompt(solveResult, selectedTask);
-      const history = [...messages, userMsg]
+      const apiMessages: any[] = [...messages, userMsg]
         .filter(m => m.id !== 'welcome' && !m.loading)
         .slice(-20)
         .map(m => ({ role: m.role, content: m.content }));
 
-      const response = await api('/ai/chat', {
+      const callApi = (msgs: any[]) => api('/ai/chat', {
         method: 'POST',
         body: JSON.stringify({
-          model: undefined, // server decides via CTP_AI_MODEL env var
-          max_tokens: 1000,
+          max_tokens: 1500,
           system: systemPrompt,
-          messages: history,
+          messages: msgs,
+          tools: AI_TOOLS,
         }),
       });
 
-      const text = response.content
-        ?.filter((item: any) => item.type === 'text')
-        ?.map((item: any) => item.text)
-        ?.join('\n') || 'I couldn\'t generate a response.';
+      let response = await callApi(apiMessages);
+      let iterations = 0;
+
+      // Tool-use loop: handle tool calls from the AI
+      while (response.stop_reason === 'tool_use' && iterations < 5) {
+        iterations++;
+        const toolUseBlocks = (response.content || []).filter((b: any) => b.type === 'tool_use');
+        if (toolUseBlocks.length === 0) break;
+
+        // Update loading message with tool name
+        const toolName = toolUseBlocks[0].name.replace(/_/g, ' ');
+        setMessages(prev => prev.map(m =>
+          m.id === loadingMsg.id ? { ...m, toolCallInProgress: toolName } : m
+        ));
+
+        // Execute tools and collect results
+        const toolResults: any[] = [];
+        for (const toolUse of toolUseBlocks) {
+          const result = await executeTool(toolUse.name, toolUse.input, solveResult);
+          toolResults.push({ type: 'tool_result', tool_use_id: toolUse.id, content: result });
+        }
+
+        // Add assistant response + tool results, then call again
+        apiMessages.push({ role: 'assistant', content: response.content });
+        apiMessages.push({ role: 'user', content: toolResults });
+
+        // Reset loading text for next round
+        setMessages(prev => prev.map(m =>
+          m.id === loadingMsg.id ? { ...m, toolCallInProgress: undefined } : m
+        ));
+
+        response = await callApi(apiMessages);
+      }
+
+      const text = (response.content || [])
+        .filter((item: any) => item.type === 'text')
+        .map((item: any) => item.text)
+        .join('\n') || 'I couldn\'t generate a response.';
 
       setMessages(prev => prev.map(m =>
         m.id === loadingMsg.id
-          ? { ...m, content: text, loading: false }
+          ? { ...m, content: text, loading: false, toolCallInProgress: undefined }
           : m
       ));
     } catch (err) {
       setMessages(prev => prev.map(m =>
         m.id === loadingMsg.id
-          ? { ...m, content: 'Sorry, I encountered an error. Please try again.', loading: false }
+          ? { ...m, content: 'Sorry, I encountered an error. Please try again.', loading: false, toolCallInProgress: undefined }
           : m
       ));
     } finally {

@@ -154,6 +154,32 @@ export class CTPController {
     return this.ctpService.whereTo(taskKey, body);
   }
 
+  // ─── Endpoint 10: Query Resources by Attribute ───
+
+  @Get('resources/query')
+  @ApiOperation({ summary: 'Query resources by typed attributes' })
+  @ApiQuery({ name: 'attribute', required: true, description: 'Attribute name, e.g. "lightingAvailable"' })
+  @ApiQuery({ name: 'value', required: false, description: 'Value to match' })
+  @ApiQuery({ name: 'includeAvailability', required: false, type: Boolean })
+  @ApiQuery({ name: 'startTime', required: false, description: 'Filter availability to this window start (ISO datetime)' })
+  @ApiQuery({ name: 'endTime', required: false, description: 'Filter availability to this window end (ISO datetime)' })
+  @ApiResponse({ status: 200, description: 'Matching resources with optional availability' })
+  queryResources(
+    @Query('attribute') attribute: string,
+    @Query('value') value?: string,
+    @Query('includeAvailability') includeAvailability?: string,
+    @Query('startTime') startTime?: string,
+    @Query('endTime') endTime?: string,
+  ) {
+    return this.ctpService.queryResources(
+      attribute,
+      value,
+      includeAvailability === 'true',
+      startTime,
+      endTime,
+    );
+  }
+
   // ─── Endpoint 9: Move-To ───
 
   @Post('tasks/:taskKey/move-to')
