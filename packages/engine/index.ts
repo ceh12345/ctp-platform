@@ -32,6 +32,7 @@ export * from './Models/Entities/recompute-tracker';
 export * from './Models/Entities/schedulecontext';
 export * from './Models/Entities/score';
 export * from './Models/Entities/slot';
+export * from './Models/Entities/solutionstate';
 export * from './Models/Entities/solveresult';
 export * from './Models/Entities/solvestats';
 export * from './Models/Entities/starttime';

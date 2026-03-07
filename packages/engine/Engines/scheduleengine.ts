@@ -49,9 +49,6 @@ export class ScheduleEngine implements IScheduleEngine {
     if (task.scheduled === null) task.scheduled = new CTPInterval();
     task.scheduled.set(st, et, 1);
 
-    console.log("SCHEDULED " + task.name);
-    task.scheduled.debug(true);
-
     let index = 0;
     schedule.best.slot.resources?.forEach((res) => {
       this.addTaskToResource(res.resource, task, st, et, CTPAssignmentConstants.PROCESS, index, schedule.subType);
@@ -60,10 +57,6 @@ export class ScheduleEngine implements IScheduleEngine {
   }
 
   public unschedule(landscape: ILandscape, task: CTPTask): void {
-
-    console.log("UNSCHEDULED " + task.name);
-    task.scheduled?.debug(true);
-
     task.state = CTPTaskStateConstants.NOT_SCHEDULED;
     task.scheduled = null;
     if (task.capacityResources) {
@@ -110,7 +103,7 @@ export class ScheduleEngine implements IScheduleEngine {
   ) {
     if (!resource || !task) return;
 
-    var capresource: CTPTaskResource | undefined;
+    let capresource: CTPTaskResource | undefined;
 
     const capLen = task.capacityResources?.length ?? 0;
     if (index < capLen) {
@@ -118,7 +111,7 @@ export class ScheduleEngine implements IScheduleEngine {
     } else {
       capresource = task.materialsResources?.at(index - capLen);
     }
-    var t: CTPAssignment;
+    let t: CTPAssignment;
 
     if (capresource) {
       t = new CTPAssignment(st, et, capresource.qty);
@@ -128,7 +121,6 @@ export class ScheduleEngine implements IScheduleEngine {
       resource.assignments?.add(t);
       resource.recompute = true;
       capresource.scheduledResource = resource.key;
-      console.log(' Resource ' + resource.name);
     }
   }
 

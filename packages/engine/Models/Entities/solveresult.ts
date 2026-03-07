@@ -1,4 +1,5 @@
 import { BumpEvent } from '../../Engines/chaincontextengine';
+import { SolutionState } from './solutionstate';
 
 export interface ISolveResult {
   strategy: string;
@@ -11,6 +12,7 @@ export interface ISolveResult {
   bumps: BumpEvent[];
   totalBumps: number;
   maxBumpsReached: boolean;
+  finalState?: SolutionState;
 }
 
 export class CTPSolveResult implements ISolveResult {
@@ -24,8 +26,10 @@ export class CTPSolveResult implements ISolveResult {
   public bumps: BumpEvent[] = [];
   public totalBumps: number = 0;
   public maxBumpsReached: boolean = false;
+  public finalState?: SolutionState;
 
-  public debug(): void {
+  public debug(enabled: boolean = false): void {
+    if (!enabled) return;
     console.log("=== Solve Results ===");
     console.log(`Strategy:           ${this.strategy}`);
     console.log(`Total Tasks:        ${this.totalTasks}`);

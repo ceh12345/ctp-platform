@@ -81,7 +81,6 @@ export class ChainNeighborhood implements INeighborhoodStrategy {
     // Add one task per chain up to numToProcess
     for (const [chainName, info] of sortedChains) {
       if (context.length >= numToProcess) break;
-      console.log("PROCESSING: " + info.nextTask.name + " chain=" + chainName + " seq=" + info.nextTask.sequence);
       context.add(info.nextTask);
     }
 

@@ -35,6 +35,7 @@ _No sprints currently in progress._
 | Solver Phase 3 — Chain Context Engine | Lane detection, cross-product combos, forward/backward propagation, bump-and-retry, earliest-start selection, stratified combo sampling, cadence-aware placement | 2026-03-06 |
 | Engine — Cadence Fix | Process-level cadence skips SETUP/TEARDOWN types; chain engine cadence-aware placement; HRMD switched to 30-min cadence | 2026-03-06 |
 | Timezone-Aware Scheduling | Hydrator reads tenant timezone from locale.json for shift expansion; Agenda panel uses tz-aware day boundaries; all 3 tenants converted to America/Denver | 2026-03-06 |
+| Engine Sprint 19 — Post-Review Cleanup | Context mutation fix, preCapContextSets sort fix, retryChain window reset, bounds cache, SolutionState snapshot, console.log removal, var→let/const | 2026-03-06 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -136,6 +137,7 @@ SOLVER TRACK                          UI TRACK
   solver-phase3b-bump-retry.md       ← Bump-and-retry design (cross-chain conflict resolution)
   solver-3-balanced-strategy.md      ← Bump backtracking solver (evaluate post-Phase 3)
   solver-4-stress-tests.md           ← Quick vs Chain comparison scenarios
+  engine-sprint-19-cleanup-foundation.md ← Correctness fixes, perf, SolutionState snapshot
   engine-cadence-profiles.md         ← Boundary-snap filtering (replaces PB-TIMESLOT)
 
   UI Sprints:
@@ -174,4 +176,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 6, 2026*
+*Last updated: Mar 7, 2026*

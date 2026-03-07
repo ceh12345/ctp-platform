@@ -45,7 +45,9 @@ export class ScoringEngine implements IScoringEngine {
             scoring: i,
           });
           cum += i.weight;
-        } catch {}
+        } catch (err) {
+          // Scoring rule creation failed — skip this rule
+        }
       }
     });
 
@@ -63,7 +65,9 @@ export class ScoringEngine implements IScoringEngine {
             schedule.scores.add(score);
             if (score.score < rule.min) rule.min = score.score;
             if (score.score > rule.max) rule.max = score.score;
-          } catch {}
+          } catch (err) {
+            // Scoring computation failed for this context — skip
+          }
         });
       }
     });

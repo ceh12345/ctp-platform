@@ -13,6 +13,7 @@ export interface IAppSettings {
   maxBacktrackAttempts: number;
   topNContexts: number;
   maxChainCombos: number;
+  debugLogging: boolean;
 }
 
 export class CTPAppSettings implements IAppSettings {
@@ -27,6 +28,7 @@ export class CTPAppSettings implements IAppSettings {
   public maxBacktrackAttempts: number = 3;
   public topNContexts: number = 5;
   public maxChainCombos: number = 500;
+  public debugLogging: boolean = false;
 }
 
 export interface ITimingSetting {

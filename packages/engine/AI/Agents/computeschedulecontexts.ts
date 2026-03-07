@@ -1,4 +1,3 @@
-import { Duration } from "luxon";
 import {
   ILandscape,
   SchedulingLandscape,
@@ -93,21 +92,6 @@ export class ComputeScheduleContextsAgent extends AIAgent {
 
         if (schedule.slot && schedule.slot.hasStartTimes())
           computescores.push(schedule);
-
-        const durationStr = Duration.fromObject({
-          second: schedule.task.duration.duration(),
-        }).toFormat("T hh:mm:ss");
-        let header =
-          schedule.task.name +
-          " D : " +
-          durationStr +
-          " R: " +
-          (schedule?.slot?.resources?.at(0)?.resource?.name ?? "");
-
-        if (schedule.slot.startTimes) {
-          console.log("FEASIBLE for Task " + header);
-          schedule.slot.startTimes?.debug(schedule?.slot?.resources?.at(0)?.resource?.name ?? "Missing Resource");
-        } else console.log("NOT FEASIBLE for Task " + " " + header);
       }
       schedule.recompute = false;
     });

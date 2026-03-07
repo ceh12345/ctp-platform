@@ -43,6 +43,7 @@ import { ChainFirstFitNeighborhood } from "../Neighborhoods/chainfirstfitneighbo
 import { DueDateNeighborhood } from "../Neighborhoods/duedateneighborhood";
 import { ShortestFirstNeighborhood } from "../Neighborhoods/shortestfirstneighborhood";
 import { CTPSolveResult } from "../../Models/Entities/solveresult";
+import { SolutionStateBuilder } from "../../Models/Entities/solutionstate";
 import {
   ChainContextEngine,
   BumpEvent,
@@ -237,7 +238,6 @@ export abstract class CTPBaseScheduler {
 
       // Strategy compatibility guard
       if (this.settings?.requiresPreds && !strategy.chainCompatible) {
-        console.log(`Strategy "${strategy.name}" is not chain-compatible — falling back to Chain`);
         this.neighborhoodAgent.setStrategy(new ChainNeighborhood());
       }
     }
@@ -304,8 +304,6 @@ export abstract class CTPBaseScheduler {
       });
       this.landscape.tasks.addEntity(st);
       this.scheduleATask(st, stBest);
-    
-      console.log("  SCHEDULED STATE CHANGE " + st.name);
     }
   }
   protected scheduleStateChanges(task: CTPTask, bestSchedule: BestScheduleContext) {
@@ -477,7 +475,6 @@ export abstract class CTPBaseScheduler {
 
     if (task.window) {
       if (task.window.startW < predEnd) {
-        console.log(`TIGHTEN: ${task.name} window.startW [${task.window.startW} → ${predEnd}] pred=${predecessor.name}`);
         task.window.startW = predEnd;
       }
 
@@ -546,9 +543,6 @@ export abstract class CTPBaseScheduler {
         if (task.hasLinkId()) hasChains = true;
       });
       this.settings.requiresPreds = hasChains;
-      if (hasChains) {
-        console.log('Auto-detected linked tasks — enabling requiresPreds');
-      }
     }
 
     this.initScheduling(tasks);
@@ -590,8 +584,13 @@ export abstract class CTPBaseScheduler {
 
     this.endScheduling();
 
+    // Capture final solution state
+    const finalState = SolutionStateBuilder.capture(this.landscape, 'Final');
+    finalState.bumpCount = this.bumpEvents.length;
+
     // Build solve result
     const result = new CTPSolveResult();
+    result.finalState = finalState;
     const agent = this.neighborhoodAgent as NextNeighborhoodAgent | null;
     result.strategy = this.settings?.requiresPreds
       ? 'Chain'
@@ -609,7 +608,7 @@ export abstract class CTPBaseScheduler {
       else result.notScheduled++;
     });
 
-    result.debug();
+    result.debug(this.settings?.debugLogging ?? false);
     return result;
   }
 
@@ -894,11 +893,13 @@ export abstract class CTPBaseScheduler {
     const chainTasks = chain.tasks;
     if (!chainTasks) return 'infeasible';
 
-    // Reset tasks
+    // Reset tasks (including window and score for clean retry)
     const taskList = new List<CTPTask>();
     chainTasks.forEach(t => {
       t.processed = false;
       t.errors = [];
+      t.window?.reset();
+      t.resetScore();
       taskList.add(t);
     });
 

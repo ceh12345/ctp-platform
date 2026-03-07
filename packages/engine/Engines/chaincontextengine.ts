@@ -97,13 +97,25 @@ export class ChainContextEngine {
     // Step 2: Detect lane resources
     const lanes = this.detectLanes(tasks);
 
+    // Step 2.5: Pre-compute context time bounds (cached for reuse across combos)
+    const boundsCache = new Map<string, ContextTimeBounds>();
+    taskContextsMap.forEach((contexts, taskKey) => {
+      for (const ctx of contexts) {
+        const cacheKey = ctx.hashKey || ctx.key;
+        if (!boundsCache.has(cacheKey)) {
+          const bounds = this.getContextTimeBounds(ctx);
+          if (bounds) boundsCache.set(cacheKey, bounds);
+        }
+      }
+    });
+
     // Step 3: Build cross-product grouped by lane
     const cap = maxCombos ?? landscape.appSettings?.maxChainCombos ?? 500;
     const combos = this.buildLaneCombos(taskArray, taskContextsMap, lanes, cap);
     if (combos.length === 0) return null;
 
-    // Step 4: Propagate timing constraints
-    this.propagateAll(combos, taskArray);
+    // Step 4: Propagate timing constraints (using cached bounds)
+    this.propagateAll(combos, taskArray, boundsCache);
 
     // Step 5: Eliminate infeasible combos
     const feasible = combos.filter(c => c.feasible);
@@ -335,7 +347,12 @@ export class ChainContextEngine {
     const perSetCap = Math.max(3, Math.floor(Math.pow(hardLimit, 1 / n)));
     for (let i = 0; i < contextSets.length; i++) {
       if (contextSets[i].length > perSetCap) {
-        contextSets[i].sort((a, b) => a.blendedScore.score - b.blendedScore.score);
+        // Sort by earliest start time (meaningful before scoring is computed)
+        contextSets[i].sort((a, b) => {
+          const aStart = a.slot.startTimes?.head?.data.eStartW ?? Number.MAX_VALUE;
+          const bStart = b.slot.startTimes?.head?.data.eStartW ?? Number.MAX_VALUE;
+          return aStart - bStart;
+        });
         contextSets[i] = contextSets[i].slice(0, perSetCap);
       }
     }
@@ -420,15 +437,23 @@ export class ChainContextEngine {
 
   // ── Step 4: Timing propagation ──
 
-  private propagateAll(combos: ChainContextCombo[], tasks: CTPTask[]): void {
+  private propagateAll(
+    combos: ChainContextCombo[],
+    tasks: CTPTask[],
+    boundsCache: Map<string, ContextTimeBounds>,
+  ): void {
     for (const combo of combos) {
-      this.propagateCombo(combo, tasks);
+      this.propagateCombo(combo, tasks, boundsCache);
     }
   }
 
-  private propagateCombo(combo: ChainContextCombo, tasks: CTPTask[]): void {
+  private propagateCombo(
+    combo: ChainContextCombo,
+    tasks: CTPTask[],
+    boundsCache: Map<string, ContextTimeBounds>,
+  ): void {
     const bounds: (ContextTimeBounds | null)[] = combo.contexts.map(
-      ctx => this.getContextTimeBounds(ctx)
+      ctx => boundsCache.get(ctx.hashKey || ctx.key) ?? this.getContextTimeBounds(ctx)
     );
 
     for (let i = 0; i < bounds.length; i++) {
@@ -587,6 +612,9 @@ export class ChainContextEngine {
     const scoringEngine = new ScoringEngine();
 
     for (const combo of combos) {
+      // Save blendedScore values — contexts may be shared across combos
+      const savedScores = combo.contexts.map(ctx => ctx.blendedScore.score);
+
       scoringEngine.computeScores(landscape, combo.contexts, scoring);
 
       let chainScore = 0;
@@ -599,6 +627,9 @@ export class ChainContextEngine {
       chainScore += gapPenalty;
 
       combo.chainScore = chainScore;
+
+      // Restore original scores so shared contexts aren't mutated
+      combo.contexts.forEach((ctx, i) => { ctx.blendedScore.score = savedScores[i]; });
     }
   }
 
