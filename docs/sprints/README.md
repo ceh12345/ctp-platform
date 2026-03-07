@@ -41,6 +41,8 @@ _No sprints currently in progress._
 | AI Sprint 1 — Read-Only Chat | Anthropic proxy endpoint, ChatPanel slide-over, system prompt with schedule context, Ask AI from task detail + Gantt context menu | 2026-03-07 |
 | AI Sprint 2 — Investigation Tools | 7 tool-use functions (where_can_task_go, get_resource_agenda, get_chain_detail, analyze_impact, find_available_resources, compare_tasks, query_resources), tool-use loop (max 5 iterations), loading indicators | 2026-03-07 |
 | AI Sprint 2b — query_resources | 7th tool: query resources by typed attributes with time-windowed availability; GET /ctp/resources/query endpoint; system prompt routing guidance | 2026-03-07 |
+| AI Sprint 2C — Chat Action Buttons | 6 action types (whereTo, openTask, openResource, filterChain, openTab, navigateOrder); auto-collapse to strip; manual collapse chevron; action tag parsing | 2026-03-07 |
+| AI Sprint 2C amendments | WhereTo time constraints (startAfter/startBefore) on tool + action buttons + handleWhereTo; time window resolution guidance; better error messages | 2026-03-07 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -176,7 +178,8 @@ SOLVER TRACK                          UI TRACK                              AI T
   ai-1-readonly-chat.md              ← Read-only AI chat assistant with Anthropic proxy
   ai-2-investigation-tools.md        ← 7 investigation tools with tool-use loop
   ai-2b-query-resources-tool_1.md    ← query_resources tool with time-windowed availability
-  ai-2c-chat-actions.md              ← (planned) AI-initiated schedule actions
+  ai-2c-chat-actions.md              ← Chat action buttons (original spec)
+  ai-2c-chat-actions_1.md            ← Chat action buttons (updated spec with auto-collapse)
 ```
 
 ## Review Cadence
@@ -190,4 +193,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 7, 2026*
+*Last updated: Mar 7, 2026 (AI Sprint 2C)*

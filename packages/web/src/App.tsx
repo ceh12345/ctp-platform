@@ -7080,6 +7080,8 @@ interface ChatAction {
   chainKey?: string;
   orderKey?: string;
   tab?: string;
+  startAfter?: string;
+  startBefore?: string;
 }
 
 interface ChatMessage {
@@ -7114,6 +7116,8 @@ function parseActionsFromText(text: string): { cleanText: string; actions: ChatA
         chainKey: get('chainKey'),
         orderKey: get('orderKey'),
         tab: get('tab'),
+        startAfter: get('startAfter'),
+        startBefore: get('startBefore'),
       });
     }
   }
@@ -7257,7 +7261,10 @@ If you don't have enough information to answer, say so.
   // Tool usage guidance
   prompt += `\n## Tools Available\n`;
   prompt += `You have tools to investigate the schedule further:\n`;
-  prompt += `- where_can_task_go: Find placement options for a task (calls WhereTo)\n`;
+  prompt += `- where_can_task_go: Find feasible placement options for a task (calls WhereTo). Use this whenever the planner asks to reschedule, move, or find a new time for a specific task — especially when they specify a time constraint like "weeknights", "before Friday", "not on Sunday", or "sometime next week". Pass startAfter and startBefore constraints to narrow the window. This tool handles all required resources simultaneously — field + umpire + staff — so prefer it over chaining multiple find_available_resources calls when rescheduling a known task.\n`;
+  prompt += `  Examples that should trigger this tool:\n`;
+  prompt += `    "When can I reschedule GAME-042 to a weeknight?" → where_can_task_go(task_key="GAME-042", startAfter="Monday 5pm", startBefore="Friday 9pm")\n`;
+  prompt += `    "Can CASE-004 be moved to later this week?" → where_can_task_go(task_key="C004-PROC", startAfter="now", startBefore="Friday 6pm")\n`;
   prompt += `- get_resource_agenda: See a resource's full day (assignments + gaps)\n`;
   prompt += `- get_chain_detail: See all phases of a case/order chain\n`;
   prompt += `- analyze_impact: See what happens if a task/chain is unscheduled\n`;
@@ -7272,6 +7279,18 @@ If you don't have enough information to answer, say so.
   prompt += `  "Which fields have lights?" → call query_resources (lightingAvailable on resources)\n`;
   prompt += `  "Which cases are cardiology?" → answer from task context (procedureType on tasks)\n`;
   prompt += `  "Which ORs have laparoscopic equipment?" → call query_resources (capability on resources)\n`;
+  prompt += `\nRescheduling a specific task to a different time window → where_can_task_go with startAfter/startBefore constraints. Do NOT use find_available_resources for this — it only checks one resource at a time. where_can_task_go checks all required resources simultaneously and returns ranked feasible slots.\n`;
+  prompt += `\n## Time Window Resolution\n`;
+  prompt += `When the planner uses relative time expressions, resolve them to ISO 8601 datetimes before passing to any tool. Use the schedule horizon dates above as reference.\n`;
+  prompt += `  "weeknight" or "weekday evening" → startAfter: nearest Monday at 17:00, startBefore: nearest Friday at 21:00\n`;
+  prompt += `  "next week" → startAfter: next Monday at 00:00, startBefore: next Sunday at 23:59\n`;
+  prompt += `  "this weekend" → startAfter: nearest Saturday at 00:00, startBefore: nearest Sunday at 23:59\n`;
+  prompt += `  "before Friday" → startBefore: this Friday at 00:00\n`;
+  prompt += `  "after Wednesday" → startAfter: this Wednesday at 23:59\n`;
+  prompt += `  "Monday night" → startAfter: Monday at 17:00, startBefore: Monday at 22:00\n`;
+  prompt += `  "morning" → startAfter: day at 06:00, startBefore: day at 12:00\n`;
+  prompt += `  "afternoon" → startAfter: day at 12:00, startBefore: day at 17:00\n`;
+  prompt += `Always use the horizon start/end dates from the schedule summary to determine which Monday/Friday/etc. is "nearest".\n`;
   prompt += `\nUse tools when the planner's question requires fresher or more detailed data than what's in the schedule summary above. For simple questions about the current state, answer from the summary directly without calling tools.\n`;
   prompt += `\nAlways explain tool results in plain language. Don't just dump raw data — interpret it, highlight the key finding, and suggest next steps when appropriate.\n`;
 
@@ -7280,7 +7299,9 @@ If you don't have enough information to answer, say so.
   prompt += `After your response text, you may emit action tags to surface relevant UI navigation as clickable buttons for the planner. Use them when your answer references something specific the planner would benefit from seeing or acting on immediately.\n\n`;
   prompt += `Available actions:\n`;
   prompt += `  <action type="whereTo" taskKey="C004-PROC" label="Show options on Gantt" />\n`;
-  prompt += `  — Triggers WhereTo ghost bars for the task. Use after answering "where can X go?"\n\n`;
+  prompt += `  <action type="whereTo" taskKey="GAME-042" startAfter="2026-06-08T17:00:00" startBefore="2026-06-12T21:00:00" label="Show weeknight options" />\n`;
+  prompt += `  — Triggers WhereTo ghost bars for the task. Use after answering "where can X go?"\n`;
+  prompt += `  When emitting a whereTo action after answering a time-constrained rescheduling question, always include the same startAfter and startBefore values you used in the where_can_task_go tool call. This ensures the Gantt shows the same options the AI described — not the global top 5.\n\n`;
   prompt += `  <action type="openTask" taskKey="C004-PROC" label="Open CASE-004 detail" />\n`;
   prompt += `  — Opens the task detail panel. Use when discussing a specific task's details.\n\n`;
   prompt += `  <action type="openResource" resourceKey="AN-JONES" label="View AN-JONES schedule" />\n`;
@@ -7329,8 +7350,8 @@ function getSuggestedQuestions(solveResult: any): string[] {
 const AI_TOOLS = [
   {
     name: 'where_can_task_go',
-    description: 'Find feasible scheduling options for a task. Returns ranked placement options with resources, start/end times, and scores. Use when the planner asks where a task can be placed, what options exist, or how to resolve an infeasible task.',
-    input_schema: { type: 'object' as const, properties: { task_key: { type: 'string' as const, description: 'The task key (e.g., "C004-PROC")' } }, required: ['task_key'] },
+    description: 'Find feasible scheduling options for a task. Returns ranked placement options with resources, start/end times, and scores. Use when the planner asks where a task can be placed, what options exist, how to resolve an infeasible task, or to reschedule/move a task to a different time. Supports time constraints to narrow the search window.',
+    input_schema: { type: 'object' as const, properties: { task_key: { type: 'string' as const, description: 'The task key (e.g., "C004-PROC")' }, start_after: { type: 'string' as const, description: 'Optional: only show options starting after this time (ISO datetime). Use for "after Monday", "weeknight", "later this week".' }, start_before: { type: 'string' as const, description: 'Optional: only show options starting before this time (ISO datetime). Use for "before Friday", "this week", "by Wednesday".' } }, required: ['task_key'] },
   },
   {
     name: 'get_resource_agenda',
@@ -7365,9 +7386,18 @@ const AI_TOOLS = [
 ];
 
 // ═══ AI Tool Implementations ═══
-async function executeWhereTo(taskKey: string): Promise<string> {
+async function executeWhereTo(taskKey: string, startAfter?: string, startBefore?: string): Promise<string> {
   try {
-    const data = await api(`/ctp/tasks/${encodeURIComponent(taskKey)}/where-to`, { method: 'POST' });
+    const body: any = {};
+    if (startAfter || startBefore) {
+      body.constraints = {};
+      if (startAfter) body.constraints.startAfter = startAfter;
+      if (startBefore) body.constraints.startBefore = startBefore;
+    }
+    const data = await api(`/ctp/tasks/${encodeURIComponent(taskKey)}/where-to`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
     if (!data.options || data.options.length === 0) {
       return `No feasible options found for ${taskKey}.${data.reason ? ` Reason: ${data.reason}` : ''}`;
     }
@@ -7650,7 +7680,7 @@ async function executeQueryResources(attribute: string, value: string | undefine
 
 async function executeTool(toolName: string, input: any, solveResult: any): Promise<string> {
   switch (toolName) {
-    case 'where_can_task_go': return await executeWhereTo(input.task_key);
+    case 'where_can_task_go': return await executeWhereTo(input.task_key, input.start_after, input.start_before);
     case 'get_resource_agenda': return executeResourceAgenda(input.resource_key, input.date, solveResult);
     case 'get_chain_detail': return executeChainDetail(input.chain_key, solveResult);
     case 'analyze_impact': return executeImpactAnalysis(input.task_key, solveResult);
@@ -7753,7 +7783,7 @@ function ChatCollapsedStrip({ lastMessage, onExpand }: { lastMessage: string | n
       onClick={onExpand}
       style={{
         position: 'fixed', right: 0, top: 0, bottom: 0,
-        width: 32, zIndex: 1100,
+        width: 44, zIndex: 1100,
         background: C.surface,
         borderLeft: `1px solid ${C.border}`,
         cursor: 'pointer',
@@ -7851,15 +7881,23 @@ function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput, onC
         .slice(-20)
         .map(m => ({ role: m.role, content: m.content }));
 
-      const callApi = (msgs: any[]) => api('/ai/chat', {
-        method: 'POST',
-        body: JSON.stringify({
-          max_tokens: 1500,
-          system: systemPrompt,
-          messages: msgs,
-          tools: AI_TOOLS,
-        }),
-      });
+      const callApi = async (msgs: any[]) => {
+        const res = await fetch(`/api/v1/ai/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': tenantId },
+          body: JSON.stringify({
+            max_tokens: 2000,
+            system: systemPrompt,
+            messages: msgs,
+            tools: AI_TOOLS,
+          }),
+        });
+        if (!res.ok) {
+          const errBody = await res.text();
+          throw new Error(`AI API ${res.status}: ${errBody.slice(0, 300)}`);
+        }
+        return res.json();
+      };
 
       let response = await callApi(apiMessages);
       let iterations = 0;
@@ -7907,10 +7945,12 @@ function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput, onC
           ? { ...m, content: cleanText, loading: false, toolCallInProgress: undefined, actions: actions.length > 0 ? actions : undefined }
           : m
       ));
-    } catch (err) {
+    } catch (err: any) {
+      console.error('AI chat error:', err);
+      const errMsg = err?.message || String(err);
       setMessages(prev => prev.map(m =>
         m.id === loadingMsg.id
-          ? { ...m, content: 'Sorry, I encountered an error. Please try again.', loading: false, toolCallInProgress: undefined }
+          ? { ...m, content: `Sorry, I encountered an error: ${errMsg}`, loading: false, toolCallInProgress: undefined }
           : m
       ));
     } finally {
@@ -8430,7 +8470,7 @@ export default function App() {
     setWhereToSource(null);
   }, []);
 
-  const handleWhereTo = useCallback(async (taskKey: string, source: 'gantt' | 'table' | 'panel' = 'gantt') => {
+  const handleWhereTo = useCallback(async (taskKey: string, source: 'gantt' | 'table' | 'panel' = 'gantt', startAfter?: string, startBefore?: string) => {
     if (source === 'gantt') setActiveTab('Schedule');
     // Open detail panel only from table — from Gantt/panel the user already sees the task
     if (source === 'table') {
@@ -8442,9 +8482,12 @@ export default function App() {
     setWhereToOptions([]);
     setWhereToCurrentAssignment(null);
     try {
+      const constraints: any = { maxResults: 10 };
+      if (startAfter) constraints.startAfter = startAfter;
+      if (startBefore) constraints.startBefore = startBefore;
       const result = await api(`/ctp/tasks/${encodeURIComponent(taskKey)}/where-to`, {
         method: 'POST',
-        body: JSON.stringify({ constraints: { maxResults: 10 } }),
+        body: JSON.stringify({ constraints }),
       });
       setWhereToOptions(result.options || []);
       setWhereToCurrentAssignment(result.currentAssignment || null);
@@ -8487,7 +8530,7 @@ export default function App() {
     switch (action.type) {
       case 'whereTo':
         setActiveTab('Schedule');
-        if (action.taskKey) handleWhereTo(action.taskKey, 'gantt');
+        if (action.taskKey) handleWhereTo(action.taskKey, 'gantt', action.startAfter, action.startBefore);
         break;
       case 'openTask':
         if (action.taskKey) {
