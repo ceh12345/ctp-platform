@@ -100,6 +100,30 @@ function fmtTime(iso: string | null | undefined): string {
   });
 }
 
+function fmtDayTime(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const loc = _locale?.locale || 'en-US';
+  const tz = _locale?.timezone;
+  const d = new Date(iso);
+  const day = d.toLocaleDateString(loc, { weekday: 'short', ...(tz ? { timeZone: tz } : {}) });
+  const time = d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit', ...(tz ? { timeZone: tz } : {}) });
+  return `${day} ${time}`;
+}
+
+function fmtDayTimeRange(startIso: string | null | undefined, endIso: string | null | undefined): string {
+  if (!startIso) return '—';
+  const loc = _locale?.locale || 'en-US';
+  const tz = _locale?.timezone;
+  const s = new Date(startIso);
+  const sDay = s.toLocaleDateString(loc, { weekday: 'short', ...(tz ? { timeZone: tz } : {}) });
+  const sTime = s.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit', ...(tz ? { timeZone: tz } : {}) });
+  if (!endIso) return `${sDay} ${sTime}`;
+  const e = new Date(endIso);
+  const eDay = e.toLocaleDateString(loc, { weekday: 'short', ...(tz ? { timeZone: tz } : {}) });
+  const eTime = e.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit', ...(tz ? { timeZone: tz } : {}) });
+  return sDay === eDay ? `${sDay} ${sTime} – ${eTime}` : `${sDay} ${sTime} – ${eDay} ${eTime}`;
+}
+
 function fmtDuration(seconds: number | null | undefined): string {
   if (!seconds) return '—';
   const h = Math.floor(seconds / 3600);
@@ -2460,15 +2484,15 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
                 {option.latestStart && option.start !== option.latestStart ? (
                   <>
                     <div style={{ fontSize: 10, color: C.textMuted, marginTop: 2 }}>
-                      Window: {fmtTime(option.start)} – {fmtTime(option.latestStart)}
+                      Window: {fmtDayTimeRange(option.start, option.latestStart)}
                     </div>
                     <div style={{ fontSize: 10, color: C.accent, fontWeight: 600 }}>
-                      Suggested: {fmtTime(option.latestStart)} – {fmtTime(option.latestEnd)} ({fmtDuration(option.duration)})
+                      Suggested: {fmtDayTimeRange(option.latestStart, option.latestEnd)} ({fmtDuration(option.duration)})
                     </div>
                   </>
                 ) : (
                   <div style={{ fontSize: 10, color: C.textMuted, marginTop: 2 }}>
-                    {fmtTime(option.latestStart || option.start)} – {fmtTime(option.latestEnd || option.end)} ({fmtDuration(option.duration)})
+                    {fmtDayTimeRange(option.latestStart || option.start, option.latestEnd || option.end)} ({fmtDuration(option.duration)})
                   </div>
                 )}
               </div>
@@ -3373,6 +3397,26 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
     }
   }
 
+  // Date group labels — day headers above time axis for sub-day zoom levels
+  const dateGroupLabels: { label: string; startPct: number; widthPct: number }[] = [];
+  if (zoomConfig && zoomConfig.days <= 1) {
+    const cursor = _snapMidnight(new Date(hStartMs));
+    while (cursor.getTime() < hEndMs) {
+      const dayStart = cursor.getTime();
+      const dayEnd = _snapEndOfDay(cursor).getTime();
+      const clippedStart = Math.max(dayStart, hStartMs);
+      const clippedEnd = Math.min(dayEnd, hEndMs);
+      if (clippedEnd > clippedStart) {
+        dateGroupLabels.push({
+          label: new Date(dayStart).toLocaleDateString(_locale?.locale || 'en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: _ganttTz }),
+          startPct: ((clippedStart - hStartMs) / totalMs) * 100,
+          widthPct: ((clippedEnd - clippedStart) / totalMs) * 100,
+        });
+      }
+      cursor.setTime(dayStart + 86400000);
+    }
+  }
+
   // Group tasks by every assigned resource (multi-resource tasks appear on all lanes)
   const resMap = new Map<string, any[]>();
   resources.forEach((r: any) => resMap.set(r.resourceKey, []));
@@ -3493,6 +3537,31 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
           </div>
         )}
       </div>
+
+      {/* Date group row — day headers for sub-day zoom */}
+      {dateGroupLabels.length > 0 && (
+        <div style={{ marginLeft: LABEL_W, position: 'relative', height: 20, marginBottom: 2, overflow: 'hidden' }}>
+          {dateGroupLabels.map((dg, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              left: `${dg.startPct}%`,
+              width: `${dg.widthPct}%`,
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 10,
+              fontWeight: 700,
+              color: C.accent,
+              fontFamily: FONT,
+              borderLeft: i > 0 ? `1px solid ${C.border}` : 'none',
+              boxSizing: 'border-box',
+            }}>
+              {dg.label}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Time axis */}
       <div style={{ marginLeft: LABEL_W, display: 'flex', position: 'relative', height: 24, overflow: 'hidden' }}>
@@ -3665,10 +3734,10 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                         const resNames = option.resources?.map((r: any) => r.resourceName || r.resourceKey).join(', ') || '';
                         const tooltipText = [
                           `${taskName} — Option #${option.rank}`,
-                          `Start window: ${fmtTime(option.start)} – ${fmtTime(option.latestStart || option.start)}`,
-                          `Suggested: ${fmtTime(option.latestStart || option.start)} (latest, no idle time)`,
+                          `Start window: ${fmtDayTimeRange(option.start, option.latestStart || option.start)}`,
+                          `Suggested: ${fmtDayTime(option.latestStart || option.start)} (latest, no idle time)`,
                           `Duration: ${fmtDuration(option.duration)}`,
-                          `End: ${fmtTime(option.latestEnd || option.end)}`,
+                          `End: ${fmtDayTime(option.latestEnd || option.end)}`,
                           `Resources: ${resNames}`,
                           `Score: ${option.score.toFixed(2)}`,
                         ].join('\n');
@@ -3700,7 +3769,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = barBg; }}
                             >
                               <span style={{ fontSize: 10, fontWeight: 600, color: C.accent, whiteSpace: 'nowrap' }}>
-                                {option.rank === 1 ? '★' : `#${option.rank}`} {fmtTime(option.start)}
+                                {option.rank === 1 ? '★' : `#${option.rank}`} {fmtDayTime(option.start)}
                               </span>
                               <span style={{ fontSize: 10, fontWeight: 600, color: C.accent, whiteSpace: 'nowrap' }}>
                                 Move Here
@@ -3822,15 +3891,15 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                 {option.latestStart && option.start !== option.latestStart ? (
                   <>
                     <div style={{ fontSize: 10, color: C.textMuted, marginTop: 4 }}>
-                      Window: {fmtTime(option.start)} – {fmtTime(option.latestStart)}
+                      Window: {fmtDayTimeRange(option.start, option.latestStart)}
                     </div>
                     <div style={{ fontSize: 10, color: C.accent, fontWeight: 600 }}>
-                      Suggested: {fmtTime(option.latestStart)} – {fmtTime(option.latestEnd)} ({fmtDuration(option.duration)})
+                      Suggested: {fmtDayTimeRange(option.latestStart, option.latestEnd)} ({fmtDuration(option.duration)})
                     </div>
                   </>
                 ) : (
                   <div style={{ fontSize: 10, color: C.textMuted, marginTop: 4 }}>
-                    {fmtTime(option.latestStart || option.start)} – {fmtTime(option.latestEnd || option.end)} ({fmtDuration(option.duration)})
+                    {fmtDayTimeRange(option.latestStart || option.start, option.latestEnd || option.end)} ({fmtDuration(option.duration)})
                   </div>
                 )}
                 {option.changeover && (
