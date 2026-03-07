@@ -1,8 +1,13 @@
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+
+if (!process.env.CTP_ANTHROPIC_API_KEY) {
+  console.warn('⚠️ CTP_ANTHROPIC_API_KEY not set — AI chat will be unavailable');
+}
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(

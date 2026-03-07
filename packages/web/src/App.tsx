@@ -1086,7 +1086,7 @@ function SlidePanel({ open, onClose, title, children }: {
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          position: 'fixed', top: 0, right: 0, bottom: 0, width: 520,
+          position: 'fixed', top: 0, right: 0, bottom: 0, width: 580,
           background: C.bg, borderLeft: `1px solid ${C.border}`,
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           boxShadow: '-8px 0 32px rgba(0,0,0,0.4)',
@@ -2270,7 +2270,7 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   resourcePreferenceOverrides, onResourcePrefChange, onClearResourceOverrides,
   windowOverrides, onSetWindowOverride,
   priorityOverrides, onSetPriority,
-  onApiSchedule, actionLoading, onWhereTo, whereToSource, whereToLoading }: {
+  onApiSchedule, actionLoading, onWhereTo, whereToSource, whereToLoading, onAskAI }: {
   task: any; tasks: any[]; products: any[]; colors: any;
   onClose: () => void; onResourceClick: (r: any) => void;
   taskPins?: Record<string, boolean>;
@@ -2303,6 +2303,7 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   onWhereTo?: (key: string, source?: 'gantt' | 'table' | 'panel') => void;
   whereToSource?: 'gantt' | 'table' | 'panel' | null;
   whereToLoading?: boolean;
+  onAskAI?: (task: any) => void;
 }) {
   const prodName = task.outputProductKey
     ? (products.find((p: any) => p.key === task.outputProductKey)?.name || task.outputProductKey)
@@ -2331,7 +2332,7 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   return (
     <SlidePanel open={true} onClose={onClose} title={`${t('task', 'Task')} Detail`}>
       {/* Header badges */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
         {taskStatusBadge(deriveTaskStatus(task, taskPins, taskExcludes, taskUnschedules, orderModes))}
         {task.orderRef && (onNavigateToOrders
           ? <span onClick={() => { onNavigateToOrders(task.orderRef); onClose(); }}
@@ -2342,18 +2343,24 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
         )}
         {task.process && <Badge label={task.process} color={C.accent} />}
         {task.cadenceIntervalMinutes != null && <Badge label={`${task.cadenceIntervalMinutes}m cadence`} color={C.purple} />}
+        {onAskAI && (
+          <button onClick={() => onAskAI(task)} style={{
+            ...actionBtnBase, padding: '3px 10px',
+            background: `${C.purple}15`, border: `1px solid ${C.purple}55`, color: C.purple,
+            marginLeft: 'auto',
+          }}>✨ Ask AI</button>
+        )}
       </div>
 
       {/* Schedule + WhereTo buttons for unscheduled tasks */}
       {!task.feasible && !isExcluded && (onApiSchedule || onWhereTo) && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
           {onApiSchedule && (
             <button
               onClick={() => { if (actionLoading !== task.key) onApiSchedule(task.key); }}
               disabled={actionLoading === task.key}
               style={{
                 ...actionBtnBase,
-                flex: 1, justifyContent: 'center',
                 background: C.greenDim, border: `1px solid ${C.green}55`,
                 color: actionLoading === task.key ? C.textDim : C.green,
                 cursor: actionLoading === task.key ? 'wait' : 'pointer',
@@ -2365,12 +2372,10 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
               onClick={() => onWhereTo(task.key, 'panel')}
               style={{
                 ...actionBtnBase,
-                flex: 1, justifyContent: 'center',
                 background: `${C.accent}15`, border: `1px solid ${C.accent}55`,
                 color: C.accent,
-                cursor: 'pointer',
               }}
-            >🗺️ Where Can This Go?</button>
+            >🗺️ Where To</button>
           )}
         </div>
       )}
@@ -2397,6 +2402,12 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
               ...actionBtnBase,
               background: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted,
             }}>✕ Unschedule</button>
+          )}
+          {task.feasible && onWhereTo && (
+            <button onClick={() => onWhereTo(task.key, 'panel')} style={{
+              ...actionBtnBase,
+              background: `${C.accent}15`, border: `1px solid ${C.accent}55`, color: C.accent,
+            }}>🗺️ Where To</button>
           )}
         </div>
       )}
@@ -3204,7 +3215,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
   whereToCurrentAssignment, whereToSource, onMoveTo, onCancelWhereTo,
   zoomLevel, setZoomLevel, scrollOffset, setScrollOffset,
-  onSetResourcePrefForTask, onViewAgenda }: {
+  onSetResourcePrefForTask, onViewAgenda, onAskAI }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   onViewAgenda?: (r: any) => void;
@@ -3230,6 +3241,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   zoomLevel?: string; setZoomLevel?: (v: string) => void;
   scrollOffset?: number; setScrollOffset?: React.Dispatch<React.SetStateAction<number>>;
   onSetResourcePrefForTask?: (taskKey: string) => void;
+  onAskAI?: (task: any) => void;
 }) {
   // Suppress Gantt ghost bars/overlays when WhereTo triggered from task detail panel
   const showGanttWhereTo = whereToSource !== 'panel';
@@ -3859,6 +3871,16 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
               }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
                 🔍 View Details
+              </button>
+            )}
+            {onAskAI && (
+              <button onClick={() => { onAskAI(contextMenu.task); setContextMenu(null); }} style={{
+                width: '100%', padding: '7px 10px', background: 'none', border: 'none',
+                color: C.purple, fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
+                borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
+              }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
+                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                ✨ Ask AI
               </button>
             )}
             {onWhereTo && (() => {
@@ -6014,7 +6036,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected,
   onSetResourcePreference, onSetResourcePrefForTask, resourcePreferenceOverrides,
   priorityOverrides, onSetPriority, onRushSelected,
-  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset, onViewAgenda }: {
+  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset, onViewAgenda, onAskAI }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   onViewAgenda?: (r: any) => void;
@@ -6061,6 +6083,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   setZoomLevel: (v: string | ((prev: string) => string)) => void;
   scrollOffset: number;
   setScrollOffset: (v: number | ((prev: number) => number)) => void;
+  onAskAI?: (task: any) => void;
 }) {
   const tabNames = [`Gantt by ${t('resource', 'Resource')}`, `Gantt by ${t('order', 'Order')}`, t('tasks', 'Task List')];
   const [subIdx, setSubIdx] = useState(0);
@@ -6090,7 +6113,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
             scrollOffset={scrollOffset} setScrollOffset={setScrollOffset}
             onSetResourcePrefForTask={onSetResourcePrefForTask}
-            onViewAgenda={onViewAgenda} />
+            onViewAgenda={onViewAgenda} onAskAI={onAskAI} />
           <UnscheduledPanel tasks={tasks} colors={colors}
             taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             onTaskClick={onTaskClick} onWhereTo={onWhereTo}
@@ -7044,6 +7067,411 @@ function AnalyticsTab({ kpis, detail, selectedKpi, onSelectKpi, loading, experie
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   CHAT PANEL — AI SCHEDULING ASSISTANT
+   ═══════════════════════════════════════════════════════════════ */
+
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+  loading?: boolean;
+}
+
+function buildSystemPrompt(solveResult: any, selectedTask?: any): string {
+  if (!solveResult) return 'No schedule data available yet. Ask the planner to run a solve first.';
+  const { summary, tasks, resourceUtilization, orders, terminology } = solveResult;
+  const tl = (key: string, fallback: string) => terminology?.[key] || fallback;
+
+  let prompt = `You are a scheduling assistant for a ${tl('applicationName', 'scheduling')} application.
+You help planners understand the current schedule, investigate conflicts, and identify opportunities.
+
+Answer concisely. Use specific task names, resource names, and times.
+When citing data, reference the specific task or resource by name.
+If you don't have enough information to answer, say so.
+
+## Current Schedule Summary
+- Total ${tl('task', 'task')}s: ${summary?.includedTasks ?? 0}
+- Scheduled: ${summary?.scheduledTasks ?? 0}
+- Infeasible: ${summary?.unscheduledTasks ?? 0}
+- Feasibility rate: ${summary?.feasibilityRate ?? 0}%
+- Horizon: ${summary?.horizonStart || '?'} to ${summary?.horizonEnd || '?'}
+`;
+
+  // Infeasible tasks with bottleneck details
+  const infeasible = (tasks || []).filter((t: any) => !t.feasible && t.included);
+  if (infeasible.length > 0) {
+    prompt += `\n## Infeasible ${tl('task', 'Task')}s\n`;
+    for (const task of infeasible) {
+      prompt += `- ${task.key} (${task.name})`;
+      if (task.infeasibilityReport) {
+        const rpt = task.infeasibilityReport;
+        prompt += ` — [${rpt.conflictType || 'unknown'}] ${rpt.reason}`;
+        const bottleneck = rpt.slots?.find((s: any) => s.isBottleneck);
+        if (bottleneck) {
+          prompt += `\n  Bottleneck: ${bottleneck.slotLabel}`;
+          for (const res of bottleneck.resources || []) {
+            prompt += `\n    ${res.resourceName}: ${res.status}`;
+            if (res.availableMinutes !== undefined) prompt += ` (${res.availableMinutes}min free)`;
+            if (res.note) prompt += ` — ${res.note}`;
+            for (const bt of (res.blockingTasks || [])) {
+              prompt += `\n      blocked by ${bt.taskName}${bt.chainKey ? ` (${bt.chainKey})` : ''} ${bt.start || ''}–${bt.end || ''}`;
+            }
+          }
+        }
+      } else {
+        for (const err of (task.errors || [])) {
+          prompt += `\n  Error: ${err.reason || err}`;
+        }
+      }
+      prompt += '\n';
+    }
+  }
+
+  // Scheduled tasks (summarized)
+  const scheduled = (tasks || []).filter((t: any) => t.feasible);
+  if (scheduled.length > 0) {
+    prompt += `\n## Scheduled ${tl('task', 'Task')}s\n`;
+    for (const task of scheduled) {
+      const resources = (task.assignedResources || [])
+        .map((r: any) => r.resourceName || r.resourceKey)
+        .join(', ');
+      prompt += `- ${task.key} (${task.name}): ${task.scheduledStart || '?'}–${task.scheduledEnd || '?'} on ${resources}`;
+      if (task.orderRef) prompt += ` [${tl('order', 'Order')}: ${task.orderRef}]`;
+      prompt += '\n';
+    }
+  }
+
+  // Resource utilization
+  if (resourceUtilization?.length > 0) {
+    prompt += `\n## Resource Utilization\n`;
+    for (const res of resourceUtilization) {
+      const freeHours = ((res.totalAvailable - res.totalAssigned) / 3600).toFixed(1);
+      prompt += `- ${res.resourceName} (${res.resourceKey}): ${res.utilization?.toFixed(0) || 0}% utilized — ${freeHours}h free\n`;
+    }
+  }
+
+  // Orders
+  if (orders?.length > 0) {
+    prompt += `\n## ${tl('order', 'Order')}s\n`;
+    for (const order of orders) {
+      prompt += `- ${order.orderKey} (${order.name}): ${order.scheduledQty}/${order.demandQty} filled`;
+      if (order.dueDate) prompt += ` — due ${order.dueDate}`;
+      prompt += ` — priority ${order.priority}`;
+      prompt += '\n';
+    }
+  }
+
+  // Chain integrity
+  const chains = (tasks || []).filter((t: any) => t.orderRef).reduce((acc: Map<string, any[]>, t: any) => {
+    if (!acc.has(t.orderRef)) acc.set(t.orderRef, []);
+    acc.get(t.orderRef)!.push(t);
+    return acc;
+  }, new Map<string, any[]>());
+
+  if (chains.size > 0) {
+    prompt += `\n## Chain Integrity\n`;
+    for (const [chainKey, chainTasks] of chains) {
+      const sorted = chainTasks.sort((a: any, b: any) =>
+        (a.scheduledStart || '').localeCompare(b.scheduledStart || '')
+      );
+      const allScheduled = sorted.every((t: any) => t.feasible);
+      prompt += `- ${chainKey}: ${sorted.length} phases, ${allScheduled ? 'all scheduled' : 'has infeasible phases'}\n`;
+      for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i].scheduledStart && sorted[i-1].scheduledEnd) {
+          const gap = (new Date(sorted[i].scheduledStart).getTime() - new Date(sorted[i-1].scheduledEnd).getTime()) / 60000;
+          if (gap > 0) {
+            prompt += `  Gap: ${sorted[i-1].key} -> ${sorted[i].key}: ${gap.toFixed(0)} min\n`;
+          }
+        }
+      }
+    }
+  }
+
+  // Solve stats
+  if (solveResult.stats) {
+    prompt += `\n## Solve Statistics\n`;
+    prompt += `- Strategy: ${solveResult.stats.strategy}\n`;
+    if (solveResult.stats.totalTimeMs) prompt += `- Solve time: ${solveResult.stats.totalTimeMs}ms\n`;
+  }
+
+  // Selected task context
+  if (selectedTask) {
+    prompt += `\n## Currently Selected Task\n`;
+    prompt += `The planner is currently looking at: ${selectedTask.name} (${selectedTask.key})\n`;
+    if (selectedTask.feasible) {
+      prompt += `Status: Scheduled ${selectedTask.scheduledStart}–${selectedTask.scheduledEnd}\n`;
+    } else {
+      prompt += `Status: Infeasible\n`;
+      if (selectedTask.infeasibilityReport) {
+        prompt += `Conflict type: ${selectedTask.infeasibilityReport.conflictType}\n`;
+        prompt += `Reason: ${selectedTask.infeasibilityReport.reason}\n`;
+      }
+    }
+  }
+
+  return prompt;
+}
+
+function getSuggestedQuestions(solveResult: any): string[] {
+  if (!solveResult) return ['Run a solve first to get schedule data'];
+  const suggestions: string[] = [];
+  const { summary, tasks } = solveResult;
+
+  suggestions.push('Give me a summary of the current schedule');
+
+  const infeasible = (tasks || []).filter((t: any) => !t.feasible && t.included);
+  if (infeasible.length > 0) {
+    suggestions.push(`Why ${infeasible.length === 1 ? 'is' : 'are'} ${infeasible.length} task${infeasible.length > 1 ? 's' : ''} infeasible?`);
+    if (infeasible[0]?.infeasibilityReport?.bottleneckSlot) {
+      suggestions.push(`Tell me about the ${infeasible[0].infeasibilityReport.bottleneckSlot} bottleneck`);
+    }
+  }
+
+  if (summary?.feasibilityRate < 100) {
+    suggestions.push('What would it take to get to 100% feasibility?');
+  }
+
+  suggestions.push('Which resource has the most availability?');
+
+  return suggestions.slice(0, 4);
+}
+
+function ChatBubble({ message }: { message: ChatMessage }) {
+  const isUser = message.role === 'user';
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: isUser ? 'flex-end' : 'flex-start',
+      marginBottom: 8,
+    }}>
+      <div style={{
+        maxWidth: '85%',
+        padding: '8px 12px',
+        borderRadius: 12,
+        fontSize: 12,
+        lineHeight: 1.5,
+        background: isUser ? '#2196f3' : C.bg2,
+        color: isUser ? '#fff' : C.text,
+        whiteSpace: 'pre-wrap',
+        fontFamily: FONT,
+      }}>
+        {message.loading ? (
+          <span style={{ opacity: 0.6 }}>Thinking...</span>
+        ) : (
+          message.content
+        )}
+      </div>
+    </div>
+  );
+}
+
+const WELCOME_MESSAGE: ChatMessage = {
+  id: 'welcome',
+  role: 'assistant',
+  content: 'I can help you understand the current schedule. Ask me about tasks, resources, conflicts, or utilization.',
+  timestamp: Date.now(),
+};
+
+function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput }: {
+  solveResult: any; open: boolean; onClose: () => void; selectedTask?: any; initialInput?: string;
+}) {
+  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Pre-fill input from external trigger (e.g. Ask AI button)
+  useEffect(() => {
+    if (initialInput && open) setInput(initialInput);
+  }, [initialInput, open]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const prevSolveRef = useRef<any>(null);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Context refresh after re-solve
+  useEffect(() => {
+    if (solveResult && prevSolveRef.current && solveResult !== prevSolveRef.current && messages.length > 1) {
+      setMessages(prev => [...prev, {
+        id: `system-${Date.now()}`,
+        role: 'assistant',
+        content: 'The schedule has been updated. I now have the latest data.',
+        timestamp: Date.now(),
+      }]);
+    }
+    prevSolveRef.current = solveResult;
+  }, [solveResult]);
+
+  const handleSend = useCallback(async () => {
+    if (!input.trim() || loading) return;
+
+    const userMsg: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: input.trim(),
+      timestamp: Date.now(),
+    };
+
+    const loadingMsg: ChatMessage = {
+      id: `loading-${Date.now()}`,
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now(),
+      loading: true,
+    };
+
+    setMessages(prev => [...prev, userMsg, loadingMsg]);
+    setInput('');
+    setLoading(true);
+
+    try {
+      const systemPrompt = buildSystemPrompt(solveResult, selectedTask);
+      const history = [...messages, userMsg]
+        .filter(m => m.id !== 'welcome' && !m.loading)
+        .slice(-20)
+        .map(m => ({ role: m.role, content: m.content }));
+
+      const response = await api('/ai/chat', {
+        method: 'POST',
+        body: JSON.stringify({
+          model: undefined, // server decides via CTP_AI_MODEL env var
+          max_tokens: 1000,
+          system: systemPrompt,
+          messages: history,
+        }),
+      });
+
+      const text = response.content
+        ?.filter((item: any) => item.type === 'text')
+        ?.map((item: any) => item.text)
+        ?.join('\n') || 'I couldn\'t generate a response.';
+
+      setMessages(prev => prev.map(m =>
+        m.id === loadingMsg.id
+          ? { ...m, content: text, loading: false }
+          : m
+      ));
+    } catch (err) {
+      setMessages(prev => prev.map(m =>
+        m.id === loadingMsg.id
+          ? { ...m, content: 'Sorry, I encountered an error. Please try again.', loading: false }
+          : m
+      ));
+    } finally {
+      setLoading(false);
+    }
+  }, [input, loading, messages, solveResult, selectedTask]);
+
+  if (!open) return null;
+
+  return (
+    <div style={{
+      position: 'fixed', right: 0, top: 0, bottom: 0,
+      width: 340, zIndex: 1100,
+      borderLeft: `1px solid ${C.border}`,
+      display: 'flex', flexDirection: 'column', background: C.surface,
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: '10px 14px', borderBottom: `1px solid ${C.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: FONT }}>
+          Scheduling Assistant
+        </span>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button
+            onClick={() => setMessages([WELCOME_MESSAGE])}
+            title="Clear chat"
+            style={{
+              background: 'none', border: 'none', color: C.textDim,
+              cursor: 'pointer', fontSize: 14, padding: '2px 6px',
+            }}
+          >
+            Clear
+          </button>
+          <button
+            onClick={onClose}
+            title="Close"
+            style={{
+              background: 'none', border: 'none', color: C.textDim,
+              cursor: 'pointer', fontSize: 16, padding: '2px 6px', fontWeight: 700,
+            }}
+          >
+            x
+          </button>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
+        {messages.map(m => <ChatBubble key={m.id} message={m} />)}
+
+        {/* Suggested questions */}
+        {messages.length <= 1 && solveResult && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 10, color: C.textDim, marginBottom: 6, fontFamily: FONT }}>
+              Try asking:
+            </div>
+            {getSuggestedQuestions(solveResult).map((q, i) => (
+              <button
+                key={i}
+                onClick={() => setInput(q)}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left',
+                  padding: '6px 10px', marginBottom: 4, borderRadius: 8,
+                  border: `1px solid ${C.border}`, background: 'transparent',
+                  fontSize: 11, color: C.accent, cursor: 'pointer', fontFamily: FONT,
+                }}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div style={{
+        padding: 12, borderTop: `1px solid ${C.border}`,
+        display: 'flex', gap: 8,
+      }}>
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !loading) handleSend(); }}
+          placeholder="Ask about the schedule..."
+          disabled={loading}
+          style={{
+            flex: 1, padding: '8px 12px', borderRadius: 8,
+            border: `1px solid ${C.border}`, fontSize: 12,
+            background: C.bg, color: C.text, fontFamily: FONT,
+            outline: 'none',
+          }}
+        />
+        <button
+          onClick={handleSend}
+          disabled={loading || !input.trim()}
+          style={{
+            padding: '8px 12px', borderRadius: 8, border: 'none',
+            background: '#2196f3', color: '#fff', fontSize: 12,
+            cursor: loading ? 'wait' : 'pointer', fontFamily: FONT,
+            fontWeight: 600,
+            opacity: loading || !input.trim() ? 0.5 : 1,
+          }}
+        >
+          Send
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    MAIN APP
    ═══════════════════════════════════════════════════════════════ */
 
@@ -7112,6 +7540,8 @@ export default function App() {
   const [analyticsDetail, setAnalyticsDetail] = useState<any>(null);
   const [selectedKpi, setSelectedKpi] = useState<string | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInitialInput, setChatInitialInput] = useState<string | undefined>(undefined);
   // Previous state snapshots for delta computation
   const [prevOrderModes, setPrevOrderModes] = useState<Record<string, string>>({});
   const [prevTaskPins, setPrevTaskPins] = useState<Record<string, boolean>>({});
@@ -7411,6 +7841,14 @@ export default function App() {
     const full = resources.find((res: any) => res.resourceKey === r.resourceKey);
     setSelectedResource(full || r);
   }, [resources]);
+
+  // Ask AI handler
+  const handleAskAI = useCallback((task: any) => {
+    setChatInitialInput(`Tell me about ${task.name} (${task.key})`);
+    setChatOpen(true);
+    // Clear after a tick so the effect fires but doesn't persist
+    setTimeout(() => setChatInitialInput(undefined), 100);
+  }, []);
 
   // WhereTo handlers
   const cancelWhereTo = useCallback(() => {
@@ -7715,7 +8153,7 @@ export default function App() {
 
   // ── Render ──
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, fontFamily: FONT, color: C.text }}>
+    <div style={{ minHeight: '100vh', background: C.bg, fontFamily: FONT, color: C.text, display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <header style={{
         background: C.surface, borderBottom: `1px solid ${C.border}`,
@@ -7780,6 +8218,19 @@ export default function App() {
             ) : (
               <>▶ {t('solve', 'Solve All')}</>
             )}
+          </button>
+          <button
+            onClick={() => setChatOpen(o => !o)}
+            style={{
+              background: chatOpen ? C.accent : 'none', border: 'none',
+              color: chatOpen ? '#fff' : C.textMuted, fontSize: 12,
+              cursor: 'pointer', padding: '4px 8px', borderRadius: 4, lineHeight: 1, fontFamily: FONT,
+              display: 'flex', alignItems: 'center', gap: 4,
+            }}
+            title="Scheduling Assistant"
+          >
+            <span style={{ fontSize: 14 }}>💬</span>
+            <span style={{ fontWeight: 600 }}>Ask AI</span>
           </button>
           <button
             onClick={() => setSettingsOpen(true)}
@@ -7936,7 +8387,8 @@ export default function App() {
       )}
 
       {/* Tab content */}
-      <main style={{ padding: 24 }}>
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
         {activeTab === 'Overview' && (
           <OverviewTab summary={summary} tasks={tasks} resources={resources}
             orders={orders} materials={materials} products={products} colors={colors} onTabChange={setActiveTab}
@@ -8048,7 +8500,8 @@ export default function App() {
             }}
             zoomLevel={ganttZoomLevel} setZoomLevel={setGanttZoomLevel}
             scrollOffset={ganttScrollOffset} setScrollOffset={setGanttScrollOffset}
-            onViewAgenda={(r: any) => { setSelectedTask(null); setSelectedResource(null); setAgendaResource(r); }} />
+            onViewAgenda={(r: any) => { setSelectedTask(null); setSelectedResource(null); setAgendaResource(r); }}
+            onAskAI={handleAskAI} />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} tasks={tasks}
           orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}
@@ -8064,6 +8517,8 @@ export default function App() {
           experienceLevel={experienceLevel} onNavigateToCase={(caseKey) => { setScheduleCaseFilter(caseKey); setActiveTab('Schedule'); }}
           tasks={tasks} onNavigateToConflicts={() => setActiveTab('Conflicts')} />}
       </main>
+      <ChatPanel solveResult={solveResult} open={chatOpen} onClose={() => setChatOpen(false)} selectedTask={selectedTask} initialInput={chatInitialInput} />
+      </div>
 
       {/* Modals */}
       <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Settings">
@@ -8261,6 +8716,7 @@ export default function App() {
           onWhereTo={handleWhereTo}
           whereToSource={whereToSource}
           whereToLoading={whereToLoading}
+          onAskAI={handleAskAI}
         />
       )}
       {selectedResource && (
