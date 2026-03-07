@@ -36,6 +36,8 @@ _No sprints currently in progress._
 | Engine — Cadence Fix | Process-level cadence skips SETUP/TEARDOWN types; chain engine cadence-aware placement; HRMD switched to 30-min cadence | 2026-03-06 |
 | Timezone-Aware Scheduling | Hydrator reads tenant timezone from locale.json for shift expansion; Agenda panel uses tz-aware day boundaries; all 3 tenants converted to America/Denver | 2026-03-06 |
 | Engine Sprint 19 — Post-Review Cleanup | Context mutation fix, preCapContextSets sort fix, retryChain window reset, bounds cache, SolutionState snapshot, console.log removal, var→let/const | 2026-03-06 |
+| UI Sprint 17 — Bottleneck Display | InfeasibilityReport interfaces, per-resource availability analysis, ResourceBottleneckPanel in task detail + Conflicts + Analytics KPI | 2026-03-07 |
+| UI Sprint 20 — Conflict Categorization | ConflictType classification (availability/capacity/dependency), Conflicts page grouped by type with filter chips, Analytics type breakdown | 2026-03-07 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -52,7 +54,6 @@ _No sprints currently in progress._
 | Sprint | Name | Notes |
 |--------|------|-------|
 | UI Sprint 14 | Error Display & API Error Handling | Surface engine errors in UI instead of generic 500 |
-| UI Sprint 17 | Infeasible Task Bottleneck Display | Per-resource availability breakdown, auto-expand bottleneck |
 | UI Sprint 13 | Resource Explorer | Calendar/Agenda sub-views under Schedule tab |
 | WhereTo on task detail | Button on detail panel | Trigger WhereTo for setup/teardown/unscheduled tasks |
 
@@ -75,7 +76,7 @@ _No sprints currently in progress._
 | Tenant | Resources | Orders | Tasks | Status |
 |--------|-----------|--------|-------|--------|
 | Willoughby Manufacturing | ~8 machines + stations | ~25 work orders | ~50 tasks | ✅ Active |
-| Acme Outpatient Healthcare | 2 ORs, 2 surgeons, 2 anesthesiologists, 2 nurses, 2 recovery bays | 10 cases | 30 tasks | ✅ Active (Phase 3) |
+| Acme Outpatient Healthcare | 2 ORs, 3 surgeons, 2 anesthesiologists, 3 nurses, 4 recovery bays | 13 cases | 39 tasks | ✅ Active (Phase 3) |
 | HRMD Sports | 58 resources (courts, fields, equipment) | 77 orders | 141 tasks | ✅ Active (cadence) |
 
 ## Parking Lot
@@ -85,7 +86,6 @@ See `parking-lot.md` for deferred items including:
 - Multi-lane support — explicit `lane: true` on non-primary resources
 - Soft affinity scoring — prefer same nurse across chain phases
 - `requiresPreds` deprecation — no longer needed, chain strategy + linkId handles it
-- Rich infeasibility messages — intersection failure details per resource combo
 - Solve time in API response — `solveTimeMs` + strategy name
 
 ## Dependency Map
@@ -118,7 +118,8 @@ SOLVER TRACK                          UI TRACK
                                       ├──→ Sprint 14: Error Handling
                                     ✓ Sprint 15: Resource Agenda
                                     ✓ Sprint 16: WhereTo Resource Diversity
-                                      ├──→ Sprint 17: Bottleneck Display
+                                    ✓ Sprint 17: Bottleneck Display
+                                    ✓ Sprint 20: Conflict Categorization
                                       └──→ Sprint 18: Solve Replay (needs Phase 3 steps)
 ```
 
@@ -163,6 +164,7 @@ SOLVER TRACK                          UI TRACK
   ui-14-error-handling.md            ← Surface engine/API errors in UI
   ui-17-bottleneck-display.md        ← Infeasible task bottleneck identification
   ui-18-solve-replay.md              ← Animated Gantt playback of solver sequence
+  ui-20-conflict-categorization.md   ← Conflict type classification (availability/capacity/dependency)
 ```
 
 ## Review Cadence
@@ -176,4 +178,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 7, 2026*
+*Last updated: Mar 8, 2026*

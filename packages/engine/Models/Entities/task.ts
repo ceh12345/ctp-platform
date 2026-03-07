@@ -15,6 +15,7 @@ import { EntityHashMap } from "../Core/hashmap";
 import { CTPStateChange } from "./statechange";
 import { CTPLinkId } from "../Core/linkid";
 import { CTPError, IError } from "../Core/error";
+import { InfeasibilityReport } from "./infeasibilityreport";
 
 export interface ITaskResource {
   // resource can be only the key value when reading from the flat files
@@ -198,6 +199,9 @@ export class CTPTask extends CTPKeyEntity implements ITask {
   // Cadence — resolved interval in minutes (null = no cadence, tasks start whenever)
   public cadenceIntervalMinutes: number | null = null;
 
+  // Infeasibility report — set when engine cannot place this task
+  public infeasibilityReport: InfeasibilityReport | null = null;
+
   // Manual priority override (0 = no override)
   public manualPriority: number = 0;
 
@@ -250,6 +254,7 @@ export class CTPTask extends CTPKeyEntity implements ITask {
 
   public clearErrors() {
     this.errors = [];
+    this.infeasibilityReport = null;
   }
 
   public addError(a: string, r: string) {

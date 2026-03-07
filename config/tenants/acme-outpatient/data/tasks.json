@@ -2060,5 +2060,413 @@
     },
     "process": "RECOVERY",
     "sequence": 3
+  },
+
+  {
+    "key": "C011-SETUP",
+    "name": "Adams - Pre-Op Setup",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T13:00:00Z",
+    "windowEnd": "2026-02-17T01:00:00Z",
+    "durationSeconds": 900,
+    "capacityResources": [
+      {
+        "isPrimary": true,
+        "preferences": [
+          { "resource": "OR-01", "rank": 1 },
+          { "resource": "OR-02", "rank": 2 }
+        ]
+      },
+      {
+        "isPrimary": false,
+        "preferences": [
+          { "resource": "RN-01", "rank": 1 },
+          { "resource": "RN-02", "rank": 2 }
+        ]
+      }
+    ],
+    "typedAttributes": {
+      "procedureType": "ORTHO-RC",
+      "caseId": "CASE-011",
+      "patientId": "PAT-Adams",
+      "priority": "ELECTIVE",
+      "phase": "PRE-OP"
+    },
+    "orderKey": "CASE-011",
+    "orderName": "CASE-011: Adams - Rotator Cuff Repair",
+    "linkId": {
+      "name": "CASE-011",
+      "type": "ES",
+      "prevLink": ""
+    },
+    "process": "ORTHO-RC",
+    "sequence": 1
+  },
+  {
+    "key": "C011-PROC",
+    "name": "Adams - Rotator Cuff Repair",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T13:00:00Z",
+    "windowEnd": "2026-02-17T01:00:00Z",
+    "durationSeconds": 5400,
+    "capacityResources": [
+      {
+        "isPrimary": true,
+        "preferences": [
+          { "resource": "OR-01", "rank": 1 },
+          { "resource": "OR-02", "rank": 2 }
+        ]
+      },
+      {
+        "isPrimary": false,
+        "preferences": [
+          { "resource": "DR-SMITH", "rank": 1 }
+        ]
+      },
+      {
+        "isPrimary": false,
+        "preferences": [
+          { "resource": "AN-JONES", "rank": 1 },
+          { "resource": "AN-GARCIA", "rank": 2 }
+        ]
+      },
+      {
+        "isPrimary": false,
+        "preferences": [
+          { "resource": "RN-01", "rank": 1 },
+          { "resource": "RN-02", "rank": 2 }
+        ]
+      }
+    ],
+    "typedAttributes": {
+      "procedureType": "ORTHO-RC",
+      "caseId": "CASE-011",
+      "patientId": "PAT-Adams",
+      "priority": "ELECTIVE",
+      "phase": "PROCEDURE"
+    },
+    "orderKey": "CASE-011",
+    "orderName": "CASE-011: Adams - Rotator Cuff Repair",
+    "linkId": {
+      "name": "CASE-011",
+      "type": "ES",
+      "prevLink": "C011-SETUP",
+      "maxGap": 0
+    },
+    "process": "ORTHO-RC",
+    "sequence": 2
+  },
+  {
+    "key": "C011-REC",
+    "name": "Adams - Recovery",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T13:00:00Z",
+    "windowEnd": "2026-02-17T01:00:00Z",
+    "durationSeconds": 3600,
+    "capacityResources": [
+      {
+        "isPrimary": true,
+        "preferences": [
+          { "resource": "REC-01", "rank": 1 },
+          { "resource": "REC-02", "rank": 2 }
+        ]
+      },
+      {
+        "isPrimary": false,
+        "preferences": [
+          { "resource": "RN-01", "rank": 1 },
+          { "resource": "RN-02", "rank": 2 }
+        ]
+      }
+    ],
+    "typedAttributes": {
+      "procedureType": "ORTHO-RC",
+      "caseId": "CASE-011",
+      "patientId": "PAT-Adams",
+      "priority": "ELECTIVE",
+      "phase": "RECOVERY"
+    },
+    "orderKey": "CASE-011",
+    "orderName": "CASE-011: Adams - Rotator Cuff Repair",
+    "linkId": {
+      "name": "CASE-011",
+      "type": "ES",
+      "prevLink": "C011-PROC",
+      "maxGap": 900
+    },
+    "process": "RECOVERY",
+    "sequence": 3
+  },
+
+  {
+    "key": "C012-SETUP",
+    "name": "Brooks - Pre-Op Setup",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T13:00:00Z",
+    "windowEnd": "2026-02-16T19:00:00Z",
+    "durationSeconds": 900,
+    "capacityResources": [
+      {
+        "isPrimary": true,
+        "preferences": [
+          { "resource": "OR-01", "rank": 1 },
+          { "resource": "OR-02", "rank": 2 }
+        ]
+      },
+      {
+        "isPrimary": false,
+        "preferences": [
+          { "resource": "RN-01", "rank": 1 },
+          { "resource": "RN-02", "rank": 2 }
+        ]
+      }
+    ],
+    "typedAttributes": {
+      "procedureType": "ORTHO-ACL",
+      "caseId": "CASE-012",
+      "patientId": "PAT-Brooks",
+      "priority": "ELECTIVE",
+      "phase": "PRE-OP"
+    },
+    "orderKey": "CASE-012",
+    "orderName": "CASE-012: Brooks - ACL Reconstruction",
+    "linkId": {
+      "name": "CASE-012",
+      "type": "ES",
+      "prevLink": ""
+    },
+    "process": "ORTHO-ACL",
+    "sequence": 1
+  },
+  {
+    "key": "C012-PROC",
+    "name": "Brooks - ACL Reconstruction",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T13:00:00Z",
+    "windowEnd": "2026-02-16T19:00:00Z",
+    "durationSeconds": 7200,
+    "capacityResources": [
+      {
+        "isPrimary": true,
+        "preferences": [
+          { "resource": "OR-01", "rank": 1 },
+          { "resource": "OR-02", "rank": 2 }
+        ]
+      },
+      {
+        "isPrimary": false,
+        "preferences": [
+          { "resource": "DR-CHEN", "rank": 1 }
+        ]
+      },
+      {
+        "isPrimary": false,
+        "preferences": [
+          { "resource": "AN-JONES", "rank": 1 },
+          { "resource": "AN-GARCIA", "rank": 2 }
+        ]
+      },
+      {
+        "isPrimary": false,
+        "preferences": [
+          { "resource": "RN-01", "rank": 1 },
+          { "resource": "RN-02", "rank": 2 }
+        ]
+      }
+    ],
+    "typedAttributes": {
+      "procedureType": "ORTHO-ACL",
+      "caseId": "CASE-012",
+      "patientId": "PAT-Brooks",
+      "priority": "ELECTIVE",
+      "phase": "PROCEDURE"
+    },
+    "orderKey": "CASE-012",
+    "orderName": "CASE-012: Brooks - ACL Reconstruction",
+    "linkId": {
+      "name": "CASE-012",
+      "type": "ES",
+      "prevLink": "C012-SETUP",
+      "maxGap": 0
+    },
+    "process": "ORTHO-ACL",
+    "sequence": 2
+  },
+  {
+    "key": "C012-REC",
+    "name": "Brooks - Recovery",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T13:00:00Z",
+    "windowEnd": "2026-02-17T01:00:00Z",
+    "durationSeconds": 5400,
+    "capacityResources": [
+      {
+        "isPrimary": true,
+        "preferences": [
+          { "resource": "REC-01", "rank": 1 },
+          { "resource": "REC-02", "rank": 2 }
+        ]
+      },
+      {
+        "isPrimary": false,
+        "preferences": [
+          { "resource": "RN-01", "rank": 1 },
+          { "resource": "RN-02", "rank": 2 }
+        ]
+      }
+    ],
+    "typedAttributes": {
+      "procedureType": "ORTHO-ACL",
+      "caseId": "CASE-012",
+      "patientId": "PAT-Brooks",
+      "priority": "ELECTIVE",
+      "phase": "RECOVERY"
+    },
+    "orderKey": "CASE-012",
+    "orderName": "CASE-012: Brooks - ACL Reconstruction",
+    "linkId": {
+      "name": "CASE-012",
+      "type": "ES",
+      "prevLink": "C012-PROC",
+      "maxGap": 900
+    },
+    "process": "RECOVERY",
+    "sequence": 3
+  },
+
+  {
+    "key": "C013-SETUP",
+    "name": "Carter - Pre-Op Setup",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T13:00:00Z",
+    "windowEnd": "2026-02-17T01:00:00Z",
+    "durationSeconds": 900,
+    "capacityResources": [
+      {
+        "isPrimary": true,
+        "preferences": [
+          { "resource": "OR-01", "rank": 1 },
+          { "resource": "OR-02", "rank": 2 }
+        ]
+      },
+      {
+        "isPrimary": false,
+        "preferences": [
+          { "resource": "RN-01", "rank": 1 },
+          { "resource": "RN-02", "rank": 2 }
+        ]
+      }
+    ],
+    "typedAttributes": {
+      "procedureType": "ORTHO-MR",
+      "caseId": "CASE-013",
+      "patientId": "PAT-Carter",
+      "priority": "URGENT",
+      "phase": "PRE-OP"
+    },
+    "orderKey": "CASE-013",
+    "orderName": "CASE-013: Carter - Meniscus Repair",
+    "linkId": {
+      "name": "CASE-013",
+      "type": "ES",
+      "prevLink": ""
+    },
+    "process": "ORTHO-MR",
+    "sequence": 1
+  },
+  {
+    "key": "C013-PROC",
+    "name": "Carter - Meniscus Repair",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T13:00:00Z",
+    "windowEnd": "2026-02-17T01:00:00Z",
+    "durationSeconds": 3600,
+    "capacityResources": [
+      {
+        "isPrimary": true,
+        "preferences": [
+          { "resource": "OR-01", "rank": 1 },
+          { "resource": "OR-02", "rank": 2 }
+        ]
+      },
+      {
+        "isPrimary": false,
+        "preferences": [
+          { "resource": "DR-CHEN", "rank": 1 }
+        ]
+      },
+      {
+        "isPrimary": false,
+        "preferences": [
+          { "resource": "AN-JONES", "rank": 1 },
+          { "resource": "AN-GARCIA", "rank": 2 }
+        ]
+      },
+      {
+        "isPrimary": false,
+        "preferences": [
+          { "resource": "RN-01", "rank": 1 },
+          { "resource": "RN-02", "rank": 2 }
+        ]
+      }
+    ],
+    "typedAttributes": {
+      "procedureType": "ORTHO-MR",
+      "caseId": "CASE-013",
+      "patientId": "PAT-Carter",
+      "priority": "URGENT",
+      "phase": "PROCEDURE"
+    },
+    "orderKey": "CASE-013",
+    "orderName": "CASE-013: Carter - Meniscus Repair",
+    "linkId": {
+      "name": "CASE-013",
+      "type": "ES",
+      "prevLink": "C013-SETUP",
+      "maxGap": 0
+    },
+    "process": "ORTHO-MR",
+    "sequence": 2
+  },
+  {
+    "key": "C013-REC",
+    "name": "Carter - Recovery",
+    "type": "PROCESS",
+    "windowStart": "2026-02-16T13:00:00Z",
+    "windowEnd": "2026-02-17T01:00:00Z",
+    "durationSeconds": 3600,
+    "capacityResources": [
+      {
+        "isPrimary": true,
+        "preferences": [
+          { "resource": "REC-01", "rank": 1 },
+          { "resource": "REC-02", "rank": 2 }
+        ]
+      },
+      {
+        "isPrimary": false,
+        "preferences": [
+          { "resource": "RN-01", "rank": 1 },
+          { "resource": "RN-02", "rank": 2 }
+        ]
+      }
+    ],
+    "typedAttributes": {
+      "procedureType": "ORTHO-MR",
+      "caseId": "CASE-013",
+      "patientId": "PAT-Carter",
+      "priority": "URGENT",
+      "phase": "RECOVERY"
+    },
+    "orderKey": "CASE-013",
+    "orderName": "CASE-013: Carter - Meniscus Repair",
+    "linkId": {
+      "name": "CASE-013",
+      "type": "ES",
+      "prevLink": "C013-PROC",
+      "maxGap": 900
+    },
+    "process": "RECOVERY",
+    "sequence": 3
   }
 ]

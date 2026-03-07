@@ -895,6 +895,7 @@ export class CTPService {
         score: task.score === Number.MAX_VALUE ? null : task.score,
         feasible: isScheduled,
         errors: task.errors ?? [],
+        infeasibilityReport: task.infeasibilityReport ? this.serializeInfeasibilityReport(task.infeasibilityReport) : null,
         typedAttributes: task.typedAttributes.toArray(),
         orderRef,
         outputProductKey,
@@ -1162,6 +1163,41 @@ export class CTPService {
       colors,
       terminology,
       locale,
+    };
+  }
+
+  private serializeInfeasibilityReport(report: any): any {
+    return {
+      reason: report.reason,
+      bottleneckSlot: report.bottleneckSlot,
+      slots: report.slots.map((slot: any) => ({
+        slotIndex: slot.slotIndex,
+        slotLabel: slot.slotLabel,
+        isPrimary: slot.isPrimary,
+        status: slot.status,
+        bestAvailableMinutes: slot.bestAvailableMinutes,
+        isBottleneck: slot.isBottleneck,
+        resources: slot.resources.map((r: any) => ({
+          resourceKey: r.resourceKey,
+          resourceName: r.resourceName,
+          availableMinutes: r.availableMinutes,
+          totalWindowMinutes: r.totalWindowMinutes,
+          status: r.status,
+          blockingTasks: r.blockingTasks.map((bt: any) => ({
+            taskKey: bt.taskKey,
+            taskName: bt.taskName,
+            chainKey: bt.chainKey,
+            start: CTPDateTime.toDateTime(bt.startW).toISO(),
+            end: CTPDateTime.toDateTime(bt.endW).toISO(),
+          })),
+          note: r.note,
+        })),
+      })),
+      combosGenerated: report.combosGenerated,
+      combosSurvivedPropagation: report.combosSurvivedPropagation,
+      combosPassedAssignment: report.combosPassedAssignment,
+      conflictType: report.conflictType,
+      conflictTypeReason: report.conflictTypeReason,
     };
   }
 }

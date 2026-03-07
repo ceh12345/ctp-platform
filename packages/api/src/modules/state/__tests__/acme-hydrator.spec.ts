@@ -21,7 +21,7 @@ describe('Acme Outpatient Hydrator', () => {
     const hydrator = new StateHydratorService(configService);
     const landscape = hydrator.buildLandscape();
     expect(landscape.resources.size()).toBe(17);
-    expect(landscape.tasks.size()).toBe(30);
+    expect(landscape.tasks.size()).toBe(39);
   });
 
   it('solves acme-outpatient without error', () => {

@@ -1,12 +1,21 @@
 import { CTPProcess } from '../Models/Entities/process';
-import { CTPTask, CTPTaskList } from '../Models/Entities/task';
+import { CTPTask, CTPTaskList, CTPTaskResource } from '../Models/Entities/task';
 import { ScheduleContext, ScheduleContexts, BestScheduleContext } from '../Models/Entities/schedulecontext';
 import { SchedulingLandscape } from '../Models/Entities/landscape';
 import { CTPScoring } from '../Models/Entities/score';
 import { CTPStartTime } from '../Models/Entities/starttime';
+import { CTPResource } from '../Models/Entities/resource';
 import { ScoringEngine } from './scoringengine';
 import { ScheduleEngine } from './scheduleengine';
 import { CTPTaskStateConstants } from '../Models/Core/constants';
+import {
+  InfeasibilityReport,
+  ConflictType,
+  classifyConflict,
+  ResourceSlotReport,
+  ResourceAvailabilityDetail,
+  BlockingTaskDetail,
+} from '../Models/Entities/infeasibilityreport';
 
 // ── Interfaces ──────────────────────────────────────────────────────
 
@@ -91,7 +100,10 @@ export class ChainContextEngine {
     taskArray.sort((a, b) => a.sequence - b.sequence);
     for (const task of taskArray) {
       const ctxs = taskContextsMap.get(task.key);
-      if (!ctxs || ctxs.length === 0) return null;
+      if (!ctxs || ctxs.length === 0) {
+        this.attachInfeasibilityReport(chain, taskArray, 0, 0, 0, landscape);
+        return null;
+      }
     }
 
     // Step 2: Detect lane resources
@@ -112,14 +124,20 @@ export class ChainContextEngine {
     // Step 3: Build cross-product grouped by lane
     const cap = maxCombos ?? landscape.appSettings?.maxChainCombos ?? 500;
     const combos = this.buildLaneCombos(taskArray, taskContextsMap, lanes, cap);
-    if (combos.length === 0) return null;
+    if (combos.length === 0) {
+      this.attachInfeasibilityReport(chain, taskArray, 0, 0, 0, landscape);
+      return null;
+    }
 
     // Step 4: Propagate timing constraints (using cached bounds)
     this.propagateAll(combos, taskArray, boundsCache);
 
     // Step 5: Eliminate infeasible combos
     const feasible = combos.filter(c => c.feasible);
-    if (feasible.length === 0) return null;
+    if (feasible.length === 0) {
+      this.attachInfeasibilityReport(chain, taskArray, combos.length, 0, 0, landscape);
+      return null;
+    }
 
     // Step 6: Score surviving combos
     this.scoreChainCombos(feasible, landscape, scoring);
@@ -138,7 +156,10 @@ export class ChainContextEngine {
       validCombos.push(candidate);
     }
 
-    if (validCombos.length === 0) return null;
+    if (validCombos.length === 0) {
+      this.attachInfeasibilityReport(chain, taskArray, combos.length, feasible.length, 0, landscape);
+      return null;
+    }
 
     // Pick the combo with the earliest first-task assignedStart.
     // Among ties, prefer lower chainScore.
@@ -844,6 +865,238 @@ export class ChainContextEngine {
 
     // Fallback: return head if available
     return st.head?.data ?? null;
+  }
+
+  // ── Infeasibility Reporting ──
+
+  private attachInfeasibilityReport(
+    chain: CTPProcess,
+    tasks: CTPTask[],
+    combosGenerated: number,
+    combosSurvivedPropagation: number,
+    combosPassedAssignment: number,
+    landscape: SchedulingLandscape,
+  ): void {
+    const report = this.buildInfeasibilityReport(
+      chain, tasks, combosGenerated, combosSurvivedPropagation, combosPassedAssignment, landscape,
+    );
+    chain.tasks?.forEach(task => {
+      task.infeasibilityReport = report;
+      task.addError('ChainContextEngine', report.reason);
+    });
+  }
+
+  public buildInfeasibilityReport(
+    chain: CTPProcess,
+    tasks: CTPTask[],
+    combosGenerated: number,
+    combosSurvivedPropagation: number,
+    combosPassedAssignment: number,
+    landscape: SchedulingLandscape,
+  ): InfeasibilityReport {
+    const slots: ResourceSlotReport[] = [];
+    const chainKey = chain.key || tasks[0]?.linkId?.name || null;
+
+    for (const task of tasks) {
+      if (!task.capacityResources) continue;
+
+      const windowStart = task.window?.startW ?? 0;
+      const windowEnd = task.window?.endW ?? Number.MAX_VALUE;
+      const windowMinutes = (windowEnd - windowStart) / 60;
+      const taskDuration = task.duration?.duration() ?? 0;
+
+      task.capacityResources.forEach((tr, idx) => {
+        if (tr.isIgnored()) return;
+
+        const prefs = tr.getEffectivePreferences();
+        const resourceDetails: ResourceAvailabilityDetail[] = [];
+        let bestAvailMinutes = 0;
+
+        for (const pref of prefs) {
+          const resource = landscape.resources?.getEntity(pref.resourceKey);
+          if (!resource) continue;
+
+          const analysis = this.analyzeResourceAvailability(
+            resource, windowStart, windowEnd, taskDuration, landscape,
+          );
+
+          if (analysis.availMinutes > bestAvailMinutes) bestAvailMinutes = analysis.availMinutes;
+
+          const status: 'available' | 'partial' | 'blocked' =
+            analysis.availMinutes >= (taskDuration / 60) ? 'available'
+            : analysis.availMinutes > 0 ? 'partial' : 'blocked';
+
+          resourceDetails.push({
+            resourceKey: pref.resourceKey,
+            resourceName: resource.name || pref.resourceKey,
+            availableMinutes: Math.round(analysis.availMinutes),
+            totalWindowMinutes: Math.round(windowMinutes),
+            status,
+            blockingTasks: analysis.blockingTasks,
+            note: analysis.note,
+          });
+        }
+
+        const slotLabel = this.deriveSlotLabel(tr, resourceDetails);
+        const existingSlot = slots.find(s => s.slotLabel === slotLabel);
+
+        if (existingSlot) {
+          for (const rd of resourceDetails) {
+            const existing = existingSlot.resources.find(r => r.resourceKey === rd.resourceKey);
+            if (existing) {
+              if (rd.availableMinutes < existing.availableMinutes) {
+                existing.availableMinutes = rd.availableMinutes;
+                existing.status = rd.status;
+                existing.blockingTasks = rd.blockingTasks;
+                existing.note = rd.note;
+              }
+            } else {
+              existingSlot.resources.push(rd);
+            }
+          }
+          if (bestAvailMinutes < existingSlot.bestAvailableMinutes) {
+            existingSlot.bestAvailableMinutes = Math.round(bestAvailMinutes);
+          }
+        } else {
+          const slotStatus: 'available' | 'partial' | 'blocked' =
+            bestAvailMinutes >= (taskDuration / 60) ? 'available'
+            : bestAvailMinutes > 0 ? 'partial' : 'blocked';
+
+          slots.push({
+            slotIndex: idx,
+            slotLabel,
+            isPrimary: tr.isPrimary,
+            status: slotStatus,
+            bestAvailableMinutes: Math.round(bestAvailMinutes),
+            isBottleneck: false,
+            resources: resourceDetails,
+          });
+        }
+      });
+    }
+
+    // Identify bottleneck: slot with least availability
+    if (slots.length > 0) {
+      const sorted = [...slots].sort((a, b) => a.bestAvailableMinutes - b.bestAvailableMinutes);
+      sorted[0].isBottleneck = true;
+    }
+
+    const bottleneckSlot = slots.find(s => s.isBottleneck);
+
+    let reason = `No valid placement for ${chainKey || tasks[0]?.key}`;
+    if (bottleneckSlot) {
+      reason += ` — ${bottleneckSlot.slotLabel} is the bottleneck`;
+      const blockedRes = bottleneckSlot.resources.filter(r => r.status === 'blocked');
+      if (blockedRes.length > 0) {
+        const names = blockedRes.map(r => r.resourceName).join(', ');
+        reason += ` (${names} fully blocked)`;
+      }
+    }
+
+    const report: InfeasibilityReport = {
+      taskKey: tasks[0]?.key || '',
+      chainKey,
+      reason,
+      bottleneckSlot: bottleneckSlot?.slotLabel || null,
+      conflictType: 'dependency',
+      conflictTypeReason: '',
+      slots,
+      combosGenerated,
+      combosSurvivedPropagation,
+      combosPassedAssignment,
+    };
+
+    const classification = classifyConflict(report);
+    report.conflictType = classification.type;
+    report.conflictTypeReason = classification.reason;
+    report.reason = `[${classification.type.toUpperCase()}] ${report.reason}`;
+
+    return report;
+  }
+
+  private analyzeResourceAvailability(
+    resource: CTPResource,
+    windowStart: number,
+    windowEnd: number,
+    taskDuration: number,
+    landscape: SchedulingLandscape,
+  ): { availMinutes: number; blockingTasks: BlockingTaskDetail[]; note: string | null } {
+    let availMinutes = 0;
+    const blockingTasks: BlockingTaskDetail[] = [];
+    let note: string | null = null;
+
+    if (resource.original) {
+      let node = resource.original.head;
+      let hasAnyAvailability = false;
+      let earliestAvailStart = Number.MAX_VALUE;
+
+      while (node) {
+        const overlapStart = Math.max(node.data.startW, windowStart);
+        const overlapEnd = Math.min(node.data.endW, windowEnd);
+        if (overlapEnd > overlapStart) {
+          hasAnyAvailability = true;
+          availMinutes += (overlapEnd - overlapStart) / 60;
+          if (node.data.startW < earliestAvailStart) {
+            earliestAvailStart = node.data.startW;
+          }
+        }
+        node = node.next;
+      }
+
+      if (!hasAnyAvailability) {
+        return { availMinutes: 0, blockingTasks, note: 'Off shift during entire window' };
+      }
+
+      if (earliestAvailStart > windowStart) {
+        note = `Available from ${earliestAvailStart} only`;
+      }
+    }
+
+    if (resource.assignments) {
+      let assNode = resource.assignments.head;
+      while (assNode) {
+        const a = assNode.data;
+        const overlapStart = Math.max(a.startW, windowStart);
+        const overlapEnd = Math.min(a.endW, windowEnd);
+
+        if (overlapEnd > overlapStart) {
+          availMinutes -= (overlapEnd - overlapStart) / 60;
+
+          if (a.name && !blockingTasks.find(bt => bt.taskKey === a.name)) {
+            const blockerTask = landscape.tasks?.getEntity(a.name);
+            blockingTasks.push({
+              taskKey: a.name,
+              taskName: blockerTask?.name || a.name,
+              chainKey: blockerTask?.linkId?.name || null,
+              startW: a.startW,
+              endW: a.endW,
+            });
+          }
+        }
+        assNode = assNode.next;
+      }
+    }
+
+    if (availMinutes < 0) availMinutes = 0;
+    return { availMinutes, blockingTasks, note };
+  }
+
+  private deriveSlotLabel(
+    tr: CTPTaskResource,
+    resources: ResourceAvailabilityDetail[],
+  ): string {
+    if (resources.length === 0) return 'Resource';
+    if (resources.length === 1) return resources[0].resourceName;
+
+    const names = resources.map(r => r.resourceName);
+    let prefix = names[0];
+    for (let i = 1; i < names.length; i++) {
+      while (!names[i].startsWith(prefix) && prefix.length > 0) {
+        prefix = prefix.slice(0, -1);
+      }
+    }
+    prefix = prefix.replace(/[\s\-_,]+$/, '').trim();
+    return prefix || 'Resource Group';
   }
 }
 

@@ -251,7 +251,9 @@ function statusColor(status: string): string {
   switch (status) {
     case 'on-track': case 'covered': return C.green;
     case 'at-risk': case 'warning': return C.yellow;
-    case 'late': case 'shortage': case 'critical': return C.red;
+    case 'late': case 'shortage': case 'critical': case 'capacity': return C.red;
+    case 'availability': return '#9e9e9e';
+    case 'dependency': return '#ff9800';
     default: return C.textDim;
   }
 }
@@ -260,7 +262,9 @@ function statusBg(status: string): string {
   switch (status) {
     case 'on-track': case 'covered': return C.greenDim;
     case 'at-risk': case 'warning': return C.yellowDim;
-    case 'late': case 'shortage': case 'critical': return C.redDim;
+    case 'late': case 'shortage': case 'critical': case 'capacity': return C.redDim;
+    case 'availability': return '#9e9e9e18';
+    case 'dependency': return '#ff980018';
     default: return 'transparent';
   }
 }
@@ -277,19 +281,50 @@ function deriveConflicts(tasks: any[], resources: any[], materials: any[]): any[
     const hasInfeasibleUpstream = orderTasks.some(
       (t: any) => !t.feasible && t.key !== task.key,
     );
+
+    // Build reasonDetail from infeasibilityReport if available
+    let reasonDetail: string;
+    if (task.infeasibilityReport) {
+      const rpt = task.infeasibilityReport;
+      const bnSlot = rpt.slots?.find((s: any) => s.isBottleneck);
+      if (bnSlot) {
+        const blockedNames = bnSlot.resources
+          ?.filter((r: any) => r.status === 'blocked' || r.status === 'partial')
+          .flatMap((r: any) => (r.blockingTasks || []).map((bt: any) => bt.chainKey || bt.taskName))
+          .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i);
+        reasonDetail = `Bottleneck: ${bnSlot.slotLabel}`;
+        if (blockedNames?.length > 0) reasonDetail += ` — blocked by ${blockedNames.join(', ')}`;
+      } else {
+        reasonDetail = rpt.reason || 'No feasible placement';
+      }
+    } else if (hasInfeasibleUpstream) {
+      reasonDetail = `Blocked by infeasible upstream task in ${task.orderRef}`;
+    } else {
+      reasonDetail = `No feasible slot on ${resKey || 'any resource'}` +
+        (resource ? ` (${resource.utilization.toFixed(0)}% util)` : '');
+    }
+
+    // Use conflictType from infeasibility report when available
+    let reason: string;
+    if (task.infeasibilityReport?.conflictType) {
+      reason = task.infeasibilityReport.conflictType;
+    } else if (hasInfeasibleUpstream) {
+      reason = 'dependency';
+    } else {
+      reason = 'capacity';
+    }
+
     conflicts.push({
       id: `CFT-${task.key}`,
       taskKey: task.key,
       taskName: task.name,
       orderRef: task.orderRef,
       severity: 'critical',
-      reason: hasInfeasibleUpstream ? 'dependency' : 'capacity',
-      reasonDetail: hasInfeasibleUpstream
-        ? `Blocked by infeasible upstream task in ${task.orderRef}`
-        : `No feasible slot on ${resKey || 'any resource'}` +
-          (resource ? ` (${resource.utilization.toFixed(0)}% util)` : ''),
-      bottleneckResource: resKey,
+      reason,
+      reasonDetail,
+      bottleneckResource: task.infeasibilityReport?.bottleneckSlot || resKey,
       bottleneckUtilization: resource?.utilization || 0,
+      infeasibilityReport: task.infeasibilityReport || null,
     });
   });
   materials.forEach((mat: any) => {
@@ -2138,6 +2173,94 @@ function SolveResultsDialog({ result, previousSnapshot, experienceLevel, onClose
   );
 }
 
+/* ── Bottleneck Display Components ── */
+
+function ResourceBottleneckPanel({ report }: { report: any }) {
+  if (!report) return null;
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{
+        padding: '8px 12px', borderRadius: 8, marginBottom: 12,
+        background: '#f4433610', border: '1px solid #f4433630',
+        fontSize: 12, color: '#f44336',
+      }}>
+        {report.reason}
+      </div>
+
+      {report.combosGenerated > 0 && (
+        <div style={{ fontSize: 10, color: C.textDim, marginBottom: 8 }}>
+          Combos: {report.combosGenerated} tried → {report.combosSurvivedPropagation} survived propagation → {report.combosPassedAssignment} valid
+        </div>
+      )}
+
+      <div style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, marginBottom: 8 }}>
+        Resource Availability
+      </div>
+
+      {report.slots.map((slot: any) => (
+        <ResourceSlotRow key={`${slot.slotLabel}-${slot.slotIndex}`} slot={slot} />
+      ))}
+    </div>
+  );
+}
+
+function ResourceSlotRow({ slot }: { slot: any }) {
+  const [expanded, setExpanded] = useState(slot.isBottleneck);
+  const icon = slot.status === 'available' ? '🟢' : slot.status === 'partial' ? '🟡' : '🔴';
+
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div
+        onClick={() => setExpanded(!expanded)}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+      >
+        <span>{icon}</span>
+        <span style={{ fontSize: 12, fontWeight: 500, flex: 1 }}>{slot.slotLabel}</span>
+        {slot.isBottleneck && (
+          <span style={{
+            fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 4,
+            background: '#f4433620', color: '#f44336',
+          }}>
+            BOTTLENECK
+          </span>
+        )}
+        <span style={{ fontSize: 10, color: C.textDim }}>{expanded ? '▾' : '▸'}</span>
+      </div>
+
+      {expanded && (
+        <div style={{ paddingLeft: 24, marginTop: 4 }}>
+          {slot.resources.map((res: any) => (
+            <ResourceBottleneckDetailRow key={res.resourceKey} resource={res} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ResourceBottleneckDetailRow({ resource }: { resource: any }) {
+  const icon = resource.status === 'available' ? '🟢' : resource.status === 'partial' ? '🟡' : '🔴';
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 10 }}>{icon}</span>
+        <span style={{ fontSize: 11, flex: 1 }}>{resource.resourceName}</span>
+        <span style={{ fontSize: 10, color: C.textDim }}>
+          {resource.availableMinutes > 0 ? `${(resource.availableMinutes / 60).toFixed(1)}h free` : 'No availability'}
+        </span>
+      </div>
+      {resource.note && (
+        <div style={{ fontSize: 10, color: C.textDim, paddingLeft: 18 }}>{resource.note}</div>
+      )}
+      {resource.blockingTasks?.map((bt: any) => (
+        <div key={bt.taskKey} style={{ fontSize: 10, color: C.textDim, paddingLeft: 18 }}>
+          → {bt.taskName}{bt.chainKey ? ` (${bt.chainKey})` : ''} {fmtTime(bt.start)}–{fmtTime(bt.end)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceClick,
   taskPins, taskExcludes, taskUnschedules, orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask, onCancelUnschedule,
@@ -2611,8 +2734,16 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
         </>
       )}
 
+      {/* Infeasibility Bottleneck */}
+      {!task.feasible && task.infeasibilityReport && (
+        <>
+          <SectionLabel label="Infeasibility Analysis" />
+          <ResourceBottleneckPanel report={task.infeasibilityReport} />
+        </>
+      )}
+
       {/* Errors */}
-      {task.errors?.length > 0 && (
+      {task.errors?.length > 0 && !task.infeasibilityReport && (
         <>
           <SectionLabel label="Errors" />
           {task.errors.map((err: any, i: number) => (
@@ -5462,15 +5593,37 @@ function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskCli
     );
   }
 
-  const grouped = { capacity: [] as any[], dependency: [] as any[], material: [] as any[] };
+  // Group by conflict type
+  const typeConfig: Record<string, { icon: string; color: string; label: string }> = {
+    availability: { icon: '\u26AB', color: '#9e9e9e', label: 'Availability Conflicts' },
+    capacity:     { icon: '\uD83D\uDD34', color: '#f44336', label: 'Capacity Conflicts' },
+    dependency:   { icon: '\uD83D\uDD17', color: '#ff9800', label: 'Dependency Conflicts' },
+    material:     { icon: '\uD83D\uDCE6', color: '#2196f3', label: 'Material Conflicts' },
+  };
+  const typeOrder = ['availability', 'capacity', 'dependency', 'material'];
+  const grouped = new Map<string, any[]>();
+  for (const type of typeOrder) grouped.set(type, []);
   conflicts.forEach((c: any) => {
-    const bucket = grouped[c.reason as keyof typeof grouped];
-    if (bucket) bucket.push(c);
+    const type = typeOrder.includes(c.reason) ? c.reason : 'capacity';
+    grouped.get(type)!.push(c);
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {conflicts.map((c: any) => {
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {typeOrder.map(type => {
+        const items = grouped.get(type) || [];
+        if (items.length === 0) return null;
+        const cfg = typeConfig[type];
+        return (
+          <div key={type}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, paddingLeft: 4 }}>
+              <span>{cfg.icon}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: cfg.color }}>
+                {cfg.label} ({items.length})
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {items.map((c: any) => {
         const isOpen = expanded.has(c.id);
         return (
           <div key={c.id} style={{
@@ -5482,8 +5635,10 @@ function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskCli
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Badge label={c.severity} />
                 <Badge label={c.reason} color={
-                  c.reason === 'capacity' ? C.orange :
-                  c.reason === 'dependency' ? C.purple : C.cyan
+                  c.reason === 'availability' ? '#9e9e9e' :
+                  c.reason === 'capacity' ? '#f44336' :
+                  c.reason === 'dependency' ? '#ff9800' :
+                  c.reason === 'material' ? '#2196f3' : C.orange
                 } />
                 <span style={{ fontWeight: 600, color: C.text, fontSize: 13 }}>{c.taskName}</span>
                 {c.orderRef && <span style={{ color: C.textDim, fontSize: 12 }}>({c.orderRef})</span>}
@@ -5495,7 +5650,10 @@ function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskCli
                 <div style={{ color: C.textMuted, marginBottom: 4 }}>
                   <strong>Detail:</strong> {c.reasonDetail}
                 </div>
-                {c.bottleneckResource && (
+                {c.infeasibilityReport && (
+                  <ResourceBottleneckPanel report={c.infeasibilityReport} />
+                )}
+                {!c.infeasibilityReport && c.bottleneckResource && (
                   <div style={{ color: C.textMuted }}>
                     <strong>Resource:</strong> {c.bottleneckResource} ({c.bottleneckUtilization.toFixed(0)}% utilization)
                   </div>
@@ -5523,6 +5681,10 @@ function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskCli
                 </div>
               </div>
             )}
+          </div>
+        );
+      })}
+            </div>
           </div>
         );
       })}
@@ -6086,8 +6248,9 @@ function ConflictsTab({ tasks, resources, materials, onTaskClick }: {
         ]} active={severity} onChange={setSeverity} />
         <StatusToggles options={[
           { value: 'all', label: 'All Reasons' },
-          { value: 'capacity', label: 'Capacity', color: C.orange },
-          { value: 'dependency', label: 'Dependency', color: C.purple },
+          { value: 'availability', label: 'Availability', color: '#9e9e9e' },
+          { value: 'capacity', label: 'Capacity', color: '#f44336' },
+          { value: 'dependency', label: 'Dependency', color: '#ff9800' },
           { value: 'material', label: t('material', 'Material'), color: C.cyan },
         ]} active={reason} onChange={setReason} />
         <span style={{ fontSize: 12, color: C.textDim, marginLeft: 'auto' }}>
@@ -6563,7 +6726,59 @@ function ChainDetail({ data, experienceLevel, onNavigateToCase }: { data: any; e
   );
 }
 
-function AnalyticsTab({ kpis, detail, selectedKpi, onSelectKpi, loading, experienceLevel = 'novice' as ExperienceLevel, onNavigateToCase }: {
+interface BottleneckSummary {
+  resourceType: string;
+  count: number;
+  blockedBy: string;
+  tasks: any[];
+}
+
+function buildBottleneckSummary(tasks: any[]): BottleneckSummary[] {
+  const infeasible = tasks.filter((t: any) => !t.feasible && t.infeasibilityReport);
+  const bySlot = new Map<string, { count: number; blockers: Set<string>; tasks: any[] }>();
+
+  for (const task of infeasible) {
+    const slot = task.infeasibilityReport.bottleneckSlot || 'Unknown';
+    if (!bySlot.has(slot)) bySlot.set(slot, { count: 0, blockers: new Set(), tasks: [] });
+    const entry = bySlot.get(slot)!;
+    entry.count++;
+    entry.tasks.push(task);
+
+    const bottleneckSlotData = task.infeasibilityReport.slots.find((s: any) => s.isBottleneck);
+    if (bottleneckSlotData) {
+      for (const res of bottleneckSlotData.resources) {
+        for (const bt of res.blockingTasks) {
+          entry.blockers.add(bt.chainKey || bt.taskName);
+        }
+      }
+    }
+  }
+
+  return Array.from(bySlot.entries()).map(([slot, data]) => ({
+    resourceType: slot,
+    count: data.count,
+    blockedBy: Array.from(data.blockers).join(', '),
+    tasks: data.tasks,
+  }));
+}
+
+function generateRecommendations(summary: BottleneckSummary[]): string[] {
+  const recs: string[] = [];
+  for (const item of summary) {
+    if (item.count >= 2) {
+      recs.push(`${item.resourceType} is a systemic bottleneck \u2014 ${item.count} tasks affected. Consider adding capacity.`);
+    }
+    if (item.blockedBy) {
+      recs.push(`${item.resourceType} blocked by ${item.blockedBy}. Consider deferring or rescheduling those chains.`);
+    }
+  }
+  if (summary.length === 0) {
+    recs.push('No infeasible tasks \u2014 all tasks placed successfully.');
+  }
+  return recs;
+}
+
+function AnalyticsTab({ kpis, detail, selectedKpi, onSelectKpi, loading, experienceLevel = 'novice' as ExperienceLevel, onNavigateToCase, tasks = [], onNavigateToConflicts }: {
   kpis: any[];
   detail: any;
   selectedKpi: string | null;
@@ -6571,6 +6786,8 @@ function AnalyticsTab({ kpis, detail, selectedKpi, onSelectKpi, loading, experie
   loading: boolean;
   experienceLevel?: ExperienceLevel;
   onNavigateToCase?: (caseKey: string) => void;
+  tasks?: any[];
+  onNavigateToConflicts?: () => void;
 }) {
   // No-solve state
   if (kpis.length === 0 && !loading) {
@@ -6587,15 +6804,29 @@ function AnalyticsTab({ kpis, detail, selectedKpi, onSelectKpi, loading, experie
     );
   }
 
+  // Infeasibility KPI — computed from tasks
+  const infeasibleCount = tasks.filter((t: any) => !t.feasible && t.infeasibilityReport).length;
+  const allKpis = [
+    ...kpis,
+    {
+      key: 'infeasibility',
+      group: 'Scheduling',
+      name: 'Infeasibility Analysis',
+      value: infeasibleCount,
+      unit: 'tasks',
+      status: infeasibleCount === 0 ? 'good' : 'warning',
+    },
+  ];
+
   // Group KPIs
   const groups = new Map<string, any[]>();
-  for (const kpi of kpis) {
+  for (const kpi of allKpis) {
     if (!groups.has(kpi.group)) groups.set(kpi.group, []);
     groups.get(kpi.group)!.push(kpi);
   }
 
   // Determine selected KPI's group for detail view
-  const selectedKpiObj = kpis.find((k) => k.key === selectedKpi);
+  const selectedKpiObj = allKpis.find((k) => k.key === selectedKpi);
   const selectedGroup = selectedKpiObj?.group;
 
   // Find group data in detail response
@@ -6604,6 +6835,131 @@ function AnalyticsTab({ kpis, detail, selectedKpi, onSelectKpi, loading, experie
     detailContent = (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: C.textMuted }}>
         Loading...
+      </div>
+    );
+  } else if (selectedKpi === 'infeasibility') {
+    const summary = buildBottleneckSummary(tasks);
+    const recs = generateRecommendations(summary);
+    const infeasibleTasks = tasks.filter((t: any) => !t.feasible && t.infeasibilityReport);
+    detailContent = (
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 16 }}>
+          Infeasibility Analysis — {infeasibleCount} task{infeasibleCount !== 1 ? 's' : ''} infeasible
+        </div>
+
+        {/* Conflict Type Breakdown */}
+        {infeasibleTasks.length > 0 && (() => {
+          const typeCounts = { availability: 0, capacity: 0, dependency: 0 };
+          infeasibleTasks.forEach((t: any) => {
+            const ct = t.infeasibilityReport?.conflictType || 'dependency';
+            if (ct in typeCounts) typeCounts[ct as keyof typeof typeCounts]++;
+          });
+          return (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 8 }}>By Conflict Type</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, maxWidth: 300 }}>
+                <thead>
+                  <tr style={{ borderBottom: `2px solid ${C.border}` }}>
+                    <th style={{ textAlign: 'left', padding: '6px 8px', color: C.textMuted, fontWeight: 600 }}>Type</th>
+                    <th style={{ textAlign: 'center', padding: '6px 8px', color: C.textMuted, fontWeight: 600 }}>Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {([
+                    ['\u26AB Availability', typeCounts.availability, '#9e9e9e'],
+                    ['\uD83D\uDD34 Capacity', typeCounts.capacity, '#f44336'],
+                    ['\uD83D\uDD17 Dependency', typeCounts.dependency, '#ff9800'],
+                  ] as [string, number, string][]).map(([label, count, color]) => (
+                    <tr key={label} style={{ borderBottom: `1px solid ${C.border}` }}>
+                      <td style={{ padding: '6px 8px', color, fontWeight: 500 }}>{label}</td>
+                      <td style={{ padding: '6px 8px', textAlign: 'center', color: C.text }}>{count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
+
+        {/* Bottleneck Summary Table */}
+        {summary.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 8 }}>Bottleneck Summary</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: `2px solid ${C.border}` }}>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', color: C.textMuted, fontWeight: 600 }}>Resource Type</th>
+                  <th style={{ textAlign: 'center', padding: '6px 8px', color: C.textMuted, fontWeight: 600 }}>Count</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', color: C.textMuted, fontWeight: 600 }}>Blocked By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.map((s) => (
+                  <tr key={s.resourceType} style={{ borderBottom: `1px solid ${C.border}` }}>
+                    <td style={{ padding: '6px 8px', color: C.text, fontWeight: 500 }}>{s.resourceType}</td>
+                    <td style={{ padding: '6px 8px', color: C.text, textAlign: 'center' }}>{s.count}</td>
+                    <td style={{ padding: '6px 8px', color: C.textMuted, fontSize: 11 }}>{s.blockedBy || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Affected Chains/Tasks Table */}
+        {infeasibleTasks.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 8 }}>Affected Tasks</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: `2px solid ${C.border}` }}>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', color: C.textMuted, fontWeight: 600 }}>Chain</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', color: C.textMuted, fontWeight: 600 }}>Task</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', color: C.textMuted, fontWeight: 600 }}>Type</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', color: C.textMuted, fontWeight: 600 }}>Bottleneck</th>
+                </tr>
+              </thead>
+              <tbody>
+                {infeasibleTasks.map((t: any) => {
+                  const ct = t.infeasibilityReport?.conflictType || 'dependency';
+                  const ctColor = ct === 'availability' ? '#9e9e9e' : ct === 'capacity' ? '#f44336' : '#ff9800';
+                  return (
+                  <tr key={t.key} style={{ borderBottom: `1px solid ${C.border}` }}>
+                    <td style={{ padding: '6px 8px', color: C.accent, fontWeight: 500 }}>{t.orderRef || '—'}</td>
+                    <td style={{ padding: '6px 8px', color: C.text }}>{t.name}</td>
+                    <td style={{ padding: '6px 8px', color: ctColor, fontWeight: 500, fontSize: 11, textTransform: 'capitalize' }}>{ct}</td>
+                    <td style={{ padding: '6px 8px', color: '#f44336', fontWeight: 500 }}>
+                      {t.infeasibilityReport.bottleneckSlot || '—'}
+                    </td>
+                  </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Recommendations */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 8 }}>Recommendations</div>
+          <ul style={{ margin: 0, paddingLeft: 20, fontSize: 12, color: C.textMuted, lineHeight: 1.8 }}>
+            {recs.map((r, i) => <li key={i}>{r}</li>)}
+          </ul>
+        </div>
+
+        {/* View in Conflicts link */}
+        {onNavigateToConflicts && infeasibleCount > 0 && (
+          <button
+            onClick={onNavigateToConflicts}
+            style={{
+              background: 'none', border: `1px solid ${C.accent}`, borderRadius: 6,
+              color: C.accent, padding: '6px 16px', fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', fontFamily: FONT,
+            }}
+          >
+            View in Conflicts →
+          </button>
+        )}
       </div>
     );
   } else if (selectedGroup === 'Utilization' && detail) {
@@ -7705,7 +8061,8 @@ export default function App() {
           onMaterialModeChange={(key, mode) => { setMaterialModeOverrides(prev => ({ ...prev, [key]: mode })); setSolveStale(true); }} />}
         {activeTab === 'Analytics' && <AnalyticsTab kpis={analyticsKpis} detail={analyticsDetail}
           selectedKpi={selectedKpi} onSelectKpi={handleSelectKpi} loading={analyticsLoading}
-          experienceLevel={experienceLevel} onNavigateToCase={(caseKey) => { setScheduleCaseFilter(caseKey); setActiveTab('Schedule'); }} />}
+          experienceLevel={experienceLevel} onNavigateToCase={(caseKey) => { setScheduleCaseFilter(caseKey); setActiveTab('Schedule'); }}
+          tasks={tasks} onNavigateToConflicts={() => setActiveTab('Conflicts')} />}
       </main>
 
       {/* Modals */}

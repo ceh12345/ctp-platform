@@ -8,5 +8,8 @@
   { "key": "CASE-007", "name": "Martinez - Knee Replacement", "productKey": "ORTHO-KR", "demandQty": 1, "dueDate": "2026-02-27T18:00:00Z", "priority": 2 },
   { "key": "CASE-008", "name": "Brown - Hernia Repair", "productKey": "GEN-HERNIA", "demandQty": 1, "dueDate": "2026-02-26T18:00:00Z", "priority": 2 },
   { "key": "CASE-009", "name": "Lee - Pain Injection", "productKey": "PAIN-INJ", "demandQty": 1, "dueDate": "2026-02-25T16:00:00Z", "priority": 1 },
-  { "key": "CASE-010", "name": "Garcia - Arthroscopy", "productKey": "ORTHO-AR", "demandQty": 1, "dueDate": "2026-02-27T18:00:00Z", "priority": 3 }
+  { "key": "CASE-010", "name": "Garcia - Arthroscopy", "productKey": "ORTHO-AR", "demandQty": 1, "dueDate": "2026-02-27T18:00:00Z", "priority": 3 },
+  { "key": "CASE-011", "name": "Adams - Rotator Cuff Repair", "productKey": "ORTHO-RC", "demandQty": 1, "dueDate": "2026-02-17T01:00:00Z", "priority": 5 },
+  { "key": "CASE-012", "name": "Brooks - ACL Reconstruction", "productKey": "ORTHO-ACL", "demandQty": 1, "dueDate": "2026-02-16T19:00:00Z", "priority": 6 },
+  { "key": "CASE-013", "name": "Carter - Meniscus Repair", "productKey": "ORTHO-MR", "demandQty": 1, "dueDate": "2026-02-17T01:00:00Z", "priority": 4 }
 ]
