@@ -38,6 +38,9 @@ _No sprints currently in progress._
 | Engine Sprint 19 — Post-Review Cleanup | Context mutation fix, preCapContextSets sort fix, retryChain window reset, bounds cache, SolutionState snapshot, console.log removal, var→let/const | 2026-03-06 |
 | UI Sprint 17 — Bottleneck Display | InfeasibilityReport interfaces, per-resource availability analysis, ResourceBottleneckPanel in task detail + Conflicts + Analytics KPI | 2026-03-07 |
 | UI Sprint 20 — Conflict Categorization | ConflictType classification (availability/capacity/dependency), Conflicts page grouped by type with filter chips, Analytics type breakdown | 2026-03-07 |
+| AI Sprint 1 — Read-Only Chat | Anthropic proxy endpoint, ChatPanel slide-over, system prompt with schedule context, Ask AI from task detail + Gantt context menu | 2026-03-07 |
+| AI Sprint 2 — Investigation Tools | 7 tool-use functions (where_can_task_go, get_resource_agenda, get_chain_detail, analyze_impact, find_available_resources, compare_tasks, query_resources), tool-use loop (max 5 iterations), loading indicators | 2026-03-07 |
+| AI Sprint 2b — query_resources | 7th tool: query resources by typed attributes with time-windowed availability; GET /ctp/resources/query endpoint; system prompt routing guidance | 2026-03-07 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -91,8 +94,8 @@ See `parking-lot.md` for deferred items including:
 ## Dependency Map
 
 ```
-SOLVER TRACK                          UI TRACK
-────────────                          ────────
+SOLVER TRACK                          UI TRACK                              AI TRACK
+────────────                          ────────                              ────────
 ✓ Sprint 1: Ranked Contexts           ✓ Sprint 1: Select & Act
          │                            ✓ Sprint 1.1: Immediate Actions
          ▼                            ✓ Sprint 1.2: WhereTo Ghost Bars
@@ -118,9 +121,12 @@ SOLVER TRACK                          UI TRACK
                                       ├──→ Sprint 14: Error Handling
                                     ✓ Sprint 15: Resource Agenda
                                     ✓ Sprint 16: WhereTo Resource Diversity
-                                    ✓ Sprint 17: Bottleneck Display
-                                    ✓ Sprint 20: Conflict Categorization
-                                      └──→ Sprint 18: Solve Replay (needs Phase 3 steps)
+                                    ✓ Sprint 17: Bottleneck Display       ✓ AI-1: Read-Only Chat
+                                    ✓ Sprint 20: Conflict Categorization         │
+                                      └──→ Sprint 18: Solve Replay       ✓ AI-2: Investigation Tools (7 tools)
+                                           (needs Phase 3 steps)          + AI-2b: query_resources
+                                                                                 │
+                                                                           └──→ AI-3: Chat Actions (planned)
 ```
 
 ## File Index
@@ -165,6 +171,12 @@ SOLVER TRACK                          UI TRACK
   ui-17-bottleneck-display.md        ← Infeasible task bottleneck identification
   ui-18-solve-replay.md              ← Animated Gantt playback of solver sequence
   ui-20-conflict-categorization.md   ← Conflict type classification (availability/capacity/dependency)
+
+  AI Sprints:
+  ai-1-readonly-chat.md              ← Read-only AI chat assistant with Anthropic proxy
+  ai-2-investigation-tools.md        ← 7 investigation tools with tool-use loop
+  ai-2b-query-resources-tool_1.md    ← query_resources tool with time-windowed availability
+  ai-2c-chat-actions.md              ← (planned) AI-initiated schedule actions
 ```
 
 ## Review Cadence
@@ -178,4 +190,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 8, 2026*
+*Last updated: Mar 7, 2026*

@@ -7070,6 +7070,18 @@ function AnalyticsTab({ kpis, detail, selectedKpi, onSelectKpi, loading, experie
    CHAT PANEL — AI SCHEDULING ASSISTANT
    ═══════════════════════════════════════════════════════════════ */
 
+type ChatActionType = 'whereTo' | 'openTask' | 'openResource' | 'filterChain' | 'openTab' | 'navigateOrder';
+
+interface ChatAction {
+  type: ChatActionType;
+  label: string;
+  taskKey?: string;
+  resourceKey?: string;
+  chainKey?: string;
+  orderKey?: string;
+  tab?: string;
+}
+
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -7077,6 +7089,37 @@ interface ChatMessage {
   timestamp: number;
   loading?: boolean;
   toolCallInProgress?: string;
+  actions?: ChatAction[];
+}
+
+function parseActionsFromText(text: string): { cleanText: string; actions: ChatAction[] } {
+  const actions: ChatAction[] = [];
+  const actionRegex = /<action\s+([^/]+)\/>/g;
+  let match;
+
+  while ((match = actionRegex.exec(text)) !== null) {
+    const attrStr = match[1];
+    const get = (name: string) => {
+      const m = new RegExp(`${name}="([^"]*)"`, 'i').exec(attrStr);
+      return m ? m[1] : undefined;
+    };
+    const type = get('type') as ChatActionType | undefined;
+    const label = get('label');
+    if (type && label) {
+      actions.push({
+        type,
+        label,
+        taskKey: get('taskKey'),
+        resourceKey: get('resourceKey'),
+        chainKey: get('chainKey'),
+        orderKey: get('orderKey'),
+        tab: get('tab'),
+      });
+    }
+  }
+
+  const cleanText = text.replace(actionRegex, '').trim();
+  return { cleanText, actions };
 }
 
 function buildSystemPrompt(solveResult: any, selectedTask?: any): string {
@@ -7231,6 +7274,29 @@ If you don't have enough information to answer, say so.
   prompt += `  "Which ORs have laparoscopic equipment?" → call query_resources (capability on resources)\n`;
   prompt += `\nUse tools when the planner's question requires fresher or more detailed data than what's in the schedule summary above. For simple questions about the current state, answer from the summary directly without calling tools.\n`;
   prompt += `\nAlways explain tool results in plain language. Don't just dump raw data — interpret it, highlight the key finding, and suggest next steps when appropriate.\n`;
+
+  // UI Action tags
+  prompt += `\n## UI Actions\n`;
+  prompt += `After your response text, you may emit action tags to surface relevant UI navigation as clickable buttons for the planner. Use them when your answer references something specific the planner would benefit from seeing or acting on immediately.\n\n`;
+  prompt += `Available actions:\n`;
+  prompt += `  <action type="whereTo" taskKey="C004-PROC" label="Show options on Gantt" />\n`;
+  prompt += `  — Triggers WhereTo ghost bars for the task. Use after answering "where can X go?"\n\n`;
+  prompt += `  <action type="openTask" taskKey="C004-PROC" label="Open CASE-004 detail" />\n`;
+  prompt += `  — Opens the task detail panel. Use when discussing a specific task's details.\n\n`;
+  prompt += `  <action type="openResource" resourceKey="AN-JONES" label="View AN-JONES schedule" />\n`;
+  prompt += `  — Opens the resource detail panel. Use when discussing a specific resource.\n\n`;
+  prompt += `  <action type="filterChain" chainKey="CASE-004" label="Show CASE-004 on Schedule" />\n`;
+  prompt += `  — Filters the Schedule tab to show only this chain. Use for chain-level questions.\n\n`;
+  prompt += `  <action type="openTab" tab="Analytics" label="Go to Analytics" />\n`;
+  prompt += `  — Switches to a tab. Valid tabs: Overview, Schedule, Orders, Conflicts, Materials, Analytics\n\n`;
+  prompt += `  <action type="navigateOrder" orderKey="WO-1004" label="View WO-1004 in Orders" />\n`;
+  prompt += `  — Goes to the Orders tab filtered to this order.\n\n`;
+  prompt += `Rules:\n`;
+  prompt += `- Emit at most 2-3 actions per response — don't overwhelm with buttons\n`;
+  prompt += `- Only emit actions directly relevant to what you just explained\n`;
+  prompt += `- Always include a clear, short label (max 5 words)\n`;
+  prompt += `- Never emit actions for hypothetical or speculative scenarios\n`;
+  prompt += `- Place action tags at the very end of your response text\n`;
 
   return prompt;
 }
@@ -7595,7 +7661,50 @@ async function executeTool(toolName: string, input: any, solveResult: any): Prom
   }
 }
 
-function ChatBubble({ message }: { message: ChatMessage }) {
+function actionIcon(type: ChatActionType): string {
+  switch (type) {
+    case 'whereTo':        return '\uD83D\uDCCD';
+    case 'openTask':       return '\uD83D\uDCCB';
+    case 'openResource':   return '\uD83D\uDC64';
+    case 'filterChain':    return '\uD83D\uDD17';
+    case 'openTab':        return '\u2192';
+    case 'navigateOrder':  return '\uD83D\uDCE6';
+    default:               return '\u2192';
+  }
+}
+
+function ChatActionButtons({ actions, onAction }: { actions: ChatAction[]; onAction: (action: ChatAction) => void }) {
+  if (!actions || actions.length === 0) return null;
+  return (
+    <div style={{
+      display: 'flex', flexWrap: 'wrap', gap: 6,
+      marginTop: 8, paddingTop: 8,
+      borderTop: `1px solid ${C.border}`,
+    }}>
+      {actions.map((action, i) => (
+        <button
+          key={i}
+          onClick={() => onAction(action)}
+          style={{
+            padding: '5px 10px', borderRadius: 6,
+            border: `1px solid ${C.accent}44`,
+            background: `${C.accent}12`,
+            color: C.accent, fontSize: 11, fontWeight: 600,
+            cursor: 'pointer', fontFamily: FONT,
+            display: 'flex', alignItems: 'center', gap: 4,
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = `${C.accent}22`)}
+          onMouseLeave={e => (e.currentTarget.style.background = `${C.accent}12`)}
+        >
+          {actionIcon(action.type)} {action.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ChatBubble({ message, onAction }: { message: ChatMessage; onAction?: (action: ChatAction) => void }) {
   const isUser = message.role === 'user';
   return (
     <div style={{
@@ -7623,6 +7732,9 @@ function ChatBubble({ message }: { message: ChatMessage }) {
         ) : (
           message.content
         )}
+        {!message.loading && message.actions && message.actions.length > 0 && onAction && (
+          <ChatActionButtons actions={message.actions} onAction={onAction} />
+        )}
       </div>
     </div>
   );
@@ -7635,8 +7747,51 @@ const WELCOME_MESSAGE: ChatMessage = {
   timestamp: Date.now(),
 };
 
-function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput }: {
-  solveResult: any; open: boolean; onClose: () => void; selectedTask?: any; initialInput?: string;
+function ChatCollapsedStrip({ lastMessage, onExpand }: { lastMessage: string | null; onExpand: () => void }) {
+  return (
+    <div
+      onClick={onExpand}
+      style={{
+        position: 'fixed', right: 0, top: 0, bottom: 0,
+        width: 32, zIndex: 1100,
+        background: C.surface,
+        borderLeft: `1px solid ${C.border}`,
+        cursor: 'pointer',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        paddingTop: 12,
+        gap: 8,
+        flexShrink: 0,
+        transition: 'background 0.15s',
+      }}
+      onMouseEnter={e => (e.currentTarget.style.background = C.bg2)}
+      onMouseLeave={e => (e.currentTarget.style.background = C.surface)}
+      title="Re-open AI Assistant"
+    >
+      <span style={{ fontSize: 14 }}>✦</span>
+      {lastMessage && (
+        <div style={{
+          writingMode: 'vertical-rl',
+          textOrientation: 'mixed',
+          fontSize: 10,
+          color: C.textDim,
+          overflow: 'hidden',
+          maxHeight: 200,
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          paddingTop: 4,
+          fontFamily: FONT,
+        }}>
+          {lastMessage.slice(0, 80)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput, onChatAction, collapsed, onCollapsedExpand, onCollapse }: {
+  solveResult: any; open: boolean; onClose: () => void; selectedTask?: any; initialInput?: string; onChatAction?: (action: ChatAction) => void; collapsed?: boolean; onCollapsedExpand?: () => void; onCollapse?: () => void;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
@@ -7740,14 +7895,16 @@ function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput }: {
         response = await callApi(apiMessages);
       }
 
-      const text = (response.content || [])
+      const rawText = (response.content || [])
         .filter((item: any) => item.type === 'text')
         .map((item: any) => item.text)
         .join('\n') || 'I couldn\'t generate a response.';
 
+      const { cleanText, actions } = parseActionsFromText(rawText);
+
       setMessages(prev => prev.map(m =>
         m.id === loadingMsg.id
-          ? { ...m, content: text, loading: false, toolCallInProgress: undefined }
+          ? { ...m, content: cleanText, loading: false, toolCallInProgress: undefined, actions: actions.length > 0 ? actions : undefined }
           : m
       ));
     } catch (err) {
@@ -7762,6 +7919,11 @@ function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput }: {
   }, [input, loading, messages, solveResult, selectedTask]);
 
   if (!open) return null;
+
+  if (collapsed) {
+    const lastAssistant = messages.filter(m => m.role === 'assistant' && !m.loading).pop();
+    return <ChatCollapsedStrip lastMessage={lastAssistant?.content ?? null} onExpand={() => onCollapsedExpand?.()} />;
+  }
 
   return (
     <div style={{
@@ -7780,11 +7942,23 @@ function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput }: {
         </span>
         <div style={{ display: 'flex', gap: 4 }}>
           <button
+            onClick={() => onCollapse?.()}
+            title="Collapse chat"
+            style={{
+              background: 'none', border: 'none', color: '#999',
+              cursor: 'pointer', fontSize: 16, padding: '2px 6px',
+              borderRadius: 4, fontFamily: FONT, fontWeight: 700,
+            }}
+          >
+            ›
+          </button>
+          <button
             onClick={() => setMessages([WELCOME_MESSAGE])}
             title="Clear chat"
             style={{
-              background: 'none', border: 'none', color: C.textDim,
-              cursor: 'pointer', fontSize: 14, padding: '2px 6px',
+              background: 'none', border: 'none', color: '#999',
+              cursor: 'pointer', fontSize: 12, padding: '2px 6px',
+              fontFamily: FONT, fontWeight: 600,
             }}
           >
             Clear
@@ -7793,7 +7967,7 @@ function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput }: {
             onClick={onClose}
             title="Close"
             style={{
-              background: 'none', border: 'none', color: C.textDim,
+              background: 'none', border: 'none', color: '#999',
               cursor: 'pointer', fontSize: 16, padding: '2px 6px', fontWeight: 700,
             }}
           >
@@ -7804,7 +7978,7 @@ function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput }: {
 
       {/* Messages */}
       <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
-        {messages.map(m => <ChatBubble key={m.id} message={m} />)}
+        {messages.map(m => <ChatBubble key={m.id} message={m} onAction={onChatAction} />)}
 
         {/* Suggested questions */}
         {messages.length <= 1 && solveResult && (
@@ -7937,6 +8111,7 @@ export default function App() {
   const [selectedKpi, setSelectedKpi] = useState<string | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatCollapsed, setChatCollapsed] = useState(false);
   const [chatInitialInput, setChatInitialInput] = useState<string | undefined>(undefined);
   // Previous state snapshots for delta computation
   const [prevOrderModes, setPrevOrderModes] = useState<Record<string, string>>({});
@@ -8242,6 +8417,7 @@ export default function App() {
   const handleAskAI = useCallback((task: any) => {
     setChatInitialInput(`Tell me about ${task.name} (${task.key})`);
     setChatOpen(true);
+    setChatCollapsed(false);
     // Clear after a tick so the effect fires but doesn't persist
     setTimeout(() => setChatInitialInput(undefined), 100);
   }, []);
@@ -8305,6 +8481,40 @@ export default function App() {
       console.error('MoveTo failed:', err);
     }
   }, [handleWhereTo]);
+
+  // Chat action handler — AI response buttons drive the UI
+  const handleChatAction = useCallback((action: ChatAction) => {
+    switch (action.type) {
+      case 'whereTo':
+        setActiveTab('Schedule');
+        if (action.taskKey) handleWhereTo(action.taskKey, 'gantt');
+        break;
+      case 'openTask':
+        if (action.taskKey) {
+          const task = tasks.find((t: any) => t.key === action.taskKey);
+          if (task) { setSelectedResource(null); setSelectedTask(task); }
+        }
+        break;
+      case 'openResource':
+        if (action.resourceKey) {
+          const resource = (solveResult?.resourceUtilization || []).find((r: any) => r.resourceKey === action.resourceKey);
+          if (resource) { setSelectedTask(null); setSelectedResource(resource); }
+        }
+        break;
+      case 'filterChain':
+        if (action.chainKey) { setScheduleCaseFilter(action.chainKey); setActiveTab('Schedule'); }
+        break;
+      case 'openTab':
+        if (action.tab) setActiveTab(action.tab);
+        break;
+      case 'navigateOrder':
+        if (action.orderKey) { setOrdersCaseFilter(action.orderKey); setActiveTab('Orders'); }
+        break;
+    }
+    // Collapse chat for space-hungry actions; keep open for detail panels
+    const shouldCollapse = ['whereTo', 'filterChain', 'openTab', 'navigateOrder'].includes(action.type);
+    if (shouldCollapse) setChatCollapsed(true);
+  }, [tasks, solveResult, handleWhereTo]);
 
   // ─── Immediate single-task API actions ───
 
@@ -8616,7 +8826,7 @@ export default function App() {
             )}
           </button>
           <button
-            onClick={() => setChatOpen(o => !o)}
+            onClick={() => { setChatOpen(o => !o); setChatCollapsed(false); }}
             style={{
               background: chatOpen ? C.accent : 'none', border: 'none',
               color: chatOpen ? '#fff' : C.textMuted, fontSize: 12,
@@ -8913,7 +9123,7 @@ export default function App() {
           experienceLevel={experienceLevel} onNavigateToCase={(caseKey) => { setScheduleCaseFilter(caseKey); setActiveTab('Schedule'); }}
           tasks={tasks} onNavigateToConflicts={() => setActiveTab('Conflicts')} />}
       </main>
-      <ChatPanel solveResult={solveResult} open={chatOpen} onClose={() => setChatOpen(false)} selectedTask={selectedTask} initialInput={chatInitialInput} />
+      <ChatPanel solveResult={solveResult} open={chatOpen} onClose={() => setChatOpen(false)} selectedTask={selectedTask} initialInput={chatInitialInput} onChatAction={handleChatAction} collapsed={chatCollapsed} onCollapsedExpand={() => setChatCollapsed(false)} onCollapse={() => setChatCollapsed(true)} />
       </div>
 
       {/* Modals */}
