@@ -859,24 +859,42 @@ AI: [calls analyze_impact with task_key="CASE-001"]
 
 ## Part 7: Verification
 
-- [ ] Tool definitions registered in API call
-- [ ] where_can_task_go: calls WhereTo API, returns ranked options
-- [ ] get_resource_agenda: returns assignments + gaps for a resource/day
-- [ ] get_chain_detail: returns all phases with timing and gaps
-- [ ] analyze_impact: shows freed resources and benefiting tasks
-- [ ] find_available_resources: finds resources with availability in a window
-- [ ] compare_tasks: side-by-side comparison of multiple tasks
-- [ ] AI decides when to use tools vs answer from context
-- [ ] Multi-tool calls work (AI calls 2+ tools in one response)
-- [ ] Tool call loading state shows which tool is running
-- [ ] "Where can CASE-004 go?" triggers where_can_task_go tool
-- [ ] "Show me AN-JONES's day" triggers get_resource_agenda tool
-- [ ] "What happens if I unschedule CASE-001?" triggers analyze_impact
-- [ ] "Which OR is free Monday afternoon?" triggers find_available_resources
-- [ ] Tool results explained in plain language, not raw data
-- [ ] Max 5 tool iterations prevents infinite loops
-- [ ] Works across all three tenants
-- [ ] Phase 1 Q&A still works (simple questions answered without tools)
+- [x] Tool definitions registered in API call
+- [x] where_can_task_go: calls WhereTo API, returns ranked options
+- [x] get_resource_agenda: returns assignments + gaps for a resource/day
+- [x] get_chain_detail: returns all phases with timing and gaps
+- [x] analyze_impact: shows freed resources and benefiting tasks
+- [x] find_available_resources: finds resources with availability in a window
+- [x] compare_tasks: side-by-side comparison of multiple tasks
+- [x] AI decides when to use tools vs answer from context
+- [x] Tool call loading state shows which tool is running
+- [x] "Where can CASE-004 go?" triggers where_can_task_go tool
+- [x] "Show me AN-JONES's day" triggers get_resource_agenda tool
+- [x] "What happens if I unschedule CASE-001?" triggers analyze_impact
+- [x] Tool results explained in plain language, not raw data
+- [x] Max 5 tool iterations prevents infinite loops
+- [x] Phase 1 Q&A still works (simple questions answered without tools)
+
+---
+
+## Amendment: AI-2b — `query_resources` Tool (7th tool)
+
+Added as part of this sprint. See `ai-2b-query-resources-tool_1.md` for full spec.
+
+**What:** 7th investigation tool that queries `typedAttributes` on resources via a new backend endpoint `GET /ctp/resources/query`. Answers attribute-based questions like "Which fields have lights?", "Which umpires are CHSAA certified?", "Which lighted fields are free Monday night?"
+
+**Key additions:**
+- Backend: `GET /ctp/resources/query` with `attribute`, `value`, `includeAvailability`, `startTime`, `endTime` params
+- Time-windowed availability: clips net-available intervals to a requested window so attribute + time queries resolve in a single tool call
+- System prompt routing guidance: task attributes (in context, no tool) vs resource attributes (call `query_resources`)
+- Full hierarchy (levels 1–5) in response, rendered as breadcrumb in tool output
+
+---
+
+## Status
+
+**Committed:** `6e601fd` (2026-03-07) — all 7 tools + AI-2b amendment
+**Branch:** main
 
 ---
 
@@ -887,8 +905,9 @@ AI: [calls analyze_impact with task_key="CASE-001"]
 - API integration with tool-use loop: ~30 min
 - System prompt update: ~10 min
 - Loading state for tool calls: ~10 min
+- AI-2b query_resources (endpoint + tool + time-window): ~40 min
 - Testing: ~20 min
-- Total: ~2-2.5 hours
+- Total: ~3 hours
 
 ---
 
@@ -898,8 +917,8 @@ Phase 2 investigates. Phase 3 acts:
 
 ```
 Planner: "Move CASE-004 to OR-02 at 10:30"
-AI:      "I'll move CASE-004 to OR-02 at 10:30 AM with Dr. Smith 
-          and AN-GARCIA. This will use Option 1 from the earlier 
+AI:      "I'll move CASE-004 to OR-02 at 10:30 AM with Dr. Smith
+          and AN-GARCIA. This will use Option 1 from the earlier
           search. Confirm?"
          [Confirm] [Cancel]
 ```
