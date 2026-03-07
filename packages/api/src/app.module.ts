@@ -6,10 +6,12 @@ import { CTPModule } from './modules/ctp/ctp.module';
 import { DataModule } from './modules/data/data.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AIModule } from './modules/ai/ai.module';
+import { LoggingModule } from './logging/logging.module';
+import { DebugModule } from './debug/debug.module';
 import { TenantMiddleware } from './config/tenant.middleware';
 
 @Module({
-  imports: [HealthModule, StateModule, ConfigModule, CTPModule, DataModule, AnalyticsModule, AIModule],
+  imports: [LoggingModule, HealthModule, StateModule, ConfigModule, CTPModule, DataModule, AnalyticsModule, AIModule, DebugModule],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

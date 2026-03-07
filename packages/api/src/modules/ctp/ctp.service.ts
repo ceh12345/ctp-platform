@@ -24,6 +24,7 @@ import {
 import { StateService } from '../state/state.service';
 import { ConfigService } from '../../config/config.service';
 import { StrategyConfigService } from '../../config/strategy-config.service';
+import { LoggerService } from '../../logging/logger.service';
 import { SolveRequestDto } from './dto/solve-request.dto';
 import { WhereToRequestDto, WhereToResponseDto, MoveToRequestDto, MoveToResponseDto } from './dto/whereto.dto';
 
@@ -77,6 +78,7 @@ export class CTPService {
     private readonly stateService: StateService,
     private readonly configService: ConfigService,
     private readonly strategyConfigService: StrategyConfigService,
+    private readonly logger: LoggerService,
   ) {}
 
   // ═══════════════════════════════════════
@@ -248,6 +250,23 @@ export class CTPService {
     const result = this.extractResults(landscape, taskList, stats, detailLevel);
     if (engineSolveResult) result.solveResult = engineSolveResult;
     this.results.set(this.configService.getTenantId(), result);
+
+    // ─── 7. Log solve event ───
+    this.logger.solve({
+      tenantId: this.configService.getTenantId(),
+      strategy: result.stats?.strategy ?? 'unknown',
+      solveTimeMs: result.stats?.totalTimeMs ?? (Date.now() - startTime),
+      propagationTimeMs: result.stats?.propagationTimeMs,
+      taskCount: result.summary.totalTasks,
+      scheduledCount: result.summary.scheduledTasks,
+      infeasibleCount: result.summary.unscheduledTasks,
+      feasibilityRate: result.summary.feasibilityRate,
+      resourceCount: landscape.resources?.size() ?? 0,
+      horizonDays: Math.round((new Date(result.summary.horizonEnd).getTime() -
+        new Date(result.summary.horizonStart).getTime()) / 86400000),
+      windowsTightened: result.stats?.windowsTightened,
+    });
+
     return result;
   }
 

@@ -6,6 +6,7 @@ import { StateHydratorService } from '../../state/state-hydrator.service';
 import { ConfigService } from '../../../config/config.service';
 import { FileConfigStore } from '../../../config/file-config-store';
 import { StrategyConfigService } from '../../../config/strategy-config.service';
+import { LoggerService } from '../../../logging/logger.service';
 import {
   GreedyNeighborhood,
   ChainNeighborhood,
@@ -31,7 +32,8 @@ function createServices(tenantId: string) {
   const hydrator = new StateHydratorService(configService);
   const stateService = new StateService(hydrator, configService);
   const strategyConfigService = new StrategyConfigService(configService);
-  const ctpService = new CTPService(stateService, configService, strategyConfigService);
+  const logger = new LoggerService();
+  const ctpService = new CTPService(stateService, configService, strategyConfigService, logger);
   return { ctpService, stateService, configService };
 }
 
