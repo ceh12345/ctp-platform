@@ -10,3 +10,6 @@ tsconfig.tsbuildinfo
 packages/engine/**/*.js
 packages/engine/**/*.d.ts
 !packages/engine/package.json
+
+# Auto-generated version file
+packages/api/src/version.json

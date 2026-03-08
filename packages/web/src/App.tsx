@@ -911,7 +911,7 @@ function Modal({ open, onClose, title, children }: {
         onClick={e => e.stopPropagation()}
         style={{
           background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16,
-          padding: 28, minWidth: 360, maxWidth: 500, fontFamily: FONT,
+          padding: 28, minWidth: 360, maxWidth: 500, maxHeight: '85vh', overflowY: 'auto' as const, fontFamily: FONT,
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -6776,6 +6776,7 @@ function SettingsContent({ experienceLevel, onExperienceChange, stats }: {
           </div>
         </>
       )}
+
     </div>
   );
 }
@@ -8507,6 +8508,7 @@ export default function App() {
   const [products, setProducts] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('Overview');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [versionInfo, setVersionInfo] = useState<any>(null);
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>(() => {
     const saved = localStorage.getItem('ctp-experience-level');
     return (saved === 'novice' || saved === 'intermediate' || saved === 'expert') ? saved : 'novice';
@@ -8594,7 +8596,7 @@ export default function App() {
   const loadData = useCallback(async () => {
     try {
       setError(null);
-      const [result, prods, colorsData, termData, localeData, strategiesData] = await Promise.all([
+      const [result, prods, colorsData, termData, localeData, strategiesData, versionData] = await Promise.all([
         api('/ctp/solve-and-sync', {
           method: 'POST',
           body: JSON.stringify({ detailLevel: experienceLevel }),
@@ -8604,7 +8606,9 @@ export default function App() {
         api('/data/terminology').catch(() => ({})),
         api('/data/locale').catch(() => ({})),
         api('/data/strategies').catch(() => null),
+        api('/health/version').catch(() => null),
       ]);
+      if (versionData) setVersionInfo(versionData);
       setSolveResult(result);
       setProducts(prods);
       setColors(result.colors || colorsData || {});
@@ -9447,7 +9451,7 @@ export default function App() {
 
   // ── Render ──
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, fontFamily: FONT, color: C.text, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: C.bg, fontFamily: FONT, color: C.text, display: 'flex', flexDirection: 'column', paddingBottom: 24 }}>
       {/* Header */}
       <header style={{
         background: C.surface, borderBottom: `1px solid ${C.border}`,
@@ -9456,12 +9460,56 @@ export default function App() {
       }}>
         {/* Left */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg, ${C.accent}, ${C.purple})`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 14, fontWeight: 700, color: '#fff',
-          }}>
-            CT
+          <div style={{ position: 'relative' }}
+            onMouseEnter={e => {
+              const tip = e.currentTarget.querySelector('[data-about]') as HTMLElement;
+              if (tip) tip.style.display = 'block';
+            }}
+            onMouseLeave={e => {
+              const tip = e.currentTarget.querySelector('[data-about]') as HTMLElement;
+              if (tip) tip.style.display = 'none';
+            }}
+          >
+            <div style={{
+              width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg, ${C.accent}, ${C.purple})`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 14, fontWeight: 700, color: '#fff', cursor: 'default',
+            }}>
+              CT
+            </div>
+            <div data-about style={{
+              display: 'none', position: 'absolute', top: 40, left: 0, zIndex: 2000,
+              background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
+              padding: 16, minWidth: 280, boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+              fontSize: 12, fontFamily: FONT,
+            }}>
+              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: C.text }}>CTP Platform</div>
+              {(() => {
+                const summary = solveResult?.summary;
+                const stats = solveResult?.stats;
+                const formatUptime = (s: number) => {
+                  const h = Math.floor(s / 3600);
+                  const m = Math.floor((s % 3600) / 60);
+                  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+                };
+                const rows = [
+                  { label: 'Version', value: versionInfo?.fullVersion || '—' },
+                  { label: 'Branch', value: versionInfo?.gitBranch || '—' },
+                  { label: 'Built', value: versionInfo?.buildDate ? fmtDate(versionInfo.buildDate) : '—' },
+                  { label: 'Uptime', value: versionInfo?.uptime != null ? formatUptime(versionInfo.uptime) : '—' },
+                  { label: 'Tenant', value: tenantId },
+                ];
+                return rows.map(r => (
+                  <div key={r.label} style={{
+                    display: 'flex', justifyContent: 'space-between', padding: '3px 0',
+                    borderBottom: `1px solid ${C.border}`,
+                  }}>
+                    <span style={{ color: C.textMuted }}>{r.label}</span>
+                    <span style={{ color: C.text, fontWeight: 500 }}>{r.value}</span>
+                  </div>
+                ));
+              })()}
+            </div>
           </div>
           <div>
             <span style={{ fontWeight: 700, fontSize: 15 }}>CTP Platform</span>
@@ -10110,10 +10158,23 @@ export default function App() {
         />
       )}
 
+      {/* Version footer */}
+      {versionInfo && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, height: 24,
+          background: C.bg, borderTop: `1px solid ${C.border}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 16px', fontFamily: FONT, fontSize: 11, color: C.textDim, zIndex: 100,
+        }}>
+          <span>v{versionInfo.fullVersion}</span>
+          <span>{tenantId}</span>
+        </div>
+      )}
+
       {/* Toast notification */}
       {toast && (
         <div style={{
-          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          position: 'fixed', bottom: versionInfo ? 32 : 24, left: '50%', transform: 'translateX(-50%)',
           background: C.surface2, color: C.text, border: `1px solid ${C.border}`,
           borderRadius: 8, padding: '10px 20px', fontSize: 13, fontWeight: 500,
           boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 10000,

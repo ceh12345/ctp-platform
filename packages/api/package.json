@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "prestart": "node ../../scripts/generate-version.js",
     "start": "nest start",
+    "prestart:dev": "node ../../scripts/generate-version.js",
     "start:dev": "nest start --watch",
+    "prebuild": "node ../../scripts/generate-version.js",
     "build": "nest build",
     "test": "vitest run"
   },
