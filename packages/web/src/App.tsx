@@ -2101,6 +2101,9 @@ function SolveResultsDialog({ result, previousSnapshot, experienceLevel, onClose
             fontSize: 12, color: C.textMuted, display: 'flex', gap: 16, alignItems: 'center',
           }}>
             <span>Strategy: <strong style={{ color: C.text }}>{stats.strategy || 'Chain'}</strong></span>
+            {stats.engineVersion && (
+              <span>Engine: <strong style={{ color: C.text }}>{stats.engineVersion}</strong></span>
+            )}
             {result.solveResult && (
               <span>Contexts: <strong style={{ color: C.text }}>{result.solveResult.contextsEvaluated}</strong></span>
             )}
@@ -7550,6 +7553,7 @@ If you don't have enough information to answer, say so.
     prompt += `\n## Infeasible ${tl('task', 'Task')}s\n`;
     for (const task of infeasible) {
       prompt += `- ${task.key} (${task.name})`;
+      if (task.windowStart || task.windowEnd) prompt += ` [window: ${task.windowStart || '?'} to ${task.windowEnd || '?'}]`;
       if (task.infeasibilityReport) {
         const rpt = task.infeasibilityReport;
         prompt += ` — [${rpt.conflictType || 'unknown'}] ${rpt.reason}`;
@@ -7584,6 +7588,7 @@ If you don't have enough information to answer, say so.
         .join(', ');
       prompt += `- ${task.key} (${task.name}): ${task.scheduledStart || '?'}–${task.scheduledEnd || '?'} on ${resources}`;
       if (task.orderRef) prompt += ` [${tl('order', 'Order')}: ${task.orderRef}]`;
+      if (task.windowStart || task.windowEnd) prompt += ` [window: ${task.windowStart || '?'} to ${task.windowEnd || '?'}]`;
       prompt += '\n';
     }
   }
@@ -7645,6 +7650,10 @@ If you don't have enough information to answer, say so.
   if (selectedTask) {
     prompt += `\n## Currently Selected Task\n`;
     prompt += `The planner is currently looking at: ${selectedTask.name} (${selectedTask.key})\n`;
+    if (selectedTask.windowStart || selectedTask.windowEnd) {
+      prompt += `Scheduling window: ${selectedTask.windowStart || '?'} to ${selectedTask.windowEnd || '?'}\n`;
+      prompt += `(This task can ONLY be scheduled within this window. If the planner asks why it wasn't scheduled on a particular day, check if that day falls within this window.)\n`;
+    }
     if (selectedTask.feasible) {
       prompt += `Status: Scheduled ${selectedTask.scheduledStart}–${selectedTask.scheduledEnd}\n`;
     } else {
@@ -7678,6 +7687,11 @@ If you don't have enough information to answer, say so.
   prompt += `  "Which cases are cardiology?" → answer from task context (procedureType on tasks)\n`;
   prompt += `  "Which ORs have laparoscopic equipment?" → call query_resources (capability on resources)\n`;
   prompt += `\nRescheduling a specific task to a different time window → where_can_task_go with startAfter/startBefore constraints. Do NOT use find_available_resources for this — it only checks one resource at a time. where_can_task_go checks all required resources simultaneously and returns ranked feasible slots.\n`;
+  prompt += `\n## Task Scheduling Windows\n`;
+  prompt += `Some tasks have a scheduling window [window: start to end] shown in brackets. This restricts when the task can be placed.\n`;
+  prompt += `If a planner asks "why wasn't X scheduled on Monday?" or similar, first check the task's scheduling window. If Monday falls outside the window, explain that clearly — e.g., "The scheduling window for this task doesn't start until 11:00 PM Monday night, so Tuesday is the earliest workday it can be placed."\n`;
+  prompt += `Convert window times to the local timezone the planner would understand.\n`;
+
   prompt += `\n## Time Window Resolution\n`;
   prompt += `When the planner uses relative time expressions, resolve them to ISO 8601 datetimes before passing to any tool. Use the schedule horizon dates above as reference.\n`;
   prompt += `  "weeknight" or "weekday evening" → startAfter: nearest Monday at 17:00, startBefore: nearest Friday at 21:00\n`;

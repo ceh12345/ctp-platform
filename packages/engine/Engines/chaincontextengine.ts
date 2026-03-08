@@ -37,6 +37,7 @@ export interface ChainContextCombo {
   chainScore: number;
   feasible: boolean;
   totalGap: number;
+  primaryIndex: number;
 }
 
 export interface LaneDefinition {
@@ -137,6 +138,11 @@ export class ChainContextEngine {
     if (feasible.length === 0) {
       this.attachInfeasibilityReport(chain, taskArray, combos.length, 0, 0, landscape);
       return null;
+    }
+
+    // Step 5.5: Identify primary (most constrained) task per combo
+    for (const combo of feasible) {
+      combo.primaryIndex = this.identifyPrimary(combo);
     }
 
     // Step 6: Score surviving combos
@@ -318,6 +324,7 @@ export class ChainContextEngine {
             chainScore: Number.MAX_VALUE,
             feasible: true,
             totalGap: 0,
+            primaryIndex: 0,
           });
         }
       }
@@ -350,6 +357,7 @@ export class ChainContextEngine {
       chainScore: Number.MAX_VALUE,
       feasible: true,
       totalGap: 0,
+      primaryIndex: 0,
     }));
 
     return this.capCombos(combos, maxCombos);
@@ -591,6 +599,39 @@ export class ChainContextEngine {
     return { eStartW, lStartW, eEndW, lEndW, duration, processChangeDuration };
   }
 
+  // ── Primary task identification ──
+
+  /**
+   * Identify the most constrained task in a combo by total feasible duration.
+   * The task with the smallest sum of (lStartW - eStartW) across its start-time
+   * nodes is the most constrained — it has the least scheduling flexibility.
+   */
+  private identifyPrimary(combo: ChainContextCombo): number {
+    let minDuration = Number.MAX_VALUE;
+    let primaryIndex = 0;
+    for (let i = 0; i < combo.contexts.length; i++) {
+      const total = this.computeContextFeasibleDuration(combo.contexts[i]);
+      if (total < minDuration) {
+        minDuration = total;
+        primaryIndex = i;
+      }
+    }
+    return primaryIndex;
+  }
+
+  private computeContextFeasibleDuration(ctx: ScheduleContext): number {
+    const st = ctx.slot.startTimes;
+    if (!st) return 0;
+    let total = 0;
+    let node = st.head;
+    while (node) {
+      const range = node.data.lStartW - node.data.eStartW;
+      if (range > 0) total += range;
+      node = node.next;
+    }
+    return total;
+  }
+
   private truncateContextStartTimes(
     ctx: ScheduleContext,
     newEStartW: number,
@@ -654,25 +695,31 @@ export class ChainContextEngine {
     }
   }
 
-  // ── Step 7: Assign start times ──
+  // ── Step 7: Assign start times (primary-task-driven) ──
 
+  /**
+   * Assign concrete start/end times to each task in the combo.
+   * Anchors on the PRIMARY task (most constrained by feasible duration),
+   * then walks backward to assign predecessors and forward for successors.
+   */
   public assignStartTimes(combo: ChainContextCombo): void {
-    const task0St = combo.contexts[0]?.slot.startTimes;
-    if (!task0St?.head) return;
+    const primaryIndex = combo.primaryIndex ?? 0;
+    const primaryCtx = combo.contexts[primaryIndex];
+    const primarySt = primaryCtx?.slot.startTimes;
+    if (!primarySt?.head) return;
 
-    const propagatedEStart0 = combo.startTimes[0].eStartW;
-    const propagatedLStart0 = combo.startTimes[0].lStartW;
-    const task0Duration = task0St.head.data.duration;
+    const propagatedEStartP = combo.startTimes[primaryIndex].eStartW;
+    const propagatedLStartP = combo.startTimes[primaryIndex].lStartW;
+    const primaryDuration = primarySt.head.data.duration;
 
-    // Collect candidate starts for Task 0:
-    // 1. Earliest and latest per start-time node (direct availability)
-    // 2. Successor-derived: work backwards from each successor's start-time
-    //    node boundaries to compute what Task 0 start would align the chain
+    // Collect candidate starts for the primary task
     const candidateSet = new Set<number>();
-    let node = task0St.head as (typeof task0St.head) | null;
+
+    // 1. Direct candidates from primary's start-time nodes
+    let node = primarySt.head as (typeof primarySt.head) | null;
     while (node) {
-      const earliest = Math.max(node.data.eStartW, propagatedEStart0);
-      const latest = Math.min(node.data.lStartW, propagatedLStart0);
+      const earliest = Math.max(node.data.eStartW, propagatedEStartP);
+      const latest = Math.min(node.data.lStartW, propagatedLStartP);
       if (earliest <= latest) {
         candidateSet.add(earliest);
         candidateSet.add(latest);
@@ -680,21 +727,41 @@ export class ChainContextEngine {
       node = node.next;
     }
 
-    // Backward-derived candidates: for each successor's start-time node,
-    // walk backward through the chain to compute the required Task 0 start.
-    // Only add if the derived start falls within a Task 0 start-time node.
-    for (let s = 1; s < combo.contexts.length; s++) {
+    // 2. Predecessor-derived candidates: walk forward from each predecessor's
+    //    start-time node to compute what primary start would result
+    for (let p = 0; p < primaryIndex; p++) {
+      const predSt = combo.contexts[p].slot.startTimes;
+      if (!predSt) continue;
+      let pNode = predSt.head as (typeof predSt.head) | null;
+      while (pNode) {
+        let targetStart = pNode.data.eStartW;
+        for (let k = p; k < primaryIndex; k++) {
+          const dur = combo.contexts[k].task.duration?.duration() ?? 0;
+          const offset = this.getAssignedProcessChangeDuration(combo.contexts[k], targetStart);
+          targetStart = targetStart + dur + offset;
+        }
+        if (targetStart >= propagatedEStartP && targetStart <= propagatedLStartP
+            && this.isWithinStartTimeNode(primarySt, targetStart)) {
+          candidateSet.add(targetStart);
+        }
+        pNode = pNode.next;
+      }
+    }
+
+    // 3. Successor-derived candidates: walk backward from each successor's
+    //    start-time node to compute what primary start would align the chain
+    for (let s = primaryIndex + 1; s < combo.contexts.length; s++) {
       const succSt = combo.contexts[s].slot.startTimes;
       if (!succSt) continue;
       let sNode = succSt.head as (typeof succSt.head) | null;
       while (sNode) {
         let targetStart = sNode.data.eStartW;
-        for (let p = s - 1; p >= 0; p--) {
-          const predDuration = combo.contexts[p].task.duration?.duration() ?? 0;
-          targetStart = targetStart - predDuration;
+        for (let k = s - 1; k >= primaryIndex; k--) {
+          const dur = combo.contexts[k].task.duration?.duration() ?? 0;
+          targetStart = targetStart - dur;
         }
-        if (targetStart >= propagatedEStart0 && targetStart <= propagatedLStart0
-            && this.isWithinStartTimeNode(task0St, targetStart)) {
+        if (targetStart >= propagatedEStartP && targetStart <= propagatedLStartP
+            && this.isWithinStartTimeNode(primarySt, targetStart)) {
           candidateSet.add(targetStart);
         }
         sNode = sNode.next;
@@ -703,25 +770,55 @@ export class ChainContextEngine {
 
     const candidates = Array.from(candidateSet).sort((a, b) => a - b);
 
-    // For each Task 0 candidate, simulate forward — collect all valid placements
+    // Apply cadence to primary if needed
+    const cadence = primaryCtx.task?.cadenceIntervalMinutes;
+    const cadenceSec = cadence ? cadence * 60 : 0;
+
+    // For each primary candidate, simulate outward — collect all valid placements
     const validPlacements: { start: number; end: number }[][] = [];
 
-    for (const t0Start of candidates) {
-      const trial: { start: number; end: number }[] = [
-        { start: t0Start, end: t0Start + task0Duration },
-      ];
+    for (const rawStart of candidates) {
+      let pStart = rawStart;
+      if (cadenceSec > 0 && pStart % cadenceSec !== 0) {
+        pStart = Math.ceil(pStart / cadenceSec) * cadenceSec;
+      }
+      if (pStart > propagatedLStartP) continue;
+      if (!this.isWithinStartTimeNode(primarySt, pStart)) continue;
+
+      const trial: ({ start: number; end: number } | null)[] =
+        new Array(combo.contexts.length).fill(null);
+      trial[primaryIndex] = { start: pStart, end: pStart + primaryDuration };
 
       let feasible = true;
-      for (let i = 1; i < combo.contexts.length; i++) {
-        const prevEnd = trial[i - 1].end;
+
+      // Walk backward from primary — assign predecessors (latest feasible start)
+      for (let i = primaryIndex - 1; i >= 0; i--) {
+        const succStart = trial[i + 1]!.start;
+        const maxGap = combo.contexts[i + 1].task.linkId?.maxGap ?? null;
+
+        const predStart = this.findLatestFeasibleStartForPred(
+          combo.contexts[i], succStart, maxGap,
+          combo.startTimes[i].eStartW, combo.startTimes[i].lStartW,
+        );
+        if (predStart === null) { feasible = false; break; }
+
+        const predDuration = combo.contexts[i].task.duration?.duration() ?? 0;
+        trial[i] = { start: predStart, end: predStart + predDuration };
+      }
+
+      if (!feasible) continue;
+
+      // Walk forward from primary — assign successors (earliest feasible start)
+      for (let i = primaryIndex + 1; i < combo.contexts.length; i++) {
+        const prevEnd = trial[i - 1]!.end;
         const prevOffset = this.getAssignedProcessChangeDuration(
-          combo.contexts[i - 1], trial[i - 1].start);
+          combo.contexts[i - 1], trial[i - 1]!.start);
         const predEffectiveEnd = prevEnd + prevOffset;
         const maxGap = combo.contexts[i].task.linkId?.maxGap ?? null;
-        const propagatedEStart = combo.startTimes[i].eStartW;
+        const propagatedEStartI = combo.startTimes[i].eStartW;
 
         const succStart = this.findEarliestFeasibleStart(
-          combo.contexts[i], predEffectiveEnd, propagatedEStart);
+          combo.contexts[i], predEffectiveEnd, propagatedEStartI);
         if (succStart === null) { feasible = false; break; }
 
         if (maxGap !== null && succStart > predEffectiveEnd + maxGap) {
@@ -730,11 +827,11 @@ export class ChainContextEngine {
         }
 
         const duration = combo.contexts[i].task.duration?.duration() ?? 0;
-        trial.push({ start: succStart, end: succStart + duration });
+        trial[i] = { start: succStart, end: succStart + duration };
       }
 
-      if (feasible) {
-        validPlacements.push(trial);
+      if (feasible && trial.every(t => t !== null)) {
+        validPlacements.push(trial as { start: number; end: number }[]);
       }
     }
 
@@ -804,6 +901,61 @@ export class ChainContextEngine {
       node = node.next;
     }
     return best < Number.MAX_VALUE ? best : null;
+  }
+
+  /**
+   * Find the latest feasible start for a predecessor task such that its
+   * effective end (start + duration + processChangeDuration) satisfies
+   * the successor's start time and maxGap constraint.
+   * Used in backward walk from the primary task.
+   */
+  private findLatestFeasibleStartForPred(
+    ctx: ScheduleContext,
+    succStart: number,
+    maxGap: number | null,
+    propagatedEStart: number,
+    propagatedLStart: number,
+  ): number | null {
+    const st = ctx.slot.startTimes;
+    if (!st) return null;
+
+    const duration = ctx.task.duration?.duration() ?? 0;
+    const cadence = ctx.task?.cadenceIntervalMinutes;
+    const cadenceSec = cadence ? cadence * 60 : 0;
+
+    let best: number | null = null;
+    let node = st.head;
+    while (node) {
+      const offset = node.data.processChangeDuration;
+
+      // Latest start: effective end (start + duration + offset) <= succStart
+      const latestBySucc = succStart - duration - offset;
+
+      // If maxGap is set: gap = succStart - effectiveEnd <= maxGap
+      // → start >= succStart - maxGap - duration - offset
+      let floor = propagatedEStart;
+      if (maxGap !== null) {
+        floor = Math.max(floor, succStart - maxGap - duration - offset);
+      }
+
+      // Candidate: latest possible within this node
+      let candidateStart = Math.min(latestBySucc, node.data.lStartW, propagatedLStart);
+
+      // Snap to cadence boundary (snap down for latest)
+      if (cadenceSec > 0 && candidateStart % cadenceSec !== 0) {
+        candidateStart = Math.floor(candidateStart / cadenceSec) * cadenceSec;
+      }
+
+      // Check bounds
+      const lowerBound = Math.max(node.data.eStartW, floor);
+      if (candidateStart >= lowerBound) {
+        if (best === null || candidateStart > best) {
+          best = candidateStart;
+        }
+      }
+      node = node.next;
+    }
+    return best;
   }
 
   /**

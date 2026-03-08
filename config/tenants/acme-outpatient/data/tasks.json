@@ -420,7 +420,7 @@
     "key": "C003-SETUP",
     "name": "Kim - Pre-Op Setup",
     "type": "PROCESS",
-    "windowStart": "2026-02-17T06:00:00Z",
+    "windowStart": "2026-02-16T06:00:00Z",
     "windowEnd": "2026-02-21T18:00:00Z",
     "durationSeconds": 1800,
     "capacityResources": [
@@ -434,6 +434,10 @@
           {
             "resource": "OR-02",
             "rank": 2
+          },
+          {
+            "resource": "OR-03",
+            "rank": 3
           }
         ]
       },
@@ -476,7 +480,7 @@
     "key": "C003-PROC",
     "name": "Kim - Laparoscopic Surgery",
     "type": "PROCESS",
-    "windowStart": "2026-02-17T06:00:00Z",
+    "windowStart": "2026-02-16T06:00:00Z",
     "windowEnd": "2026-02-21T18:00:00Z",
     "durationSeconds": 5400,
     "capacityResources": [
@@ -490,6 +494,10 @@
           {
             "resource": "OR-02",
             "rank": 2
+          },
+          {
+            "resource": "OR-03",
+            "rank": 3
           }
         ]
       },
@@ -555,7 +563,7 @@
     "key": "C003-REC",
     "name": "Kim - Recovery",
     "type": "PROCESS",
-    "windowStart": "2026-02-17T06:00:00Z",
+    "windowStart": "2026-02-16T06:00:00Z",
     "windowEnd": "2026-02-22T20:00:00Z",
     "durationSeconds": 7200,
     "capacityResources": [

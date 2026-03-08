@@ -1276,6 +1276,7 @@ export class CTPService {
     const responseStats: any = {
       strategy: stats.strategy,
       totalTimeMs: stats.totalTimeMs,
+      engineVersion: 'primary-anchor-v1',
     };
     if (detailLevel !== 'novice') {
       responseStats.propagationTimeMs = stats.propagationTimeMs;
