@@ -74,6 +74,7 @@ _No sprints currently in progress._
 | Solver Prompt 2 | Snapshot/Restore | May not be needed — Phase 3 replaced backtracking approach |
 | Solver Prompt 3 | Balanced Strategy (Bump Backtracking) | Evaluate if still needed post-Phase 3 |
 | Solver Prompt 4 | Stress Tests — Quick vs Chain | Phase 3 stable |
+| Solver 5 | CP-SAT Global Optimizer | Replace greedy selection with OR-Tools CP-SAT for global combo optimization; C# exploration |
 | UI Sprint 6 | What-If Mode | Solver Prompt 2 (if needed) |
 | UI Sprint 7 | Time Fence | — |
 | UI Sprint 8 | Task Swap | UI Sprint 4 |
@@ -158,6 +159,8 @@ INFRA TRACK
   engine-sprint-19-cleanup-foundation.md ← Correctness fixes, perf, SolutionState snapshot
   engine-cadence-profiles.md         ← Boundary-snap filtering (replaces PB-TIMESLOT)
   engine-sprint-chain-primary-anchor.md ← Primary-task-driven chain placement
+  cpsat-integration-prompt.md          ← CP-SAT global optimizer exploration (C#, OR-Tools)
+  solver-5-global-optimizer.md         ← Global optimizer spec
   ui-19-versioning.md                  ← App versioning (footer, logo hover, /version endpoint)
 
   UI Sprints:
