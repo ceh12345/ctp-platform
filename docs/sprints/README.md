@@ -44,6 +44,7 @@ _No sprints currently in progress._
 | AI Sprint 2C — Chat Action Buttons | 6 action types (whereTo, openTask, openResource, filterChain, openTab, navigateOrder); auto-collapse to strip; manual collapse chevron; action tag parsing | 2026-03-07 |
 | AI Sprint 2C amendments | WhereTo time constraints (startAfter/startBefore) on tool + action buttons + handleWhereTo; time window resolution guidance; better error messages | 2026-03-07 |
 | Logging Sprint 1 — Backend Logger | Pluggable LoggerService with 4 transports (memory/console/file/azure), 4 event types, AllExceptionsFilter, debug endpoint, solve + AI instrumentation | 2026-03-07 |
+| UI Sprint 18 — Solve Replay | Engine SolveStep recording (gated, capped at 500), all solver paths instrumented, frontend replay player with controls at top of Gantt, collapsible step log, keyboard shortcuts, flash animations | 2026-03-08 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -67,7 +68,7 @@ _No sprints currently in progress._
 
 | Sprint | Name | Blocked By |
 |--------|------|------------|
-| UI Sprint 18 | Solve Replay | Phase 3 solve step logging |
+| ~~UI Sprint 18~~ | ~~Solve Replay~~ | Done (2026-03-08) |
 | Solver Prompt 2 | Snapshot/Restore | May not be needed — Phase 3 replaced backtracking approach |
 | Solver Prompt 3 | Balanced Strategy (Bump Backtracking) | Evaluate if still needed post-Phase 3 |
 | Solver Prompt 4 | Stress Tests — Quick vs Chain | Phase 3 stable |
