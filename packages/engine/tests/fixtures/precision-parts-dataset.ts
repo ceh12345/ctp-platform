@@ -689,7 +689,7 @@ export function buildSettings(): CTPAppSettings {
   const settings = new CTPAppSettings();
   settings.scheduleDirection = 1; // FORWARD
   settings.topTasksToSchedule = 2;
-  settings.requiresPreds = true;
+  settings.hasChains = true;
   settings.flowAround = false;
   return settings;
 }

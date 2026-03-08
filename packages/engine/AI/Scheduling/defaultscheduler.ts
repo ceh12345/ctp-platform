@@ -14,7 +14,7 @@ export class CTPScheduler extends CTPBaseScheduler {
     });
 
     // Add in the preds for each task
-    if (this.settings?.requiresPreds){
+    if (this.settings?.hasChains){
       const agent = this.getDependentLookaheadAgent();
       agent.preschedule(this.landscape,tasks,this.settings);
       // Chain-aware mode: skip upfront explosion — done per-task in scheduleTasksChainAware

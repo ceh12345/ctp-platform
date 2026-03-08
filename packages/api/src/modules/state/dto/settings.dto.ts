@@ -26,9 +26,4 @@ export class SettingsDto {
   @IsOptional()
   @IsNumber()
   topTasksToSchedule?: number;
-
-  @ApiPropertyOptional({ example: false })
-  @IsOptional()
-  @IsBoolean()
-  requiresPreds?: boolean;
 }

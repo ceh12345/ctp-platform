@@ -249,7 +249,7 @@ export abstract class CTPBaseScheduler {
     agent.solve(this.landscape, computescores, this.scoring);
 
     // If Dependency adjust furture schedueled tasks
-    if (task && this.settings?.requiresPreds)
+    if (task && this.settings?.hasChains)
       this.applyRequiredTiming(task);
 
     let taskscores: TaskScheduleContexts[] = [];
@@ -264,7 +264,7 @@ export abstract class CTPBaseScheduler {
 
   /**
    * Map a strategy name to an INeighborhoodStrategy instance.
-   * Falls back to Chain (requiresPreds) or Greedy (no requiresPreds).
+   * Falls back to Chain (hasChains) or Greedy (no chains).
    */
   protected resolveStrategy(name: string | undefined): INeighborhoodStrategy {
     switch (name) {
@@ -275,7 +275,7 @@ export abstract class CTPBaseScheduler {
       case 'ShortestFirst':  return new ShortestFirstNeighborhood();
       default:
         // Default: Chain for chain-aware, Greedy otherwise
-        return this.settings?.requiresPreds
+        return this.settings?.hasChains
           ? new ChainNeighborhood()
           : new GreedyNeighborhood();
     }
@@ -293,7 +293,7 @@ export abstract class CTPBaseScheduler {
       this.neighborhoodAgent.setStrategy(strategy);
 
       // Strategy compatibility guard
-      if (this.settings?.requiresPreds && !strategy.chainCompatible) {
+      if (this.settings?.hasChains && !strategy.chainCompatible) {
         this.neighborhoodAgent.setStrategy(new ChainNeighborhood());
       }
     }
@@ -307,9 +307,9 @@ export abstract class CTPBaseScheduler {
     let agent = this.getTimingSequenceAgent();
     agent.solve(this.landscape,task,this.scheduleContexts,this.settings)
   }
-  protected requiresPreds(task: CTPTask) : boolean
+  protected hasChains(task: CTPTask) : boolean
   {
-      return this.settings ? !!this.settings.requiresPreds : false;
+      return this.settings ? !!this.settings.hasChains : false;
   }
 
   protected selectBestScheduleForTask(
@@ -480,7 +480,7 @@ export abstract class CTPBaseScheduler {
   }
 
   /**
-   * Per-task scheduling for chain-aware mode (requiresPreds).
+   * Per-task scheduling for chain-aware mode (hasChains).
    * Tightens each task's window from its predecessor before exploding contexts.
    */
   protected scheduleTasksChainAware(tasks: List<CTPTask>): void {
@@ -527,7 +527,7 @@ export abstract class CTPBaseScheduler {
   }
 
   protected tightenWindowFromPredecessor(task: CTPTask): boolean {
-    if (!this.settings?.requiresPreds) return true;
+    if (!this.settings?.hasChains) return true;
 
     const predKey = task.linkId?.prevLink;
     if (!predKey || predKey === '') return true; // Chain root or standalone
@@ -609,13 +609,13 @@ export abstract class CTPBaseScheduler {
     // Ensure default settings exist before auto-detection
     if (!this.settings) this.settings = new CTPAppSettings();
 
-    // Auto-detect chains if requiresPreds not explicitly set (must run before initScheduling)
-    if (this.settings.requiresPreds === null || this.settings.requiresPreds === undefined) {
-      let hasChains = false;
+    // Auto-detect chains (must run before initScheduling)
+    {
+      let detected = false;
       this.landscape.tasks.forEach(task => {
-        if (task.hasLinkId()) hasChains = true;
+        if (task.hasLinkId()) detected = true;
       });
-      this.settings.requiresPreds = hasChains;
+      this.settings.hasChains = detected;
     }
 
     this.initScheduling(tasks);
@@ -638,7 +638,7 @@ export abstract class CTPBaseScheduler {
     this.scheduleManualPass(tasks);
 
     // PASS 2: Solver — everything else, using the selected neighborhood strategy
-    if (this.settings?.requiresPreds) {
+    if (this.settings?.hasChains) {
       // Chain-aware: ChainContextEngine + bump-and-retry
       this.scheduleChainPass(tasks);
     } else {
@@ -667,7 +667,7 @@ export abstract class CTPBaseScheduler {
     const result = new CTPSolveResult();
     result.finalState = finalState;
     const agent = this.neighborhoodAgent as NextNeighborhoodAgent | null;
-    result.strategy = this.settings?.requiresPreds
+    result.strategy = this.settings?.hasChains
       ? 'Chain'
       : (agent ? agent.getStrategy().name : "");
     result.totalTasks = tasks.length;
@@ -733,7 +733,7 @@ export abstract class CTPBaseScheduler {
     }
 
     // Schedule using the same pipeline
-    if (this.settings?.requiresPreds) {
+    if (this.settings?.hasChains) {
       this.scheduleTasksChainAware(orderedManual);
     } else {
       this.explodeScheduleContexts(orderedManual);

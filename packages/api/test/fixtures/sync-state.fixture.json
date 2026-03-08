@@ -94,7 +94,6 @@
     ]
   },
   "settings": {
-    "scheduleDirection": 1,
-    "requiresPreds": true
+    "scheduleDirection": 1
   }
 }

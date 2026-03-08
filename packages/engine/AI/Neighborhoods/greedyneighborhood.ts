@@ -6,7 +6,7 @@
  *
  * Best for: General purpose scheduling, manufacturing environments without strict chain dependencies.
  * Trade-off: Optimizes individual task placement but may break chain continuity.
- * Default for: requiresPreds = false
+ * Default for: hasChains = false
  */
 import { INeighborhoodStrategy } from "./neighborhood";
 import { CTPScheduleDirectionConstants, CTPTaskStateConstants } from "../../Models/Core/constants";

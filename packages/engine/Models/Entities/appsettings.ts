@@ -8,7 +8,6 @@ export interface IAppSettings {
   tasksPerLoop: number;
   resetUageAfterProcessChange: boolean;
   scheduleDirection: number,
-  requiresPreds: boolean | null;
   solverStrategy: string;
   maxBacktrackAttempts: number;
   topNContexts: number;
@@ -25,8 +24,9 @@ export class CTPAppSettings implements IAppSettings {
   public topTasksToSchedule: number = 2;
   public resetUageAfterProcessChange: boolean = true;
   public scheduleDirection: number = CTPScheduleDirectionConstants.FORWARD;
-  public requiresPreds: boolean | null = null;
   public solverStrategy: string = 'Chain';
+  /** Computed at solve time — true when any task has a linkId (chain). Not a config setting. */
+  public hasChains: boolean = false;
   public maxBacktrackAttempts: number = 3;
   public topNContexts: number = 5;
   public maxChainCombos: number = 500;

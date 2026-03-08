@@ -83,7 +83,6 @@ function writeSampleTenant(tenantDir: string): void {
     topTasksToSchedule: 2,
     resetUsageAfterProcessChange: true,
     scheduleDirection: 1,
-    requiresPreds: false,
   };
   fs.writeFileSync(path.join(tenantDir, 'settings.json'), JSON.stringify(settings));
 
@@ -417,13 +416,11 @@ describe('FileConfigStore', () => {
       topTasksToSchedule: 5,
       resetUsageAfterProcessChange: false,
       scheduleDirection: 2,
-      requiresPreds: true,
     };
     store.saveSettings(settings);
     store.reload();
     const loaded = store.getSettings();
     expect(loaded.flowAround).toBe(true);
     expect(loaded.scheduleDirection).toBe(2);
-    expect(loaded.requiresPreds).toBe(true);
   });
 });

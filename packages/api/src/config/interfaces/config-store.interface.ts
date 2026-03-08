@@ -77,7 +77,6 @@ export interface ISettingsConfig {
   topTasksToSchedule: number;
   resetUsageAfterProcessChange: boolean;
   scheduleDirection: number;
-  requiresPreds?: boolean | null;
 }
 
 // Tenant metadata

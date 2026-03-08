@@ -45,7 +45,7 @@ interface Violation {
   gapMinutes: number; // negative = overlap
 }
 
-function solveManufacturing(strategy: INeighborhoodStrategy, opts?: { requiresPreds?: boolean }): {
+function solveManufacturing(strategy: INeighborhoodStrategy, opts?: { hasChains?: boolean }): {
   result: CTPSolveResult;
   tasks: TaskSnapshot[];
   violations: Violation[];
@@ -57,9 +57,9 @@ function solveManufacturing(strategy: INeighborhoodStrategy, opts?: { requiresPr
   stateService.syncFromConfig();
   const landscape = stateService.getLandscape()!;
 
-  // Override requiresPreds if requested
-  if (opts?.requiresPreds !== undefined && landscape.appSettings) {
-    landscape.appSettings.requiresPreds = opts.requiresPreds;
+  // Override hasChains if requested
+  if (opts?.hasChains !== undefined && landscape.appSettings) {
+    landscape.appSettings.hasChains = opts.hasChains;
   }
 
   const scoringConfig = configService.getScoring()!;
@@ -142,9 +142,9 @@ function solveManufacturing(strategy: INeighborhoodStrategy, opts?: { requiresPr
   return { result: solveResult, tasks, violations };
 }
 
-describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (requiresPreds=false)', () => {
-  const greedy = solveManufacturing(new GreedyNeighborhood(), { requiresPreds: false });
-  const cff = solveManufacturing(new ChainFirstFitNeighborhood(), { requiresPreds: false });
+describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (auto-detect chains)', () => {
+  const greedy = solveManufacturing(new GreedyNeighborhood());
+  const cff = solveManufacturing(new ChainFirstFitNeighborhood());
 
   it('prints solve order for Greedy', () => {
     console.log('\n=== GREEDY — Solve Order (manufacturing) ===');
@@ -172,8 +172,8 @@ describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (requiresPreds=false
     });
   });
 
-  it('lists all 9 Greedy violations', () => {
-    console.log('\n=== GREEDY VIOLATIONS (9) ===');
+  it('Greedy has zero violations (chains auto-detected)', () => {
+    console.log('\n=== GREEDY VIOLATIONS ===');
     console.log('Task                              | Pred                              | Chain    | Task Start | Pred End  | Gap');
     console.log('----------------------------------|-----------------------------------|----------|------------|-----------|--------');
     for (const v of greedy.violations) {
@@ -182,11 +182,11 @@ describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (requiresPreds=false
       const chain = v.chain.padEnd(8);
       console.log(`${task} | ${pred} | ${chain} | ${v.taskStart}    | ${v.predEnd}    | ${v.gapMinutes}m`);
     }
-    expect(greedy.violations.length).toBe(9);
+    expect(greedy.violations.length).toBe(0);
   });
 
-  it('lists all 3 ChainFirstFit violations', () => {
-    console.log('\n=== CHAINFIRSTFIT VIOLATIONS (3) ===');
+  it('ChainFirstFit has zero violations (chains auto-detected)', () => {
+    console.log('\n=== CHAINFIRSTFIT VIOLATIONS ===');
     console.log('Task                              | Pred                              | Chain    | Task Start | Pred End  | Gap');
     console.log('----------------------------------|-----------------------------------|----------|------------|-----------|--------');
     for (const v of cff.violations) {
@@ -195,7 +195,7 @@ describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (requiresPreds=false
       const chain = v.chain.padEnd(8);
       console.log(`${task} | ${pred} | ${chain} | ${v.taskStart}    | ${v.predEnd}    | ${v.gapMinutes}m`);
     }
-    expect(cff.violations.length).toBe(3);
+    expect(cff.violations.length).toBe(0);
   });
 
   it('identifies violations unique to Greedy', () => {
@@ -212,10 +212,10 @@ describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (requiresPreds=false
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// MANUFACTURING WITH requiresPreds=true — ALL 5 STRATEGIES
+// MANUFACTURING WITH hasChains=true — ALL 5 STRATEGIES
 // ═══════════════════════════════════════════════════════════════════
 
-describe('Manufacturing with requiresPreds=true — all strategies', () => {
+describe('Manufacturing with hasChains=true — all strategies', () => {
   const strategies: INeighborhoodStrategy[] = [
     new GreedyNeighborhood(),
     new ChainNeighborhood(),
@@ -236,9 +236,9 @@ describe('Manufacturing with requiresPreds=true — all strategies', () => {
 
   const rows: StrategyRow[] = [];
 
-  it('runs all 5 strategies with requiresPreds=true', () => {
+  it('runs all 5 strategies with hasChains=true', () => {
     for (const strategy of strategies) {
-      const { result, violations } = solveManufacturing(strategy, { requiresPreds: true });
+      const { result, violations } = solveManufacturing(strategy, { hasChains: true });
 
       let worstGap = 0;
       // recompute worst gap from the returned violations data isn't enough —
@@ -262,7 +262,7 @@ describe('Manufacturing with requiresPreds=true — all strategies', () => {
     // Re-do with full gap tracking
     rows.length = 0;
     for (const strategy of strategies) {
-      const s = solveManufacturing(strategy, { requiresPreds: true });
+      const s = solveManufacturing(strategy, { hasChains: true });
 
       // Find worst positive gap across all predecessor pairs
       let worstGapSec = 0;
@@ -287,7 +287,7 @@ describe('Manufacturing with requiresPreds=true — all strategies', () => {
     }
 
     // Print comparison table
-    console.log('\n=== MANUFACTURING — requiresPreds=true ===\n');
+    console.log('\n=== MANUFACTURING — hasChains=true ===\n');
     console.log('┌────────────────┬───────────┬──────────┬────────────┬──────────┬──────────┐');
     console.log('│ Strategy       │ Scheduled │ Infeas.  │ Violations │ Worst Gap│ Time(ms) │');
     console.log('├────────────────┼───────────┼──────────┼────────────┼──────────┼──────────┤');
@@ -309,13 +309,13 @@ describe('Manufacturing with requiresPreds=true — all strategies', () => {
     }
   });
 
-  it('ChainFirstFit has zero violations with requiresPreds=true', () => {
+  it('ChainFirstFit has zero violations with hasChains=true', () => {
     const cff = rows.find(r => r.name === 'ChainFirstFit');
     expect(cff).toBeDefined();
     expect(cff!.violations).toBe(0);
   });
 
-  it('Chain has zero violations with requiresPreds=true', () => {
+  it('Chain has zero violations with hasChains=true', () => {
     const chain = rows.find(r => r.name === 'Chain');
     expect(chain).toBeDefined();
     expect(chain!.violations).toBe(0);

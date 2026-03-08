@@ -60,7 +60,7 @@ describe('CTPService', () => {
     expect(result.summary.includedTasks).toBe(29);
 
     const submittedTasks = result.tasks.filter((t) => t.included);
-    // With auto-detected requiresPreds, the engine adds chain predecessors
+    // With auto-detected hasChains, the engine adds chain predecessors
     // (T-1001-DEBURR is auto-added as predecessor of T-1001-ASSEMBLE)
     expect(submittedTasks.length).toBeGreaterThanOrEqual(2);
 

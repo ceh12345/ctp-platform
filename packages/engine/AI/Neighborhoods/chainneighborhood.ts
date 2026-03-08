@@ -7,7 +7,7 @@
  *
  * Best for: Healthcare, job shops, any scenario with linked activity chains.
  * Trade-off: Prioritizes chain integrity over individual task optimization.
- * Default for: requiresPreds = true
+ * Default for: hasChains = true
  */
 import { INeighborhoodStrategy } from "./neighborhood";
 import { CTPTaskStateConstants } from "../../Models/Core/constants";

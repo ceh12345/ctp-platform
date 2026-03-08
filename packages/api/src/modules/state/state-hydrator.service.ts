@@ -138,8 +138,6 @@ export class StateHydratorService {
       settings.tasksPerLoop = config.tasksPerLoop;
     if (config.topTasksToSchedule !== undefined)
       settings.topTasksToSchedule = config.topTasksToSchedule;
-    if (config.requiresPreds !== undefined)
-      settings.requiresPreds = config.requiresPreds;
     if (config.resetUsageAfterProcessChange !== undefined)
       settings.resetUageAfterProcessChange = config.resetUsageAfterProcessChange;
     return settings;

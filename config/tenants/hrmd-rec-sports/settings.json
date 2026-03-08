@@ -5,6 +5,5 @@
   "topTasksToSchedule": 2,
   "resetUsageAfterProcessChange": false,
   "scheduleDirection": 1,
-  "requiresPreds": true,
   "solverStrategy": "Chain"
 }
