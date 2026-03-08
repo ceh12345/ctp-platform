@@ -46,6 +46,7 @@ _No sprints currently in progress._
 | Logging Sprint 1 — Backend Logger | Pluggable LoggerService with 4 transports (memory/console/file/azure), 4 event types, AllExceptionsFilter, debug endpoint, solve + AI instrumentation | 2026-03-07 |
 | UI Sprint 18 — Solve Replay | Engine SolveStep recording (gated, capped at 500), all solver paths instrumented, frontend replay player with controls at top of Gantt, collapsible step log, keyboard shortcuts, flash animations | 2026-03-08 |
 | Engine — Primary-Anchor Placement | assignStartTimes anchors on most constrained task (smallest feasible duration) instead of Task 0; backward walk for predecessors; AI prompt includes task scheduling windows | 2026-03-08 |
+| UI Sprint 19 — App Versioning | Build-time version.json generation, GET /health/version endpoint, logo hover About popover, fixed footer bar (version + tenant) | 2026-03-08 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -157,6 +158,7 @@ INFRA TRACK
   engine-sprint-19-cleanup-foundation.md ← Correctness fixes, perf, SolutionState snapshot
   engine-cadence-profiles.md         ← Boundary-snap filtering (replaces PB-TIMESLOT)
   engine-sprint-chain-primary-anchor.md ← Primary-task-driven chain placement
+  ui-19-versioning.md                  ← App versioning (footer, logo hover, /version endpoint)
 
   UI Sprints:
   ui-1-select-and-act.md             ← Checkboxes, selection toolbar, unscheduled panel
@@ -205,4 +207,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 8, 2026 (Engine — Primary-Anchor Placement)*
+*Last updated: Mar 8, 2026 (UI Sprint 19 — App Versioning)*
