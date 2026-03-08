@@ -5,6 +5,7 @@ import {
 import { ScheduleEngine } from "../../Engines/scheduleengine";
 import { StateChangeEngine } from "../../Engines/statechangeerengine";
 import { CTPAssignmentConstants, CTPScheduleDirectionConstants, CTPTaskStateConstants, CTPTaskTypeConstants } from "../../Models/Core/constants";
+import { CTPDateTime } from "../../Models/Core/date";
 import { List } from "../../Models/Core/list";
 import { CTPAppSettings } from "../../Models/Entities/appsettings";
 import { CTPHorizon } from "../../Models/Entities/horizon";
@@ -43,6 +44,7 @@ import { ChainFirstFitNeighborhood } from "../Neighborhoods/chainfirstfitneighbo
 import { DueDateNeighborhood } from "../Neighborhoods/duedateneighborhood";
 import { ShortestFirstNeighborhood } from "../Neighborhoods/shortestfirstneighborhood";
 import { CTPSolveResult } from "../../Models/Entities/solveresult";
+import { SolveStep, SolveAction } from "../../Models/Entities/solvestep";
 import { SolutionStateBuilder } from "../../Models/Entities/solutionstate";
 import {
   ChainContextEngine,
@@ -86,6 +88,8 @@ export abstract class CTPBaseScheduler {
   protected neighborhoodAgent: NextNeighborhoodAgent | null = null;
   protected contextsEvaluated: number = 0;
   protected bumpEvents: BumpEvent[] = [];
+  protected solveSteps: SolveStep[] = [];
+  private stepSequence: number = 0;
 
   constructor() {
     this.landscape = new SchedulingLandscape();
@@ -93,6 +97,51 @@ export abstract class CTPBaseScheduler {
     this.scoring = null;
     this.settings = null;
     this.init = false;
+  }
+
+  protected recordStep(
+    action: SolveAction,
+    task: CTPTask,
+    chainKey: string | null,
+    resourceKey?: string | null,
+    resourceName?: string | null,
+    startW?: number | null,
+    endW?: number | null,
+    score?: number | null,
+    reason?: string | null,
+    bumpTarget?: string | null,
+  ): void {
+    if (!this.settings?.recordSolveSteps) return;
+    if (this.solveSteps.length >= (this.settings?.maxSolveSteps ?? 500)) return;
+    this.stepSequence++;
+    this.solveSteps.push({
+      sequence: this.stepSequence,
+      action,
+      taskKey: task.key,
+      chainKey: chainKey ?? task.linkId?.name ?? null,
+      resourceKey: resourceKey ?? null,
+      resourceName: resourceName ?? null,
+      startTime: startW ? CTPDateTime.toDateTime(startW).toISO() : null,
+      endTime: endW ? CTPDateTime.toDateTime(endW).toISO() : null,
+      score: score ?? null,
+      reason: reason ?? null,
+      chainPhase: task.type != null ? String(task.type) : null,
+      bumpTarget: bumpTarget ?? null,
+    });
+  }
+
+  /** Get primary resource info from a task after it's been scheduled */
+  private getPrimaryResourceInfo(task: CTPTask): { key: string | null; name: string | null } {
+    let key: string | null = null;
+    let name: string | null = null;
+    task.capacityResources?.forEach(tr => {
+      if (tr.isPrimary && tr.scheduledResource) {
+        key = tr.scheduledResource;
+        const res = this.landscape.resources?.getEntity(tr.scheduledResource);
+        name = res?.name ?? tr.scheduledResource;
+      }
+    });
+    return { key, name };
   }
 
   protected startScheduling(): void {}
@@ -416,9 +465,15 @@ export abstract class CTPBaseScheduler {
       const best = this.selectBestScheduleForTask(task);
       if (best) {
         this.scheduleTask(task, best);
+        const pri = this.getPrimaryResourceInfo(task);
+        this.recordStep('schedule', task, null, pri.key, pri.name,
+          task.scheduled?.startW, task.scheduled?.endW,
+          best.best.blendedScore?.score);
         this.reComputeScheduleContexts(task);
         this.endTask(task);
       } else {
+        this.recordStep('infeasible', task, null, null, null,
+          null, null, null, task.errors?.[0]?.reason ?? 'No feasible context');
         this.buildStandaloneInfeasibilityReport(task);
       }
     });
@@ -434,6 +489,8 @@ export abstract class CTPBaseScheduler {
       const feasible = this.tightenWindowFromPredecessor(task);
       if (!feasible) {
         task.processed = true;
+        this.recordStep('infeasible', task, null, null, null,
+          null, null, null, task.errors?.[0]?.reason ?? 'Predecessor not scheduled');
         return; // Skip — predecessor not scheduled
       }
 
@@ -450,11 +507,17 @@ export abstract class CTPBaseScheduler {
       const best = this.selectBestScheduleForTask(task);
       if (best) {
         this.scheduleTask(task, best);
+        const pri = this.getPrimaryResourceInfo(task);
+        this.recordStep('schedule', task, null, pri.key, pri.name,
+          task.scheduled?.startW, task.scheduled?.endW,
+          best.best.blendedScore?.score);
         this.reComputeScheduleContexts(task);
         this.endTask(task);
       } else {
         // No feasible schedule — stop retrying this task
         task.processed = true;
+        this.recordStep('infeasible', task, null, null, null,
+          null, null, null, task.errors?.[0]?.reason ?? 'No feasible context');
         this.buildStandaloneInfeasibilityReport(task);
       }
 
@@ -560,6 +623,8 @@ export abstract class CTPBaseScheduler {
     if (!this.assert()) throw "Scheduler not initialized" + this.errors;
 
     this.solverSequence = 0;
+    this.solveSteps = [];
+    this.stepSequence = 0;
 
     let topTasksToSchedule = this.settings
       ? this.settings.topTasksToSchedule
@@ -615,9 +680,20 @@ export abstract class CTPBaseScheduler {
     tasks.forEach(task => {
       if (task.state === CTPTaskStateConstants.SCHEDULED) result.scheduled++;
       else if (task.errors && task.errors.length > 0) result.infeasible++;
-      else result.notScheduled++;
+      else {
+        result.notScheduled++;
+        // Record skip step for tasks that were never processed by the solver
+        if (task.pinned) {
+          this.recordStep('skip', task, task.linkId?.name ?? null,
+            null, null, null, null, null, 'Pinned');
+        } else if (!task.includeInSolve) {
+          this.recordStep('skip', task, task.linkId?.name ?? null,
+            null, null, null, null, null, 'Excluded');
+        }
+      }
     });
 
+    result.solveSteps = this.solveSteps;
     result.debug(this.settings?.debugLogging ?? false);
     return result;
   }
@@ -826,6 +902,10 @@ export abstract class CTPBaseScheduler {
       chainTasks.forEach(t => { if (!t.processed && t.canSolve()) hasWork = true; });
       if (!hasWork) continue;
 
+      // Record chain-start
+      const firstTask = chainTasks.at(0)!;
+      this.recordStep('chain-start', firstTask, chain.key ?? null);
+
       if (chainTasks.length === 1) {
         // Single-task chain: use existing per-task greedy
         const singleList = new List<CTPTask>();
@@ -858,6 +938,11 @@ export abstract class CTPBaseScheduler {
             task.solverSequence = this.solverSequence;
             this.scheduleStateChanges(task, best);
             this.scheduleContexts.updateRecompute(best.best);
+
+            const pri = this.getPrimaryResourceInfo(task);
+            this.recordStep('schedule', task, chain.key ?? null, pri.key, pri.name,
+              task.scheduled?.startW, task.scheduled?.endW,
+              best.best.blendedScore?.score);
           }
 
           // Free contexts for this chain
@@ -874,6 +959,10 @@ export abstract class CTPBaseScheduler {
           if (hasMaxGap) {
             // Chain with maxGap constraints is infeasible — do not fall back to greedy
             markChainInfeasible(chain, 'No valid chain placement — resource contention violates maxGap constraints');
+            chainTasks.forEach(t => {
+              this.recordStep('infeasible', t, chain.key ?? null, null, null,
+                null, null, null, 'Resource contention violates maxGap constraints');
+            });
             failedChains.push(chain);
           } else {
             // Chain without maxGap — safe to fall back to per-task scheduling
@@ -892,6 +981,9 @@ export abstract class CTPBaseScheduler {
           }
         }
       }
+
+      // Record chain-end
+      this.recordStep('chain-end', firstTask, chain.key ?? null);
     }
 
     // Schedule standalone tasks (not in any chain)
@@ -959,9 +1051,18 @@ export abstract class CTPBaseScheduler {
         continue;
       }
 
+      // Record bump-remove for each task in the blocker chain
+      this.recordStep('bump', blockerChain.tasks!.at(0)!, candidate.blockerChainKey,
+        null, null, null, null, null,
+        `Bumped to free ${candidate.resourceKey} for ${chain.key}`, chain.key ?? null);
+
       // Unschedule the blocker chain (with state change cleanup)
       blockerChain.tasks?.forEach(t => {
         if (t.state === CTPTaskStateConstants.SCHEDULED) {
+          const pri = this.getPrimaryResourceInfo(t);
+          this.recordStep('bump-remove', t, candidate.blockerChainKey, pri.key, pri.name,
+            t.scheduled?.startW, t.scheduled?.endW, null,
+            `Bumped to free ${candidate.resourceKey} for ${chain.key}`, chain.key ?? null);
           this.unScheduleStateChanges(t);
           this.landscape.unscheduleTask(t.key);
           t.processed = false;
@@ -970,10 +1071,11 @@ export abstract class CTPBaseScheduler {
       bumpedChains.add(candidate.blockerChainKey);
 
       // Retry the failed chain
-      const retryResult = this.retryChain(chain, chainEngine, schedEngine, direction);
+      this.recordStep('retry', chain.tasks!.at(0)!, chain.key ?? null);
+      const retryResult = this.retryChain(chain, chainEngine, schedEngine, direction, true);
 
       // Retry the bumped chain
-      const bumperResult = this.retryChain(blockerChain, chainEngine, schedEngine, direction);
+      const bumperResult = this.retryChain(blockerChain, chainEngine, schedEngine, direction, true);
       if (bumperResult === 'infeasible') {
         markChainInfeasible(blockerChain, `Bumped for ${chain.key} — could not reschedule`);
       }
@@ -999,9 +1101,11 @@ export abstract class CTPBaseScheduler {
     chainEngine: ChainContextEngine,
     schedEngine: ScheduleEngine,
     direction: number,
+    isRetry: boolean = false,
   ): 'rescheduled' | 'infeasible' {
     const chainTasks = chain.tasks;
     if (!chainTasks) return 'infeasible';
+    const chainKeyStr = chain.key ?? null;
 
     // Reset tasks (including window and score for clean retry)
     const taskList = new List<CTPTask>();
@@ -1036,11 +1140,23 @@ export abstract class CTPBaseScheduler {
           task.solverSequence = this.solverSequence;
           this.scheduleStateChanges(task, best);
           this.scheduleContexts.updateRecompute(best.best);
+
+          if (isRetry) {
+            const pri = this.getPrimaryResourceInfo(task);
+            this.recordStep('retry-success', task, chainKeyStr, pri.key, pri.name,
+              task.scheduled?.startW, task.scheduled?.endW,
+              best.best.blendedScore?.score);
+          }
         }
         result = 'rescheduled';
+      } else if (isRetry) {
+        chainTasks.forEach(t => {
+          this.recordStep('retry-fail', t, chainKeyStr, null, null,
+            null, null, null, 'Still infeasible after bump');
+        });
       }
     } else {
-      // Single-task: use greedy
+      // Single-task: use greedy (scheduleTasksChainAware already records steps)
       this.scheduleTasksChainAware(taskList);
       let gotScheduled = true;
       chainTasks.forEach(t => {

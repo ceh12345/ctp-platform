@@ -1877,6 +1877,128 @@ interface SolveSnapshot {
   totalScore?: number;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Solve Replay — types and helpers
+// ═══════════════════════════════════════════════════════════════
+
+type SolveAction =
+  | 'schedule' | 'infeasible' | 'bump' | 'bump-remove'
+  | 'retry' | 'retry-success' | 'retry-fail' | 'skip'
+  | 'chain-start' | 'chain-end';
+
+interface SolveStep {
+  sequence: number;
+  action: SolveAction;
+  taskKey: string;
+  chainKey: string | null;
+  resourceKey: string | null;
+  resourceName: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  score: number | null;
+  reason: string | null;
+  chainPhase: string | null;
+  bumpTarget: string | null;
+}
+
+interface ReplayState {
+  active: boolean;
+  steps: SolveStep[];
+  currentStep: number;
+  playing: boolean;
+  speed: number;
+  visibleTasks: Set<string>;
+  flashAction: SolveAction | null;
+  flashTaskKey: string | null;
+}
+
+const REPLAY_INITIAL: ReplayState = {
+  active: false, steps: [], currentStep: 0,
+  playing: false, speed: 500,
+  visibleTasks: new Set(), flashAction: null, flashTaskKey: null,
+};
+
+function fmtReplayTime(iso: string | null): string {
+  if (!iso) return '';
+  const loc = _locale?.locale || 'en-US';
+  const tz = _locale?.timezone;
+  return new Date(iso).toLocaleTimeString(loc, {
+    hour: '2-digit', minute: '2-digit',
+    ...(tz ? { timeZone: tz } : {}),
+  });
+}
+
+function describeStep(step: SolveStep): string {
+  switch (step.action) {
+    case 'chain-start':
+      return `Evaluating chain: ${step.chainKey}`;
+    case 'schedule':
+      return `${step.taskKey} → ${step.resourceName || '?'} ${fmtReplayTime(step.startTime)}–${fmtReplayTime(step.endTime)}${step.score != null ? ` score: ${step.score.toFixed(1)}` : ''}`;
+    case 'infeasible':
+      return `${step.taskKey} — infeasible${step.reason ? `: ${step.reason}` : ''}`;
+    case 'bump':
+      return `Bumping chain ${step.bumpTarget} to free resources for ${step.chainKey}`;
+    case 'bump-remove':
+      return `Removing ${step.taskKey} from ${step.resourceName || '?'}`;
+    case 'retry':
+      return `Retrying ${step.chainKey || step.taskKey} with freed resources...`;
+    case 'retry-success':
+      return `${step.taskKey} → ${step.resourceName || '?'} ${fmtReplayTime(step.startTime)}–${fmtReplayTime(step.endTime)}`;
+    case 'retry-fail':
+      return `${step.taskKey} still infeasible${step.reason ? `: ${step.reason}` : ''}`;
+    case 'skip':
+      return `Skipped ${step.taskKey}${step.reason ? ` (${step.reason})` : ''}`;
+    case 'chain-end':
+      return `Chain ${step.chainKey} complete`;
+    default:
+      return `${step.action}: ${step.taskKey}`;
+  }
+}
+
+function advanceToStep(targetStep: number, steps: SolveStep[]): Set<string> {
+  const visible = new Set<string>();
+  for (let i = 0; i < targetStep; i++) {
+    const step = steps[i];
+    switch (step.action) {
+      case 'schedule':
+      case 'retry-success':
+        visible.add(step.taskKey);
+        break;
+      case 'bump-remove':
+        visible.delete(step.taskKey);
+        break;
+    }
+  }
+  return visible;
+}
+
+function stepColor(action: SolveAction): string {
+  switch (action) {
+    case 'schedule': case 'retry-success': return C.green;
+    case 'infeasible': case 'retry-fail': return C.red;
+    case 'bump': case 'bump-remove': return C.orange;
+    case 'chain-start': case 'chain-end': return C.cyan;
+    case 'retry': return C.yellow;
+    case 'skip': return C.textDim;
+    default: return C.textMuted;
+  }
+}
+
+function stepIcon(action: SolveAction): string {
+  switch (action) {
+    case 'schedule': return '✓';
+    case 'infeasible': return '✗';
+    case 'bump': case 'bump-remove': return '⟳';
+    case 'retry': return '…';
+    case 'retry-success': return '✓';
+    case 'retry-fail': return '✗';
+    case 'skip': return '–';
+    case 'chain-start': return '▸';
+    case 'chain-end': return '▪';
+    default: return '·';
+  }
+}
+
 function SolveResultsDialog({ result, previousSnapshot, experienceLevel, onClose, onTaskClick, onViewProblems }: {
   result: any;
   previousSnapshot: SolveSnapshot | null;
@@ -3228,6 +3350,155 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   REPLAY CONTROL BAR
+   ═══════════════════════════════════════════════════════════════ */
+
+function ReplayControlBar({ replay, onStep, onJumpStart, onJumpEnd, onTogglePlay, onSpeedChange, onExit }: {
+  replay: ReplayState;
+  onStep: (delta: number) => void;
+  onJumpStart: () => void;
+  onJumpEnd: () => void;
+  onTogglePlay: () => void;
+  onSpeedChange: (speed: number) => void;
+  onExit: () => void;
+}) {
+  const step = replay.currentStep > 0 ? replay.steps[replay.currentStep - 1] : null;
+  const btnStyle: CSSProperties = {
+    background: 'none', border: `1px solid ${C.border}`, color: C.text,
+    borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 14,
+    fontFamily: 'monospace', lineHeight: 1, minWidth: 28, textAlign: 'center',
+  };
+  return (
+    <div style={{
+      background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 10,
+      padding: '8px 14px', marginBottom: 8, fontFamily: FONT,
+    }}>
+      {/* Top row: controls + step counter + speed */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <button style={btnStyle} onClick={onJumpStart} title="Jump to start (Home)">⏮</button>
+        <button style={btnStyle} onClick={() => onStep(-1)} title="Step back (←)">◀</button>
+        <button style={{ ...btnStyle, background: replay.playing ? C.accent : 'none', color: replay.playing ? '#fff' : C.text }}
+          onClick={onTogglePlay} title="Play/Pause (Space)">
+          {replay.playing ? '⏸' : '▶'}
+        </button>
+        <button style={btnStyle} onClick={() => onStep(1)} title="Step forward (→)">▶▶</button>
+        <button style={btnStyle} onClick={onJumpEnd} title="Jump to end (End)">⏭</button>
+
+        <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600, marginLeft: 8 }}>
+          Step {replay.currentStep} of {replay.steps.length}
+        </span>
+
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 11, color: C.textMuted, fontWeight: 600 }}>Fast</span>
+          <input type="range" min={100} max={2000} step={100} value={replay.speed}
+            onChange={e => onSpeedChange(Number(e.target.value))}
+            style={{ width: 80, accentColor: C.accent }} />
+          <span style={{ fontSize: 11, color: C.textMuted, fontWeight: 600 }}>Slow</span>
+          {replay.currentStep >= replay.steps.length && (
+            <button onClick={onJumpStart} style={{
+              background: 'none', border: `1px solid ${C.accent}`, color: C.accent,
+              borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 11,
+              fontWeight: 600, fontFamily: FONT, marginLeft: 8,
+            }}>Restart</button>
+          )}
+          <button onClick={onExit} style={{
+            background: 'none', border: `1px solid ${C.border}`, color: C.red,
+            borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 11,
+            fontWeight: 600, fontFamily: FONT, marginLeft: 8,
+          }}>Exit Replay</button>
+        </div>
+      </div>
+
+      {/* Step description */}
+      {step && (
+        <div style={{
+          marginTop: 6, padding: '4px 8px', borderRadius: 6,
+          background: `${stepColor(step.action)}15`, borderLeft: `3px solid ${stepColor(step.action)}`,
+          fontSize: 12, color: C.text, fontWeight: 500,
+        }}>
+          <span style={{ color: stepColor(step.action), fontWeight: 700, marginRight: 6 }}>
+            {stepIcon(step.action)}
+          </span>
+          {describeStep(step)}
+        </div>
+      )}
+      {!step && (
+        <div style={{ marginTop: 6, fontSize: 12, color: C.textDim }}>
+          Empty schedule — step forward to begin replay
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REPLAY STEP LOG PANEL
+   ═══════════════════════════════════════════════════════════════ */
+
+function ReplayStepLog({ replay, onJumpToStep }: {
+  replay: ReplayState;
+  onJumpToStep: (step: number) => void;
+}) {
+  const logRef = useRef<HTMLDivElement>(null);
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    if (!collapsed && logRef.current) {
+      const active = logRef.current.querySelector('[data-active="true"]');
+      if (active) active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [replay.currentStep, collapsed]);
+
+  return (
+    <div style={{
+      marginTop: 8, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
+      fontFamily: FONT, fontSize: 11,
+    }}>
+      <div onClick={() => setCollapsed(c => !c)} style={{
+        padding: '5px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', borderBottom: collapsed ? 'none' : `1px solid ${C.border}`,
+        userSelect: 'none',
+      }}>
+        <span style={{ fontWeight: 600, color: C.textMuted, fontSize: 12 }}>
+          {collapsed ? '▸' : '▾'} Solve Log ({replay.steps.length} steps)
+        </span>
+        <span style={{ fontSize: 10, color: C.textDim }}>
+          {collapsed ? 'click to expand' : 'click to collapse'}
+        </span>
+      </div>
+    {!collapsed && (
+    <div ref={logRef} style={{ maxHeight: 200, overflow: 'auto' }}>
+      {replay.steps.map((step, i) => {
+        const stepNum = i + 1;
+        const isCurrent = stepNum === replay.currentStep;
+        const isPast = stepNum < replay.currentStep;
+        return (
+          <div key={step.sequence}
+            data-active={isCurrent ? 'true' : undefined}
+            onClick={() => onJumpToStep(stepNum)}
+            style={{
+              padding: '3px 8px', cursor: 'pointer',
+              background: isCurrent ? `${stepColor(step.action)}20` : 'transparent',
+              borderLeft: isCurrent ? `3px solid ${stepColor(step.action)}` : '3px solid transparent',
+              color: isPast ? C.textMuted : isCurrent ? C.text : C.textDim,
+              display: 'flex', gap: 6, alignItems: 'baseline',
+              transition: 'background 0.1s',
+            }}
+            onMouseEnter={e => { if (!isCurrent) (e.currentTarget as HTMLElement).style.background = `${C.surface2}`; }}
+            onMouseLeave={e => { if (!isCurrent) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+          >
+            <span style={{ minWidth: 24, textAlign: 'right', color: C.textDim, fontSize: 10 }}>{stepNum}.</span>
+            <span style={{ color: stepColor(step.action), fontWeight: 700, fontSize: 10 }}>{stepIcon(step.action)}</span>
+            <span>{describeStep(step)}</span>
+          </div>
+        );
+      })}
+    </div>
+    )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    GANTT CHART
    ═══════════════════════════════════════════════════════════════ */
 
@@ -3239,7 +3510,9 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
   whereToCurrentAssignment, whereToSource, onMoveTo, onCancelWhereTo,
   zoomLevel, setZoomLevel, scrollOffset, setScrollOffset,
-  onSetResourcePrefForTask, onViewAgenda, onAskAI }: {
+  onSetResourcePrefForTask, onViewAgenda, onAskAI,
+  replay, onReplayStep, onReplayJumpStart, onReplayJumpEnd,
+  onReplayTogglePlay, onReplaySpeedChange, onReplayExit, onReplayJumpToStep }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   onViewAgenda?: (r: any) => void;
@@ -3266,6 +3539,14 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   scrollOffset?: number; setScrollOffset?: React.Dispatch<React.SetStateAction<number>>;
   onSetResourcePrefForTask?: (taskKey: string) => void;
   onAskAI?: (task: any) => void;
+  replay?: ReplayState;
+  onReplayStep?: (delta: number) => void;
+  onReplayJumpStart?: () => void;
+  onReplayJumpEnd?: () => void;
+  onReplayTogglePlay?: () => void;
+  onReplaySpeedChange?: (speed: number) => void;
+  onReplayExit?: () => void;
+  onReplayJumpToStep?: (step: number) => void;
 }) {
   // Suppress Gantt ghost bars/overlays when WhereTo triggered from task detail panel
   const showGanttWhereTo = whereToSource !== 'panel';
@@ -3296,8 +3577,24 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
     return true;
   });
 
-  if (scheduled.length === 0) {
+  // In replay mode, use all scheduled tasks for time axis but filter bars by visibleTasks
+  const replayActive = replay?.active ?? false;
+  const replayVisible = replay?.visibleTasks ?? new Set<string>();
+
+  if (scheduled.length === 0 && !replayActive) {
     return <div style={{ color: C.textDim, padding: 20 }}>No {t('scheduledStatus', 'scheduled').toLowerCase()} {t('tasks', 'tasks')}</div>;
+  }
+  if (scheduled.length === 0 && replayActive) {
+    return (
+      <div>
+        {replay && onReplayStep && onReplayJumpStart && onReplayJumpEnd && onReplayTogglePlay && onReplaySpeedChange && onReplayExit && (
+          <ReplayControlBar replay={replay} onStep={onReplayStep} onJumpStart={onReplayJumpStart}
+            onJumpEnd={onReplayJumpEnd} onTogglePlay={onReplayTogglePlay}
+            onSpeedChange={onReplaySpeedChange} onExit={onReplayExit} />
+        )}
+        <div style={{ color: C.textDim, padding: 20 }}>No scheduled tasks — step forward to begin replay</div>
+      </div>
+    );
   }
 
   // Detect timezone from task data for correct axis labels
@@ -3418,9 +3715,13 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   }
 
   // Group tasks by every assigned resource (multi-resource tasks appear on all lanes)
+  // In replay mode, only include tasks that are in the visible set
+  const displayScheduled = replayActive
+    ? scheduled.filter((t: any) => replayVisible.has(t.key))
+    : scheduled;
   const resMap = new Map<string, any[]>();
   resources.forEach((r: any) => resMap.set(r.resourceKey, []));
-  scheduled.forEach((t: any) => {
+  displayScheduled.forEach((t: any) => {
     for (const ar of t.assignedResources || []) {
       const rk = ar.resourceKey;
       if (rk && resMap.has(rk)) resMap.get(rk)!.push(t);
@@ -3463,6 +3764,15 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
 
   return (
     <div style={{ position: 'relative' }}>
+      {/* Replay Controls — at TOP of Gantt per user preference */}
+      {replayActive && replay && onReplayStep && onReplayJumpStart && onReplayJumpEnd && onReplayTogglePlay && onReplaySpeedChange && onReplayExit && (
+        <ReplayControlBar replay={replay} onStep={onReplayStep} onJumpStart={onReplayJumpStart}
+          onJumpEnd={onReplayJumpEnd} onTogglePlay={onReplayTogglePlay}
+          onSpeedChange={onReplaySpeedChange} onExit={onReplayExit} />
+      )}
+      {replayActive && replay && onReplayJumpToStep && (
+        <ReplayStepLog replay={replay} onJumpToStep={onReplayJumpToStep} />
+      )}
       {/* Resource filter bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
         <SearchBox value={ganttSearch} onChange={setGanttSearch} placeholder="Filter resources..." />
@@ -3665,6 +3975,8 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                     const isPinned = taskPins?.[t.key] || t.pinned;
                     const isExcluded = taskExcludes?.[t.key];
                     const willUnsched = taskUnschedules?.has(t.key);
+                    const isReplayFlash = replayActive && replay?.flashTaskKey === t.key;
+                    const flashAnim = isReplayFlash && replay?.flashAction;
                     return (
                       <div
                         key={t.key}
@@ -3687,11 +3999,14 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                           cursor: 'pointer',
                           display: 'flex', alignItems: 'center', paddingLeft: 4,
                           overflow: 'hidden', fontSize: 10, color: '#fff', fontWeight: 500,
-                          transition: 'opacity 0.15s',
+                          transition: 'opacity 0.2s, box-shadow 0.2s, transform 0.2s',
                           border: willUnsched ? `2px dashed ${C.red}` : 'none',
                           ...(isPinned && { boxShadow: `0 0 0 2px ${C.accent}` }),
                           ...(isExcluded && { filter: 'grayscale(1)' }),
                           ...(actionLoading === t.key && { animation: 'pulse 1s ease-in-out infinite' }),
+                          ...(flashAnim === 'schedule' || flashAnim === 'retry-success'
+                            ? { boxShadow: `0 0 8px 2px ${C.green}`, transform: 'scaleY(1.1)' }
+                            : {}),
                         }}
                       >
                         {willUnsched && (
@@ -6105,7 +6420,9 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected,
   onSetResourcePreference, onSetResourcePrefForTask, resourcePreferenceOverrides,
   priorityOverrides, onSetPriority, onRushSelected,
-  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset, onViewAgenda, onAskAI }: {
+  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset, onViewAgenda, onAskAI,
+  replay, onReplayStep, onReplayJumpStart, onReplayJumpEnd,
+  onReplayTogglePlay, onReplaySpeedChange, onReplayExit, onReplayJumpToStep }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   onViewAgenda?: (r: any) => void;
@@ -6153,6 +6470,14 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   scrollOffset: number;
   setScrollOffset: (v: number | ((prev: number) => number)) => void;
   onAskAI?: (task: any) => void;
+  replay?: ReplayState;
+  onReplayStep?: (delta: number) => void;
+  onReplayJumpStart?: () => void;
+  onReplayJumpEnd?: () => void;
+  onReplayTogglePlay?: () => void;
+  onReplaySpeedChange?: (speed: number) => void;
+  onReplayExit?: () => void;
+  onReplayJumpToStep?: (step: number) => void;
 }) {
   const tabNames = [`Gantt by ${t('resource', 'Resource')}`, `Gantt by ${t('order', 'Order')}`, t('tasks', 'Task List')];
   const [subIdx, setSubIdx] = useState(0);
@@ -6182,7 +6507,11 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
             scrollOffset={scrollOffset} setScrollOffset={setScrollOffset}
             onSetResourcePrefForTask={onSetResourcePrefForTask}
-            onViewAgenda={onViewAgenda} onAskAI={onAskAI} />
+            onViewAgenda={onViewAgenda} onAskAI={onAskAI}
+            replay={replay} onReplayStep={onReplayStep}
+            onReplayJumpStart={onReplayJumpStart} onReplayJumpEnd={onReplayJumpEnd}
+            onReplayTogglePlay={onReplayTogglePlay} onReplaySpeedChange={onReplaySpeedChange}
+            onReplayExit={onReplayExit} onReplayJumpToStep={onReplayJumpToStep} />
           <UnscheduledPanel tasks={tasks} colors={colors}
             taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             onTaskClick={onTaskClick} onWhereTo={onWhereTo}
@@ -8222,6 +8551,9 @@ export default function App() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const [chatInitialInput, setChatInitialInput] = useState<string | undefined>(undefined);
+  // Solve Replay state
+  const [replay, setReplay] = useState<ReplayState>(REPLAY_INITIAL);
+  const replayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Previous state snapshots for delta computation
   const [prevOrderModes, setPrevOrderModes] = useState<Record<string, string>>({});
   const [prevTaskPins, setPrevTaskPins] = useState<Record<string, boolean>>({});
@@ -8530,6 +8862,236 @@ export default function App() {
     // Clear after a tick so the effect fires but doesn't persist
     setTimeout(() => setChatInitialInput(undefined), 100);
   }, []);
+
+  // ── Replay handlers ──────────────────────────────────────────
+  const replayGoToStep = useCallback((targetStep: number, steps: SolveStep[]) => {
+    const clamped = Math.max(0, Math.min(targetStep, steps.length));
+    const visible = advanceToStep(clamped, steps);
+    const currentStepData = clamped > 0 ? steps[clamped - 1] : null;
+    setReplay(prev => ({
+      ...prev,
+      currentStep: clamped,
+      visibleTasks: visible,
+      flashAction: currentStepData?.action ?? null,
+      flashTaskKey: currentStepData?.taskKey ?? null,
+    }));
+    // Clear flash after 300ms
+    setTimeout(() => {
+      setReplay(prev => ({ ...prev, flashAction: null, flashTaskKey: null }));
+    }, 300);
+  }, []);
+
+  const handleReplayStep = useCallback((delta: number) => {
+    setReplay(prev => {
+      const target = prev.currentStep + delta;
+      replayGoToStep(target, prev.steps);
+      return prev; // replayGoToStep sets state
+    });
+    // Actually call it with current state
+    setReplay(prev => {
+      const target = Math.max(0, Math.min(prev.currentStep + delta, prev.steps.length));
+      const visible = advanceToStep(target, prev.steps);
+      const currentStepData = target > 0 ? prev.steps[target - 1] : null;
+      return {
+        ...prev,
+        currentStep: target,
+        visibleTasks: visible,
+        flashAction: currentStepData?.action ?? null,
+        flashTaskKey: currentStepData?.taskKey ?? null,
+      };
+    });
+    setTimeout(() => {
+      setReplay(prev => ({ ...prev, flashAction: null, flashTaskKey: null }));
+    }, 300);
+  }, []);
+
+  const handleReplayJumpStart = useCallback(() => {
+    setReplay(prev => ({
+      ...prev, currentStep: 0, visibleTasks: new Set(),
+      playing: false, flashAction: null, flashTaskKey: null,
+    }));
+    if (replayTimerRef.current) { clearInterval(replayTimerRef.current); replayTimerRef.current = null; }
+  }, []);
+
+  const handleReplayJumpEnd = useCallback(() => {
+    setReplay(prev => ({
+      ...prev,
+      currentStep: prev.steps.length,
+      visibleTasks: advanceToStep(prev.steps.length, prev.steps),
+      playing: false, flashAction: null, flashTaskKey: null,
+    }));
+    if (replayTimerRef.current) { clearInterval(replayTimerRef.current); replayTimerRef.current = null; }
+  }, []);
+
+  const handleReplayTogglePlay = useCallback(() => {
+    setReplay(prev => {
+      const nowPlaying = !prev.playing;
+      if (!nowPlaying && replayTimerRef.current) {
+        clearInterval(replayTimerRef.current);
+        replayTimerRef.current = null;
+      }
+      return { ...prev, playing: nowPlaying };
+    });
+  }, []);
+
+  const handleReplaySpeedChange = useCallback((speed: number) => {
+    setReplay(prev => ({ ...prev, speed }));
+  }, []);
+
+  const handleReplayExit = useCallback(() => {
+    if (replayTimerRef.current) { clearInterval(replayTimerRef.current); replayTimerRef.current = null; }
+    setReplay(REPLAY_INITIAL);
+  }, []);
+
+  const handleReplayJumpToStep = useCallback((step: number) => {
+    setReplay(prev => {
+      const clamped = Math.max(0, Math.min(step, prev.steps.length));
+      const visible = advanceToStep(clamped, prev.steps);
+      const currentStepData = clamped > 0 ? prev.steps[clamped - 1] : null;
+      return {
+        ...prev,
+        currentStep: clamped,
+        visibleTasks: visible,
+        playing: false,
+        flashAction: currentStepData?.action ?? null,
+        flashTaskKey: currentStepData?.taskKey ?? null,
+      };
+    });
+    if (replayTimerRef.current) { clearInterval(replayTimerRef.current); replayTimerRef.current = null; }
+    setTimeout(() => {
+      setReplay(prev => ({ ...prev, flashAction: null, flashTaskKey: null }));
+    }, 300);
+  }, []);
+
+  // Auto-play timer effect
+  useEffect(() => {
+    if (replay.playing && replay.active) {
+      if (replayTimerRef.current) clearInterval(replayTimerRef.current);
+      replayTimerRef.current = setInterval(() => {
+        setReplay(prev => {
+          if (prev.currentStep >= prev.steps.length) {
+            // Reached the end — stop playing
+            if (replayTimerRef.current) { clearInterval(replayTimerRef.current); replayTimerRef.current = null; }
+            return { ...prev, playing: false };
+          }
+          const target = prev.currentStep + 1;
+          const visible = advanceToStep(target, prev.steps);
+          const currentStepData = prev.steps[target - 1];
+          return {
+            ...prev,
+            currentStep: target,
+            visibleTasks: visible,
+            flashAction: currentStepData?.action ?? null,
+            flashTaskKey: currentStepData?.taskKey ?? null,
+          };
+        });
+        // Clear flash
+        setTimeout(() => {
+          setReplay(prev => ({ ...prev, flashAction: null, flashTaskKey: null }));
+        }, 300);
+      }, replay.speed);
+    } else {
+      if (replayTimerRef.current) { clearInterval(replayTimerRef.current); replayTimerRef.current = null; }
+    }
+    return () => {
+      if (replayTimerRef.current) { clearInterval(replayTimerRef.current); replayTimerRef.current = null; }
+    };
+  }, [replay.playing, replay.active, replay.speed]);
+
+  // Keyboard shortcuts for replay
+  useEffect(() => {
+    if (!replay.active) return;
+    const handler = (e: KeyboardEvent) => {
+      // Don't capture if user is typing in an input
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+      switch (e.key) {
+        case ' ':
+          e.preventDefault();
+          handleReplayTogglePlay();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          handleReplayStep(1);
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          handleReplayStep(-1);
+          break;
+        case 'Home':
+          e.preventDefault();
+          handleReplayJumpStart();
+          break;
+        case 'End':
+          e.preventDefault();
+          handleReplayJumpEnd();
+          break;
+        case 'Escape':
+          e.preventDefault();
+          handleReplayExit();
+          break;
+        case '+': case '=':
+          e.preventDefault();
+          handleReplaySpeedChange(Math.max(100, replay.speed - 100));
+          break;
+        case '-':
+          e.preventDefault();
+          handleReplaySpeedChange(Math.min(2000, replay.speed + 100));
+          break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [replay.active, replay.speed, handleReplayTogglePlay, handleReplayStep, handleReplayJumpStart, handleReplayJumpEnd, handleReplayExit, handleReplaySpeedChange]);
+
+  const handleStartReplay = useCallback(async () => {
+    // If we already have solveSteps in the result, use them directly
+    if (solveResult?.solveSteps?.length > 0) {
+      setReplay({
+        active: true,
+        steps: solveResult.solveSteps,
+        currentStep: 0,
+        playing: false,
+        speed: 500,
+        visibleTasks: new Set(),
+        flashAction: null,
+        flashTaskKey: null,
+      });
+      setActiveTab('Schedule');
+      return;
+    }
+    // Otherwise, re-solve with recordSolveSteps enabled
+    setSolving(true);
+    try {
+      const body: any = {
+        strategy: solverStrategy,
+        detailLevel: experienceLevel,
+        recordSolveSteps: true,
+      };
+      const result = await api('/ctp/solve', { method: 'POST', body: JSON.stringify(body) });
+      setSolveResult(result);
+      setSolveStale(false);
+
+      if (result.solveSteps?.length > 0) {
+        setReplay({
+          active: true,
+          steps: result.solveSteps,
+          currentStep: 0,
+          playing: false,
+          speed: 500,
+          visibleTasks: new Set(),
+          flashAction: null,
+          flashTaskKey: null,
+        });
+      } else {
+        showToast('No solve steps recorded');
+      }
+      setActiveTab('Schedule');
+    } catch (e: any) {
+      setError(e.message || 'Replay solve failed');
+    } finally {
+      setSolving(false);
+    }
+  }, [solveResult, solverStrategy, experienceLevel, showToast]);
 
   // WhereTo handlers
   const cancelWhereTo = useCallback(() => {
@@ -8938,6 +9500,23 @@ export default function App() {
             )}
           </button>
           <button
+            onClick={handleStartReplay}
+            disabled={solving || replay.active}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', borderRadius: 8,
+              border: `1px solid ${C.border}`,
+              background: replay.active ? C.purple : 'none',
+              color: replay.active ? '#fff' : solveResult ? C.text : C.textDim,
+              fontSize: 12, fontWeight: 600, cursor: solveResult && !solving ? 'pointer' : 'default',
+              fontFamily: FONT, transition: 'background 0.15s',
+              opacity: solveResult && !solving ? 1 : 0.5,
+            }}
+            title={solveResult?.solveSteps?.length > 0 ? 'Replay last solve' : 'Re-solve with step recording, then replay'}
+          >
+            {replay.active ? '⏸ Replaying' : '⟳ Replay'}
+          </button>
+          <button
             onClick={() => { setChatOpen(o => !o); setChatCollapsed(false); }}
             style={{
               background: chatOpen ? C.accent : 'none', border: 'none',
@@ -9219,7 +9798,11 @@ export default function App() {
             zoomLevel={ganttZoomLevel} setZoomLevel={setGanttZoomLevel}
             scrollOffset={ganttScrollOffset} setScrollOffset={setGanttScrollOffset}
             onViewAgenda={(r: any) => { setSelectedTask(null); setSelectedResource(null); setAgendaResource(r); }}
-            onAskAI={handleAskAI} />
+            onAskAI={handleAskAI}
+            replay={replay} onReplayStep={handleReplayStep}
+            onReplayJumpStart={handleReplayJumpStart} onReplayJumpEnd={handleReplayJumpEnd}
+            onReplayTogglePlay={handleReplayTogglePlay} onReplaySpeedChange={handleReplaySpeedChange}
+            onReplayExit={handleReplayExit} onReplayJumpToStep={handleReplayJumpToStep} />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} tasks={tasks}
           orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}

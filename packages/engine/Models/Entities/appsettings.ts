@@ -14,6 +14,8 @@ export interface IAppSettings {
   topNContexts: number;
   maxChainCombos: number;
   debugLogging: boolean;
+  recordSolveSteps: boolean;
+  maxSolveSteps: number;
 }
 
 export class CTPAppSettings implements IAppSettings {
@@ -29,6 +31,8 @@ export class CTPAppSettings implements IAppSettings {
   public topNContexts: number = 5;
   public maxChainCombos: number = 500;
   public debugLogging: boolean = false;
+  public recordSolveSteps: boolean = false;
+  public maxSolveSteps: number = 500;
 }
 
 export interface ITimingSetting {

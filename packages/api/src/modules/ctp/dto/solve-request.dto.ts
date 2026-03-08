@@ -148,6 +148,14 @@ export class SolveRequestDto {
   @IsOptional()
   @IsObject()
   windowOverrides?: Record<string, { startW?: string; endW?: string }>;
+
+  @ApiPropertyOptional({
+    description: 'Record solve steps for replay (default: false)',
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  recordSolveSteps?: boolean;
 }
 
 export class UnscheduleTaskDto {

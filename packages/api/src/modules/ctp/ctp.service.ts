@@ -68,6 +68,7 @@ export interface CTPSolveResult {
   terminology?: Record<string, string>;
   locale?: any;
   solveResult?: EngineSolveResult;
+  solveSteps?: any[];
 }
 
 @Injectable()
@@ -219,6 +220,9 @@ export class CTPService {
     // Pass requested strategy to the engine via appSettings
     if (landscape.appSettings) {
       landscape.appSettings.solverStrategy = strategy;
+      if (request?.recordSolveSteps) {
+        landscape.appSettings.recordSolveSteps = true;
+      }
     }
     scheduler.initSettings(landscape.appSettings);
     scheduler.initScoring(scoring);
@@ -248,7 +252,12 @@ export class CTPService {
     // ─── 6. Build response ───
     const detailLevel = request?.detailLevel || 'novice';
     const result = this.extractResults(landscape, taskList, stats, detailLevel);
-    if (engineSolveResult) result.solveResult = engineSolveResult;
+    if (engineSolveResult) {
+      result.solveResult = engineSolveResult;
+      if (engineSolveResult.solveSteps?.length > 0) {
+        result.solveSteps = engineSolveResult.solveSteps;
+      }
+    }
     this.results.set(this.configService.getTenantId(), result);
 
     // ─── 7. Log solve event ───

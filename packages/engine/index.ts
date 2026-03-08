@@ -35,6 +35,7 @@ export * from './Models/Entities/slot';
 export * from './Models/Entities/infeasibilityreport';
 export * from './Models/Entities/solutionstate';
 export * from './Models/Entities/solveresult';
+export * from './Models/Entities/solvestep';
 export * from './Models/Entities/solvestats';
 export * from './Models/Entities/starttime';
 export * from './Models/Entities/statechange';
