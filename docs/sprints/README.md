@@ -47,6 +47,7 @@ _No sprints currently in progress._
 | UI Sprint 18 — Solve Replay | Engine SolveStep recording (gated, capped at 500), all solver paths instrumented, frontend replay player with controls at top of Gantt, collapsible step log, keyboard shortcuts, flash animations | 2026-03-08 |
 | Engine — Primary-Anchor Placement | assignStartTimes anchors on most constrained task (smallest feasible duration) instead of Task 0; backward walk for predecessors; AI prompt includes task scheduling windows | 2026-03-08 |
 | UI Sprint 19 — App Versioning | Build-time version.json generation, GET /health/version endpoint, logo hover About popover, fixed footer bar (version + tenant) | 2026-03-08 |
+| What-If Sprint 1 — CTP Query | Stateless clone-from-chain query, need-by date promise status, resource-combo dedup, CTP Query dialog + AI tool | 2026-03-12 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -195,6 +196,10 @@ INFRA TRACK
   ai-2c-chat-actions.md              ← Chat action buttons (original spec)
   ai-2c-chat-actions_1.md            ← Chat action buttons (updated spec with auto-collapse)
 
+  What-If Sprints:
+  what-if-sprint-1-ctp-query.md      ← Stateless CTP Query (clone-from-chain, AI tool, UI dialog)
+  fix-ctp-needby-date.md             ← Need-by date & promise status quick fix
+
   Infrastructure:
   logging-1-backend.md               ← Pluggable LoggerService with transports + debug endpoint
 ```
@@ -210,4 +215,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 8, 2026 (UI Sprint 19 — App Versioning)*
+*Last updated: Mar 12, 2026 (What-If Sprint 1 — CTP Query)*
