@@ -1,0 +1,13 @@
+[
+  { "key": "MAT-LACTOSE", "name": "Lactose Monohydrate", "unit": "kg", "onHand": 5000, "incoming": 2000, "incomingDate": "2026-03-20T00:00:00Z" },
+  { "key": "MAT-MCC", "name": "Microcrystalline Cellulose", "unit": "kg", "onHand": 3500, "incoming": 0, "incomingDate": null },
+  { "key": "MAT-COATING", "name": "Film Coating Premix", "unit": "kg", "onHand": 800, "incoming": 500, "incomingDate": "2026-03-22T00:00:00Z" },
+  { "key": "MAT-SOLVENT-A", "name": "Solvent A (Ethanol)", "unit": "L", "onHand": 6000, "incoming": 0, "incomingDate": null },
+  { "key": "MAT-SOLVENT-B", "name": "Solvent B (Methanol)", "unit": "L", "onHand": 3000, "incoming": 1500, "incomingDate": "2026-03-18T00:00:00Z" },
+  { "key": "MAT-PRECURSOR-1", "name": "Chemical Precursor P1", "unit": "kg", "onHand": 200, "incoming": 100, "incomingDate": "2026-03-19T00:00:00Z" },
+  { "key": "MAT-PRECURSOR-2", "name": "Chemical Precursor P2", "unit": "kg", "onHand": 150, "incoming": 0, "incomingDate": null },
+  { "key": "MAT-PRECURSOR-3", "name": "Chemical Precursor P3", "unit": "kg", "onHand": 100, "incoming": 50, "incomingDate": "2026-03-21T00:00:00Z" },
+  { "key": "MAT-PRECURSOR-4", "name": "Chemical Precursor P4 (Controlled)", "unit": "kg", "onHand": 40, "incoming": 0, "incomingDate": null },
+  { "key": "MAT-BLISTER-FOIL", "name": "Blister Foil", "unit": "rolls", "onHand": 500, "incoming": 0, "incomingDate": null },
+  { "key": "MAT-CARTON", "name": "Carton Box", "unit": "pcs", "onHand": 10000, "incoming": 0, "incomingDate": null }
+]

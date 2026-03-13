@@ -1,0 +1,20 @@
+{
+  "locale": "en-US",
+  "timezone": "America/Denver",
+  "formats": {
+    "date": "MMM d, yyyy",
+    "time": "h:mm a",
+    "dateTime": "MMM d, h:mm a",
+    "dateShort": "MMM d",
+    "durationHours": "{h}h {m}m",
+    "percentage": "{v}%"
+  },
+  "actions": {
+    "solve": "Schedule",
+    "sync": "Reload",
+    "solveAndSync": "Reload & Schedule",
+    "save": "Save",
+    "cancel": "Cancel",
+    "retry": "Retry"
+  }
+}

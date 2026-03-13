@@ -1,0 +1,17 @@
+[
+  { "key": "BX-101", "name": "BX-101 Cardex", "productKey": "PROD-CARDEX", "demandQty": 100000, "dueDate": "2026-03-22T00:00:00Z", "lateDueDate": "2026-03-24T00:00:00Z", "priority": 1 },
+  { "key": "BX-102", "name": "BX-102 Cardex", "productKey": "PROD-CARDEX", "demandQty": 80000, "dueDate": "2026-03-25T00:00:00Z", "lateDueDate": "2026-03-27T00:00:00Z", "priority": 2 },
+  { "key": "BX-103", "name": "BX-103 Cardex", "productKey": "PROD-CARDEX", "demandQty": 120000, "dueDate": "2026-03-28T00:00:00Z", "lateDueDate": "2026-03-29T00:00:00Z", "priority": 3 },
+  { "key": "BX-201", "name": "BX-201 Neuroxa", "productKey": "PROD-NEUROXA", "demandQty": 50000, "dueDate": "2026-03-21T00:00:00Z", "lateDueDate": "2026-03-23T00:00:00Z", "priority": 1 },
+  { "key": "BX-202", "name": "BX-202 Neuroxa", "productKey": "PROD-NEUROXA", "demandQty": 60000, "dueDate": "2026-03-26T00:00:00Z", "lateDueDate": "2026-03-28T00:00:00Z", "priority": 2 },
+  { "key": "BX-203", "name": "BX-203 Neuroxa", "productKey": "PROD-NEUROXA", "demandQty": 40000, "dueDate": "2026-03-28T00:00:00Z", "lateDueDate": "2026-03-29T00:00:00Z", "priority": 3 },
+  { "key": "BX-301", "name": "BX-301 Immunex", "productKey": "PROD-IMMUNEX", "demandQty": 75000, "dueDate": "2026-03-23T00:00:00Z", "lateDueDate": "2026-03-25T00:00:00Z", "priority": 1 },
+  { "key": "BX-302", "name": "BX-302 Immunex", "productKey": "PROD-IMMUNEX", "demandQty": 90000, "dueDate": "2026-03-27T00:00:00Z", "lateDueDate": "2026-03-29T00:00:00Z", "priority": 2 },
+  { "key": "BX-303", "name": "BX-303 Immunex", "productKey": "PROD-IMMUNEX", "demandQty": 50000, "dueDate": "2026-03-28T00:00:00Z", "lateDueDate": "2026-03-29T00:00:00Z", "priority": 4 },
+  { "key": "BX-401", "name": "BX-401 Lipitrol", "productKey": "PROD-LIPITROL", "demandQty": 60000, "dueDate": "2026-03-22T00:00:00Z", "lateDueDate": "2026-03-24T00:00:00Z", "priority": 1 },
+  { "key": "BX-402", "name": "BX-402 Lipitrol", "productKey": "PROD-LIPITROL", "demandQty": 80000, "dueDate": "2026-03-26T00:00:00Z", "lateDueDate": "2026-03-28T00:00:00Z", "priority": 2 },
+  { "key": "BX-403", "name": "BX-403 Lipitrol", "productKey": "PROD-LIPITROL", "demandQty": 50000, "dueDate": "2026-03-28T00:00:00Z", "lateDueDate": "2026-03-29T00:00:00Z", "priority": 3 },
+  { "key": "BX-501", "name": "BX-501 Oncovir", "productKey": "PROD-ONCOVIR", "demandQty": 20000, "dueDate": "2026-03-24T00:00:00Z", "lateDueDate": "2026-03-26T00:00:00Z", "priority": 1 },
+  { "key": "BX-502", "name": "BX-502 Oncovir", "productKey": "PROD-ONCOVIR", "demandQty": 15000, "dueDate": "2026-03-27T00:00:00Z", "lateDueDate": "2026-03-29T00:00:00Z", "priority": 2 },
+  { "key": "BX-503", "name": "BX-503 Oncovir", "productKey": "PROD-ONCOVIR", "demandQty": 10000, "dueDate": "2026-03-28T00:00:00Z", "lateDueDate": "2026-03-29T00:00:00Z", "priority": 3 }
+]

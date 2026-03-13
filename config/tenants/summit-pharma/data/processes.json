@@ -1,0 +1,13 @@
+[
+  { "key": "dispensing", "name": "Material Dispensing", "category": "Preparation" },
+  { "key": "reaction", "name": "API Reaction", "category": "API Manufacturing" },
+  { "key": "granulation", "name": "Wet Granulation", "category": "Solid Dosage" },
+  { "key": "blending", "name": "Blending", "category": "Solid Dosage" },
+  { "key": "compression", "name": "Tablet Compression", "category": "Solid Dosage" },
+  { "key": "coating", "name": "Film Coating", "category": "Solid Dosage" },
+  { "key": "packaging", "name": "Primary Packaging", "category": "Packaging" },
+  { "key": "cartoning", "name": "Secondary Packaging", "category": "Packaging" },
+  { "key": "qc-chemistry", "name": "QC Chemistry Testing", "category": "Quality Control" },
+  { "key": "qc-micro", "name": "QC Microbiology Testing", "category": "Quality Control" },
+  { "key": "qc-release", "name": "QC Batch Release", "category": "Quality Control" }
+]

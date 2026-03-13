@@ -1,0 +1,5967 @@
+[
+  {
+    "key": "PV-001-CUT",
+    "name": "Fonterra Tank - Raw Cut",
+    "type": "SETUP",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "SAW-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "PV-001",
+      "type": "START",
+      "prevLink": "",
+      "maxGap": null
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 30
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "PV-001-FLANGE",
+    "name": "Fonterra Tank - Machine Flanges",
+    "type": "PROCESS",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-LATHE-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-LATHE-01",
+          "CNC-LATHE-02"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "PV-001",
+      "type": "LINK",
+      "prevLink": "PV-001-CUT",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 30
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "PV-001-LASER",
+    "name": "Fonterra Tank - Laser Cut Shell",
+    "type": "PROCESS",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "LASER-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "PV-001",
+      "type": "LINK",
+      "prevLink": "PV-001-FLANGE",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 30
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "PV-001-ROLL",
+    "name": "Fonterra Tank - Roll Shell",
+    "type": "PROCESS",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ROLL-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "PV-001",
+      "type": "LINK",
+      "prevLink": "PV-001-LASER",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 30
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "PV-001-WELD-SEAM",
+    "name": "Fonterra Tank - Weld Longitudinal Seam",
+    "type": "PROCESS",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "WELD-BAY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "PV-001",
+      "type": "LINK",
+      "prevLink": "PV-001-ROLL",
+      "maxGap": 14400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 30
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "PV-001-WELD-NOZZLE",
+    "name": "Fonterra Tank - Weld Nozzles & Fittings",
+    "type": "PROCESS",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 21600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "WELD-BAY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "WELD-BAY-01",
+          "WELD-BAY-02"
+        ]
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "PV-001",
+      "type": "LINK",
+      "prevLink": "PV-001-WELD-SEAM",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 30
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "PV-001-HYDRO",
+    "name": "Fonterra Tank - Hydrostatic Test",
+    "type": "PROCESS",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "TEST-BAY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "TEST-BAY-01",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "PV-001",
+      "type": "LINK",
+      "prevLink": "PV-001-WELD-NOZZLE",
+      "maxGap": 259200
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 30
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "PV-001-POLISH",
+    "name": "Fonterra Tank - Polish (Sanitary)",
+    "type": "PROCESS",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 18000,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "POLISH-BAY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "PV-001",
+      "type": "LINK",
+      "prevLink": "PV-001-HYDRO",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 30
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 8
+  },
+  {
+    "key": "PV-001-PAINT",
+    "name": "Fonterra Tank - Paint / Coat",
+    "type": "PROCESS",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PAINT-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "ASSY-MATT",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "PV-001",
+      "type": "LINK",
+      "prevLink": "PV-001-POLISH",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 30
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 9
+  },
+  {
+    "key": "PV-001-FINAL",
+    "name": "Fonterra Tank - Final Inspection",
+    "type": "TEARDOWN",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "PV-001",
+      "type": "END",
+      "prevLink": "PV-001-PAINT",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 30
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 10
+  },
+  {
+    "key": "PV-002-CUT",
+    "name": "F&P Sterilizer - Raw Cut",
+    "type": "SETUP",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "SAW-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "PV-002",
+      "type": "START",
+      "prevLink": "",
+      "maxGap": null
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "PV-002-FLANGE",
+    "name": "F&P Sterilizer - Machine Flanges",
+    "type": "PROCESS",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-LATHE-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-LATHE-02",
+          "CNC-LATHE-01"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "PV-002",
+      "type": "LINK",
+      "prevLink": "PV-002-CUT",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "PV-002-LASER",
+    "name": "F&P Sterilizer - Laser Cut Shell",
+    "type": "PROCESS",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "LASER-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "PV-002",
+      "type": "LINK",
+      "prevLink": "PV-002-FLANGE",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "PV-002-ROLL",
+    "name": "F&P Sterilizer - Roll Shell",
+    "type": "PROCESS",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ROLL-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "PV-002",
+      "type": "LINK",
+      "prevLink": "PV-002-LASER",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "PV-002-WELD-SEAM",
+    "name": "F&P Sterilizer - Weld Longitudinal Seam",
+    "type": "PROCESS",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "WELD-BAY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "PV-002",
+      "type": "LINK",
+      "prevLink": "PV-002-ROLL",
+      "maxGap": 14400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "PV-002-WELD-NOZZLE",
+    "name": "F&P Sterilizer - Weld Nozzles & Fittings",
+    "type": "PROCESS",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 21600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "WELD-BAY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "WELD-BAY-02",
+          "WELD-BAY-01"
+        ]
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "PV-002",
+      "type": "LINK",
+      "prevLink": "PV-002-WELD-SEAM",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "PV-002-HYDRO",
+    "name": "F&P Sterilizer - Hydrostatic Test",
+    "type": "PROCESS",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "TEST-BAY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "TEST-BAY-01",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "PV-002",
+      "type": "LINK",
+      "prevLink": "PV-002-WELD-NOZZLE",
+      "maxGap": 259200
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "PV-002-POLISH",
+    "name": "F&P Sterilizer - Polish (Sanitary)",
+    "type": "PROCESS",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 18000,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "POLISH-BAY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "PV-002",
+      "type": "LINK",
+      "prevLink": "PV-002-HYDRO",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 8
+  },
+  {
+    "key": "PV-002-PAINT",
+    "name": "F&P Sterilizer - Paint / Coat",
+    "type": "PROCESS",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PAINT-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "ASSY-MATT",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "PV-002",
+      "type": "LINK",
+      "prevLink": "PV-002-POLISH",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 9
+  },
+  {
+    "key": "PV-002-FINAL",
+    "name": "F&P Sterilizer - Final Inspection",
+    "type": "TEARDOWN",
+    "process": "pressure-vessel",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "PV-002",
+      "type": "END",
+      "prevLink": "PV-002-PAINT",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Pressure Vessel"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 10
+  },
+  {
+    "key": "EQ-001-LASER",
+    "name": "Sealed Air Conveyor - Laser Cut",
+    "type": "SETUP",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 9000,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "LASER-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "EQ-001",
+      "type": "START",
+      "prevLink": "",
+      "maxGap": null
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "EQ-001-BEND",
+    "name": "Sealed Air Conveyor - Bend / Form",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-BRAKE-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-001",
+      "type": "LINK",
+      "prevLink": "EQ-001-LASER",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "EQ-001-WELD",
+    "name": "Sealed Air Conveyor - Weld Assembly",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 28800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "WELD-BAY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "WELD-BAY-01",
+          "WELD-BAY-02"
+        ]
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-001",
+      "type": "LINK",
+      "prevLink": "EQ-001-BEND",
+      "maxGap": 28800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "EQ-001-MACHINE",
+    "name": "Sealed Air Conveyor - Machine Features",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-MILL-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-MILL-02",
+          "CNC-MILL-03"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-001",
+      "type": "LINK",
+      "prevLink": "EQ-001-WELD",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "EQ-001-POLISH",
+    "name": "Sealed Air Conveyor - Polish / Deburr",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "POLISH-BAY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "POLISH-BAY-01",
+          "POLISH-BAY-02"
+        ]
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-001",
+      "type": "LINK",
+      "prevLink": "EQ-001-MACHINE",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "EQ-001-ASSY",
+    "name": "Sealed Air Conveyor - Final Assembly",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 21600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-001",
+      "type": "LINK",
+      "prevLink": "EQ-001-POLISH",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "EQ-001-TEST",
+    "name": "Sealed Air Conveyor - Test & Ship",
+    "type": "TEARDOWN",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "EQ-001",
+      "type": "END",
+      "prevLink": "EQ-001-ASSY",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "EQ-002-LASER",
+    "name": "Esko Cooling Tower - Laser Cut",
+    "type": "SETUP",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 9000,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "LASER-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "EQ-002",
+      "type": "START",
+      "prevLink": "",
+      "maxGap": null
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "EQ-002-BEND",
+    "name": "Esko Cooling Tower - Bend / Form",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-BRAKE-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-002",
+      "type": "LINK",
+      "prevLink": "EQ-002-LASER",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "EQ-002-WELD",
+    "name": "Esko Cooling Tower - Weld Assembly",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 28800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "WELD-BAY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "WELD-BAY-02",
+          "WELD-BAY-01"
+        ]
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-002",
+      "type": "LINK",
+      "prevLink": "EQ-002-BEND",
+      "maxGap": 28800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "EQ-002-MACHINE",
+    "name": "Esko Cooling Tower - Machine Features",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-MILL-03",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-MILL-03",
+          "CNC-MILL-02"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-002",
+      "type": "LINK",
+      "prevLink": "EQ-002-WELD",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "EQ-002-POLISH",
+    "name": "Esko Cooling Tower - Polish / Deburr",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "POLISH-BAY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "POLISH-BAY-02",
+          "POLISH-BAY-01"
+        ]
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-002",
+      "type": "LINK",
+      "prevLink": "EQ-002-MACHINE",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "EQ-002-ASSY",
+    "name": "Esko Cooling Tower - Final Assembly",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 21600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-002",
+      "type": "LINK",
+      "prevLink": "EQ-002-POLISH",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "EQ-002-TEST",
+    "name": "Esko Cooling Tower - Test & Ship",
+    "type": "TEARDOWN",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "EQ-002",
+      "type": "END",
+      "prevLink": "EQ-002-ASSY",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "EQ-003-LASER",
+    "name": "Dairy Co-op Milk Vat - Laser Cut",
+    "type": "SETUP",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 9000,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "LASER-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "EQ-003",
+      "type": "START",
+      "prevLink": "",
+      "maxGap": null
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 60
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "EQ-003-BEND",
+    "name": "Dairy Co-op Milk Vat - Bend / Form",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-BRAKE-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-003",
+      "type": "LINK",
+      "prevLink": "EQ-003-LASER",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 60
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "EQ-003-WELD",
+    "name": "Dairy Co-op Milk Vat - Weld Assembly",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 28800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "WELD-BAY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "WELD-BAY-01",
+          "WELD-BAY-02"
+        ]
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-003",
+      "type": "LINK",
+      "prevLink": "EQ-003-BEND",
+      "maxGap": 28800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 60
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "EQ-003-MACHINE",
+    "name": "Dairy Co-op Milk Vat - Machine Features",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-MILL-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-MILL-02",
+          "CNC-MILL-03"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-003",
+      "type": "LINK",
+      "prevLink": "EQ-003-WELD",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 60
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "EQ-003-POLISH",
+    "name": "Dairy Co-op Milk Vat - Polish / Deburr",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "POLISH-BAY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "POLISH-BAY-01",
+          "POLISH-BAY-02"
+        ]
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-003",
+      "type": "LINK",
+      "prevLink": "EQ-003-MACHINE",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 60
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "EQ-003-ASSY",
+    "name": "Dairy Co-op Milk Vat - Final Assembly",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 21600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-003",
+      "type": "LINK",
+      "prevLink": "EQ-003-POLISH",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 60
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "EQ-003-TEST",
+    "name": "Dairy Co-op Milk Vat - Test & Ship",
+    "type": "TEARDOWN",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-28T06:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "EQ-003",
+      "type": "END",
+      "prevLink": "EQ-003-ASSY",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 60
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "EQ-004-LASER",
+    "name": "Stafford Clutch Bracket - Laser Cut",
+    "type": "SETUP",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 9000,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "LASER-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "EQ-004",
+      "type": "START",
+      "prevLink": "",
+      "maxGap": null
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "EQ-004-BEND",
+    "name": "Stafford Clutch Bracket - Bend / Form",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-BRAKE-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-004",
+      "type": "LINK",
+      "prevLink": "EQ-004-LASER",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "EQ-004-WELD",
+    "name": "Stafford Clutch Bracket - Weld Assembly",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 28800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "WELD-BAY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "WELD-BAY-02",
+          "WELD-BAY-03"
+        ]
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-004",
+      "type": "LINK",
+      "prevLink": "EQ-004-BEND",
+      "maxGap": 28800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "EQ-004-MACHINE",
+    "name": "Stafford Clutch Bracket - Machine Features",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-MILL-03",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-MILL-03",
+          "CNC-MILL-02"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-004",
+      "type": "LINK",
+      "prevLink": "EQ-004-WELD",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "EQ-004-POLISH",
+    "name": "Stafford Clutch Bracket - Polish / Deburr",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "POLISH-BAY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "POLISH-BAY-02",
+          "POLISH-BAY-01"
+        ]
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-004",
+      "type": "LINK",
+      "prevLink": "EQ-004-MACHINE",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "EQ-004-ASSY",
+    "name": "Stafford Clutch Bracket - Final Assembly",
+    "type": "PROCESS",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 21600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "EQ-004",
+      "type": "LINK",
+      "prevLink": "EQ-004-POLISH",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "EQ-004-TEST",
+    "name": "Stafford Clutch Bracket - Test & Ship",
+    "type": "TEARDOWN",
+    "process": "processing-equipment",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "EQ-004",
+      "type": "END",
+      "prevLink": "EQ-004-ASSY",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Processing Equipment"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "MC-001-CUT",
+    "name": "Tetra Pak Rotary Valve - Raw Cut",
+    "type": "SETUP",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-21T12:00:00Z",
+    "durationSeconds": 2700,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "SAW-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-001",
+      "type": "START",
+      "prevLink": "",
+      "maxGap": null
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "MC-001-TURN",
+    "name": "Tetra Pak Rotary Valve - CNC Turning",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-21T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-LATHE-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-LATHE-01",
+          "CNC-LATHE-02"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-001",
+      "type": "LINK",
+      "prevLink": "MC-001-CUT",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "MC-001-MILL",
+    "name": "Tetra Pak Rotary Valve - CNC Milling",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-21T12:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-MILL-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-MILL-01",
+          "CNC-MILL-02",
+          "CNC-MILL-03"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-001",
+      "type": "LINK",
+      "prevLink": "MC-001-TURN",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "MC-001-FINISH",
+    "name": "Tetra Pak Rotary Valve - Hand Finish",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-21T12:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "MANUAL-MILL-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MANUAL-MILL-01",
+          "POLISH-BAY-02"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-001",
+      "type": "LINK",
+      "prevLink": "MC-001-MILL",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "MC-001-QC",
+    "name": "Tetra Pak Rotary Valve - Quality Check",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-21T12:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-001",
+      "type": "LINK",
+      "prevLink": "MC-001-FINISH",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "MC-001-PACK",
+    "name": "Tetra Pak Rotary Valve - Pack & Ship",
+    "type": "TEARDOWN",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-21T12:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-001",
+      "type": "END",
+      "prevLink": "MC-001-QC",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "MC-002-CUT",
+    "name": "Krones Filler Head - Raw Cut",
+    "type": "SETUP",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 2700,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "SAW-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-002",
+      "type": "START",
+      "prevLink": "",
+      "maxGap": null
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "MC-002-TURN",
+    "name": "Krones Filler Head - CNC Turning",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-LATHE-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-LATHE-02",
+          "CNC-LATHE-01"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-002",
+      "type": "LINK",
+      "prevLink": "MC-002-CUT",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "MC-002-MILL",
+    "name": "Krones Filler Head - CNC Milling",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-MILL-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-MILL-02",
+          "CNC-MILL-03",
+          "CNC-MILL-01"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-002",
+      "type": "LINK",
+      "prevLink": "MC-002-TURN",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "MC-002-FINISH",
+    "name": "Krones Filler Head - Hand Finish",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "POLISH-BAY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "POLISH-BAY-02",
+          "MANUAL-MILL-01"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-002",
+      "type": "LINK",
+      "prevLink": "MC-002-MILL",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "MC-002-QC",
+    "name": "Krones Filler Head - Quality Check",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-002",
+      "type": "LINK",
+      "prevLink": "MC-002-FINISH",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "MC-002-PACK",
+    "name": "Krones Filler Head - Pack & Ship",
+    "type": "TEARDOWN",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-002",
+      "type": "END",
+      "prevLink": "MC-002-QC",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "MC-003-CUT",
+    "name": "Bearing Housings - Raw Cut",
+    "type": "SETUP",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 2700,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "SAW-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-003",
+      "type": "START",
+      "prevLink": "",
+      "maxGap": null
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 60
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "MC-003-TURN",
+    "name": "Bearing Housings - CNC Turning",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-LATHE-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-LATHE-01",
+          "CNC-LATHE-02"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-003",
+      "type": "LINK",
+      "prevLink": "MC-003-CUT",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 60
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "MC-003-MILL",
+    "name": "Bearing Housings - CNC Milling",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-MILL-03",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-MILL-03",
+          "CNC-MILL-02"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-003",
+      "type": "LINK",
+      "prevLink": "MC-003-TURN",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 60
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "MC-003-FINISH",
+    "name": "Bearing Housings - Hand Finish",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "MANUAL-MILL-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MANUAL-MILL-01",
+          "POLISH-BAY-02"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-003",
+      "type": "LINK",
+      "prevLink": "MC-003-MILL",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 60
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "MC-003-QC",
+    "name": "Bearing Housings - Quality Check",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-003",
+      "type": "LINK",
+      "prevLink": "MC-003-FINISH",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 60
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "MC-003-PACK",
+    "name": "Bearing Housings - Pack & Ship",
+    "type": "TEARDOWN",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-003",
+      "type": "END",
+      "prevLink": "MC-003-QC",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 60
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "MC-004-CUT",
+    "name": "Tilt Lighting Bar - Raw Cut",
+    "type": "SETUP",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 2700,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "SAW-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-004",
+      "type": "START",
+      "prevLink": "",
+      "maxGap": null
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "MC-004-TURN",
+    "name": "Tilt Lighting Bar - CNC Turning",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-LATHE-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-LATHE-02",
+          "CNC-LATHE-01"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-004",
+      "type": "LINK",
+      "prevLink": "MC-004-CUT",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "MC-004-MILL",
+    "name": "Tilt Lighting Bar - CNC Milling",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-MILL-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-MILL-02",
+          "CNC-MILL-01",
+          "CNC-MILL-03"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-004",
+      "type": "LINK",
+      "prevLink": "MC-004-TURN",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "MC-004-FINISH",
+    "name": "Tilt Lighting Bar - Hand Finish",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "POLISH-BAY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "POLISH-BAY-02",
+          "MANUAL-MILL-01"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-004",
+      "type": "LINK",
+      "prevLink": "MC-004-MILL",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "MC-004-QC",
+    "name": "Tilt Lighting Bar - Quality Check",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-004",
+      "type": "LINK",
+      "prevLink": "MC-004-FINISH",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "MC-004-PACK",
+    "name": "Tilt Lighting Bar - Pack & Ship",
+    "type": "TEARDOWN",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-26T12:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-004",
+      "type": "END",
+      "prevLink": "MC-004-QC",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "MC-005-CUT",
+    "name": "Rimtec Clutch Parts - Raw Cut",
+    "type": "SETUP",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 2700,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "SAW-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-005",
+      "type": "START",
+      "prevLink": "",
+      "maxGap": null
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "MC-005-TURN",
+    "name": "Rimtec Clutch Parts - CNC Turning",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-LATHE-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-LATHE-01",
+          "CNC-LATHE-02"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-005",
+      "type": "LINK",
+      "prevLink": "MC-005-CUT",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "MC-005-MILL",
+    "name": "Rimtec Clutch Parts - CNC Milling",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-MILL-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-MILL-01",
+          "CNC-MILL-02"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-005",
+      "type": "LINK",
+      "prevLink": "MC-005-TURN",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "MC-005-FINISH",
+    "name": "Rimtec Clutch Parts - Hand Finish",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "MANUAL-MILL-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MANUAL-MILL-01",
+          "POLISH-BAY-02"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-005",
+      "type": "LINK",
+      "prevLink": "MC-005-MILL",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "MC-005-QC",
+    "name": "Rimtec Clutch Parts - Quality Check",
+    "type": "PROCESS",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-005",
+      "type": "LINK",
+      "prevLink": "MC-005-FINISH",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "MC-005-PACK",
+    "name": "Rimtec Clutch Parts - Pack & Ship",
+    "type": "TEARDOWN",
+    "process": "machined-components",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "MC-005",
+      "type": "END",
+      "prevLink": "MC-005-QC",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Machined Components"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 40
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "RP-001-STRIP",
+    "name": "Fonterra Pump Shaft - Strip & Assess",
+    "type": "SETUP",
+    "process": "repair-service",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-20T12:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "RP-001",
+      "type": "START",
+      "prevLink": "",
+      "maxGap": null
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Repair Service"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 10
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "RP-001-MACHINE",
+    "name": "Fonterra Pump Shaft - Machine Repair",
+    "type": "PROCESS",
+    "process": "repair-service",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-20T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "MANUAL-LATHE-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MANUAL-LATHE-01",
+          "CNC-LATHE-02"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "RP-001",
+      "type": "LINK",
+      "prevLink": "RP-001-STRIP",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Repair Service"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 10
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "RP-001-WELD",
+    "name": "Fonterra Pump Shaft - Weld Repair",
+    "type": "PROCESS",
+    "process": "repair-service",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-20T12:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "WELD-BAY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "WELD-BAY-02",
+          "WELD-BAY-03"
+        ]
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "RP-001",
+      "type": "LINK",
+      "prevLink": "RP-001-MACHINE",
+      "maxGap": 28800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Repair Service"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 10
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "RP-001-ASSY",
+    "name": "Fonterra Pump Shaft - Reassemble",
+    "type": "PROCESS",
+    "process": "repair-service",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-20T12:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "RP-001",
+      "type": "LINK",
+      "prevLink": "RP-001-WELD",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Repair Service"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 10
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "RP-001-SHIP",
+    "name": "Fonterra Pump Shaft - Test & Ship",
+    "type": "TEARDOWN",
+    "process": "repair-service",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-20T12:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "RP-001",
+      "type": "END",
+      "prevLink": "RP-001-ASSY",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Repair Service"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 10
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "RP-002-STRIP",
+    "name": "Winery Destoner Blade - Strip & Assess",
+    "type": "SETUP",
+    "process": "repair-service",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-23T12:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "RP-002",
+      "type": "START",
+      "prevLink": "",
+      "maxGap": null
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Repair Service"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "RP-002-MACHINE",
+    "name": "Winery Destoner Blade - Machine Repair",
+    "type": "PROCESS",
+    "process": "repair-service",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-23T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-LATHE-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "CNC-LATHE-02",
+          "MANUAL-LATHE-01"
+        ]
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "RP-002",
+      "type": "LINK",
+      "prevLink": "RP-002-STRIP",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Repair Service"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "RP-002-WELD",
+    "name": "Winery Destoner Blade - Weld Repair",
+    "type": "PROCESS",
+    "process": "repair-service",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-23T12:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "WELD-BAY-03",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "WELD-BAY-03",
+          "WELD-BAY-02"
+        ]
+      },
+      {
+        "resource": "FAB-JACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FAB-JACK",
+          "FAB-LUKE",
+          "FAB-AROHA"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "RP-002",
+      "type": "LINK",
+      "prevLink": "RP-002-MACHINE",
+      "maxGap": 28800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Repair Service"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "RP-002-ASSY",
+    "name": "Winery Destoner Blade - Reassemble",
+    "type": "PROCESS",
+    "process": "repair-service",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-23T12:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "RP-002",
+      "type": "LINK",
+      "prevLink": "RP-002-WELD",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Repair Service"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "RP-002-SHIP",
+    "name": "Winery Destoner Blade - Test & Ship",
+    "type": "TEARDOWN",
+    "process": "repair-service",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-23T12:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "RP-002",
+      "type": "END",
+      "prevLink": "RP-002-ASSY",
+      "maxGap": 86400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Repair Service"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 50
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "CX-001-CAM",
+    "name": "US Pharma Impeller - CAM Programming",
+    "type": "SETUP",
+    "process": "5-axis-complex",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "CX-001",
+      "type": "START",
+      "prevLink": "",
+      "maxGap": null
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "5-Axis Complex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 30
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "CX-001-CUT",
+    "name": "US Pharma Impeller - Raw Cut",
+    "type": "PROCESS",
+    "process": "5-axis-complex",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "SAW-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "CX-001",
+      "type": "LINK",
+      "prevLink": "CX-001-CAM",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "5-Axis Complex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 30
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "CX-001-5AX-ROUGH",
+    "name": "US Pharma Impeller - 5-Axis Roughing",
+    "type": "PROCESS",
+    "process": "5-axis-complex",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 21600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-MILL-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "CX-001",
+      "type": "LINK",
+      "prevLink": "CX-001-CUT",
+      "maxGap": 28800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "5-Axis Complex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 30
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "CX-001-5AX-FINISH",
+    "name": "US Pharma Impeller - 5-Axis Finishing",
+    "type": "PROCESS",
+    "process": "5-axis-complex",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-MILL-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "CX-001",
+      "type": "LINK",
+      "prevLink": "CX-001-5AX-ROUGH",
+      "maxGap": 14400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "5-Axis Complex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 30
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "CX-001-HAND-FINISH",
+    "name": "US Pharma Impeller - Hand Finish",
+    "type": "PROCESS",
+    "process": "5-axis-complex",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "MANUAL-MILL-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "CX-001",
+      "type": "LINK",
+      "prevLink": "CX-001-5AX-FINISH",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "5-Axis Complex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 30
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "CX-001-QC",
+    "name": "US Pharma Impeller - Final QC",
+    "type": "TEARDOWN",
+    "process": "5-axis-complex",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-27T12:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "CX-001",
+      "type": "END",
+      "prevLink": "CX-001-HAND-FINISH",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "5-Axis Complex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 30
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "CX-002-CAM",
+    "name": "Collins Bracket - CAM Programming",
+    "type": "SETUP",
+    "process": "5-axis-complex",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "CX-002",
+      "type": "START",
+      "prevLink": "",
+      "maxGap": null
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "5-Axis Complex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 20
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "CX-002-CUT",
+    "name": "Collins Bracket - Raw Cut",
+    "type": "PROCESS",
+    "process": "5-axis-complex",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "SAW-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "CX-002",
+      "type": "LINK",
+      "prevLink": "CX-002-CAM",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "5-Axis Complex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 20
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "CX-002-5AX-ROUGH",
+    "name": "Collins Bracket - 5-Axis Roughing",
+    "type": "PROCESS",
+    "process": "5-axis-complex",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 21600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-MILL-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "MACH-SAM",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-SAM",
+          "MACH-JAMES"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "CX-002",
+      "type": "LINK",
+      "prevLink": "CX-002-CUT",
+      "maxGap": 28800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "5-Axis Complex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 20
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "CX-002-5AX-FINISH",
+    "name": "Collins Bracket - 5-Axis Finishing",
+    "type": "PROCESS",
+    "process": "5-axis-complex",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "CNC-MILL-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "MACH-SAM",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-SAM",
+          "MACH-JAMES"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "CX-002",
+      "type": "LINK",
+      "prevLink": "CX-002-5AX-ROUGH",
+      "maxGap": 14400
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "5-Axis Complex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 20
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "CX-002-HAND-FINISH",
+    "name": "Collins Bracket - Hand Finish",
+    "type": "PROCESS",
+    "process": "5-axis-complex",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "MANUAL-MILL-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "MACH-JAMES",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "MACH-JAMES",
+          "MACH-RYAN",
+          "MACH-SAM"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "CX-002",
+      "type": "LINK",
+      "prevLink": "CX-002-5AX-FINISH",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "5-Axis Complex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 20
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "CX-002-QC",
+    "name": "Collins Bracket - Final QC",
+    "type": "TEARDOWN",
+    "process": "5-axis-complex",
+    "windowStart": "2026-03-15T18:00:00Z",
+    "windowEnd": "2026-03-25T12:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASSEMBLY-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
+      },
+      {
+        "resource": "ASSY-HAYDEN",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "ASSY-HAYDEN",
+          "ASSY-MATT"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "CX-002",
+      "type": "END",
+      "prevLink": "CX-002-HAND-FINISH",
+      "maxGap": 172800
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "5-Axis Complex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "priority",
+        "dataType": "number",
+        "value": {
+          "type": "number",
+          "value": 20
+        },
+        "category": "scheduling",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  }
+]

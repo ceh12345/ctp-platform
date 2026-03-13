@@ -1,0 +1,82 @@
+[
+  {
+    "resourceType": "Reactor",
+    "type": "PROCESS CHANGE",
+    "fromState": "Cardex",
+    "toState": "Neuroxa",
+    "duration": 14400,
+    "penalty": 0
+  },
+  {
+    "resourceType": "Reactor",
+    "type": "PROCESS CHANGE",
+    "fromState": "DEFAULT CHANGE",
+    "toState": "DEFAULT CHANGE",
+    "duration": 7200,
+    "penalty": 0
+  },
+  {
+    "resourceType": "Reactor",
+    "type": "PROCESS CHANGE",
+    "fromState": "Oncovir",
+    "toState": "DEFAULT CHANGE",
+    "duration": 21600,
+    "penalty": 0
+  },
+  {
+    "resourceType": "Granulator",
+    "type": "PROCESS CHANGE",
+    "fromState": "DEFAULT CHANGE",
+    "toState": "DEFAULT CHANGE",
+    "duration": 3600,
+    "penalty": 0
+  },
+  {
+    "resourceType": "TabletPress",
+    "type": "PROCESS CHANGE",
+    "fromState": "DEFAULT CHANGE",
+    "toState": "DEFAULT CHANGE",
+    "duration": 5400,
+    "penalty": 0
+  },
+  {
+    "resourceType": "Coater",
+    "type": "PROCESS CHANGE",
+    "fromState": "DEFAULT CHANGE",
+    "toState": "DEFAULT CHANGE",
+    "duration": 7200,
+    "penalty": 0
+  },
+  {
+    "resourceType": "Coater",
+    "type": "PROCESS CHANGE",
+    "fromState": "Oncovir",
+    "toState": "DEFAULT CHANGE",
+    "duration": 14400,
+    "penalty": 0
+  },
+  {
+    "resourceType": "Cleanroom",
+    "type": "PROCESS CHANGE",
+    "fromState": "DEFAULT CHANGE",
+    "toState": "DEFAULT CHANGE",
+    "duration": 10800,
+    "penalty": 0
+  },
+  {
+    "resourceType": "Cleanroom",
+    "type": "PROCESS CHANGE",
+    "fromState": "Oncovir",
+    "toState": "DEFAULT CHANGE",
+    "duration": 28800,
+    "penalty": 0
+  },
+  {
+    "resourceType": "Packaging",
+    "type": "PROCESS CHANGE",
+    "fromState": "DEFAULT CHANGE",
+    "toState": "DEFAULT CHANGE",
+    "duration": 3600,
+    "penalty": 0
+  }
+]

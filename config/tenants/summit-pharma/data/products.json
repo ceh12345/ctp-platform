@@ -1,0 +1,132 @@
+[
+  {
+    "key": "PROD-CARDEX",
+    "name": "Cardex 10mg Tablet",
+    "productType": "FINISHED",
+    "unitOfMeasure": "tablets",
+    "outputScrapRate": 0.02,
+    "bomInputs": [
+      { "productKey": "API-CARDEX", "qtyPer": 0.01, "scrapRate": 0.01 },
+      { "productKey": "MAT-LACTOSE", "qtyPer": 0.15, "scrapRate": 0.02 },
+      { "productKey": "MAT-MCC", "qtyPer": 0.08, "scrapRate": 0.01 },
+      { "productKey": "MAT-COATING", "qtyPer": 0.005, "scrapRate": 0.03 }
+    ]
+  },
+  {
+    "key": "PROD-NEUROXA",
+    "name": "Neuroxa 25mg Capsule",
+    "productType": "FINISHED",
+    "unitOfMeasure": "capsules",
+    "outputScrapRate": 0.03,
+    "bomInputs": [
+      { "productKey": "API-NEUROXA", "qtyPer": 0.025, "scrapRate": 0.01 },
+      { "productKey": "MAT-LACTOSE", "qtyPer": 0.12, "scrapRate": 0.02 },
+      { "productKey": "MAT-MCC", "qtyPer": 0.06, "scrapRate": 0.01 }
+    ]
+  },
+  {
+    "key": "PROD-IMMUNEX",
+    "name": "Immunex 50mg Tablet",
+    "productType": "FINISHED",
+    "unitOfMeasure": "tablets",
+    "outputScrapRate": 0.02,
+    "bomInputs": [
+      { "productKey": "API-IMMUNEX", "qtyPer": 0.05, "scrapRate": 0.01 },
+      { "productKey": "MAT-LACTOSE", "qtyPer": 0.10, "scrapRate": 0.02 },
+      { "productKey": "MAT-MCC", "qtyPer": 0.10, "scrapRate": 0.01 },
+      { "productKey": "MAT-COATING", "qtyPer": 0.008, "scrapRate": 0.03 }
+    ]
+  },
+  {
+    "key": "PROD-LIPITROL",
+    "name": "Lipitrol 20mg Tablet",
+    "productType": "FINISHED",
+    "unitOfMeasure": "tablets",
+    "outputScrapRate": 0.02,
+    "bomInputs": [
+      { "productKey": "API-LIPITROL", "qtyPer": 0.02, "scrapRate": 0.01 },
+      { "productKey": "MAT-LACTOSE", "qtyPer": 0.13, "scrapRate": 0.02 },
+      { "productKey": "MAT-MCC", "qtyPer": 0.07, "scrapRate": 0.01 },
+      { "productKey": "MAT-COATING", "qtyPer": 0.006, "scrapRate": 0.03 }
+    ]
+  },
+  {
+    "key": "PROD-ONCOVIR",
+    "name": "Oncovir 5mg Tablet",
+    "productType": "FINISHED",
+    "unitOfMeasure": "tablets",
+    "outputScrapRate": 0.04,
+    "bomInputs": [
+      { "productKey": "API-ONCOVIR", "qtyPer": 0.005, "scrapRate": 0.02 },
+      { "productKey": "MAT-LACTOSE", "qtyPer": 0.18, "scrapRate": 0.02 },
+      { "productKey": "MAT-MCC", "qtyPer": 0.05, "scrapRate": 0.01 },
+      { "productKey": "MAT-COATING", "qtyPer": 0.004, "scrapRate": 0.03 }
+    ]
+  },
+  {
+    "key": "API-CARDEX",
+    "name": "Cardex API",
+    "productType": "INTERMEDIATE",
+    "unitOfMeasure": "kg",
+    "outputScrapRate": 0.05,
+    "bomInputs": [
+      { "productKey": "MAT-SOLVENT-A", "qtyPer": 3.0, "scrapRate": 0.02 },
+      { "productKey": "MAT-PRECURSOR-1", "qtyPer": 1.5, "scrapRate": 0.01 }
+    ]
+  },
+  {
+    "key": "API-NEUROXA",
+    "name": "Neuroxa API",
+    "productType": "INTERMEDIATE",
+    "unitOfMeasure": "kg",
+    "outputScrapRate": 0.06,
+    "bomInputs": [
+      { "productKey": "MAT-SOLVENT-A", "qtyPer": 4.0, "scrapRate": 0.02 },
+      { "productKey": "MAT-PRECURSOR-2", "qtyPer": 2.0, "scrapRate": 0.01 }
+    ]
+  },
+  {
+    "key": "API-IMMUNEX",
+    "name": "Immunex API",
+    "productType": "INTERMEDIATE",
+    "unitOfMeasure": "kg",
+    "outputScrapRate": 0.04,
+    "bomInputs": [
+      { "productKey": "MAT-SOLVENT-B", "qtyPer": 2.5, "scrapRate": 0.02 },
+      { "productKey": "MAT-PRECURSOR-1", "qtyPer": 1.8, "scrapRate": 0.01 }
+    ]
+  },
+  {
+    "key": "API-LIPITROL",
+    "name": "Lipitrol API",
+    "productType": "INTERMEDIATE",
+    "unitOfMeasure": "kg",
+    "outputScrapRate": 0.05,
+    "bomInputs": [
+      { "productKey": "MAT-SOLVENT-A", "qtyPer": 3.5, "scrapRate": 0.02 },
+      { "productKey": "MAT-PRECURSOR-3", "qtyPer": 1.2, "scrapRate": 0.01 }
+    ]
+  },
+  {
+    "key": "API-ONCOVIR",
+    "name": "Oncovir API",
+    "productType": "INTERMEDIATE",
+    "unitOfMeasure": "kg",
+    "outputScrapRate": 0.08,
+    "bomInputs": [
+      { "productKey": "MAT-SOLVENT-B", "qtyPer": 5.0, "scrapRate": 0.03 },
+      { "productKey": "MAT-PRECURSOR-4", "qtyPer": 2.5, "scrapRate": 0.02 }
+    ]
+  },
+  { "key": "MAT-LACTOSE", "name": "Lactose Monohydrate", "productType": "RAW", "unitOfMeasure": "kg", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "MAT-MCC", "name": "Microcrystalline Cellulose", "productType": "RAW", "unitOfMeasure": "kg", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "MAT-COATING", "name": "Film Coating Premix", "productType": "RAW", "unitOfMeasure": "kg", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "MAT-SOLVENT-A", "name": "Solvent A (Ethanol)", "productType": "RAW", "unitOfMeasure": "L", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "MAT-SOLVENT-B", "name": "Solvent B (Methanol)", "productType": "RAW", "unitOfMeasure": "L", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "MAT-PRECURSOR-1", "name": "Chemical Precursor P1", "productType": "RAW", "unitOfMeasure": "kg", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "MAT-PRECURSOR-2", "name": "Chemical Precursor P2", "productType": "RAW", "unitOfMeasure": "kg", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "MAT-PRECURSOR-3", "name": "Chemical Precursor P3", "productType": "RAW", "unitOfMeasure": "kg", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "MAT-PRECURSOR-4", "name": "Chemical Precursor P4 (Controlled)", "productType": "RAW", "unitOfMeasure": "kg", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "MAT-BLISTER-FOIL", "name": "Blister Foil", "productType": "RAW", "unitOfMeasure": "rolls", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "MAT-CARTON", "name": "Carton Box", "productType": "RAW", "unitOfMeasure": "pcs", "outputScrapRate": 0, "bomInputs": [] }
+]

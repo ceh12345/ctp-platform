@@ -1,0 +1,300 @@
+[
+  {
+    "key": "REACT-01",
+    "name": "Reactor 01",
+    "type": "Reactor",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "API Manufacturing", "level2": "Reactor Bay" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Reactor" }, "category": "equipment", "sequence": 1 },
+      { "name": "volumeLiters", "dataType": "number", "value": { "type": "number", "value": 2000 }, "category": "capacity", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP", "FDA-Validated"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "REACT-02",
+    "name": "Reactor 02",
+    "type": "Reactor",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "API Manufacturing", "level2": "Reactor Bay" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Reactor" }, "category": "equipment", "sequence": 1 },
+      { "name": "volumeLiters", "dataType": "number", "value": { "type": "number", "value": 2000 }, "category": "capacity", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP", "FDA-Validated"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "REACT-03",
+    "name": "Reactor 03",
+    "type": "Reactor",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "API Manufacturing", "level2": "Reactor Bay" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Reactor" }, "category": "equipment", "sequence": 1 },
+      { "name": "volumeLiters", "dataType": "number", "value": { "type": "number", "value": 1500 }, "category": "capacity", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "REACT-04",
+    "name": "Reactor 04 (Small Batch)",
+    "type": "Reactor",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "API Manufacturing", "level2": "Reactor Bay" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Reactor" }, "category": "equipment", "sequence": 1 },
+      { "name": "volumeLiters", "dataType": "number", "value": { "type": "number", "value": 500 }, "category": "capacity", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP", "FDA-Validated", "DEA-Schedule-II"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "GRAN-01",
+    "name": "Granulator 01",
+    "type": "Granulator",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Solid Dosage", "level2": "Granulation" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Granulator" }, "category": "equipment", "sequence": 1 },
+      { "name": "throughputKgHr", "dataType": "number", "value": { "type": "number", "value": 200 }, "category": "performance", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "GRAN-02",
+    "name": "Granulator 02",
+    "type": "Granulator",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Solid Dosage", "level2": "Granulation" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Granulator" }, "category": "equipment", "sequence": 1 },
+      { "name": "throughputKgHr", "dataType": "number", "value": { "type": "number", "value": 150 }, "category": "performance", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "PRESS-01",
+    "name": "Tablet Press 01",
+    "type": "TabletPress",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Solid Dosage", "level2": "Compression" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "TabletPress" }, "category": "equipment", "sequence": 1 },
+      { "name": "tabletsPerMin", "dataType": "number", "value": { "type": "number", "value": 3000 }, "category": "performance", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP", "FDA-Validated"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "PRESS-02",
+    "name": "Tablet Press 02",
+    "type": "TabletPress",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Solid Dosage", "level2": "Compression" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "TabletPress" }, "category": "equipment", "sequence": 1 },
+      { "name": "tabletsPerMin", "dataType": "number", "value": { "type": "number", "value": 2500 }, "category": "performance", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "PRESS-03",
+    "name": "Tablet Press 03",
+    "type": "TabletPress",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Solid Dosage", "level2": "Compression" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "TabletPress" }, "category": "equipment", "sequence": 1 },
+      { "name": "tabletsPerMin", "dataType": "number", "value": { "type": "number", "value": 2000 }, "category": "performance", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "COAT-01",
+    "name": "Film Coater 01",
+    "type": "Coater",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Solid Dosage", "level2": "Coating" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Coater" }, "category": "equipment", "sequence": 1 },
+      { "name": "panSizeKg", "dataType": "number", "value": { "type": "number", "value": 300 }, "category": "capacity", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "COAT-02",
+    "name": "Film Coater 02",
+    "type": "Coater",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Solid Dosage", "level2": "Coating" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Coater" }, "category": "equipment", "sequence": 1 },
+      { "name": "panSizeKg", "dataType": "number", "value": { "type": "number", "value": 200 }, "category": "capacity", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "PKG-01",
+    "name": "Blister Packer 01",
+    "type": "Packaging",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Packaging", "level2": "Primary Pack" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Packaging" }, "category": "equipment", "sequence": 1 },
+      { "name": "blistersPerMin", "dataType": "number", "value": { "type": "number", "value": 400 }, "category": "performance", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "PKG-02",
+    "name": "Blister Packer 02",
+    "type": "Packaging",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Packaging", "level2": "Primary Pack" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Packaging" }, "category": "equipment", "sequence": 1 },
+      { "name": "blistersPerMin", "dataType": "number", "value": { "type": "number", "value": 350 }, "category": "performance", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "PKG-03",
+    "name": "Bottle Filler 01",
+    "type": "Packaging",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Packaging", "level2": "Primary Pack" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Packaging" }, "category": "equipment", "sequence": 1 },
+      { "name": "bottlesPerMin", "dataType": "number", "value": { "type": "number", "value": 200 }, "category": "performance", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "CARTON-01",
+    "name": "Cartoner 01",
+    "type": "Packaging",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Packaging", "level2": "Secondary Pack" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Packaging" }, "category": "equipment", "sequence": 1 },
+      { "name": "cartonsPerMin", "dataType": "number", "value": { "type": "number", "value": 150 }, "category": "performance", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "QC-LAB-01",
+    "name": "QC Lab 01 (Chemistry)",
+    "type": "QCLab",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Quality Control", "level2": "Analytical Lab" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "QCLab" }, "category": "equipment", "sequence": 1 },
+      { "name": "testCapacity", "dataType": "number", "value": { "type": "number", "value": 8 }, "category": "capacity", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP", "ISO-17025"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "QC-LAB-02",
+    "name": "QC Lab 02 (Micro)",
+    "type": "QCLab",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Quality Control", "level2": "Analytical Lab" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "QCLab" }, "category": "equipment", "sequence": 1 },
+      { "name": "testCapacity", "dataType": "number", "value": { "type": "number", "value": 4 }, "category": "capacity", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP", "ISO-17025"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "QC-LAB-03",
+    "name": "QC Lab 03 (Stability)",
+    "type": "QCLab",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Quality Control", "level2": "Stability Chamber" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "QCLab" }, "category": "equipment", "sequence": 1 },
+      { "name": "testCapacity", "dataType": "number", "value": { "type": "number", "value": 6 }, "category": "capacity", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "CLEAN-DISP",
+    "name": "Cleanroom — Dispensing (ISO 7)",
+    "type": "Cleanroom",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Cleanrooms", "level2": "ISO 7" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Cleanroom" }, "category": "equipment", "sequence": 1 },
+      { "name": "isoClass", "dataType": "number", "value": { "type": "number", "value": 7 }, "category": "classification", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP", "ISO-14644"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "CLEAN-MFG",
+    "name": "Cleanroom — Manufacturing (ISO 7)",
+    "type": "Cleanroom",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Cleanrooms", "level2": "ISO 7" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Cleanroom" }, "category": "equipment", "sequence": 1 },
+      { "name": "isoClass", "dataType": "number", "value": { "type": "number", "value": 7 }, "category": "classification", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP", "ISO-14644"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "CLEAN-PACK",
+    "name": "Cleanroom — Packaging (ISO 5)",
+    "type": "Cleanroom",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Cleanrooms", "level2": "ISO 5" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Cleanroom" }, "category": "equipment", "sequence": 1 },
+      { "name": "isoClass", "dataType": "number", "value": { "type": "number", "value": 5 }, "category": "classification", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP", "ISO-14644", "FDA-Validated"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "DISP-01",
+    "name": "Dispensary 01",
+    "type": "Dispensary",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Warehouse", "level2": "Dispensing" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Dispensary" }, "category": "equipment", "sequence": 1 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP"] }, "category": "compliance", "sequence": 2 }
+    ]
+  },
+  {
+    "key": "DISP-02",
+    "name": "Dispensary 02",
+    "type": "Dispensary",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Warehouse", "level2": "Dispensing" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Dispensary" }, "category": "equipment", "sequence": 1 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP"] }, "category": "compliance", "sequence": 2 }
+    ]
+  },
+  {
+    "key": "BLEND-01",
+    "name": "Blender 01",
+    "type": "Blender",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Solid Dosage", "level2": "Blending" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Blender" }, "category": "equipment", "sequence": 1 },
+      { "name": "capacityKg", "dataType": "number", "value": { "type": "number", "value": 500 }, "category": "capacity", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP"] }, "category": "compliance", "sequence": 3 }
+    ]
+  },
+  {
+    "key": "BLEND-02",
+    "name": "Blender 02",
+    "type": "Blender",
+    "class": "REUSABLE",
+    "hierarchy": { "level1": "Solid Dosage", "level2": "Blending" },
+    "typedAttributes": [
+      { "name": "equipmentType", "dataType": "enum", "value": { "type": "enum", "value": "Blender" }, "category": "equipment", "sequence": 1 },
+      { "name": "capacityKg", "dataType": "number", "value": { "type": "number", "value": 300 }, "category": "capacity", "sequence": 2 },
+      { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["GMP"] }, "category": "compliance", "sequence": 3 }
+    ]
+  }
+]

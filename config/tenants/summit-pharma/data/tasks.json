@@ -1,0 +1,6113 @@
+[
+  {
+    "key": "T-BX101-DISP",
+    "name": "Dispense Materials (BX-101)",
+    "type": "PROCESS",
+    "process": "dispensing",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "DISP-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-DISP",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-101",
+      "type": "START",
+      "prevLink": ""
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 100000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "T-BX101-REACT",
+    "name": "API Reaction (BX-101)",
+    "type": "PROCESS",
+    "process": "reaction",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
+    "durationSeconds": 28800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "REACT-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-101",
+      "type": "PROCESS",
+      "prevLink": "T-BX101-DISP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 100000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "T-BX101-GRAN",
+    "name": "Granulation (BX-101)",
+    "type": "PROCESS",
+    "process": "granulation",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "GRAN-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-101",
+      "type": "PROCESS",
+      "prevLink": "T-BX101-REACT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 100000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "T-BX101-BLEND",
+    "name": "Blending (BX-101)",
+    "type": "PROCESS",
+    "process": "blending",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "BLEND-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-101",
+      "type": "PROCESS",
+      "prevLink": "T-BX101-GRAN"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 100000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "T-BX101-COMP",
+    "name": "Compression (BX-101)",
+    "type": "PROCESS",
+    "process": "compression",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
+    "durationSeconds": 21600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-101",
+      "type": "PROCESS",
+      "prevLink": "T-BX101-BLEND"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 100000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "T-BX101-COAT",
+    "name": "Film Coating (BX-101)",
+    "type": "PROCESS",
+    "process": "coating",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "COAT-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-101",
+      "type": "PROCESS",
+      "prevLink": "T-BX101-COMP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 100000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "T-BX101-PKG",
+    "name": "Packaging (BX-101)",
+    "type": "PROCESS",
+    "process": "packaging",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PKG-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-101",
+      "type": "PROCESS",
+      "prevLink": "T-BX101-COAT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 100000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "T-BX101-QC",
+    "name": "QC Release (BX-101)",
+    "type": "PROCESS",
+    "process": "qc-release",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "QC-LAB-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "TRACK"
+      }
+    ],
+    "linkId": {
+      "name": "BX-101",
+      "type": "END",
+      "prevLink": "T-BX101-PKG"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 100000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 8
+  },
+  {
+    "key": "T-BX102-DISP",
+    "name": "Dispense Materials (BX-102)",
+    "type": "PROCESS",
+    "process": "dispensing",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-27T00:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "DISP-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-DISP",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-102",
+      "type": "START",
+      "prevLink": ""
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 80000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "T-BX102-REACT",
+    "name": "API Reaction (BX-102)",
+    "type": "PROCESS",
+    "process": "reaction",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-27T00:00:00Z",
+    "durationSeconds": 28800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "REACT-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-102",
+      "type": "PROCESS",
+      "prevLink": "T-BX102-DISP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 80000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "T-BX102-GRAN",
+    "name": "Granulation (BX-102)",
+    "type": "PROCESS",
+    "process": "granulation",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-27T00:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "GRAN-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-102",
+      "type": "PROCESS",
+      "prevLink": "T-BX102-REACT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 80000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "T-BX102-BLEND",
+    "name": "Blending (BX-102)",
+    "type": "PROCESS",
+    "process": "blending",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-27T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "BLEND-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-102",
+      "type": "PROCESS",
+      "prevLink": "T-BX102-GRAN"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 80000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "T-BX102-COMP",
+    "name": "Compression (BX-102)",
+    "type": "PROCESS",
+    "process": "compression",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-27T00:00:00Z",
+    "durationSeconds": 21600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-102",
+      "type": "PROCESS",
+      "prevLink": "T-BX102-BLEND"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 80000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "T-BX102-COAT",
+    "name": "Film Coating (BX-102)",
+    "type": "PROCESS",
+    "process": "coating",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-27T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "COAT-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-102",
+      "type": "PROCESS",
+      "prevLink": "T-BX102-COMP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 80000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "T-BX102-PKG",
+    "name": "Packaging (BX-102)",
+    "type": "PROCESS",
+    "process": "packaging",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-27T00:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PKG-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-102",
+      "type": "PROCESS",
+      "prevLink": "T-BX102-COAT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 80000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "T-BX102-QC",
+    "name": "QC Release (BX-102)",
+    "type": "PROCESS",
+    "process": "qc-release",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-27T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "QC-LAB-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "TRACK"
+      }
+    ],
+    "linkId": {
+      "name": "BX-102",
+      "type": "END",
+      "prevLink": "T-BX102-PKG"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 80000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 8
+  },
+  {
+    "key": "T-BX103-DISP",
+    "name": "Dispense Materials (BX-103)",
+    "type": "PROCESS",
+    "process": "dispensing",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "DISP-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-DISP",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-103",
+      "type": "START",
+      "prevLink": ""
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 120000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "T-BX103-REACT",
+    "name": "API Reaction (BX-103)",
+    "type": "PROCESS",
+    "process": "reaction",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 28800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "REACT-03",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-103",
+      "type": "PROCESS",
+      "prevLink": "T-BX103-DISP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 120000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "T-BX103-GRAN",
+    "name": "Granulation (BX-103)",
+    "type": "PROCESS",
+    "process": "granulation",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "GRAN-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-103",
+      "type": "PROCESS",
+      "prevLink": "T-BX103-REACT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 120000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "T-BX103-BLEND",
+    "name": "Blending (BX-103)",
+    "type": "PROCESS",
+    "process": "blending",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "BLEND-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-103",
+      "type": "PROCESS",
+      "prevLink": "T-BX103-GRAN"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 120000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "T-BX103-COMP",
+    "name": "Compression (BX-103)",
+    "type": "PROCESS",
+    "process": "compression",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 21600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-03",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-103",
+      "type": "PROCESS",
+      "prevLink": "T-BX103-BLEND"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 120000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "T-BX103-COAT",
+    "name": "Film Coating (BX-103)",
+    "type": "PROCESS",
+    "process": "coating",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "COAT-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-103",
+      "type": "PROCESS",
+      "prevLink": "T-BX103-COMP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 120000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "T-BX103-PKG",
+    "name": "Packaging (BX-103)",
+    "type": "PROCESS",
+    "process": "packaging",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PKG-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-103",
+      "type": "PROCESS",
+      "prevLink": "T-BX103-COAT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 120000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "T-BX103-QC",
+    "name": "QC Release (BX-103)",
+    "type": "PROCESS",
+    "process": "qc-release",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "QC-LAB-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "TRACK"
+      }
+    ],
+    "linkId": {
+      "name": "BX-103",
+      "type": "END",
+      "prevLink": "T-BX103-PKG"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Cardex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 120000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 8
+  },
+  {
+    "key": "T-BX201-DISP",
+    "name": "Dispense Materials (BX-201)",
+    "type": "PROCESS",
+    "process": "dispensing",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-23T00:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "DISP-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-DISP",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-201",
+      "type": "START",
+      "prevLink": ""
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "T-BX201-REACT",
+    "name": "API Reaction (BX-201)",
+    "type": "PROCESS",
+    "process": "reaction",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-23T00:00:00Z",
+    "durationSeconds": 36000,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "REACT-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-201",
+      "type": "PROCESS",
+      "prevLink": "T-BX201-DISP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "T-BX201-GRAN",
+    "name": "Granulation (BX-201)",
+    "type": "PROCESS",
+    "process": "granulation",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-23T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "GRAN-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-201",
+      "type": "PROCESS",
+      "prevLink": "T-BX201-REACT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "T-BX201-BLEND",
+    "name": "Blending (BX-201)",
+    "type": "PROCESS",
+    "process": "blending",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-23T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "BLEND-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-201",
+      "type": "PROCESS",
+      "prevLink": "T-BX201-GRAN"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "T-BX201-COMP",
+    "name": "Compression (BX-201)",
+    "type": "PROCESS",
+    "process": "compression",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-23T00:00:00Z",
+    "durationSeconds": 18000,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-201",
+      "type": "PROCESS",
+      "prevLink": "T-BX201-BLEND"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "T-BX201-PKG",
+    "name": "Packaging (BX-201)",
+    "type": "PROCESS",
+    "process": "packaging",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-23T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PKG-03",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-201",
+      "type": "PROCESS",
+      "prevLink": "T-BX201-COMP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "T-BX201-QC",
+    "name": "QC Release (BX-201)",
+    "type": "PROCESS",
+    "process": "qc-release",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-23T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "QC-LAB-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "TRACK"
+      }
+    ],
+    "linkId": {
+      "name": "BX-201",
+      "type": "END",
+      "prevLink": "T-BX201-PKG"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "T-BX202-DISP",
+    "name": "Dispense Materials (BX-202)",
+    "type": "PROCESS",
+    "process": "dispensing",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-28T00:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "DISP-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-DISP",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-202",
+      "type": "START",
+      "prevLink": ""
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 60000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "T-BX202-REACT",
+    "name": "API Reaction (BX-202)",
+    "type": "PROCESS",
+    "process": "reaction",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-28T00:00:00Z",
+    "durationSeconds": 36000,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "REACT-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-202",
+      "type": "PROCESS",
+      "prevLink": "T-BX202-DISP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 60000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "T-BX202-GRAN",
+    "name": "Granulation (BX-202)",
+    "type": "PROCESS",
+    "process": "granulation",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-28T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "GRAN-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-202",
+      "type": "PROCESS",
+      "prevLink": "T-BX202-REACT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 60000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "T-BX202-BLEND",
+    "name": "Blending (BX-202)",
+    "type": "PROCESS",
+    "process": "blending",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-28T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "BLEND-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-202",
+      "type": "PROCESS",
+      "prevLink": "T-BX202-GRAN"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 60000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "T-BX202-COMP",
+    "name": "Compression (BX-202)",
+    "type": "PROCESS",
+    "process": "compression",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-28T00:00:00Z",
+    "durationSeconds": 18000,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-202",
+      "type": "PROCESS",
+      "prevLink": "T-BX202-BLEND"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 60000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "T-BX202-PKG",
+    "name": "Packaging (BX-202)",
+    "type": "PROCESS",
+    "process": "packaging",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-28T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PKG-03",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-202",
+      "type": "PROCESS",
+      "prevLink": "T-BX202-COMP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 60000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "T-BX202-QC",
+    "name": "QC Release (BX-202)",
+    "type": "PROCESS",
+    "process": "qc-release",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-28T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "QC-LAB-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "TRACK"
+      }
+    ],
+    "linkId": {
+      "name": "BX-202",
+      "type": "END",
+      "prevLink": "T-BX202-PKG"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 60000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "T-BX203-DISP",
+    "name": "Dispense Materials (BX-203)",
+    "type": "PROCESS",
+    "process": "dispensing",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "DISP-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-DISP",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-203",
+      "type": "START",
+      "prevLink": ""
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 40000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "T-BX203-REACT",
+    "name": "API Reaction (BX-203)",
+    "type": "PROCESS",
+    "process": "reaction",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 36000,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "REACT-04",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-203",
+      "type": "PROCESS",
+      "prevLink": "T-BX203-DISP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 40000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "T-BX203-GRAN",
+    "name": "Granulation (BX-203)",
+    "type": "PROCESS",
+    "process": "granulation",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "GRAN-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-203",
+      "type": "PROCESS",
+      "prevLink": "T-BX203-REACT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 40000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "T-BX203-BLEND",
+    "name": "Blending (BX-203)",
+    "type": "PROCESS",
+    "process": "blending",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "BLEND-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-203",
+      "type": "PROCESS",
+      "prevLink": "T-BX203-GRAN"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 40000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "T-BX203-COMP",
+    "name": "Compression (BX-203)",
+    "type": "PROCESS",
+    "process": "compression",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 18000,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-03",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-203",
+      "type": "PROCESS",
+      "prevLink": "T-BX203-BLEND"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 40000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "T-BX203-PKG",
+    "name": "Packaging (BX-203)",
+    "type": "PROCESS",
+    "process": "packaging",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PKG-03",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-203",
+      "type": "PROCESS",
+      "prevLink": "T-BX203-COMP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 40000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "T-BX203-QC",
+    "name": "QC Release (BX-203)",
+    "type": "PROCESS",
+    "process": "qc-release",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "QC-LAB-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "TRACK"
+      }
+    ],
+    "linkId": {
+      "name": "BX-203",
+      "type": "END",
+      "prevLink": "T-BX203-PKG"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Neuroxa"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 40000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "T-BX301-DISP",
+    "name": "Dispense Materials (BX-301)",
+    "type": "PROCESS",
+    "process": "dispensing",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-25T00:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "DISP-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-DISP",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-301",
+      "type": "START",
+      "prevLink": ""
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 75000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "T-BX301-REACT",
+    "name": "API Reaction (BX-301)",
+    "type": "PROCESS",
+    "process": "reaction",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-25T00:00:00Z",
+    "durationSeconds": 32400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "REACT-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-301",
+      "type": "PROCESS",
+      "prevLink": "T-BX301-DISP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 75000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "T-BX301-GRAN",
+    "name": "Granulation (BX-301)",
+    "type": "PROCESS",
+    "process": "granulation",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-25T00:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "GRAN-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-301",
+      "type": "PROCESS",
+      "prevLink": "T-BX301-REACT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 75000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "T-BX301-BLEND",
+    "name": "Blending (BX-301)",
+    "type": "PROCESS",
+    "process": "blending",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-25T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "BLEND-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-301",
+      "type": "PROCESS",
+      "prevLink": "T-BX301-GRAN"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 75000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "T-BX301-COMP",
+    "name": "Compression (BX-301)",
+    "type": "PROCESS",
+    "process": "compression",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-25T00:00:00Z",
+    "durationSeconds": 25200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-301",
+      "type": "PROCESS",
+      "prevLink": "T-BX301-BLEND"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 75000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "T-BX301-COAT",
+    "name": "Film Coating (BX-301)",
+    "type": "PROCESS",
+    "process": "coating",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-25T00:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "COAT-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-301",
+      "type": "PROCESS",
+      "prevLink": "T-BX301-COMP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 75000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "T-BX301-PKG",
+    "name": "Packaging (BX-301)",
+    "type": "PROCESS",
+    "process": "packaging",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-25T00:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PKG-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-301",
+      "type": "PROCESS",
+      "prevLink": "T-BX301-COAT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 75000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "T-BX301-QC",
+    "name": "QC Release (BX-301)",
+    "type": "PROCESS",
+    "process": "qc-release",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-25T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "QC-LAB-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "TRACK"
+      }
+    ],
+    "linkId": {
+      "name": "BX-301",
+      "type": "END",
+      "prevLink": "T-BX301-PKG"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 75000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 8
+  },
+  {
+    "key": "T-BX302-DISP",
+    "name": "Dispense Materials (BX-302)",
+    "type": "PROCESS",
+    "process": "dispensing",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "DISP-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-DISP",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-302",
+      "type": "START",
+      "prevLink": ""
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 90000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "T-BX302-REACT",
+    "name": "API Reaction (BX-302)",
+    "type": "PROCESS",
+    "process": "reaction",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 32400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "REACT-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-302",
+      "type": "PROCESS",
+      "prevLink": "T-BX302-DISP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 90000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "T-BX302-GRAN",
+    "name": "Granulation (BX-302)",
+    "type": "PROCESS",
+    "process": "granulation",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "GRAN-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-302",
+      "type": "PROCESS",
+      "prevLink": "T-BX302-REACT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 90000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "T-BX302-BLEND",
+    "name": "Blending (BX-302)",
+    "type": "PROCESS",
+    "process": "blending",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "BLEND-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-302",
+      "type": "PROCESS",
+      "prevLink": "T-BX302-GRAN"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 90000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "T-BX302-COMP",
+    "name": "Compression (BX-302)",
+    "type": "PROCESS",
+    "process": "compression",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 25200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-302",
+      "type": "PROCESS",
+      "prevLink": "T-BX302-BLEND"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 90000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "T-BX302-COAT",
+    "name": "Film Coating (BX-302)",
+    "type": "PROCESS",
+    "process": "coating",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "COAT-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-302",
+      "type": "PROCESS",
+      "prevLink": "T-BX302-COMP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 90000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "T-BX302-PKG",
+    "name": "Packaging (BX-302)",
+    "type": "PROCESS",
+    "process": "packaging",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PKG-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-302",
+      "type": "PROCESS",
+      "prevLink": "T-BX302-COAT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 90000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "T-BX302-QC",
+    "name": "QC Release (BX-302)",
+    "type": "PROCESS",
+    "process": "qc-release",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "QC-LAB-03",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "TRACK"
+      }
+    ],
+    "linkId": {
+      "name": "BX-302",
+      "type": "END",
+      "prevLink": "T-BX302-PKG"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 90000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 8
+  },
+  {
+    "key": "T-BX303-DISP",
+    "name": "Dispense Materials (BX-303)",
+    "type": "PROCESS",
+    "process": "dispensing",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "DISP-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-DISP",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-303",
+      "type": "START",
+      "prevLink": ""
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "T-BX303-REACT",
+    "name": "API Reaction (BX-303)",
+    "type": "PROCESS",
+    "process": "reaction",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 32400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "REACT-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-303",
+      "type": "PROCESS",
+      "prevLink": "T-BX303-DISP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "T-BX303-GRAN",
+    "name": "Granulation (BX-303)",
+    "type": "PROCESS",
+    "process": "granulation",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "GRAN-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-303",
+      "type": "PROCESS",
+      "prevLink": "T-BX303-REACT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "T-BX303-BLEND",
+    "name": "Blending (BX-303)",
+    "type": "PROCESS",
+    "process": "blending",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "BLEND-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-303",
+      "type": "PROCESS",
+      "prevLink": "T-BX303-GRAN"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "T-BX303-COMP",
+    "name": "Compression (BX-303)",
+    "type": "PROCESS",
+    "process": "compression",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 25200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-03",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-303",
+      "type": "PROCESS",
+      "prevLink": "T-BX303-BLEND"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "T-BX303-COAT",
+    "name": "Film Coating (BX-303)",
+    "type": "PROCESS",
+    "process": "coating",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "COAT-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-303",
+      "type": "PROCESS",
+      "prevLink": "T-BX303-COMP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "T-BX303-PKG",
+    "name": "Packaging (BX-303)",
+    "type": "PROCESS",
+    "process": "packaging",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PKG-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-303",
+      "type": "PROCESS",
+      "prevLink": "T-BX303-COAT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "T-BX303-QC",
+    "name": "QC Release (BX-303)",
+    "type": "PROCESS",
+    "process": "qc-release",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "QC-LAB-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "TRACK"
+      }
+    ],
+    "linkId": {
+      "name": "BX-303",
+      "type": "END",
+      "prevLink": "T-BX303-PKG"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Immunex"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 8
+  },
+  {
+    "key": "T-BX401-DISP",
+    "name": "Dispense Materials (BX-401)",
+    "type": "PROCESS",
+    "process": "dispensing",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "DISP-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-DISP",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-401",
+      "type": "START",
+      "prevLink": ""
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 60000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "T-BX401-REACT",
+    "name": "API Reaction (BX-401)",
+    "type": "PROCESS",
+    "process": "reaction",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
+    "durationSeconds": 25200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "REACT-03",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-401",
+      "type": "PROCESS",
+      "prevLink": "T-BX401-DISP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 60000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "T-BX401-GRAN",
+    "name": "Granulation (BX-401)",
+    "type": "PROCESS",
+    "process": "granulation",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "GRAN-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-401",
+      "type": "PROCESS",
+      "prevLink": "T-BX401-REACT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 60000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "T-BX401-BLEND",
+    "name": "Blending (BX-401)",
+    "type": "PROCESS",
+    "process": "blending",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "BLEND-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-401",
+      "type": "PROCESS",
+      "prevLink": "T-BX401-GRAN"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 60000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "T-BX401-COMP",
+    "name": "Compression (BX-401)",
+    "type": "PROCESS",
+    "process": "compression",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
+    "durationSeconds": 18000,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-401",
+      "type": "PROCESS",
+      "prevLink": "T-BX401-BLEND"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 60000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "T-BX401-COAT",
+    "name": "Film Coating (BX-401)",
+    "type": "PROCESS",
+    "process": "coating",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "COAT-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-401",
+      "type": "PROCESS",
+      "prevLink": "T-BX401-COMP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 60000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "T-BX401-PKG",
+    "name": "Packaging (BX-401)",
+    "type": "PROCESS",
+    "process": "packaging",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PKG-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-401",
+      "type": "PROCESS",
+      "prevLink": "T-BX401-COAT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 60000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "T-BX401-QC",
+    "name": "QC Release (BX-401)",
+    "type": "PROCESS",
+    "process": "qc-release",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "QC-LAB-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "TRACK"
+      }
+    ],
+    "linkId": {
+      "name": "BX-401",
+      "type": "END",
+      "prevLink": "T-BX401-PKG"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 60000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 8
+  },
+  {
+    "key": "T-BX402-DISP",
+    "name": "Dispense Materials (BX-402)",
+    "type": "PROCESS",
+    "process": "dispensing",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-28T00:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "DISP-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-DISP",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-402",
+      "type": "START",
+      "prevLink": ""
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 80000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "T-BX402-REACT",
+    "name": "API Reaction (BX-402)",
+    "type": "PROCESS",
+    "process": "reaction",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-28T00:00:00Z",
+    "durationSeconds": 25200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "REACT-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-402",
+      "type": "PROCESS",
+      "prevLink": "T-BX402-DISP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 80000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "T-BX402-GRAN",
+    "name": "Granulation (BX-402)",
+    "type": "PROCESS",
+    "process": "granulation",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-28T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "GRAN-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-402",
+      "type": "PROCESS",
+      "prevLink": "T-BX402-REACT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 80000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "T-BX402-BLEND",
+    "name": "Blending (BX-402)",
+    "type": "PROCESS",
+    "process": "blending",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-28T00:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "BLEND-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-402",
+      "type": "PROCESS",
+      "prevLink": "T-BX402-GRAN"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 80000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "T-BX402-COMP",
+    "name": "Compression (BX-402)",
+    "type": "PROCESS",
+    "process": "compression",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-28T00:00:00Z",
+    "durationSeconds": 18000,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-402",
+      "type": "PROCESS",
+      "prevLink": "T-BX402-BLEND"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 80000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "T-BX402-COAT",
+    "name": "Film Coating (BX-402)",
+    "type": "PROCESS",
+    "process": "coating",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-28T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "COAT-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-402",
+      "type": "PROCESS",
+      "prevLink": "T-BX402-COMP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 80000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "T-BX402-PKG",
+    "name": "Packaging (BX-402)",
+    "type": "PROCESS",
+    "process": "packaging",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-28T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PKG-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-402",
+      "type": "PROCESS",
+      "prevLink": "T-BX402-COAT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 80000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "T-BX402-QC",
+    "name": "QC Release (BX-402)",
+    "type": "PROCESS",
+    "process": "qc-release",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-28T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "QC-LAB-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "TRACK"
+      }
+    ],
+    "linkId": {
+      "name": "BX-402",
+      "type": "END",
+      "prevLink": "T-BX402-PKG"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 80000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 8
+  },
+  {
+    "key": "T-BX403-DISP",
+    "name": "Dispense Materials (BX-403)",
+    "type": "PROCESS",
+    "process": "dispensing",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "DISP-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-DISP",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-403",
+      "type": "START",
+      "prevLink": ""
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "T-BX403-REACT",
+    "name": "API Reaction (BX-403)",
+    "type": "PROCESS",
+    "process": "reaction",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 25200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "REACT-04",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-403",
+      "type": "PROCESS",
+      "prevLink": "T-BX403-DISP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "T-BX403-GRAN",
+    "name": "Granulation (BX-403)",
+    "type": "PROCESS",
+    "process": "granulation",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "GRAN-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-403",
+      "type": "PROCESS",
+      "prevLink": "T-BX403-REACT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "T-BX403-BLEND",
+    "name": "Blending (BX-403)",
+    "type": "PROCESS",
+    "process": "blending",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "BLEND-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-403",
+      "type": "PROCESS",
+      "prevLink": "T-BX403-GRAN"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "T-BX403-COMP",
+    "name": "Compression (BX-403)",
+    "type": "PROCESS",
+    "process": "compression",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 18000,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-03",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-403",
+      "type": "PROCESS",
+      "prevLink": "T-BX403-BLEND"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "T-BX403-COAT",
+    "name": "Film Coating (BX-403)",
+    "type": "PROCESS",
+    "process": "coating",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "COAT-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-403",
+      "type": "PROCESS",
+      "prevLink": "T-BX403-COMP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "T-BX403-PKG",
+    "name": "Packaging (BX-403)",
+    "type": "PROCESS",
+    "process": "packaging",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PKG-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-403",
+      "type": "PROCESS",
+      "prevLink": "T-BX403-COAT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "T-BX403-QC",
+    "name": "QC Release (BX-403)",
+    "type": "PROCESS",
+    "process": "qc-release",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "QC-LAB-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "TRACK"
+      }
+    ],
+    "linkId": {
+      "name": "BX-403",
+      "type": "END",
+      "prevLink": "T-BX403-PKG"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Lipitrol"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 50000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 8
+  },
+  {
+    "key": "T-BX501-DISP",
+    "name": "Dispense Materials (BX-501)",
+    "type": "PROCESS",
+    "process": "dispensing",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-26T00:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "DISP-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-DISP",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-501",
+      "type": "START",
+      "prevLink": ""
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 20000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "T-BX501-REACT",
+    "name": "API Reaction (BX-501)",
+    "type": "PROCESS",
+    "process": "reaction",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-26T00:00:00Z",
+    "durationSeconds": 43200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "REACT-04",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-501",
+      "type": "PROCESS",
+      "prevLink": "T-BX501-DISP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 20000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "T-BX501-GRAN",
+    "name": "Granulation (BX-501)",
+    "type": "PROCESS",
+    "process": "granulation",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-26T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "GRAN-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-501",
+      "type": "PROCESS",
+      "prevLink": "T-BX501-REACT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 20000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "T-BX501-BLEND",
+    "name": "Blending (BX-501)",
+    "type": "PROCESS",
+    "process": "blending",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-26T00:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "BLEND-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-501",
+      "type": "PROCESS",
+      "prevLink": "T-BX501-GRAN"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 20000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "T-BX501-COMP",
+    "name": "Compression (BX-501)",
+    "type": "PROCESS",
+    "process": "compression",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-26T00:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-501",
+      "type": "PROCESS",
+      "prevLink": "T-BX501-BLEND"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 20000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "T-BX501-COAT",
+    "name": "Film Coating (BX-501)",
+    "type": "PROCESS",
+    "process": "coating",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-26T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "COAT-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-501",
+      "type": "PROCESS",
+      "prevLink": "T-BX501-COMP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 20000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "T-BX501-PKG",
+    "name": "Packaging (BX-501)",
+    "type": "PROCESS",
+    "process": "packaging",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-26T00:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PKG-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-501",
+      "type": "PROCESS",
+      "prevLink": "T-BX501-COAT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 20000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "T-BX501-QC",
+    "name": "QC Release (BX-501)",
+    "type": "PROCESS",
+    "process": "qc-release",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-26T00:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "QC-LAB-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "TRACK"
+      }
+    ],
+    "linkId": {
+      "name": "BX-501",
+      "type": "END",
+      "prevLink": "T-BX501-PKG"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 20000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 8
+  },
+  {
+    "key": "T-BX502-DISP",
+    "name": "Dispense Materials (BX-502)",
+    "type": "PROCESS",
+    "process": "dispensing",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "DISP-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-DISP",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-502",
+      "type": "START",
+      "prevLink": ""
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 15000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "T-BX502-REACT",
+    "name": "API Reaction (BX-502)",
+    "type": "PROCESS",
+    "process": "reaction",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 43200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "REACT-04",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-502",
+      "type": "PROCESS",
+      "prevLink": "T-BX502-DISP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 15000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "T-BX502-GRAN",
+    "name": "Granulation (BX-502)",
+    "type": "PROCESS",
+    "process": "granulation",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "GRAN-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-502",
+      "type": "PROCESS",
+      "prevLink": "T-BX502-REACT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 15000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "T-BX502-BLEND",
+    "name": "Blending (BX-502)",
+    "type": "PROCESS",
+    "process": "blending",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "BLEND-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-502",
+      "type": "PROCESS",
+      "prevLink": "T-BX502-GRAN"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 15000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "T-BX502-COMP",
+    "name": "Compression (BX-502)",
+    "type": "PROCESS",
+    "process": "compression",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-502",
+      "type": "PROCESS",
+      "prevLink": "T-BX502-BLEND"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 15000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "T-BX502-COAT",
+    "name": "Film Coating (BX-502)",
+    "type": "PROCESS",
+    "process": "coating",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "COAT-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-502",
+      "type": "PROCESS",
+      "prevLink": "T-BX502-COMP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 15000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "T-BX502-PKG",
+    "name": "Packaging (BX-502)",
+    "type": "PROCESS",
+    "process": "packaging",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PKG-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-502",
+      "type": "PROCESS",
+      "prevLink": "T-BX502-COAT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 15000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "T-BX502-QC",
+    "name": "QC Release (BX-502)",
+    "type": "PROCESS",
+    "process": "qc-release",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "QC-LAB-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "TRACK"
+      }
+    ],
+    "linkId": {
+      "name": "BX-502",
+      "type": "END",
+      "prevLink": "T-BX502-PKG"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 15000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 8
+  },
+  {
+    "key": "T-BX503-DISP",
+    "name": "Dispense Materials (BX-503)",
+    "type": "PROCESS",
+    "process": "dispensing",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "DISP-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-DISP",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-503",
+      "type": "START",
+      "prevLink": ""
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 10000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 1
+  },
+  {
+    "key": "T-BX503-REACT",
+    "name": "API Reaction (BX-503)",
+    "type": "PROCESS",
+    "process": "reaction",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 43200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "REACT-04",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-503",
+      "type": "PROCESS",
+      "prevLink": "T-BX503-DISP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 10000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 2
+  },
+  {
+    "key": "T-BX503-GRAN",
+    "name": "Granulation (BX-503)",
+    "type": "PROCESS",
+    "process": "granulation",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "GRAN-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-503",
+      "type": "PROCESS",
+      "prevLink": "T-BX503-REACT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 10000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 3
+  },
+  {
+    "key": "T-BX503-BLEND",
+    "name": "Blending (BX-503)",
+    "type": "PROCESS",
+    "process": "blending",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 5400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "BLEND-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-503",
+      "type": "PROCESS",
+      "prevLink": "T-BX503-GRAN"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 10000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 4
+  },
+  {
+    "key": "T-BX503-COMP",
+    "name": "Compression (BX-503)",
+    "type": "PROCESS",
+    "process": "compression",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PRESS-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-MFG",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-503",
+      "type": "PROCESS",
+      "prevLink": "T-BX503-BLEND"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 10000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 5
+  },
+  {
+    "key": "T-BX503-COAT",
+    "name": "Film Coating (BX-503)",
+    "type": "PROCESS",
+    "process": "coating",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "COAT-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-503",
+      "type": "PROCESS",
+      "prevLink": "T-BX503-COMP"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 10000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 6
+  },
+  {
+    "key": "T-BX503-PKG",
+    "name": "Packaging (BX-503)",
+    "type": "PROCESS",
+    "process": "packaging",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 10800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "PKG-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      },
+      {
+        "resource": "CLEAN-PACK",
+        "isPrimary": false,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "BX-503",
+      "type": "PROCESS",
+      "prevLink": "T-BX503-COAT"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 10000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 7
+  },
+  {
+    "key": "T-BX503-QC",
+    "name": "QC Release (BX-503)",
+    "type": "PROCESS",
+    "process": "qc-release",
+    "windowStart": "2026-03-16T12:00:00Z",
+    "windowEnd": "2026-03-29T04:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "QC-LAB-02",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "TRACK"
+      }
+    ],
+    "linkId": {
+      "name": "BX-503",
+      "type": "END",
+      "prevLink": "T-BX503-PKG"
+    },
+    "typedAttributes": [
+      {
+        "name": "productType",
+        "dataType": "enum",
+        "value": {
+          "type": "enum",
+          "value": "Oncovir"
+        },
+        "category": "product",
+        "sequence": 1
+      },
+      {
+        "name": "batchSize",
+        "dataType": "integer",
+        "value": {
+          "type": "integer",
+          "value": 10000
+        },
+        "category": "production",
+        "sequence": 2
+      }
+    ],
+    "sequence": 8
+  }
+]
