@@ -11,8 +11,15 @@ import {
   SolveStatistics,
   List,
   CTPTask,
+  CTPTaskResource,
+  CTPTaskResourceList,
+  CTPProcess,
+  CTPLinkId,
+  CTPDuration,
   SchedulingLandscape,
   ScheduleEvaluator,
+  ScheduleContexts,
+  ChainContextEngine,
   WhereToConstraints,
   WhereToResult,
   BestScheduleContext,
@@ -20,6 +27,7 @@ import {
   CTPStartTime,
   CTPSolveResult as EngineSolveResult,
   CTPInterval,
+  CTPResourcePreference,
 } from '@ctp/engine';
 import { StateService } from '../state/state.service';
 import { ConfigService } from '../../config/config.service';
@@ -27,6 +35,7 @@ import { StrategyConfigService } from '../../config/strategy-config.service';
 import { LoggerService } from '../../logging/logger.service';
 import { SolveRequestDto } from './dto/solve-request.dto';
 import { WhereToRequestDto, WhereToResponseDto, MoveToRequestDto, MoveToResponseDto } from './dto/whereto.dto';
+import { CTPQueryDto, CTPQueryResponse, CTPQueryOption, ChainTemplatesResponse } from './dto/ctp-query.dto';
 
 export interface CTPSolveResult {
   status: string;
@@ -776,8 +785,257 @@ export class CTPService {
   }
 
   // ═══════════════════════════════════════
+  // Endpoint 11: CTP Query (Stateless)
+  // ═══════════════════════════════════════
+
+  ctpQuery(request: CTPQueryDto): CTPQueryResponse {
+    const landscape = this.ensureLandscape();
+
+    // 1. Find source chain
+    const sourceChain = landscape.processes?.getEntity(request.sourceChainKey);
+    if (!sourceChain || !sourceChain.tasks || sourceChain.tasks.length === 0) {
+      throw new HttpException(
+        `Chain "${request.sourceChainKey}" not found`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // 2. Clone the source chain
+    const cloned = this.cloneChainFromExisting(
+      sourceChain, request.orderName, landscape,
+    );
+
+    // 3. Apply priority override
+    if (request.priority != null) {
+      cloned.tasks.forEach(t => { t.priority = request.priority!; });
+    }
+
+    // 4. Apply resource preference overrides
+    if (request.preferredResources) {
+      for (const task of cloned.tasks) {
+        task.capacityResources?.forEach(tr => {
+          const resourceType = tr.resource;
+          if (!resourceType) return;
+          const preferred = request.preferredResources![resourceType];
+          if (preferred && preferred.length > 0) {
+            // Set preferred resources to REQUIRED mode
+            for (const pref of tr.preferences) {
+              if (preferred.includes(pref.resourceKey)) {
+                pref.mode = 'REQUIRED';
+              }
+            }
+          }
+        });
+      }
+    }
+
+    // 5. Build contexts for each cloned task (without modifying landscape)
+    const evaluator = new ScheduleEvaluator();
+    const allContexts = new ScheduleContexts();
+
+    for (const task of cloned.tasks) {
+      const contexts = evaluator.buildContexts(task, landscape);
+      for (const ctx of contexts) {
+        // Compute start times (available time slots on resources)
+        evaluator.computeStartTimes(ctx, landscape);
+        allContexts.addEntity(ctx);
+      }
+    }
+
+    // 6. Evaluate chain — get top-K valid combos
+    const scoring = this.buildScoring();
+    const chainEngine = new ChainContextEngine();
+    const maxOptions = request.maxOptions ?? 3;
+    const combos = chainEngine.evaluateChainAll(
+      cloned.chain, allContexts, landscape, scoring, maxOptions,
+    );
+
+    // 7. Build response
+    const options: CTPQueryOption[] = combos.map((combo, rank) => ({
+      rank: rank + 1,
+      feasible: true,
+      chainScore: combo.chainScore,
+      tasks: combo.startTimes.map((st, i) => {
+        const task = cloned.tasks[i];
+        const ctx = combo.contexts[i];
+        const resources = ctx.slot.resources
+          ? (() => {
+              const res: { resourceKey: string; resourceName: string; resourceType: string }[] = [];
+              ctx.slot.resources.forEach(r => {
+                if (r.resource) {
+                  res.push({
+                    resourceKey: r.resource.key,
+                    resourceName: r.resource.name,
+                    resourceType: r.resource.type || '',
+                  });
+                }
+              });
+              return res;
+            })()
+          : [];
+        return {
+          taskKey: st.taskKey,
+          taskName: task.name,
+          taskType: task.type || 'PROCESS',
+          start: CTPDateTime.toDateTime(st.assignedStart).toISO()!,
+          end: CTPDateTime.toDateTime(st.assignedEnd).toISO()!,
+          durationMinutes: Math.round((st.assignedEnd - st.assignedStart) / 60),
+          resources,
+        };
+      }),
+    }));
+
+    // 8. Compute promise status if needByDate provided
+    if (request.needByDate) {
+      const needBy = new Date(request.needByDate).getTime();
+      for (const option of options) {
+        const lastTask = option.tasks[option.tasks.length - 1];
+        const completionDate = new Date(lastTask.end).getTime();
+        const slackMs = needBy - completionDate;
+        const slackDays = Math.round(slackMs / (24 * 60 * 60 * 1000));
+        option.promiseStatus = {
+          needByDate: request.needByDate,
+          completionDate: lastTask.end,
+          slackDays,
+          status: slackDays > 1 ? 'early' : slackDays >= 0 ? 'on-time' : 'late',
+        };
+      }
+    }
+
+    return {
+      orderName: request.orderName,
+      sourceChainKey: request.sourceChainKey,
+      feasible: options.length > 0,
+      options,
+      infeasibilityReason: options.length === 0
+        ? `No feasible placement found for "${request.orderName}" using chain ${request.sourceChainKey}`
+        : null,
+    };
+  }
+
+  // ═══════════════════════════════════════
+  // Endpoint 12: Chain Templates
+  // ═══════════════════════════════════════
+
+  getChainTemplates(): ChainTemplatesResponse {
+    const landscape = this.ensureLandscape();
+    const templates: ChainTemplatesResponse['templates'] = [];
+
+    landscape.processes?.forEach(process => {
+      if (!process.tasks || process.tasks.length === 0) return;
+
+      const tasks: { type: string; name: string; durationMinutes: number; resourceCount: number }[] = [];
+      let totalDuration = 0;
+      process.tasks.forEach(task => {
+        const dur = task.duration?.duration() ?? 0;
+        totalDuration += dur;
+        tasks.push({
+          type: task.type || 'PROCESS',
+          name: task.name || task.key,
+          durationMinutes: Math.round(dur / 60),
+          resourceCount: task.capacityResources?.length ?? 0,
+        });
+      });
+
+      templates.push({
+        chainKey: process.key,
+        name: process.name || process.key,
+        category: process.category || '',
+        taskCount: tasks.length,
+        totalDurationMinutes: Math.round(totalDuration / 60),
+        tasks,
+      });
+    });
+
+    return { templates };
+  }
+
+  // ═══════════════════════════════════════
   // Private helpers
   // ═══════════════════════════════════════
+
+  private cloneChainFromExisting(
+    sourceChain: CTPProcess,
+    newOrderName: string,
+    landscape: SchedulingLandscape,
+  ): { chain: CTPProcess; tasks: CTPTask[] } {
+    const newChainKey = `CTP-${Date.now()}`;
+    const chain = new CTPProcess(newOrderName);
+    chain.key = newChainKey;
+    chain.category = sourceChain.category;
+    chain.cadence = sourceChain.cadence;
+
+    const tasks: CTPTask[] = [];
+    const keyMap = new Map<string, string>();
+
+    // First pass: clone tasks with new keys
+    const sourceTaskArray: CTPTask[] = [];
+    sourceChain.tasks!.forEach(t => sourceTaskArray.push(t));
+    sourceTaskArray.sort((a, b) => a.sequence - b.sequence);
+
+    for (let si = 0; si < sourceTaskArray.length; si++) {
+      const sourceTask = sourceTaskArray[si];
+      const suffix = sourceTask.key.split('-').pop() || `T${si}`;
+      const newKey = `${newChainKey}-${suffix}`;
+      keyMap.set(sourceTask.key, newKey);
+
+      const task = new CTPTask();
+      task.key = newKey;
+      task.hashKey = newKey;
+      task.name = `${newOrderName} - ${sourceTask.name?.split(' - ').pop() || sourceTask.type || 'Task'}`;
+      task.type = sourceTask.type;
+      task.duration = sourceTask.duration
+        ? new CTPDuration(sourceTask.duration.duration())
+        : null;
+      task.priority = sourceTask.priority;
+      task.process = newChainKey;
+      task.cadenceIntervalMinutes = sourceTask.cadenceIntervalMinutes;
+      task.sequence = sourceTask.sequence;
+
+      // Clone resource requirements
+      if (sourceTask.capacityResources && sourceTask.capacityResources.length > 0) {
+        task.capacityResources = new CTPTaskResourceList();
+        sourceTask.capacityResources.forEach(tr => {
+          const clonedTr = new CTPTaskResource(
+            tr.resource, tr.isPrimary, tr.index, undefined, tr.mode,
+          );
+          // Copy preferences
+          for (const pref of tr.getEffectivePreferences()) {
+            clonedTr.preferences.push(
+              new CTPResourcePreference(pref.resourceKey, pref.rank, pref.mode),
+            );
+          }
+          task.capacityResources!.add(clonedTr);
+        });
+      }
+
+      // Clone window from horizon (full planning window)
+      if (landscape.horizon) {
+        task.window = new CTPInterval(landscape.horizon.startW, landscape.horizon.endW, 1);
+      }
+
+      tasks.push(task);
+    }
+
+    // Second pass: remap linkId references and add to chain
+    for (let i = 0; i < sourceTaskArray.length; i++) {
+      const sourceTask = sourceTaskArray[i];
+      const task = tasks[i];
+
+      if (sourceTask.linkId) {
+        task.linkId = new CTPLinkId(
+          newChainKey,
+          sourceTask.linkId.type,
+          sourceTask.linkId.prevLink ? keyMap.get(sourceTask.linkId.prevLink) || '' : '',
+          sourceTask.linkId.maxGap,
+        );
+      }
+
+      chain.tasks!.add(task);
+    }
+
+    return { chain, tasks };
+  }
 
   private ensureLandscape(): SchedulingLandscape {
     const landscape = this.stateService.getLandscape();

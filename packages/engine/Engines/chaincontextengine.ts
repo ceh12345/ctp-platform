@@ -178,6 +178,111 @@ export class ChainContextEngine {
     return validCombos[0];
   }
 
+  /**
+   * Evaluate a chain and return the top-K valid combos (not just the best).
+   * Used by CTP Query to present multiple placement options.
+   */
+  public evaluateChainAll(
+    chain: CTPProcess,
+    allContexts: ScheduleContexts,
+    landscape: SchedulingLandscape,
+    scoring: CTPScoring,
+    maxResults: number = 3,
+    maxCombos?: number,
+  ): ChainContextCombo[] {
+    const tasks = chain.tasks;
+    if (!tasks || tasks.length === 0) return [];
+
+    // Step 1: Collect feasible contexts per task
+    const taskContextsMap = this.getContextsPerTask(tasks, allContexts);
+
+    const taskArray: CTPTask[] = [];
+    tasks.forEach(t => taskArray.push(t));
+    taskArray.sort((a, b) => a.sequence - b.sequence);
+    for (const task of taskArray) {
+      const ctxs = taskContextsMap.get(task.key);
+      if (!ctxs || ctxs.length === 0) return [];
+    }
+
+    // Step 2: Detect lanes
+    const lanes = this.detectLanes(tasks);
+
+    // Step 2.5: Pre-compute context time bounds
+    const boundsCache = new Map<string, ContextTimeBounds>();
+    taskContextsMap.forEach((contexts) => {
+      for (const ctx of contexts) {
+        const cacheKey = ctx.hashKey || ctx.key;
+        if (!boundsCache.has(cacheKey)) {
+          const bounds = this.getContextTimeBounds(ctx);
+          if (bounds) boundsCache.set(cacheKey, bounds);
+        }
+      }
+    });
+
+    // Step 3: Build cross-product
+    const cap = maxCombos ?? landscape.appSettings?.maxChainCombos ?? 500;
+    const combos = this.buildLaneCombos(taskArray, taskContextsMap, lanes, cap);
+    if (combos.length === 0) return [];
+
+    // Step 4: Propagate timing constraints
+    this.propagateAll(combos, taskArray, boundsCache);
+
+    // Step 5: Filter feasible
+    const feasible = combos.filter(c => c.feasible);
+    if (feasible.length === 0) return [];
+
+    // Step 5.5: Identify primary task
+    for (const combo of feasible) {
+      combo.primaryIndex = this.identifyPrimary(combo);
+    }
+
+    // Step 6: Score
+    this.scoreChainCombos(feasible, landscape, scoring);
+
+    // Step 7: Assign start times and collect valid combos
+    feasible.sort((a, b) => a.chainScore - b.chainScore);
+
+    const validCombos: ChainContextCombo[] = [];
+    for (const candidate of feasible) {
+      this.assignStartTimes(candidate);
+      const allAssigned = candidate.startTimes.every(
+        st => st.assignedStart > 0 && st.assignedEnd > st.assignedStart
+      );
+      if (!allAssigned) continue;
+      validCombos.push(candidate);
+    }
+
+    if (validCombos.length === 0) return [];
+
+    // Sort by earliest start so first-seen per resource set is the earliest
+    validCombos.sort((a, b) => {
+      const startDiff = a.startTimes[0].assignedStart - b.startTimes[0].assignedStart;
+      if (startDiff !== 0) return startDiff;
+      return a.chainScore - b.chainScore;
+    });
+
+    // Deduplicate: keep only the earliest placement per unique resource combination
+    const seenResourceSets = new Set<string>();
+    const deduplicated: ChainContextCombo[] = [];
+    for (const combo of validCombos) {
+      const resourceHash = combo.contexts
+        .map(ctx => {
+          const keys: string[] = [];
+          ctx.slot.resources?.forEach(r => {
+            if (r.resource) keys.push(r.resource.key);
+          });
+          return keys.sort().join('+');
+        })
+        .join('|');
+      if (!seenResourceSets.has(resourceHash)) {
+        seenResourceSets.add(resourceHash);
+        deduplicated.push(combo);
+      }
+    }
+
+    return deduplicated.slice(0, maxResults);
+  }
+
   // ── Step 1: Contexts per task ──
 
   private getContextsPerTask(

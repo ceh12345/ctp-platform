@@ -16,6 +16,7 @@ import {
   UpdateResourceModeDto,
   UpdateMaterialModesDto,
 } from './dto/solve-request.dto';
+import { CTPQueryDto } from './dto/ctp-query.dto';
 import { CTPSolveResultDto } from './dto/solve-result.dto';
 import {
   WhereToRequestDto,
@@ -178,6 +179,26 @@ export class CTPController {
       startTime,
       endTime,
     );
+  }
+
+  // ─── Endpoint 11: CTP Query (Stateless) ───
+
+  @Post('query')
+  @ApiOperation({ summary: 'Stateless CTP query — when can this order be scheduled?' })
+  @ApiBody({ type: CTPQueryDto })
+  @ApiResponse({ status: 200, description: 'Feasible placement options' })
+  @ApiResponse({ status: 404, description: 'Source chain not found' })
+  ctpQuery(@Body() body: CTPQueryDto) {
+    return this.ctpService.ctpQuery(body);
+  }
+
+  // ─── Endpoint 12: Chain Templates ───
+
+  @Get('chain-templates')
+  @ApiOperation({ summary: 'List existing chains available as CTP query templates' })
+  @ApiResponse({ status: 200, description: 'Chain templates with task structure' })
+  getChainTemplates() {
+    return this.ctpService.getChainTemplates();
   }
 
   // ─── Endpoint 9: Move-To ───

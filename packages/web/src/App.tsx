@@ -252,14 +252,22 @@ const ZOOM_LEVELS = [
   { label: 'Fit', days: 0 },
 ];
 
-function deriveOrderStatus(order: any): string {
+function deriveOrderStatus(order: any, tasks?: any[]): string {
   const raw = order.fillRate ?? 0;
   const fillRate = raw > 1 ? raw / 100 : raw;
   if (fillRate >= 0.99) return 'on-track';
-  const now = Date.now();
-  const due = new Date(order.dueDate).getTime();
-  if (due < now && fillRate < 0.99) return 'late';
-  if (fillRate < 0.5 || due - now < 48 * 3600 * 1000) return 'at-risk';
+  const due = order.dueDate ? new Date(order.dueDate).getTime() : 0;
+  if (due > 0 && tasks) {
+    const orderTasks = tasks.filter((tk: any) => tk.orderRef === order.orderKey && tk.feasible && tk.scheduledEnd);
+    const lastEnd = orderTasks.length > 0
+      ? Math.max(...orderTasks.map((tk: any) => new Date(tk.scheduledEnd).getTime()))
+      : 0;
+    if (lastEnd > due) return 'late';
+    if (fillRate < 0.5) return 'at-risk';
+    if (lastEnd > 0 && due - lastEnd < 48 * 3600 * 1000) return 'at-risk';
+  } else {
+    if (fillRate < 0.5) return 'at-risk';
+  }
   return 'on-track';
 }
 
@@ -3515,7 +3523,8 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   zoomLevel, setZoomLevel, scrollOffset, setScrollOffset,
   onSetResourcePrefForTask, onViewAgenda, onAskAI,
   replay, onReplayStep, onReplayJumpStart, onReplayJumpEnd,
-  onReplayTogglePlay, onReplaySpeedChange, onReplayExit, onReplayJumpToStep }: {
+  onReplayTogglePlay, onReplaySpeedChange, onReplayExit, onReplayJumpToStep,
+  ctpGhostBars }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   onViewAgenda?: (r: any) => void;
@@ -3550,6 +3559,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   onReplaySpeedChange?: (speed: number) => void;
   onReplayExit?: () => void;
   onReplayJumpToStep?: (step: number) => void;
+  ctpGhostBars?: any[] | null;
 }) {
   // Suppress Gantt ghost bars/overlays when WhereTo triggered from task detail panel
   const showGanttWhereTo = whereToSource !== 'panel';
@@ -4114,6 +4124,28 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                       }}>current</span>
                     </div>
                   )}
+                  {/* CTP Query ghost bars */}
+                  {ctpGhostBars && ctpGhostBars
+                    .filter(bar => bar.resourceKeys.includes(res.resourceKey))
+                    .map((bar, bi) => {
+                      const gLeft = toPct(bar.start);
+                      const gRight = toPct(bar.end);
+                      const gW = Math.max(gRight - gLeft, 0.3);
+                      return (
+                        <div key={`ctp-${bi}`} title={`${bar.taskName}\n${new Date(bar.start).toLocaleString()} — ${new Date(bar.end).toLocaleString()}`} style={{
+                          position: 'absolute', left: `${gLeft}%`, width: `${gW}%`,
+                          top: 2, height: LANE_H - 4, borderRadius: 4,
+                          background: `${C.green}25`, border: `2px dashed ${C.green}`,
+                          pointerEvents: 'none', zIndex: 11,
+                          display: 'flex', alignItems: 'center', padding: '0 6px',
+                        }}>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: C.green, whiteSpace: 'nowrap' }}>
+                            {bar.label}
+                          </span>
+                        </div>
+                      );
+                    })
+                  }
                 </div>
               </div>
             );
@@ -5673,7 +5705,7 @@ function OrderTable({ orders, products, tasks, orderModes, taskPins, taskExclude
 
     return {
       ...o,
-      _status: deriveOrderStatus(o),
+      _status: deriveOrderStatus(o, tasks),
       _productName: prodName,
       _totalTasks: total,
       _scheduledTasks: placed,
@@ -6128,7 +6160,7 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
   const avgUtil = resources.length > 0
     ? resources.reduce((s: number, r: any) => s + r.utilization, 0) / resources.length
     : 0;
-  const lateOrders = orders.filter((o: any) => deriveOrderStatus(o) === 'late').length;
+  const lateOrders = orders.filter((o: any) => deriveOrderStatus(o, tasks) === 'late').length;
   const conflicts = deriveConflicts(tasks, resources, materials);
   const shortages = materials.filter((m: any) => deriveMaterialStatus(m) === 'shortage').length;
 
@@ -6192,7 +6224,7 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
           </Card>
           <Card title={`${t('order', 'Order')} Status`}>
             {orders.map((o: any) => {
-              const status = deriveOrderStatus(o);
+              const status = deriveOrderStatus(o, tasks);
               return (
                 <div key={o.orderKey} style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -6425,7 +6457,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   priorityOverrides, onSetPriority, onRushSelected,
   zoomLevel, setZoomLevel, scrollOffset, setScrollOffset, onViewAgenda, onAskAI,
   replay, onReplayStep, onReplayJumpStart, onReplayJumpEnd,
-  onReplayTogglePlay, onReplaySpeedChange, onReplayExit, onReplayJumpToStep }: {
+  onReplayTogglePlay, onReplaySpeedChange, onReplayExit, onReplayJumpToStep,
+  ctpGhostBars }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   onViewAgenda?: (r: any) => void;
@@ -6481,6 +6514,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   onReplaySpeedChange?: (speed: number) => void;
   onReplayExit?: () => void;
   onReplayJumpToStep?: (step: number) => void;
+  ctpGhostBars?: any[] | null;
 }) {
   const tabNames = [`Gantt by ${t('resource', 'Resource')}`, `Gantt by ${t('order', 'Order')}`, t('tasks', 'Task List')];
   const [subIdx, setSubIdx] = useState(0);
@@ -6514,7 +6548,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             replay={replay} onReplayStep={onReplayStep}
             onReplayJumpStart={onReplayJumpStart} onReplayJumpEnd={onReplayJumpEnd}
             onReplayTogglePlay={onReplayTogglePlay} onReplaySpeedChange={onReplaySpeedChange}
-            onReplayExit={onReplayExit} onReplayJumpToStep={onReplayJumpToStep} />
+            onReplayExit={onReplayExit} onReplayJumpToStep={onReplayJumpToStep}
+            ctpGhostBars={ctpGhostBars} />
           <UnscheduledPanel tasks={tasks} colors={colors}
             taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             onTaskClick={onTaskClick} onWhereTo={onWhereTo}
@@ -6584,8 +6619,8 @@ function OrdersTab({ orders, products, tasks, orderModes, taskPins, taskExcludes
     caseFilter ? orders.filter(o => o.orderKey === caseFilter) : orders,
     [orders, caseFilter]);
   const totalDemand = filteredOrders.reduce((s: number, o: any) => s + (o.demandQty || 0), 0);
-  const lateCount = filteredOrders.filter((o: any) => deriveOrderStatus(o) === 'late').length;
-  const atRiskCount = filteredOrders.filter((o: any) => deriveOrderStatus(o) === 'at-risk').length;
+  const lateCount = filteredOrders.filter((o: any) => deriveOrderStatus(o, tasks) === 'late').length;
+  const atRiskCount = filteredOrders.filter((o: any) => deriveOrderStatus(o, tasks) === 'at-risk').length;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {caseFilter && (
@@ -7528,6 +7563,99 @@ function parseActionsFromText(text: string): { cleanText: string; actions: ChatA
   return { cleanText, actions };
 }
 
+// ═══ CTP Query Form ═══
+function CTPQueryForm({ templates, loading, onEvaluate }: {
+  templates: any[];
+  loading: boolean;
+  onEvaluate: (sourceChainKey: string, orderName: string, priority?: number, needByDate?: string) => void;
+}) {
+  const [selectedChain, setSelectedChain] = useState(templates[0]?.chainKey || '');
+  const [orderName, setOrderName] = useState('');
+  const [needByDate, setNeedByDate] = useState('');
+
+  // Update selected chain when templates load
+  useEffect(() => {
+    if (templates.length > 0 && !selectedChain) {
+      setSelectedChain(templates[0].chainKey);
+    }
+  }, [templates, selectedChain]);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div>
+        <label style={{ fontSize: 12, fontWeight: 600, color: C.textMuted, fontFamily: FONT, marginBottom: 4, display: 'block' }}>
+          Based on (template chain):
+        </label>
+        <select
+          value={selectedChain}
+          onChange={e => setSelectedChain(e.target.value)}
+          style={{
+            width: '100%', padding: '8px 10px', borderRadius: 6,
+            border: `1px solid ${C.border}`, background: C.surface, color: C.text,
+            fontSize: 13, fontFamily: FONT,
+          }}
+        >
+          {templates.length === 0 && <option value="">Loading templates...</option>}
+          {templates.map((tpl: any) => (
+            <option key={tpl.chainKey} value={tpl.chainKey}>
+              {tpl.chainKey} — {tpl.name} ({tpl.taskCount} tasks, {tpl.totalDurationMinutes}min)
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label style={{ fontSize: 12, fontWeight: 600, color: C.textMuted, fontFamily: FONT, marginBottom: 4, display: 'block' }}>
+          New order name:
+        </label>
+        <input
+          type="text"
+          value={orderName}
+          onChange={e => setOrderName(e.target.value)}
+          placeholder="e.g., Johnson Knee Replacement"
+          style={{
+            width: '100%', padding: '8px 10px', borderRadius: 6,
+            border: `1px solid ${C.border}`, background: C.surface, color: C.text,
+            fontSize: 13, fontFamily: FONT, boxSizing: 'border-box',
+          }}
+        />
+      </div>
+      <div>
+        <label style={{ fontSize: 12, fontWeight: 600, color: C.textMuted, fontFamily: FONT, marginBottom: 4, display: 'block' }}>
+          Need by date (optional):
+        </label>
+        <input
+          type="date"
+          value={needByDate}
+          onChange={e => setNeedByDate(e.target.value)}
+          style={{
+            width: '100%', padding: '8px 10px', borderRadius: 6,
+            border: `1px solid ${C.border}`, background: C.surface, color: C.text,
+            fontSize: 13, fontFamily: FONT, boxSizing: 'border-box',
+          }}
+        />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+        <button
+          onClick={() => {
+            if (selectedChain && orderName.trim()) {
+              onEvaluate(selectedChain, orderName.trim(), undefined, needByDate || undefined);
+            }
+          }}
+          disabled={loading || !selectedChain || !orderName.trim()}
+          style={{
+            padding: '8px 20px', borderRadius: 8, border: 'none',
+            background: !selectedChain || !orderName.trim() ? C.textDim : C.accent,
+            color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            fontFamily: FONT, opacity: loading ? 0.6 : 1,
+          }}
+        >
+          {loading ? 'Evaluating...' : 'Evaluate'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function buildSystemPrompt(solveResult: any, selectedTask?: any): string {
   if (!solveResult) return 'No schedule data available yet. Ask the planner to run a solve first.';
   const { summary, tasks, resourceUtilization, orders, terminology } = solveResult;
@@ -7679,6 +7807,7 @@ If you don't have enough information to answer, say so.
   prompt += `- find_available_resources: Search for free resources in a time window\n`;
   prompt += `- compare_tasks: Compare multiple tasks side by side\n`;
   prompt += `- query_resources: Find resources by attribute (lights, surface, park, certification, capability, etc.)\n`;
+  prompt += `- evaluate_new_order: Stateless CTP query — evaluate when a new order can be scheduled by cloning an existing chain. Use when the planner asks "when can I schedule a new...", "can I fit another...", "where can I add...". The schedule is NOT modified.\n`;
   prompt += `\n## Attribute Questions — Where to Look\n`;
   prompt += `Task attributes (sport, division, homeTeam, phase, procedureType, operation, etc.) are already in the schedule summary above. Answer task attribute questions directly from context — do NOT call query_resources for tasks.\n`;
   prompt += `Resource attributes (lighting, surface, park, certification, capability, fencing, etc.) are NOT in the schedule summary. Always call query_resources for questions about resource properties.\n`;
@@ -7688,6 +7817,13 @@ If you don't have enough information to answer, say so.
   prompt += `  "Which cases are cardiology?" → answer from task context (procedureType on tasks)\n`;
   prompt += `  "Which ORs have laparoscopic equipment?" → call query_resources (capability on resources)\n`;
   prompt += `\nRescheduling a specific task to a different time window → where_can_task_go with startAfter/startBefore constraints. Do NOT use find_available_resources for this — it only checks one resource at a time. where_can_task_go checks all required resources simultaneously and returns ranked feasible slots.\n`;
+  prompt += `\n## CTP Query — Scheduling New Orders\n`;
+  prompt += `When the planner asks about scheduling a NEW order (not rescheduling an existing one):\n`;
+  prompt += `1. Identify which existing chain to use as a template. Match by procedure type, category, or ask the user. Use get_chain_detail to inspect chain structures if needed.\n`;
+  prompt += `2. Call evaluate_new_order with the source chain key and order name.\n`;
+  prompt += `3. If the user mentions a deadline ("by Friday", "need it by March 20", "end of week"), convert to ISO date and pass as need_by_date.\n`;
+  prompt += `4. Present the ranked options with dates, times, and resources. If promise status is returned, show it prominently (e.g., "6 days early", "2 days late").\n`;
+  prompt += `If the user specifies preferences ("with Dr. Patel" or "on Monday"), pass them as preferred_surgeon.\n`;
   prompt += `\n## Task Scheduling Windows\n`;
   prompt += `Some tasks have a scheduling window [window: start to end] shown in brackets. This restricts when the task can be placed.\n`;
   prompt += `If a planner asks "why wasn't X scheduled on Monday?" or similar, first check the task's scheduling window. If Monday falls outside the window, explain that clearly — e.g., "The scheduling window for this task doesn't start until 11:00 PM Monday night, so Tuesday is the earliest workday it can be placed."\n`;
@@ -7795,6 +7931,11 @@ const AI_TOOLS = [
     name: 'query_resources',
     description: 'Query RESOURCES by their typed attributes — physical properties, capabilities, certifications, location. Use when the planner asks which resources have a certain characteristic: lights, surface type, park location, sport type, certification level, fencing, capacity, machine capability, etc. Returns matching resources with full hierarchy and optional availability data. Can filter availability to a specific time window. Do NOT use this for task/game/operation questions — task attributes are already in context.',
     input_schema: { type: 'object' as const, properties: { attribute: { type: 'string' as const, description: 'The attribute name to filter on (e.g. "lightingAvailable", "surface", "park", "certificationLevel", "sport", "fenced", "capability")' }, value: { type: 'string' as const, description: 'Optional value to match. For booleans use "true" or "false". For enums use the enum value. Omit to return all resources that HAVE this attribute regardless of value.' }, include_availability: { type: 'boolean' as const, description: 'Set true to include current utilization and available minutes for each matching resource.' }, start_time: { type: 'string' as const, description: 'Optional: filter availability to this window start (ISO datetime). Use with end_time for time-specific queries like "Monday night".' }, end_time: { type: 'string' as const, description: 'Optional: filter availability to this window end (ISO datetime). Use with start_time.' } }, required: ['attribute'] },
+  },
+  {
+    name: 'evaluate_new_order',
+    description: 'Evaluate when a new order can be scheduled by cloning an existing chain\'s structure. Returns ranked placement options without changing the current schedule. Use when the user asks "when can I schedule...", "can I fit...", "where can I add...".',
+    input_schema: { type: 'object' as const, properties: { source_chain_key: { type: 'string' as const, description: 'Key of an existing chain to use as template (e.g., "C001"). If the user says a procedure name, find a matching chain first.' }, order_name: { type: 'string' as const, description: 'Name for the new order (e.g., "Johnson Knee Replacement")' }, preferred_surgeon: { type: 'string' as const, description: 'Optional: preferred surgeon/primary resource key' }, need_by_date: { type: 'string' as const, description: 'Customer need-by date (ISO format, e.g., "2026-03-20"). If the user says "by Friday" or "need it March 20", convert to a date.' } }, required: ['source_chain_key', 'order_name'] },
   },
 ];
 
@@ -8091,6 +8232,54 @@ async function executeQueryResources(attribute: string, value: string | undefine
   }
 }
 
+async function executeEvaluateNewOrder(sourceChainKey: string, orderName: string, preferredSurgeon?: string, needByDate?: string): Promise<string> {
+  try {
+    const body: any = { sourceChainKey, orderName, maxOptions: 3 };
+    if (preferredSurgeon) {
+      body.preferredResources = { Surgeon: [preferredSurgeon] };
+    }
+    if (needByDate) body.needByDate = needByDate;
+    const data = await api('/ctp/query', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    if (!data.feasible || !data.options || data.options.length === 0) {
+      return `No feasible placement found for "${orderName}" using chain ${sourceChainKey}.\n\n` +
+        `Reason: ${data.infeasibilityReason || 'All resource combinations exhausted.'}`;
+    }
+    let result = `Found ${data.options.length} option(s) for "${orderName}"`;
+    if (needByDate) result += ` (need by ${needByDate})`;
+    result += `:\n\n`;
+    for (const option of data.options) {
+      result += `**Option ${option.rank}** (score: ${option.chainScore.toFixed(2)})`;
+      if (option.promiseStatus) {
+        const ps = option.promiseStatus;
+        if (ps.status === 'early') result += ` — ${ps.slackDays} days early`;
+        else if (ps.status === 'on-time') result += ` — On time`;
+        else result += ` — ${Math.abs(ps.slackDays)} days late`;
+      }
+      result += `:\n`;
+      for (const task of option.tasks) {
+        const resources = task.resources.map((r: any) => r.resourceName || r.resourceKey).join(', ');
+        result += `  ${task.taskName}: ${task.start} — ${task.end} [${resources}]\n`;
+      }
+      result += '\n';
+    }
+    if (needByDate && data.options.length > 0) {
+      const allMeet = data.options.every((o: any) => o.promiseStatus?.status !== 'late');
+      if (allMeet) result += `All ${data.options.length} options meet the ${needByDate} deadline.\n`;
+      else {
+        const meetCount = data.options.filter((o: any) => o.promiseStatus?.status !== 'late').length;
+        result += `${meetCount} of ${data.options.length} options meet the ${needByDate} deadline.\n`;
+      }
+    }
+    result += `Schedule is unchanged. Use the CTP Query panel to schedule an option.`;
+    return result;
+  } catch (err: any) {
+    return `Error evaluating new order: ${err.message}`;
+  }
+}
+
 async function executeTool(toolName: string, input: any, solveResult: any): Promise<string> {
   switch (toolName) {
     case 'where_can_task_go': return await executeWhereTo(input.task_key, input.start_after, input.start_before);
@@ -8100,6 +8289,7 @@ async function executeTool(toolName: string, input: any, solveResult: any): Prom
     case 'find_available_resources': return executeFindAvailableResources(input.start_time, input.end_time, input.resource_group, input.min_duration_minutes, solveResult);
     case 'compare_tasks': return executeCompareTasks(input.task_keys, solveResult);
     case 'query_resources': return await executeQueryResources(input.attribute, input.value, input.include_availability ?? false, input.start_time, input.end_time);
+    case 'evaluate_new_order': return await executeEvaluateNewOrder(input.source_chain_key, input.order_name, input.preferred_surgeon, input.need_by_date);
     default: return `Unknown tool: ${toolName}`;
   }
 }
@@ -8567,6 +8757,12 @@ export default function App() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const [chatInitialInput, setChatInitialInput] = useState<string | undefined>(undefined);
+  // CTP Query state
+  const [showCTPDialog, setShowCTPDialog] = useState(false);
+  const [ctpTemplates, setCTPTemplates] = useState<any[]>([]);
+  const [ctpResult, setCTPResult] = useState<any>(null);
+  const [ctpLoading, setCTPLoading] = useState(false);
+  const [ctpSelectedOption, setCTPSelectedOption] = useState<number>(0);
   // Solve Replay state
   const [replay, setReplay] = useState<ReplayState>(REPLAY_INITIAL);
   const replayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -9208,6 +9404,70 @@ export default function App() {
     if (shouldCollapse) setChatCollapsed(true);
   }, [tasks, solveResult, handleWhereTo]);
 
+  // CTP ghost bars — computed from selected CTP option for Gantt overlay
+  const ctpGhostBars = useMemo(() => {
+    if (!ctpResult?.feasible || !ctpResult.options?.length) return null;
+    const option = ctpResult.options[ctpSelectedOption] || ctpResult.options[0];
+    return option.tasks.map((task: any) => ({
+      resourceKeys: task.resources.map((r: any) => r.resourceKey),
+      start: task.start,
+      end: task.end,
+      label: `CTP: ${task.taskType}`,
+      taskName: task.taskName,
+      rank: option.rank,
+    }));
+  }, [ctpResult, ctpSelectedOption]);
+
+  // ─── CTP Query handlers ───
+
+  const handleOpenCTPDialog = useCallback(async () => {
+    setShowCTPDialog(true);
+    try {
+      const data = await api('/ctp/chain-templates');
+      setCTPTemplates(data.templates || []);
+    } catch (err) {
+      console.error('Failed to load chain templates:', err);
+      setCTPTemplates([]);
+    }
+  }, []);
+
+  const handleCTPEvaluate = useCallback(async (sourceChainKey: string, orderName: string, priority?: number, needByDate?: string) => {
+    setCTPLoading(true);
+    setCTPResult(null);
+    setCTPSelectedOption(0);
+    try {
+      const body: any = { sourceChainKey, orderName, maxOptions: 5 };
+      if (priority != null) body.priority = priority;
+      if (needByDate) body.needByDate = needByDate;
+      const result = await api('/ctp/query', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      setCTPResult(result);
+    } catch (err: any) {
+      setCTPResult({ feasible: false, options: [], infeasibilityReason: err.message });
+    } finally {
+      setCTPLoading(false);
+    }
+  }, []);
+
+  const handleCTPBook = useCallback(async (_sourceChainKey: string, orderName: string, option: any) => {
+    // For V1: add the order by solving with the clone injected
+    // Since we don't have a session endpoint yet, we confirm and do a fresh solve
+    if (!confirm(`Schedule "${orderName}"?\n\nOption ${option.rank}: ${option.tasks.map((t: any) => `${t.taskType} at ${new Date(t.start).toLocaleTimeString()}`).join(', ')}\n\nThis will re-solve the schedule with the new order.`)) return;
+
+    // Close dialog and show solve is stale
+    setShowCTPDialog(false);
+    setCTPResult(null);
+    showToast(`"${orderName}" scheduling requires a re-solve with the new order. Feature coming in What-If Sprint 2.`);
+  }, [showToast]);
+
+  const handleCTPClose = useCallback(() => {
+    setShowCTPDialog(false);
+    setCTPResult(null);
+    setCTPSelectedOption(0);
+  }, []);
+
   // ─── Immediate single-task API actions ───
 
   // After any immediate action refreshes /ctp/state, apply the result and
@@ -9579,6 +9839,23 @@ export default function App() {
             {replay.active ? '⏸ Replaying' : '⟳ Replay'}
           </button>
           <button
+            onClick={handleOpenCTPDialog}
+            disabled={!solveResult}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '6px 14px', borderRadius: 8,
+              border: `1px solid ${C.border}`,
+              background: showCTPDialog ? C.green : 'none',
+              color: showCTPDialog ? '#fff' : solveResult ? C.text : C.textDim,
+              fontSize: 12, fontWeight: 600, cursor: solveResult ? 'pointer' : 'default',
+              fontFamily: FONT, transition: 'background 0.15s',
+              opacity: solveResult ? 1 : 0.5,
+            }}
+            title="CTP Query — evaluate when a new order can be scheduled"
+          >
+            CTP Query
+          </button>
+          <button
             onClick={() => { setChatOpen(o => !o); setChatCollapsed(false); }}
             style={{
               background: chatOpen ? C.accent : 'none', border: 'none',
@@ -9864,7 +10141,8 @@ export default function App() {
             replay={replay} onReplayStep={handleReplayStep}
             onReplayJumpStart={handleReplayJumpStart} onReplayJumpEnd={handleReplayJumpEnd}
             onReplayTogglePlay={handleReplayTogglePlay} onReplaySpeedChange={handleReplaySpeedChange}
-            onReplayExit={handleReplayExit} onReplayJumpToStep={handleReplayJumpToStep} />
+            onReplayExit={handleReplayExit} onReplayJumpToStep={handleReplayJumpToStep}
+            ctpGhostBars={ctpGhostBars} />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} tasks={tasks}
           orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}
@@ -10156,6 +10434,154 @@ export default function App() {
             setActiveTab('Schedule');
           }}
         />
+      )}
+
+      {/* CTP Query Dialog */}
+      {showCTPDialog && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9000,
+          display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
+          paddingTop: 80, background: 'rgba(0,0,0,0.5)',
+        }} onClick={(e) => { if (e.target === e.currentTarget) handleCTPClose(); }}>
+          <div style={{
+            background: C.surface, borderRadius: 12, padding: 0,
+            width: ctpResult?.feasible ? 720 : 480, maxHeight: '80vh',
+            border: `1px solid ${C.border}`, boxShadow: '0 16px 48px rgba(0,0,0,0.4)',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '16px 20px', borderBottom: `1px solid ${C.border}`,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT }}>
+                  CTP Query — When Can I Schedule This?
+                </div>
+                <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2, fontFamily: FONT }}>
+                  Evaluate placement options without changing the schedule
+                </div>
+              </div>
+              <button onClick={handleCTPClose} style={{
+                background: 'none', border: 'none', color: C.textMuted,
+                fontSize: 18, cursor: 'pointer', padding: 4, lineHeight: 1,
+              }}>✕</button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: 20, overflow: 'auto', flex: 1 }}>
+              {/* Input form — always visible */}
+              <CTPQueryForm
+                templates={ctpTemplates}
+                loading={ctpLoading}
+                onEvaluate={handleCTPEvaluate}
+              />
+
+              {/* Results */}
+              {ctpLoading && (
+                <div style={{ textAlign: 'center', padding: 24, color: C.textMuted, fontSize: 13, fontFamily: FONT }}>
+                  Evaluating placement options...
+                </div>
+              )}
+
+              {ctpResult && !ctpLoading && (
+                <div style={{ marginTop: 16 }}>
+                  {!ctpResult.feasible ? (
+                    <div style={{
+                      padding: 16, borderRadius: 8, background: `${C.red}15`,
+                      border: `1px solid ${C.red}30`, fontSize: 13, color: C.text, fontFamily: FONT,
+                    }}>
+                      <strong>No feasible placement found.</strong>
+                      <div style={{ marginTop: 6, fontSize: 12, color: C.textMuted }}>
+                        {ctpResult.infeasibilityReason || 'All resource combinations exhausted.'}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: FONT, marginBottom: 12 }}>
+                        {ctpResult.options.length} option{ctpResult.options.length !== 1 ? 's' : ''} found for "{ctpResult.orderName}"
+                      </div>
+                      {ctpResult.options.map((option: any, idx: number) => (
+                        <div key={idx} style={{
+                          marginBottom: 10, padding: 12, borderRadius: 8,
+                          background: ctpSelectedOption === idx ? `${C.accent}12` : C.surface2,
+                          border: ctpSelectedOption === idx ? `2px solid ${C.accent}` : `1px solid ${C.border}`,
+                          cursor: 'pointer', transition: 'border 0.15s',
+                        }} onClick={() => setCTPSelectedOption(idx)}>
+                          <div style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            marginBottom: 8,
+                          }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: FONT, display: 'flex', alignItems: 'center', gap: 8 }}>
+                              {idx === 0 ? '★ ' : ''}Option {option.rank}
+                              <span style={{ fontWeight: 400, color: C.textMuted, fontSize: 11 }}>
+                                score: {option.chainScore.toFixed(2)}
+                              </span>
+                              {option.promiseStatus && (
+                                <span style={{
+                                  fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
+                                  color: option.promiseStatus.status === 'early' ? C.green
+                                       : option.promiseStatus.status === 'on-time' ? C.yellow
+                                       : C.red,
+                                  background: option.promiseStatus.status === 'early' ? `${C.green}20`
+                                            : option.promiseStatus.status === 'on-time' ? `${C.yellow}20`
+                                            : `${C.red}20`,
+                                }}>
+                                  {option.promiseStatus.status === 'early'
+                                    ? `${option.promiseStatus.slackDays}d early`
+                                    : option.promiseStatus.status === 'on-time'
+                                    ? `On time`
+                                    : `${Math.abs(option.promiseStatus.slackDays)}d late`}
+                                </span>
+                              )}
+                            </span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleCTPBook(ctpResult.sourceChainKey, ctpResult.orderName, option); }}
+                              style={{
+                                padding: '4px 12px', borderRadius: 6,
+                                background: C.green, color: '#fff', border: 'none',
+                                fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+                              }}
+                            >
+                              Schedule This
+                            </button>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {option.tasks.map((task: any, ti: number) => {
+                              const resources = task.resources.map((r: any) => r.resourceName || r.resourceKey).join(', ');
+                              const startD = new Date(task.start);
+                              const endD = new Date(task.end);
+                              const dayStr = startD.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                              const startStr = startD.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                              const endStr = endD.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                              return (
+                                <div key={ti} style={{
+                                  display: 'flex', gap: 8, alignItems: 'baseline',
+                                  fontSize: 12, fontFamily: FONT, color: C.text,
+                                }}>
+                                  <span style={{ width: 80, fontWeight: 600, color: C.textMuted, flexShrink: 0 }}>
+                                    {task.taskType}
+                                  </span>
+                                  <span style={{ width: 160, flexShrink: 0 }}>
+                                    {dayStr} {startStr}–{endStr}
+                                  </span>
+                                  <span style={{ color: C.textMuted }}>{resources}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                      <div style={{ fontSize: 11, color: C.textMuted, marginTop: 8, fontFamily: FONT }}>
+                        Schedule is unchanged. Click "Schedule This" to add to the schedule.
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Version footer */}
