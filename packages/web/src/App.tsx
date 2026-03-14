@@ -33,11 +33,12 @@ const FONT = "'DM Sans','Segoe UI',system-ui,sans-serif";
    ═══════════════════════════════════════════════════════════════ */
 
 const tenantId = new URLSearchParams(window.location.search).get('tenant') || 'demo-manufacturing';
+const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
 async function api(path: string, options?: RequestInit) {
   const method = options?.method?.toUpperCase() ?? 'GET';
   const hasBody = method === 'POST' || method === 'PUT' || method === 'PATCH';
-  const res = await fetch(`/api/v1${path}`, {
+  const res = await fetch(`${API_BASE}/v1${path}`, {
     headers: {
       'Content-Type': 'application/json',
       'X-Tenant-Id': tenantId,
@@ -8498,7 +8499,7 @@ function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput, onC
         .map(m => ({ role: m.role, content: m.content }));
 
       const callApi = async (msgs: any[]) => {
-        const res = await fetch(`/api/v1/ai/chat`, {
+        const res = await fetch(`${API_BASE}/v1/ai/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': tenantId },
           body: JSON.stringify({

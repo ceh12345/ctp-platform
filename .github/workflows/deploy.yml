@@ -25,6 +25,9 @@ jobs:
       - name: Build engine
         run: cd packages/engine && npm run build
 
+      - name: Build UI (Vite)
+        run: cd packages/web && npm run build
+
       - name: Build API
         run: cd packages/api && npm run build
 
@@ -33,15 +36,17 @@ jobs:
 
       # Assemble deployment package with only runtime files
       # Directory layout mirrors the monorepo so config path resolution works:
-      #   deploy/packages/api/dist/   (compiled API — node starts here)
-      #   deploy/packages/engine/dist/ (compiled engine)
-      #   deploy/config/tenants/       (tenant data)
-      #   deploy/node_modules/         (production deps)
-      #   deploy/package.json          (root workspace manifest)
+      #   deploy/packages/api/dist/        (compiled API — node starts here)
+      #   deploy/packages/api/public/      (built Vite UI — served as static)
+      #   deploy/packages/engine/dist/     (compiled engine)
+      #   deploy/config/tenants/           (tenant data)
+      #   deploy/node_modules/             (production deps)
+      #   deploy/package.json              (root workspace manifest)
       - name: Assemble deployment package
         run: |
           mkdir -p deploy/packages/api deploy/packages/engine
           cp -r packages/api/dist deploy/packages/api/dist
+          cp -r packages/web/dist deploy/packages/api/public
           cp packages/api/package.json deploy/packages/api/package.json
           cp -r packages/engine/dist deploy/packages/engine/dist
           cp packages/engine/package.json deploy/packages/engine/package.json
