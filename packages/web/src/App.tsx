@@ -2055,7 +2055,7 @@ function SolveResultsDialog({ result, previousSnapshot, experienceLevel, onClose
 
   // Previous snapshot comparison
   const prev = previousSnapshot;
-  const prevAvgUtil = prev ? null : null; // We don't store prev util — skip for now
+  // prevAvgUtil: not stored yet — skip for now
 
   // Outcome color
   const outcomeColor = summary.unscheduledTasks === 0 ? C.green
@@ -2432,7 +2432,7 @@ function ResourceBottleneckDetailRow({ resource }: { resource: any }) {
 
 function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceClick,
   taskPins, taskExcludes, taskUnschedules, orderModes,
-  onPinTask, onExcludeTask, onUnscheduleTask, onCancelUnschedule,
+  onPinTask, onExcludeTask, onUnscheduleTask, onCancelUnschedule: _onCancelUnschedule,
   onApiUnschedule, onApiPin,
   resourceModeOverrides, onResourceModeChange, experienceLevel = 'novice',
   whereToTaskKey, whereToOptions, onMoveTo, onNavigateToOrders, onTaskClick,
@@ -2481,7 +2481,7 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
 
   const isPinned = taskPins?.[task.key] || task.pinned || false;
   const isExcluded = taskExcludes?.[task.key] || false;
-  const willUnschedule = taskUnschedules?.has(task.key) || false;
+  // willUnschedule reserved for future use
 
   const orderChain = task.orderRef
     ? tasks.filter((t: any) => t.orderRef === task.orderRef)
@@ -4501,7 +4501,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
 const CASE_LANE_H = 44;
 const CASE_LABEL_W = 180;
 
-function CaseGanttChart({ tasks, orders, products, colors, onTaskClick,
+function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClick,
   taskPins, taskExcludes, taskUnschedules, orderModes,
   zoomLevel, setZoomLevel, scrollOffset, setScrollOffset }: {
   tasks: any[]; orders?: any[]; products: any[]; colors: any;
@@ -5091,7 +5091,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   selectedTasks, onToggleSelect, onSetSelectedTasks,
   onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected,
   onSetResourcePreference, resourcePreferenceOverrides,
-  priorityOverrides, onSetPriority, onRushSelected,
+  priorityOverrides, onSetPriority: _onSetPriority, onRushSelected,
   onApiSchedule, actionLoading }: {
   tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
@@ -8364,7 +8364,7 @@ function ChatBubble({ message, onAction }: { message: ChatMessage; onAction?: (a
         borderRadius: 12,
         fontSize: 12,
         lineHeight: 1.5,
-        background: isUser ? '#2196f3' : C.bg2,
+        background: isUser ? '#2196f3' : C.surface2,
         color: isUser ? '#fff' : C.text,
         whiteSpace: 'pre-wrap',
         fontFamily: FONT,
@@ -8411,7 +8411,7 @@ function ChatCollapsedStrip({ lastMessage, onExpand }: { lastMessage: string | n
         flexShrink: 0,
         transition: 'background 0.15s',
       }}
-      onMouseEnter={e => (e.currentTarget.style.background = C.bg2)}
+      onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
       onMouseLeave={e => (e.currentTarget.style.background = C.surface)}
       title="Re-open AI Assistant"
     >
@@ -9765,8 +9765,8 @@ export default function App() {
             }}>
               <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: C.text }}>CTP Platform</div>
               {(() => {
-                const summary = solveResult?.summary;
-                const stats = solveResult?.stats;
+                void solveResult?.summary;
+                void solveResult?.stats;
                 const formatUptime = (s: number) => {
                   const h = Math.floor(s / 3600);
                   const m = Math.floor((s % 3600) / 60);
