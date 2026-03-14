@@ -39,7 +39,8 @@ async function bootstrap() {
     SwaggerModule.setup('docs', app, document);
 
     // Serve built Vite UI as static files (if public/ exists)
-    const publicDir = path.join(__dirname, '..', 'public');
+    // __dirname is packages/api/dist/src/ at runtime
+    const publicDir = path.join(__dirname, '..', '..', 'public');
     if (fs.existsSync(publicDir)) {
       const fastify = app.getHttpAdapter().getInstance();
       await fastify.register(require('@fastify/static'), {
