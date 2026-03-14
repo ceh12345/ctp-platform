@@ -22,13 +22,35 @@ jobs:
       - run: npm ci
 
       - name: Build engine
-        run: npm run build --workspace=@ctp/engine
+        run: cd packages/engine && npm run build
 
       - name: Build API
-        run: npm run build --workspace=@ctp/api
+        run: cd packages/api && npm run build
 
       - name: Type-check API
         run: npx tsc --noEmit -p packages/api/tsconfig.json
+
+      # Assemble deployment package with only runtime files
+      # Directory layout mirrors the monorepo so config path resolution works:
+      #   deploy/packages/api/dist/   (compiled API — node starts here)
+      #   deploy/packages/engine/dist/ (compiled engine)
+      #   deploy/config/tenants/       (tenant data)
+      #   deploy/node_modules/         (production deps)
+      #   deploy/package.json          (root workspace manifest)
+      - name: Assemble deployment package
+        run: |
+          mkdir -p deploy/packages/api deploy/packages/engine
+          cp -r packages/api/dist deploy/packages/api/dist
+          cp packages/api/package.json deploy/packages/api/package.json
+          cp -r packages/engine/dist deploy/packages/engine/dist
+          cp packages/engine/package.json deploy/packages/engine/package.json
+          cp -r config deploy/config
+          cp package.json deploy/package.json
+          cp package-lock.json deploy/package-lock.json
+          cd deploy && npm ci --omit=dev && cd ..
+
+      - name: Create deployment zip
+        run: cd deploy && zip -r ../deploy.zip . && cd ..
 
       - uses: azure/login@v1
         with:
@@ -37,3 +59,5 @@ jobs:
       - uses: azure/webapps-deploy@v3
         with:
           app-name: ctp-platform-api
+          package: deploy.zip
+          startup-command: node packages/api/dist/src/main.js
