@@ -48,6 +48,7 @@ _No sprints currently in progress._
 | Engine — Primary-Anchor Placement | assignStartTimes anchors on most constrained task (smallest feasible duration) instead of Task 0; backward walk for predecessors; AI prompt includes task scheduling windows | 2026-03-08 |
 | UI Sprint 19 — App Versioning | Build-time version.json generation, GET /health/version endpoint, logo hover About popover, fixed footer bar (version + tenant) | 2026-03-08 |
 | What-If Sprint 1 — CTP Query | Stateless clone-from-chain query, need-by date promise status, resource-combo dedup, CTP Query dialog + AI tool | 2026-03-12 |
+| Stafford Job Shop Rework | Strategy-aware scheduling gate (chainCompatible); Greedy bypass for job shops; per-task chain-aware scheduling with skip-and-retry; priority fix (numeric direct, tiers RUSH/HIGH/NORMAL/LOW); Gantt tenant timezone; tenant default strategy in API + UI | 2026-03-14 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -89,6 +90,8 @@ _No sprints currently in progress._
 | Willoughby Manufacturing | ~8 machines + stations | ~25 work orders | ~50 tasks | ✅ Active |
 | Acme Outpatient Healthcare | 2 ORs, 3 surgeons, 2 anesthesiologists, 3 nurses, 4 recovery bays | 13 cases | 39 tasks | ✅ Active (Phase 3) |
 | HRMD Sports | 58 resources (courts, fields, equipment) | 77 orders | 141 tasks | ✅ Active (cadence) |
+| Stafford Engineering | ~25 machines + operators | 15 orders | 100 tasks | ✅ Active (Greedy, job shop) |
+| Summit Pharma | ~15 resources | 8 orders | ~30 tasks | ✅ Active |
 
 ## Parking Lot
 
