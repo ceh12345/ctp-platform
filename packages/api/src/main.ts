@@ -19,9 +19,10 @@ async function bootstrap() {
       new FastifyAdapter(),
     );
 
-    // Register global exception filter
-    const loggerService = app.get(LoggerService);
-    app.useGlobalFilters(new AllExceptionsFilter(loggerService));
+    // TODO: custom AllExceptionsFilter disabled — broken on Fastify adapter.
+    // NestJS default exception handling works correctly out of the box.
+    // const loggerService = app.get(LoggerService);
+    // app.useGlobalFilters(new AllExceptionsFilter(loggerService));
 
     app.setGlobalPrefix('v1');
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
