@@ -35,9 +35,10 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('docs', app, document);
 
-    await app.listen(3000, '0.0.0.0');
-    console.log('Server running on http://localhost:3000');
-    console.log('Swagger docs at http://localhost:3000/docs');
+    const port = process.env.PORT || 3000;
+    await app.listen(port, '0.0.0.0');
+    console.log(`Server running on http://localhost:${port}`);
+    console.log(`Swagger docs at http://localhost:${port}/docs`);
   } catch (err: any) {
     // LoggerService not available — write directly to file
     const logDir = process.env.TELEMETRY_LOG_DIR ?? './logs';
