@@ -1,4 +1,5 @@
 name: Build and Deploy to Azure
+run-name: "Deploy — ${{ github.event.inputs.reason }}"
 
 on:
   workflow_dispatch:

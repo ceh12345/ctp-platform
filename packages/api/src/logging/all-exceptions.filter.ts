@@ -2,6 +2,7 @@ import {
   ExceptionFilter, Catch, ArgumentsHost,
   HttpException, HttpStatus,
 } from '@nestjs/common';
+import { FastifyReply, FastifyRequest } from 'fastify';
 import { LoggerService } from './logger.service';
 import { SystemErrorEvent } from './events';
 
@@ -11,8 +12,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
-    const request = ctx.getRequest();
-    const response = ctx.getResponse();
+    const request = ctx.getRequest<FastifyRequest>();
+    const reply = ctx.getResponse<FastifyReply>();
 
     const status = exception instanceof HttpException
       ? exception.getStatus()
@@ -27,7 +28,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // Only log unhandled (non-deliberate) exceptions as system_error
     if (!(exception instanceof HttpException)) {
       this.logger.systemError({
-        tenantId: request?.headers?.['x-tenant-id'] ?? 'unknown',
+        tenantId: request?.headers?.['x-tenant-id'] as string ?? 'unknown',
         severity: 'fatal',
         category: categorizeError(message),
         message,
@@ -39,8 +40,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       });
     }
 
-    // Fastify uses .status().send() not .status().json()
-    response.status(status).send({
+    reply.code(status).send({
       statusCode: status,
       message: status >= 500 ? 'Internal server error' : message,
     });
