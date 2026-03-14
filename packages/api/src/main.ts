@@ -32,6 +32,7 @@ async function bootstrap() {
       .setDescription('Capable to Promise & Slot Finder scheduling engine')
       .setVersion('1.0')
       .addApiKey({ type: 'apiKey', name: 'x-api-key', in: 'header' }, 'api-key')
+      .addGlobalParameters({ name: 'x-tenant-id', in: 'header', required: false, schema: { type: 'string', default: 'demo-manufacturing' } })
       .build();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('docs', app, document);
