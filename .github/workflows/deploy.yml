@@ -20,8 +20,15 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm run build
-      - run: npx tsc --noEmit
+
+      - name: Build engine
+        run: npm run build --workspace=@ctp/engine
+
+      - name: Build API
+        run: npm run build --workspace=@ctp/api
+
+      - name: Type-check API
+        run: npx tsc --noEmit -p packages/api/tsconfig.json
 
       - uses: azure/login@v1
         with:
