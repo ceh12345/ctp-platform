@@ -42,20 +42,14 @@ async function bootstrap() {
     // __dirname is packages/api/dist/src/ at runtime
     const publicDir = path.join(__dirname, '..', '..', 'public');
     if (fs.existsSync(publicDir)) {
-      const fastify = app.getHttpAdapter().getInstance();
-      await fastify.register(require('@fastify/static'), {
-        root: publicDir,
-        prefix: '/',
-        decorateReply: false,
-        wildcard: false,
-      });
+      app.useStaticAssets({ root: publicDir, prefix: '/' });
       // SPA fallback: serve index.html for non-API, non-file routes
-      fastify.setNotFoundHandler((req: any, reply: any) => {
-        if (req.url.startsWith('/v1/') || req.url.startsWith('/docs')) {
-          reply.code(404).send({ statusCode: 404, message: 'Not Found' });
-        } else {
-          reply.sendFile('index.html');
+      const indexHtml = path.join(publicDir, 'index.html');
+      app.getHttpAdapter().getInstance().addHook('onRequest', (req: any, reply: any, done: () => void) => {
+        if (req.url.startsWith('/v1/') || req.url.startsWith('/docs') || req.url.includes('.')) {
+          return done();
         }
+        reply.type('text/html').send(fs.readFileSync(indexHtml));
       });
     }
 
