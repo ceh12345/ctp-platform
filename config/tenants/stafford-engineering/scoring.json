@@ -2,6 +2,8 @@
   "name": "Stafford Scoring",
   "key": "stafford-scoring",
   "rules": [
-    { "ruleName": "EarliestStartTimeScoringRule", "weight": 1.0, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 }
+    { "ruleName": "EarliestStartTimeScoringRule", "weight": 0.55, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 },
+    { "ruleName": "changeoverscoringrule", "weight": 0.30, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 },
+    { "ruleName": "WhiteSpaceScoringRule", "weight": 0.15, "objective": 1, "includeInSolve": true, "penaltyFactor": 0 }
   ]
 }

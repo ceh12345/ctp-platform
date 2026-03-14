@@ -140,6 +140,8 @@ export class StateHydratorService {
       settings.topTasksToSchedule = config.topTasksToSchedule;
     if (config.resetUsageAfterProcessChange !== undefined)
       settings.resetUageAfterProcessChange = config.resetUsageAfterProcessChange;
+    if (config.solverStrategy !== undefined)
+      settings.solverStrategy = config.solverStrategy;
     return settings;
   }
 
@@ -321,20 +323,25 @@ export class StateHydratorService {
         task.typedAttributes.fromArray(taskAttrs);
       }
 
-      // Map typedAttributes.priority → task.rank for scheduling order
+      // Map typedAttributes.priority → task.priority for scheduling order
       if (item.typedAttributes) {
         const attrs: any = item.typedAttributes;
         const rawPriority = Array.isArray(attrs)
           ? attrs.find((a: any) => a.name === 'priority')?.value?.value
           : attrs.priority;
         if (rawPriority) {
-          const priorityRank: Record<string, number> = { URGENT: 1, 'ADD-ON': 2, ELECTIVE: 3 };
-          const rank = priorityRank[String(rawPriority).toUpperCase()] ?? 3;
-          task.priority = rank;
+          if (typeof rawPriority === 'number') {
+            // Numeric priority: use directly (1-10 RUSH, 11-30 HIGH, 31-70 NORMAL, 71-100 LOW)
+            task.priority = rawPriority;
+          } else {
+            // Text priority: map to numeric tier (1-10 RUSH, 11-30 HIGH, 31-70 NORMAL, 71-100 LOW)
+            const priorityRank: Record<string, number> = { URGENT: 5, 'ADD-ON': 20, ELECTIVE: 50 };
+            task.priority = priorityRank[String(rawPriority).toUpperCase()] ?? 50;
+          }
         }
       }
 
-      // Numeric priority from config overrides text-based rank
+      // Numeric priority from numericPriority attribute overrides above
       if (item.typedAttributes) {
         const attrs: any = item.typedAttributes;
         const numPri = Array.isArray(attrs)

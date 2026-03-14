@@ -77,6 +77,7 @@ export interface ISettingsConfig {
   topTasksToSchedule: number;
   resetUsageAfterProcessChange: boolean;
   scheduleDirection: number;
+  solverStrategy?: string;
 }
 
 // Tenant metadata

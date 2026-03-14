@@ -67,7 +67,13 @@ export class StrategyConfigService {
       .map(t => ({ ...t }))
       .sort((a, b) => a.sortOrder - b.sortOrder);
 
-    return { strategies, defaultStrategy: DEFAULT_STRATEGY_KEY, tiers, defaultTier: DEFAULT_TIER_KEY };
+    // Use tenant's configured solverStrategy as default, falling back to global default
+    const tenantStrategy = this.configService.getSettings()?.solverStrategy;
+    const defaultStrategy = tenantStrategy && strategies.some(s => s.key === tenantStrategy)
+      ? tenantStrategy
+      : DEFAULT_STRATEGY_KEY;
+
+    return { strategies, defaultStrategy, tiers, defaultTier: DEFAULT_TIER_KEY };
   }
 
   /** Check if a strategy key is available for the current tenant. */

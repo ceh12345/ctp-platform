@@ -151,7 +151,7 @@ function fmtNum(v: number | null | undefined): string {
 
 /** Get human-readable priority label from a task.
  *  Prefers typedAttributes.priority text (URGENT, ADD-ON, ELECTIVE, etc.)
- *  Falls back to numeric tier: 1-10 RUSH, 11-25 HIGH, 26-75 NORMAL, 76-100 LOW */
+ *  Falls back to numeric tier: 1-10 RUSH, 11-30 HIGH, 31-70 NORMAL, 71-100 LOW */
 function priorityLabel(task: any, overridePriority?: number): string {
   const textPri = Array.isArray(task?.typedAttributes)
     ? task.typedAttributes.find((a: any) => a.name === 'priority')?.value?.value
@@ -159,8 +159,8 @@ function priorityLabel(task: any, overridePriority?: number): string {
   if (textPri && typeof textPri === 'string' && isNaN(Number(textPri))) return textPri;
   const num = overridePriority ?? task?.priority ?? 100;
   if (num <= 10) return 'RUSH';
-  if (num <= 25) return 'HIGH';
-  if (num <= 75) return 'NORMAL';
+  if (num <= 30) return 'HIGH';
+  if (num <= 70) return 'NORMAL';
   return 'LOW';
 }
 
@@ -184,16 +184,28 @@ function priorityRank(label: string): number {
   return 2;
 }
 
-/** Detect timezone offset from task ISO dates for Gantt axis labels */
+/** Detect timezone offset from task ISO dates for Gantt axis labels.
+ *  When the tenant locale specifies a timezone, compute the real UTC offset
+ *  for that zone (using the first scheduled task's date) instead of parsing
+ *  the API response offset which may reflect the server's local timezone. */
 function detectGanttTz(tasks: any[]): { offsetMs: number; tz: string } {
   const iso = tasks.find((tk: any) => tk.scheduledStart)?.scheduledStart || '';
+  const tz = _locale?.timezone;
+  if (tz && iso) {
+    // Compute the UTC offset for the tenant timezone at the reference date
+    const refDate = new Date(iso);
+    const utcStr = refDate.toLocaleString('en-US', { timeZone: 'UTC' });
+    const localStr = refDate.toLocaleString('en-US', { timeZone: tz });
+    const offsetMs = new Date(localStr).getTime() - new Date(utcStr).getTime();
+    return { offsetMs, tz };
+  }
+  // Fallback: parse offset from ISO string
   const m = iso.match(/([+-])(\d{2}):(\d{2})$/);
-  if (!m) return { offsetMs: 0, tz: _locale?.timezone || 'UTC' };
+  if (!m) return { offsetMs: 0, tz: tz || 'UTC' };
   const sign = m[1] === '-' ? -1 : 1;
   const hrs = parseInt(m[2]), mins = parseInt(m[3]);
   const offsetMs = sign * (hrs * 60 + mins) * 60000;
-  const tz = _locale?.timezone || (mins === 0 && hrs > 0 ? `Etc/GMT${sign < 0 ? '+' : '-'}${hrs}` : 'UTC');
-  return { offsetMs, tz };
+  return { offsetMs, tz: tz || (mins === 0 && hrs > 0 ? `Etc/GMT${sign < 0 ? '+' : '-'}${hrs}` : 'UTC') };
 }
 
 function getTaskColor(task: any, colors: any): string {
@@ -5174,11 +5186,11 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   const typeFiltered = useMemo(() => {
     if (activeTypeChips.size === 0) return [];
     let filtered = enriched.filter(tk => activeTypeChips.has(tk._type));
-    if (priorityFilter === 'rush') filtered = filtered.filter(tk => tk._priority === 1);
+    if (priorityFilter === 'rush') filtered = filtered.filter(tk => tk._priority <= 10);
     else if (priorityFilter === 'override') filtered = filtered.filter(tk => priorityOverrides?.[tk.key] !== undefined);
-    else if (priorityFilter === 'high') filtered = filtered.filter(tk => tk._priority >= 1 && tk._priority <= 25);
-    else if (priorityFilter === 'medium') filtered = filtered.filter(tk => tk._priority >= 26 && tk._priority <= 75);
-    else if (priorityFilter === 'low') filtered = filtered.filter(tk => tk._priority >= 76);
+    else if (priorityFilter === 'high') filtered = filtered.filter(tk => tk._priority >= 1 && tk._priority <= 30);
+    else if (priorityFilter === 'medium') filtered = filtered.filter(tk => tk._priority >= 31 && tk._priority <= 70);
+    else if (priorityFilter === 'low') filtered = filtered.filter(tk => tk._priority >= 71);
     return filtered;
   }, [enriched, activeTypeChips, priorityFilter, priorityOverrides]);
 
@@ -7631,6 +7643,7 @@ function CTPQueryForm({ templates, loading, onEvaluate }: {
             width: '100%', padding: '8px 10px', borderRadius: 6,
             border: `1px solid ${C.border}`, background: C.surface, color: C.text,
             fontSize: 13, fontFamily: FONT, boxSizing: 'border-box',
+            colorScheme: 'dark',
           }}
         />
       </div>
@@ -8813,14 +8826,21 @@ export default function App() {
       if (strategiesData?.strategies?.length > 0) {
         setStrategyOptions(strategiesData.strategies);
       }
+      // Use tenant's configured default strategy if available
+      if (strategiesData?.defaultStrategy) {
+        setSolverStrategy(strategiesData.defaultStrategy);
+      }
       if (strategiesData?.tiers?.length > 0) {
         setTierOptions(strategiesData.tiers);
         if (strategiesData.defaultTier) {
           setSelectedTier(strategiesData.defaultTier);
-          const defaultTierDef = strategiesData.tiers.find(
-            (t: any) => t.key === strategiesData.defaultTier
-          );
-          if (defaultTierDef) setSolverStrategy(defaultTierDef.defaultStrategy);
+          // Only override with tier's default if no tenant-level default
+          if (!strategiesData.defaultStrategy) {
+            const defaultTierDef = strategiesData.tiers.find(
+              (t: any) => t.key === strategiesData.defaultTier
+            );
+            if (defaultTierDef) setSolverStrategy(defaultTierDef.defaultStrategy);
+          }
         }
       }
     } catch (e: any) {

@@ -292,7 +292,9 @@ export abstract class CTPBaseScheduler {
       const strategy = this.resolveStrategy(this.settings?.solverStrategy);
       this.neighborhoodAgent.setStrategy(strategy);
 
-      // Strategy compatibility guard
+      // Strategy compatibility guard — when chains exist, use ChainNeighborhood
+      // for task selection (respects chain sequence) even if the scheduling path
+      // is per-task (controlled by chainCompatible gate in schedule())
       if (this.settings?.hasChains && !strategy.chainCompatible) {
         this.neighborhoodAgent.setStrategy(new ChainNeighborhood());
       }
@@ -488,10 +490,20 @@ export abstract class CTPBaseScheduler {
       // Tighten window before explosion
       const feasible = this.tightenWindowFromPredecessor(task);
       if (!feasible) {
+        // Check if the failure is because predecessor isn't scheduled yet
+        // (vs a genuine constraint violation). If predecessor just hasn't been
+        // placed yet, skip without marking processed so we retry later.
+        const predKey = task.linkId?.prevLink;
+        const predecessor = predKey ? this.landscape.tasks.getEntity(predKey) : null;
+        if (predecessor && !predecessor.scheduled) {
+          // Predecessor not yet scheduled — skip, don't mark processed
+          task.errors = []; // clear the temporary error
+          return;
+        }
         task.processed = true;
         this.recordStep('infeasible', task, null, null, null,
           null, null, null, task.errors?.[0]?.reason ?? 'Predecessor not scheduled');
-        return; // Skip — predecessor not scheduled
+        return;
       }
 
       // Explode contexts for just this task
@@ -638,18 +650,27 @@ export abstract class CTPBaseScheduler {
     this.scheduleManualPass(tasks);
 
     // PASS 2: Solver — everything else, using the selected neighborhood strategy
-    if (this.settings?.hasChains) {
+    const strategy = this.resolveStrategy(this.settings?.solverStrategy);
+    if (this.settings?.hasChains && strategy.chainCompatible) {
       // Chain-aware: ChainContextEngine + bump-and-retry
       this.scheduleChainPass(tasks);
     } else {
+      // Per-task loop (Greedy/DueDate) — chains respected via propagation
+      // Use chain-aware per-task scheduling when chains exist (tightens
+      // predecessor windows before context explosion for each task)
+      const useChainAware = !!this.settings?.hasChains;
       let counter = 0;
       let max = tasks.length + 10;
 
       let next = this.nextTasksToSchedule(tasks, topTasksToSchedule);
 
       while (next.length > 0) {
-        this.explodeScheduleContexts(next);
-        this.scheduleTasks(next);
+        if (useChainAware) {
+          this.scheduleTasksChainAware(next);
+        } else {
+          this.explodeScheduleContexts(next);
+          this.scheduleTasks(next);
+        }
 
         next = this.nextTasksToSchedule(tasks, topTasksToSchedule);
         counter += 1;
@@ -667,9 +688,9 @@ export abstract class CTPBaseScheduler {
     const result = new CTPSolveResult();
     result.finalState = finalState;
     const agent = this.neighborhoodAgent as NextNeighborhoodAgent | null;
-    result.strategy = this.settings?.hasChains
+    result.strategy = (this.settings?.hasChains && strategy.chainCompatible)
       ? 'Chain'
-      : (agent ? agent.getStrategy().name : "");
+      : (this.settings?.solverStrategy ?? strategy.name);
     result.totalTasks = tasks.length;
     result.solveTimeMs = performance.now() - startTime;
     result.contextsEvaluated = this.contextsEvaluated;
