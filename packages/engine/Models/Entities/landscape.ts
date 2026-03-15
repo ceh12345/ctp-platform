@@ -9,6 +9,7 @@ import { CTPResource, CTPResources } from "./resource";
 import { CTPProcess, CTPProcesses } from "./process";
 import { CTPStateChanges } from "./statechange";
 import { CTPBatchRules } from "./batchrule";
+import { CTPOrders } from "./order";
 
 export interface ILandscape {
   horizon: CTPHorizon | null;
@@ -19,6 +20,7 @@ export interface ILandscape {
   stateChanges: CTPStateChanges | null;
   stateTasks: CTPTasks | null;
   batchRules: CTPBatchRules | null;
+  orders: CTPOrders | null;
 }
 
 export class SchedulingLandscape implements ILandscape {
@@ -29,6 +31,7 @@ export class SchedulingLandscape implements ILandscape {
   public stateChanges: CTPStateChanges;
   public stateTasks: CTPTasks;
   public batchRules: CTPBatchRules;
+  public orders: CTPOrders;
 
   public appSettings: CTPAppSettings | null = null;
 
@@ -305,6 +308,42 @@ export class SchedulingLandscape implements ILandscape {
     return tightenCount;
   }
 
+  /**
+   * Hydrate due dates from orders onto tasks.
+   * Called once per solve after syncFromConfig and before the scheduling loop.
+   *
+   * Due date is stamped only on chain-terminal tasks (no successor).
+   * Intermediate tasks get dueDate === 0 (neutral for DueDateScoringRule).
+   * Order priority is stamped on ALL tasks in the chain.
+   */
+  public hydrateDueDates(): void {
+    if (!this.tasks || !this.orders) return;
+
+    // Find tasks that have a successor (another task references them as prevLink)
+    const hasSuccessor = new Set<string>();
+    this.tasks.forEach((task) => {
+      if (task.linkId?.prevLink) {
+        hasSuccessor.add(task.linkId.prevLink);
+      }
+    });
+
+    // Stamp due dates on terminal tasks only, priority on all
+    this.tasks.forEach((task) => {
+      if (task.linkId?.name) {
+        const order = this.orders.getEntity(task.linkId.name);
+        if (order) {
+          if (!hasSuccessor.has(task.key)) {
+            task.dueDate = order.dueDate;
+            task.lateDueDate = order.lateDueDate;
+          }
+          if (task.orderPriority === 0 && order.priority > 0) {
+            task.orderPriority = order.priority;
+          }
+        }
+      }
+    });
+  }
+
   constructor(s?: DateTime, e?: DateTime, a?: CTPAppSettings) {
     this.horizon = new CTPHorizon(s, e);
     this.tasks = new CTPTasks();
@@ -313,6 +352,7 @@ export class SchedulingLandscape implements ILandscape {
     this.stateChanges = new CTPStateChanges();
     this.stateTasks = new CTPTasks();
     this.batchRules = new CTPBatchRules();
+    this.orders = new CTPOrders();
     if (s !== undefined && e !== undefined) this.setHorizon(s, e);
     if (a) this.setSettings(a);
     else this.appSettings = new CTPAppSettings();

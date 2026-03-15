@@ -21,6 +21,7 @@ import {
   CTPResourcePreference,
   CTPTaskMaterialInput,
   CTPTaskMaterialInputList,
+  CTPOrder,
 } from '@ctp/engine';
 import { ConfigService } from '../../config/config.service';
 import {
@@ -64,6 +65,9 @@ export class StateHydratorService {
     landscape.tasks = tasks;
     landscape.stateChanges = stateChanges;
     landscape.buildProcesses();
+
+    // Load orders into landscape for due date hydration
+    this.hydrateOrders(landscape);
 
     // Resolve cadence profiles per task
     this.hydrateCadences(landscape);
@@ -114,6 +118,25 @@ export class StateHydratorService {
         }
       }
     });
+  }
+
+  private hydrateOrders(landscape: SchedulingLandscape): void {
+    const orderData = this.configService.getOrders();
+    if (!orderData || orderData.length === 0) return;
+
+    for (const item of orderData) {
+      const order = new CTPOrder('Order', item.name, item.key);
+      order.productKey = item.productKey;
+      order.demandQty = item.demandQty;
+      if (item.dueDate) {
+        order.dueDate = CTPDateTime.fromDateTime(DateTime.fromISO(item.dueDate));
+      }
+      if (item.lateDueDate) {
+        order.lateDueDate = CTPDateTime.fromDateTime(DateTime.fromISO(item.lateDueDate));
+      }
+      order.priority = item.priority ?? 0;
+      landscape.orders.addEntity(order);
+    }
   }
 
   private hydrateHorizon(config: IHorizonConfig | null): CTPHorizon {

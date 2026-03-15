@@ -267,21 +267,30 @@ const ZOOM_LEVELS = [
 
 function deriveOrderStatus(order: any, tasks?: any[]): string {
   const raw = order.fillRate ?? 0;
-  const fillRate = raw > 1 ? raw / 100 : raw;
-  if (fillRate >= 0.99) return 'on-track';
+  // fillRate is a ratio (0.0–N) where 1.0 = 100%. Values > 1 mean overfilled.
+  const fillRate = raw > 100 ? raw / 100 : raw;
   const due = order.dueDate ? new Date(order.dueDate).getTime() : 0;
+
+  // For single-unit orders (healthcare cases, etc.), derive fill from task feasibility
+  const effectiveFillRate = (order.demandQty ?? 0) <= 1 && tasks
+    ? (tasks.filter((tk: any) => tk.orderRef === order.orderKey).length > 0 &&
+       tasks.filter((tk: any) => tk.orderRef === order.orderKey).every((tk: any) => tk.feasible && tk.scheduledEnd)
+        ? 1.0 : 0)
+    : fillRate;
+
   if (due > 0 && tasks) {
     const orderTasks = tasks.filter((tk: any) => tk.orderRef === order.orderKey && tk.feasible && tk.scheduledEnd);
     const lastEnd = orderTasks.length > 0
       ? Math.max(...orderTasks.map((tk: any) => new Date(tk.scheduledEnd).getTime()))
       : 0;
     if (lastEnd > due) return 'late';
-    if (fillRate < 0.5) return 'at-risk';
+    if (effectiveFillRate < 0.5) return 'at-risk';
     if (lastEnd > 0 && due - lastEnd < 48 * 3600 * 1000) return 'at-risk';
   } else {
-    if (fillRate < 0.5) return 'at-risk';
+    if (effectiveFillRate < 0.5) return 'at-risk';
   }
-  return 'on-track';
+  if (effectiveFillRate >= 0.99) return 'on-track';
+  return 'at-risk';
 }
 
 function deriveMaterialStatus(mat: any): string {
@@ -915,8 +924,8 @@ function UtilBar({ pct, label, onClick }: { pct: number; label: string; onClick?
   );
 }
 
-function Modal({ open, onClose, title, children }: {
-  open: boolean; onClose: () => void; title: string; children: ReactNode;
+function Modal({ open, onClose, title, children, width }: {
+  open: boolean; onClose: () => void; title: string; children: ReactNode; width?: number;
 }) {
   if (!open) return null;
   return (
@@ -932,7 +941,7 @@ function Modal({ open, onClose, title, children }: {
         onClick={e => e.stopPropagation()}
         style={{
           background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16,
-          padding: 28, minWidth: 360, maxWidth: 500, maxHeight: '85vh', overflowY: 'auto' as const, fontFamily: FONT,
+          padding: 28, minWidth: width || 360, maxWidth: width || 500, maxHeight: '85vh', overflowY: 'auto' as const, fontFamily: FONT,
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -6766,65 +6775,445 @@ function MaterialsTab({ materials, materialModes, onMaterialModeChange }: {
    SETTINGS MODAL CONTENT
    ═══════════════════════════════════════════════════════════════ */
 
-function SettingsContent({ experienceLevel, onExperienceChange, stats }: {
-  experienceLevel: ExperienceLevel;
-  onExperienceChange: (level: ExperienceLevel) => void;
-  stats?: any;
+// ── Scoring Rules Editor types & catalog ─────────────────────────────────
+
+interface ScoringRuleOverride {
+  ruleName: string;
+  weight: number;
+  objective: number;
+  includeInSolve: boolean;
+  penaltyFactor: number;
+}
+
+const RULE_CATALOG: Record<string, {
+  desc: string; objective: number; defaultWeight: number; defaultPenalty: number;
+}> = {
+  EarliestStartTimeScoringRule: { desc: 'Prefer earlier placement — builds buffer before due dates', objective: 0, defaultWeight: 0.15, defaultPenalty: 0 },
+  LatestStartTimeScoringRule: { desc: 'Prefer later placement — JIT strategy, delays work to reduce WIP', objective: 0, defaultWeight: 0.15, defaultPenalty: 0 },
+  WhiteSpaceScoringRule: { desc: 'Prefer slots with more flexibility — preserves options for later tasks', objective: 1, defaultWeight: 0.15, defaultPenalty: 0 },
+  ChangeoverScoringRule: { desc: 'Minimize changeover/setup time — batch similar work together', objective: 0, defaultWeight: 0.20, defaultPenalty: 0 },
+  DueDateScoringRule: { desc: 'Penalize lateness — only fires on the last task in each order chain', objective: 0, defaultWeight: 0.35, defaultPenalty: 2.0 },
+  ResourceUtilizationScoringRule: { desc: 'Spread work across resources — avoids overloading bottlenecks', objective: 1, defaultWeight: 0.20, defaultPenalty: 0 },
+  ResourcePreferenceScoringRule: { desc: 'Honor operator/machine preferences — tiebreaker for resource assignment', objective: 0, defaultWeight: 0.10, defaultPenalty: 0 },
+};
+
+function displayRuleName(name: string): string {
+  return name.replace(/ScoringRule$/, '').replace(/([a-z])([A-Z])/g, '$1 $2');
+}
+
+const RULE_ABBREV: Record<string, string> = {
+  DueDateScoringRule: 'DueDate',
+  EarliestStartTimeScoringRule: 'Earliest',
+  LatestStartTimeScoringRule: 'Latest',
+  WhiteSpaceScoringRule: 'WhiteSpc',
+  ChangeoverScoringRule: 'Chgover',
+  ResourceUtilizationScoringRule: 'Util',
+  ResourcePreferenceScoringRule: 'Pref',
+};
+
+// ── Scoring Rules Editor ─────────────────────────────────────────────────
+
+function ScoringRulesEditor({ rules, onChange, source }: {
+  rules: ScoringRuleOverride[];
+  onChange: (rules: ScoringRuleOverride[]) => void;
+  source: 'config' | 'override' | null;
 }) {
+  const [addRule, setAddRule] = useState('');
+  const [showJson, setShowJson] = useState(false);
+
+  const totalWeight = rules.filter(r => r.includeInSolve).reduce((s, r) => s + r.weight, 0);
+  const totalPct = Math.round(totalWeight * 100);
+  const isValid = totalPct >= 99 && totalPct <= 101;
+
+  const availableRules = Object.keys(RULE_CATALOG).filter(
+    name => !rules.some(r => r.ruleName === name),
+  );
+
+  const updateRule = (idx: number, patch: Partial<ScoringRuleOverride>) => {
+    const next = rules.map((r, i) => i === idx ? { ...r, ...patch } : r);
+    onChange(next);
+  };
+
+  const removeRule = (idx: number) => {
+    onChange(rules.filter((_, i) => i !== idx));
+  };
+
+  const handleAdd = () => {
+    if (!addRule) return;
+    const cat = RULE_CATALOG[addRule];
+    if (!cat) return;
+    onChange([...rules, {
+      ruleName: addRule,
+      weight: cat.defaultWeight,
+      objective: cat.objective,
+      includeInSolve: true,
+      penaltyFactor: cat.defaultPenalty,
+    }]);
+    setAddRule('');
+  };
+
   return (
-    <div style={{ fontFamily: FONT }}>
-      <SectionLabel label="Experience Level" />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-        {EXPERIENCE_LEVELS.map(lvl => {
-          const isActive = lvl.value === experienceLevel;
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Fixed header: title + total weight */}
+      <div style={{ flexShrink: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <SectionLabel label="Scoring Rules" />
+          <span style={{
+            fontSize: 11, padding: '2px 8px', borderRadius: 4,
+            background: source === 'override' ? C.yellowDim : C.accentGlow,
+            color: source === 'override' ? C.yellow : C.accent,
+          }}>
+            {source === 'override' ? 'Modified' : 'From config'}
+          </span>
+        </div>
+        <div style={{
+          padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+          background: isValid ? C.greenDim : C.redDim,
+          color: isValid ? C.green : C.red,
+          display: 'flex', justifyContent: 'space-between',
+          marginBottom: 10,
+        }}>
+          <span>Total weight: {totalPct}%</span>
+          <span>{isValid ? 'Valid' : 'Must sum to 100%'}</span>
+        </div>
+      </div>
+
+      {/* Scrollable rule cards */}
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+        {rules.map((rule, idx) => {
+          const cat = RULE_CATALOG[rule.ruleName];
           return (
-            <div
-              key={lvl.value}
-              onClick={() => onExperienceChange(lvl.value)}
-              style={{
-                padding: '14px 16px', borderRadius: 10, cursor: 'pointer',
-                background: isActive ? C.accentGlow : C.bg,
-                border: isActive ? `2px solid ${C.accent}` : `1px solid ${C.border}`,
-                transition: 'all 0.15s',
-              }}
-              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = C.surface2; }}
-              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = isActive ? C.accentGlow : C.bg; }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 20 }}>{lvl.icon}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontWeight: 700, fontSize: 14, color: isActive ? C.accent : C.text,
+            <div key={rule.ruleName} style={{
+              padding: '12px 14px', borderRadius: 10, background: C.bg,
+              border: `1px solid ${C.border}`,
+              opacity: rule.includeInSolve ? 1 : 0.45,
+              transition: 'opacity 0.15s',
+            }}>
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: C.text }}>
+                    {displayRuleName(rule.ruleName)}
+                  </span>
+                  <span style={{
+                    fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 600,
+                    background: rule.objective === 1 ? C.greenDim : C.accentGlow,
+                    color: rule.objective === 1 ? C.green : C.accent,
                   }}>
-                    {lvl.label}
-                  </div>
-                  <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{lvl.desc}</div>
+                    {rule.objective === 1 ? 'maximize' : 'minimize'}
+                  </span>
                 </div>
-                {isActive && <span style={{ color: C.accent, fontSize: 16 }}>✓</span>}
+                <button onClick={() => removeRule(idx)} style={{
+                  background: 'none', border: 'none', color: C.textDim, cursor: 'pointer',
+                  fontSize: 14, padding: '2px 6px', lineHeight: 1,
+                }}>x</button>
               </div>
+              {/* Description */}
+              {cat && <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 8 }}>{cat.desc}</div>}
+              {/* Weight slider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 11, color: C.textMuted, width: 42 }}>Weight</span>
+                <input type="range" min={0} max={100} step={1}
+                  value={Math.round(rule.weight * 100)}
+                  onChange={e => updateRule(idx, { weight: parseInt(e.target.value) / 100 })}
+                  style={{ flex: 1, accentColor: C.accent }}
+                />
+                <span style={{ fontSize: 12, color: C.text, fontWeight: 600, width: 32, textAlign: 'right' }}>
+                  {Math.round(rule.weight * 100)}%
+                </span>
+              </div>
+              {/* Penalty factor — DueDate only */}
+              {rule.ruleName === 'DueDateScoringRule' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, color: C.textMuted, width: 42 }}>Penalty</span>
+                  <input type="number" min={0} max={10} step={0.5}
+                    value={rule.penaltyFactor}
+                    onChange={e => updateRule(idx, { penaltyFactor: parseFloat(e.target.value) || 0 })}
+                    style={{
+                      width: 56, padding: '3px 6px', borderRadius: 4, fontSize: 12,
+                      background: C.surface2, border: `1px solid ${C.border}`, color: C.text,
+                    }}
+                  />
+                  <span style={{ fontSize: 10, color: C.textDim }}>Late amplifier (0=symmetric, 2=3x)</span>
+                </div>
+              )}
+              {/* Include toggle */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: C.textMuted, cursor: 'pointer' }}>
+                <input type="checkbox" checked={rule.includeInSolve}
+                  onChange={e => updateRule(idx, { includeInSolve: e.target.checked })}
+                  style={{ accentColor: C.accent }}
+                />
+                Include in solve
+              </label>
             </div>
           );
         })}
       </div>
 
-      {/* Engine stats (expert only) */}
-      {showAt(experienceLevel, 'expert') && stats && (
+      {/* Add rule */}
+      {availableRules.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+          <select value={addRule} onChange={e => setAddRule(e.target.value)}
+            style={{
+              flex: 1, padding: '6px 8px', borderRadius: 6, fontSize: 12,
+              background: C.surface2, border: `1px solid ${C.border}`, color: C.text,
+            }}
+          >
+            <option value="">Add a scoring rule...</option>
+            {availableRules.map(name => (
+              <option key={name} value={name}>{displayRuleName(name)}</option>
+            ))}
+          </select>
+          <button onClick={handleAdd} disabled={!addRule} style={{
+            padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+            background: addRule ? C.accent : C.surface2,
+            color: addRule ? '#fff' : C.textDim,
+            border: 'none', cursor: addRule ? 'pointer' : 'default',
+          }}>Add</button>
+        </div>
+      )}
+
+      {/* Reset button */}
+      {source === 'override' && (
+        <button onClick={() => onChange([])} style={{
+          padding: '6px 12px', borderRadius: 6, fontSize: 11,
+          background: 'none', border: `1px solid ${C.border}`, color: C.textMuted,
+          cursor: 'pointer', marginBottom: 12, width: '100%',
+        }}>Reset to tenant config</button>
+      )}
+
+      {/* JSON preview */}
+      <div>
+        <button onClick={() => setShowJson(!showJson)} style={{
+          background: 'none', border: 'none', color: C.accent, fontSize: 11,
+          cursor: 'pointer', padding: 0, textDecoration: 'underline',
+        }}>{showJson ? 'Hide' : 'Show'} scoring.json</button>
+        {showJson && (
+          <pre style={{
+            marginTop: 6, padding: 10, borderRadius: 8, fontSize: 11,
+            background: C.bg, border: `1px solid ${C.border}`, color: C.textMuted,
+            overflowX: 'auto', whiteSpace: 'pre-wrap',
+          }}>
+            {JSON.stringify({ rules }, null, 2)}
+          </pre>
+        )}
+      </div>
+      </div>{/* end scrollable */}
+    </div>
+  );
+}
+
+// ── Solver Section ───────────────────────────────────────────────────────
+
+function SolverSection({ stats, solveResult }: { stats?: any; solveResult?: any }) {
+  if (!stats) {
+    return (
+      <div style={{ color: C.textMuted, fontSize: 13, padding: '20px 0' }}>
+        No solve data yet. Run a solve to see statistics.
+      </div>
+    );
+  }
+
+  const sr = solveResult?.solveResult;
+
+  return (
+    <div>
+      <SectionLabel label="Last Solve" />
+      <div style={{
+        padding: '10px 14px', borderRadius: 8, marginBottom: 16,
+        background: C.bg, border: `1px solid ${C.border}`,
+        fontSize: 13, color: C.textMuted, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap',
+      }}>
+        <span>Strategy: <strong style={{ color: C.text }}>{stats.strategy || '-'}</strong></span>
+        <span>Time: <strong style={{ color: C.text }}>{(stats.totalTimeMs / 1000).toFixed(2)}s</strong></span>
+        {sr?.contextsEvaluated != null && (
+          <span>Contexts: <strong style={{ color: C.text }}>{sr.contextsEvaluated}</strong></span>
+        )}
+        {stats.totalScore != null && (
+          <span>Score: <strong style={{ color: C.text }}>{Math.round(stats.totalScore)}</strong></span>
+        )}
+      </div>
+
+      <SectionLabel label="Timing Breakdown" />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+        {[
+          stats.propagationTimeMs != null && { label: 'Propagation', value: `${stats.propagationTimeMs}ms` },
+          stats.windowsTightened != null && { label: 'Windows tightened', value: String(stats.windowsTightened) },
+          stats.bumpsPerformed != null && { label: 'Bumps', value: `${stats.backtrackSuccesses || 0}/${stats.bumpsPerformed}` },
+          stats.iterations != null && { label: 'Iterations', value: String(stats.iterations) },
+          sr?.contextsEvaluated != null && { label: 'Contexts evaluated', value: String(sr.contextsEvaluated) },
+          stats.contextsPerTask != null && { label: 'Contexts / task', value: String(stats.contextsPerTask) },
+        ].filter(Boolean).map((item: any) => (
+          <div key={item.label} style={{
+            padding: '8px 12px', borderRadius: 6, background: C.bg,
+            border: `1px solid ${C.border}`, fontSize: 12,
+          }}>
+            <div style={{ color: C.text, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{item.value}</div>
+            <div style={{ color: C.textDim, fontSize: 10, marginTop: 2 }}>{item.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {stats.scoreBreakdown && (
         <>
-          <SectionLabel label="Solver Statistics" />
-          <div style={{ fontSize: 13 }}>
-            {typeof stats === 'object' && Object.entries(stats).map(([k, v]) => (
-              <div key={k} style={{
-                display: 'flex', justifyContent: 'space-between', padding: '4px 0',
-                borderBottom: `1px solid ${C.border}`,
+          <SectionLabel label="Score Breakdown" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 16 }}>
+            {Object.entries(stats.scoreBreakdown).map(([key, val]) => (
+              <div key={key} style={{
+                display: 'flex', justifyContent: 'space-between', padding: '6px 12px',
+                borderRadius: 6, background: C.bg, border: `1px solid ${C.border}`, fontSize: 12,
               }}>
-                <span style={{ color: C.textMuted }}>{k}</span>
-                <span style={{ color: C.text, fontWeight: 500 }}>{String(v)}</span>
+                <span style={{ color: C.textMuted }}>{key.replace('ScoringRule', '')}</span>
+                <span style={{ color: C.text, fontWeight: 600 }}>{Math.round(val as number)}</span>
               </div>
             ))}
           </div>
         </>
       )}
 
+      <SectionLabel label="All Statistics" />
+      <div style={{ fontSize: 12 }}>
+        {Object.entries(stats).map(([k, v]) => (
+          <div key={k} style={{
+            display: 'flex', justifyContent: 'space-between', padding: '4px 0',
+            borderBottom: `1px solid ${C.border}`,
+          }}>
+            <span style={{ color: C.textMuted }}>{k}</span>
+            <span style={{ color: C.text, fontWeight: 500 }}>{String(v)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Settings Content (left-nav layout) ───────────────────────────────────
+
+const SETTINGS_SECTIONS: { key: string; label: string; icon: string; minLevel: ExperienceLevel }[] = [
+  { key: 'general',  label: 'General',       icon: 'G', minLevel: 'novice' },
+  { key: 'scoring',  label: 'Scoring Rules', icon: 'S', minLevel: 'intermediate' },
+  { key: 'solver',   label: 'Solver',        icon: 'D', minLevel: 'expert' },
+];
+
+function SettingsContent({ experienceLevel, onExperienceChange, stats, solveResult, scoringRules, onScoringRulesChange, scoringSource }: {
+  experienceLevel: ExperienceLevel;
+  onExperienceChange: (level: ExperienceLevel) => void;
+  stats?: any;
+  solveResult?: any;
+  scoringRules: ScoringRuleOverride[];
+  onScoringRulesChange: (rules: ScoringRuleOverride[]) => void;
+  scoringSource: 'config' | 'override' | null;
+}) {
+  const [activeSection, setActiveSection] = useState('general');
+  const visibleSections = SETTINGS_SECTIONS.filter(s => showAt(experienceLevel, s.minLevel));
+
+  // Fall back to 'general' if current section becomes invisible
+  useEffect(() => {
+    if (!visibleSections.some(s => s.key === activeSection)) {
+      setActiveSection('general');
+    }
+  }, [experienceLevel]);
+
+  return (
+    <div style={{ display: 'flex', fontFamily: FONT, minHeight: 400 }}>
+      {/* Left nav */}
+      <div style={{ width: 170, borderRight: `1px solid ${C.border}`, flexShrink: 0, paddingTop: 4 }}>
+        {visibleSections.map(section => (
+          <div key={section.key}>
+            <div
+              onClick={() => setActiveSection(section.key)}
+              style={{
+                padding: '10px 14px', cursor: 'pointer', fontSize: 13,
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: activeSection === section.key ? C.accentGlow : 'transparent',
+                borderLeft: activeSection === section.key ? `2px solid ${C.accent}` : '2px solid transparent',
+                color: activeSection === section.key ? C.accent : C.textMuted,
+                fontWeight: activeSection === section.key ? 600 : 400,
+                transition: 'all 0.15s',
+              }}
+            >
+              {section.label}
+            </div>
+            {/* Scoring rules mini-summary under nav item */}
+            {section.key === 'scoring' && activeSection === 'scoring' && scoringRules.length > 0 && (() => {
+              const active = scoringRules.filter(r => r.includeInSolve);
+              const totalPct = Math.round(active.reduce((s, r) => s + r.weight, 0) * 100);
+              const isValid = totalPct >= 99 && totalPct <= 101;
+              return (
+                <div style={{
+                  padding: '4px 14px 8px 18px',
+                  borderLeft: '2px solid transparent',
+                }}>
+                  {active.map(r => (
+                    <div key={r.ruleName} style={{
+                      display: 'flex', justifyContent: 'space-between', gap: 4,
+                      fontSize: 10, color: C.text, lineHeight: 1.8,
+                      fontFamily: 'monospace', opacity: 0.75,
+                    }}>
+                      <span>{RULE_ABBREV[r.ruleName] || displayRuleName(r.ruleName)}</span>
+                      <span style={{ fontWeight: 700 }}>{Math.round(r.weight * 100)}</span>
+                    </div>
+                  ))}
+                  <div style={{
+                    display: 'flex', justifyContent: 'flex-end', gap: 4,
+                    fontSize: 10, fontWeight: 700, marginTop: 2,
+                    color: isValid ? C.green : C.red,
+                    fontFamily: 'monospace',
+                  }}>
+                    <span>{isValid ? '\u2713' : '\u2717'} {totalPct}%</span>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        ))}
+      </div>
+
+      {/* Content area */}
+      <div style={{ flex: 1, padding: '0 20px', overflowY: 'auto', maxHeight: 500 }}>
+        {activeSection === 'general' && (
+          <div>
+            <SectionLabel label="Experience Level" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+              {EXPERIENCE_LEVELS.map(lvl => {
+                const isActive = lvl.value === experienceLevel;
+                return (
+                  <div
+                    key={lvl.value}
+                    onClick={() => onExperienceChange(lvl.value)}
+                    style={{
+                      padding: '14px 16px', borderRadius: 10, cursor: 'pointer',
+                      background: isActive ? C.accentGlow : C.bg,
+                      border: isActive ? `2px solid ${C.accent}` : `1px solid ${C.border}`,
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = C.surface2; }}
+                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = isActive ? C.accentGlow : C.bg; }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 20 }}>{lvl.icon}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: isActive ? C.accent : C.text }}>{lvl.label}</div>
+                        <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{lvl.desc}</div>
+                      </div>
+                      {isActive && <span style={{ color: C.accent, fontSize: 16 }}>&#10003;</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {activeSection === 'scoring' && (
+          <ScoringRulesEditor rules={scoringRules} onChange={onScoringRulesChange} source={scoringSource} />
+        )}
+
+        {activeSection === 'solver' && (
+          <SolverSection stats={stats} solveResult={solveResult} />
+        )}
+      </div>
     </div>
   );
 }
@@ -8743,6 +9132,23 @@ export default function App() {
   const [showResourcePrefDialog, setShowResourcePrefDialog] = useState(false);
   const [priorityOverrides, setPriorityOverrides] = useState<Record<string, number>>({});
   const [windowOverrides, setWindowOverrides] = useState<Record<string, { startW?: string; endW?: string }>>({});
+  const [scoringOverrides, setScoringOverrides] = useState<ScoringRuleOverride[] | null>(null);
+
+  const handleScoringRulesChange = useCallback((rules: ScoringRuleOverride[]) => {
+    setScoringOverrides(rules);
+    setSolveStale(true);
+  }, []);
+
+  // Derive active scoring rules from override state or last solve result
+  const activeScoringRules: ScoringRuleOverride[] = scoringOverrides
+    ?? solveResult?.scoring?.rules
+    ?? [];
+  const scoringSource: 'config' | 'override' | null = scoringOverrides
+    ? 'override'
+    : solveResult?.scoring?.source === 'override' ? 'override'
+    : solveResult?.scoring?.source === 'config' ? 'config'
+    : null;
+
   // Immediate action state
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -8900,6 +9306,7 @@ export default function App() {
 
       body.strategy = solverStrategy;
       body.detailLevel = experienceLevel;
+      if (scoringOverrides && scoringOverrides.length > 0) body.scoringOverrides = scoringOverrides;
 
       const result = await api('/ctp/solve', {
         method: 'POST',
@@ -9017,6 +9424,7 @@ export default function App() {
       if (taskUnschedules.size > 0) body.taskUnschedules = Array.from(taskUnschedules);
       if (Object.keys(resourceModeOverrides).length > 0) body.resourceModes = resourceModeOverrides;
       if (Object.keys(materialModeOverrides).length > 0) body.materialModes = materialModeOverrides;
+      if (scoringOverrides && scoringOverrides.length > 0) body.scoringOverrides = scoringOverrides;
 
       const result = await api('/ctp/solve', { method: 'POST', body: JSON.stringify(body) });
       setSolveResult(result);
@@ -9302,6 +9710,7 @@ export default function App() {
         detailLevel: experienceLevel,
         recordSolveSteps: true,
       };
+      if (scoringOverrides && scoringOverrides.length > 0) body.scoringOverrides = scoringOverrides;
       const result = await api('/ctp/solve', { method: 'POST', body: JSON.stringify(body) });
       setSolveResult(result);
       setSolveStale(false);
@@ -10183,11 +10592,15 @@ export default function App() {
       </div>
 
       {/* Modals */}
-      <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Settings">
+      <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Settings" width={680}>
         <SettingsContent
           experienceLevel={experienceLevel}
           onExperienceChange={handleExperienceChange}
           stats={solveResult?.stats}
+          solveResult={solveResult}
+          scoringRules={activeScoringRules}
+          onScoringRulesChange={handleScoringRulesChange}
+          scoringSource={scoringSource}
         />
       </Modal>
       <Modal open={userOpen} onClose={() => setUserOpen(false)} title="User Profile">

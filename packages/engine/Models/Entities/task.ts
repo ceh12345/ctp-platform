@@ -209,6 +209,11 @@ export class CTPTask extends CTPKeyEntity implements ITask {
   public priority: number = 100;
   public originalPriority: number = 100;  // snapshot at hydration time
 
+  // Due date fields — hydrated from order at solve time, not persisted
+  public dueDate: number = 0;         // epoch seconds, from order
+  public lateDueDate: number = 0;     // epoch seconds, from order
+  public orderPriority: number = 0;   // from order priority
+
   public resetScore() {
     this.score = Number.MAX_VALUE;
     this.feasible = null;

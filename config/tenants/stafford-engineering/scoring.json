@@ -1,9 +1,11 @@
 {
-  "name": "Stafford Scoring",
-  "key": "stafford-scoring",
+  "name": "Job Shop - On Time Delivery",
+  "key": "stafford-jobshop",
   "rules": [
-    { "ruleName": "EarliestStartTimeScoringRule", "weight": 0.55, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 },
-    { "ruleName": "changeoverscoringrule", "weight": 0.30, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 },
-    { "ruleName": "WhiteSpaceScoringRule", "weight": 0.15, "objective": 1, "includeInSolve": true, "penaltyFactor": 0 }
+    { "ruleName": "DueDateScoringRule", "weight": 0.35, "objective": 0, "includeInSolve": true, "penaltyFactor": 2.0 },
+    { "ruleName": "ResourceUtilizationScoringRule", "weight": 0.20, "objective": 1, "includeInSolve": true, "penaltyFactor": 0 },
+    { "ruleName": "ChangeoverScoringRule", "weight": 0.20, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 },
+    { "ruleName": "EarliestStartTimeScoringRule", "weight": 0.15, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 },
+    { "ruleName": "ResourcePreferenceScoringRule", "weight": 0.10, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 }
   ]
 }

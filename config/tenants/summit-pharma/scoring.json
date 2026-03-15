@@ -1,7 +1,10 @@
 {
-  "name": "Summit Pharma Scoring",
-  "key": "summit-pharma-scoring",
+  "name": "Pharmaceutical Batch Scheduling",
+  "key": "summit-pharma",
   "rules": [
-    { "ruleName": "EarliestStartTimeScoringRule", "weight": 1.0, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 }
+    { "ruleName": "EarliestStartTimeScoringRule", "weight": 0.30, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 },
+    { "ruleName": "ChangeoverScoringRule", "weight": 0.25, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 },
+    { "ruleName": "WhiteSpaceScoringRule", "weight": 0.25, "objective": 1, "includeInSolve": true, "penaltyFactor": 0 },
+    { "ruleName": "ResourceUtilizationScoringRule", "weight": 0.20, "objective": 1, "includeInSolve": true, "penaltyFactor": 0 }
   ]
 }

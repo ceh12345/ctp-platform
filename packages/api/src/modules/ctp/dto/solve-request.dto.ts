@@ -150,6 +150,23 @@ export class SolveRequestDto {
   windowOverrides?: Record<string, { startW?: string; endW?: string }>;
 
   @ApiPropertyOptional({
+    description: 'Scoring rule overrides — replaces tenant scoring.json for this solve',
+    example: [
+      { ruleName: 'DueDateScoringRule', weight: 0.35, objective: 0, includeInSolve: true, penaltyFactor: 2.0 },
+      { ruleName: 'EarliestStartTimeScoringRule', weight: 0.65, objective: 0, includeInSolve: true, penaltyFactor: 0 },
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  scoringOverrides?: {
+    ruleName: string;
+    weight: number;
+    objective: number;
+    includeInSolve: boolean;
+    penaltyFactor: number;
+  }[];
+
+  @ApiPropertyOptional({
     description: 'Record solve steps for replay (default: false)',
     default: false,
   })

@@ -76,6 +76,9 @@ export * from './AI/Scheduling/defaultscheduler';
 
 // AI - Scoring
 export * from './AI/Scoring/changeoverscoring';
+export * from './AI/Scoring/duedatescoringrule';
+export * from './AI/Scoring/resourcepreferencescoringrule';
+export * from './AI/Scoring/resourceutilizationscoringrule';
 export * from './AI/Scoring/scoringrule';
 export * from './AI/Scoring/starttimescoring';
 export * from './AI/Scoring/whitespacescoring';

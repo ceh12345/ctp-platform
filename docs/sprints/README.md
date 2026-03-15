@@ -49,6 +49,8 @@ _No sprints currently in progress._
 | UI Sprint 19 — App Versioning | Build-time version.json generation, GET /health/version endpoint, logo hover About popover, fixed footer bar (version + tenant) | 2026-03-08 |
 | What-If Sprint 1 — CTP Query | Stateless clone-from-chain query, need-by date promise status, resource-combo dedup, CTP Query dialog + AI tool | 2026-03-12 |
 | Stafford Job Shop Rework | Strategy-aware scheduling gate (chainCompatible); Greedy bypass for job shops; per-task chain-aware scheduling with skip-and-retry; priority fix (numeric direct, tiers RUSH/HIGH/NORMAL/LOW); Gantt tenant timezone; tenant default strategy in API + UI | 2026-03-14 |
+| Engine — Scoring Rules + Due Date Hydration | 3 new scoring rules (DueDateScoringRule, ResourceUtilizationScoringRule, ResourcePreferenceScoringRule); due date hydration from orders onto chain-terminal tasks; scoringOverrides on solve request; scoring config in solve response | 2026-03-15 |
+| UI — Settings Panel + Scoring Rules Editor | Left-nav Settings panel (General, Scoring Rules, Solver); scoring weight sliders with add/remove/toggle; mini summary in nav; scoringOverrides via solve request (not persisted); solver timing consolidation | 2026-03-15 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -155,6 +157,7 @@ INFRA TRACK
 
   Engine Sprints:
   solver-1-ranked-contexts.md        ← Top-N ranked alternatives per task
+  engine-scoring-rules-duedate.md    ← 3 new scoring rules + due date hydration (DueDate, ResourceUtilization, ResourcePreference)
   solver-2-snapshot-restore.md       ← Save/restore schedule state
   solver-phase3-complete.md          ← Chain context engine + bump-and-retry spec
   solver-phase3b-bump-retry.md       ← Bump-and-retry design (cross-chain conflict resolution)
@@ -191,6 +194,7 @@ INFRA TRACK
   ui-17-bottleneck-display.md        ← Infeasible task bottleneck identification
   ui-18-solve-replay.md              ← Animated Gantt playback of solver sequence
   ui-20-conflict-categorization.md   ← Conflict type classification (availability/capacity/dependency)
+  ui-scoring-rules.md                ← Settings panel with left-nav, scoring rules editor, solver stats
 
   AI Sprints:
   ai-1-readonly-chat.md              ← Read-only AI chat assistant with Anthropic proxy
@@ -205,6 +209,8 @@ INFRA TRACK
 
   Infrastructure:
   logging-1-backend.md               ← Pluggable LoggerService with transports + debug endpoint
+  tenant-scoring-configs.md          ← All 5 tenant scoring.json configs with rationale
+  scoring-rules-guide.md             ← Rule-by-rule guide with demo stories
 ```
 
 ## Review Cadence
@@ -218,4 +224,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 12, 2026 (What-If Sprint 1 — CTP Query)*
+*Last updated: Mar 15, 2026 (Engine Scoring Rules + UI Settings Panel — both complete)*

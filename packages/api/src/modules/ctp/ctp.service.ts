@@ -76,6 +76,16 @@ export interface CTPSolveResult {
   colors?: any;
   terminology?: Record<string, string>;
   locale?: any;
+  scoring?: {
+    source: string;
+    rules: {
+      ruleName: string;
+      weight: number;
+      objective: number;
+      includeInSolve: boolean;
+      penaltyFactor: number;
+    }[];
+  };
   solveResult?: EngineSolveResult;
   solveSteps?: any[];
 }
@@ -105,6 +115,9 @@ export class CTPService {
     if (!landscape) {
       throw new HttpException('State not loaded.', HttpStatus.BAD_REQUEST);
     }
+
+    // Hydrate due dates from orders onto tasks (terminal tasks only)
+    landscape.hydrateDueDates();
 
     const requestedStrategy = request?.strategy || landscape.appSettings?.solverStrategy || 'Chain';
 
@@ -197,16 +210,17 @@ export class CTPService {
     stats.propagationTimeMs = Date.now() - propStart;
 
     // ─── 3. Build scoring ───
-    const scoringConfig = this.configService.getScoring();
-    if (!scoringConfig) {
+    const scoringSource = request?.scoringOverrides ? 'override' : 'config';
+    const scoringRules = request?.scoringOverrides ?? this.configService.getScoring()?.rules;
+    if (!scoringRules || scoringRules.length === 0) {
       throw new HttpException(
         'Scoring configuration not found.',
         HttpStatus.BAD_REQUEST,
       );
     }
 
-    const scoring = new CTPScoring(scoringConfig.name, scoringConfig.key);
-    for (const rule of scoringConfig.rules) {
+    const scoring = new CTPScoring('Scoring', 'scoring');
+    for (const rule of scoringRules) {
       const config = new CTPScoringConfiguration(
         rule.ruleName,
         rule.weight,
@@ -261,6 +275,7 @@ export class CTPService {
     // ─── 6. Build response ───
     const detailLevel = request?.detailLevel || 'novice';
     const result = this.extractResults(landscape, taskList, stats, detailLevel);
+    result.scoring = { source: scoringSource, rules: scoringRules };
     if (engineSolveResult) {
       result.solveResult = engineSolveResult;
       if (engineSolveResult.solveSteps?.length > 0) {

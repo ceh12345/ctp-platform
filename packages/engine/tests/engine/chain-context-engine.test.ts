@@ -69,7 +69,7 @@ function buildResource(name: string, key: string, landscape: SchedulingLandscape
 }
 
 function buildBasicScoring(): CTPScoring {
-  return makeScoring([{ name: 'StartTimeScore', weight: 1.0 }]);
+  return makeScoring([{ name: 'EarliestStartTimeScoringRule', weight: 1.0 }]);
 }
 
 // ═══════════════════════════════════════════════════════════════
