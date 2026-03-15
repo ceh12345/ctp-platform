@@ -29,13 +29,14 @@ import {
   CTPInterval,
   CTPResourcePreference,
 } from '@ctp/engine';
+import { ErrorCodes } from '../../common/error-codes';
 import { StateService } from '../state/state.service';
 import { ConfigService } from '../../config/config.service';
 import { StrategyConfigService } from '../../config/strategy-config.service';
 import { LoggerService } from '../../logging/logger.service';
 import { SolveRequestDto } from './dto/solve-request.dto';
 import { WhereToRequestDto, WhereToResponseDto, MoveToRequestDto, MoveToResponseDto } from './dto/whereto.dto';
-import { CTPQueryDto, CTPQueryResponse, CTPQueryOption, ChainTemplatesResponse } from './dto/ctp-query.dto';
+import { CTPQueryDto, CTPQueryResponse, CTPQueryOption, CTPQuerySummary, ChainTemplatesResponse } from './dto/ctp-query.dto';
 
 export interface CTPSolveResult {
   status: string;
@@ -113,7 +114,7 @@ export class CTPService {
 
     const landscape = this.stateService.getLandscape();
     if (!landscape) {
-      throw new HttpException('State not loaded.', HttpStatus.BAD_REQUEST);
+      throw new HttpException({ error: { code: ErrorCodes.STATE_NOT_LOADED, message: 'State not loaded.', category: 'config' } }, HttpStatus.BAD_REQUEST);
     }
 
     // Hydrate due dates from orders onto tasks (terminal tasks only)
@@ -125,10 +126,7 @@ export class CTPService {
     if (request?.strategy && !this.strategyConfigService.validateStrategy(request.strategy)) {
       const available = this.strategyConfigService.getStrategiesForTenant()
         .strategies.map(s => s.key).join(', ');
-      throw new HttpException(
-        `Invalid strategy '${request.strategy}'. Available: ${available}`,
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException({ error: { code: ErrorCodes.INVALID_STRATEGY, message: `Invalid strategy '${request.strategy}'. Available: ${available}`, category: 'validation' } }, HttpStatus.BAD_REQUEST);
     }
 
     // Map to engine strategy (handles custom strategy → engine handler mapping)
@@ -213,10 +211,7 @@ export class CTPService {
     const scoringSource = request?.scoringOverrides ? 'override' : 'config';
     const scoringRules = request?.scoringOverrides ?? this.configService.getScoring()?.rules;
     if (!scoringRules || scoringRules.length === 0) {
-      throw new HttpException(
-        'Scoring configuration not found.',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException({ error: { code: ErrorCodes.SCORING_CONFIG_MISSING, message: 'Scoring configuration not found.', category: 'config' } }, HttpStatus.BAD_REQUEST);
     }
 
     const scoring = new CTPScoring('Scoring', 'scoring');
@@ -298,7 +293,23 @@ export class CTPService {
       horizonDays: Math.round((new Date(result.summary.horizonEnd).getTime() -
         new Date(result.summary.horizonStart).getTime()) / 86400000),
       windowsTightened: result.stats?.windowsTightened,
+      scoringSource,
     });
+
+    if (result.summary.feasibilityRate < 70) {
+      this.logger.systemError({
+        tenantId: this.configService.getTenantId(),
+        severity: 'warning',
+        category: 'engine',
+        message: `Low feasibility rate: ${result.summary.feasibilityRate}% (${result.summary.scheduledTasks}/${result.summary.includedTasks} tasks)`,
+        context: {
+          strategy: result.stats?.strategy,
+          feasibilityRate: result.summary.feasibilityRate,
+          scheduledTasks: result.summary.scheduledTasks,
+          includedTasks: result.summary.includedTasks,
+        },
+      });
+    }
 
     return result;
   }
@@ -316,13 +327,13 @@ export class CTPService {
     const task = landscape.tasks?.getEntity(taskKey);
 
     if (!task) {
-      throw new HttpException(`Task ${taskKey} not found`, HttpStatus.NOT_FOUND);
+      throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
     }
     if (task.pinned) {
-      throw new HttpException(`Task ${taskKey} is pinned and cannot be unscheduled`, HttpStatus.CONFLICT);
+      throw new HttpException({ error: { code: ErrorCodes.TASK_IS_PINNED, message: `Task ${taskKey} is pinned and cannot be unscheduled`, category: 'validation' } }, HttpStatus.CONFLICT);
     }
     if (task.state !== CTPTaskStateConstants.SCHEDULED) {
-      throw new HttpException(`Task ${taskKey} is not currently scheduled`, HttpStatus.BAD_REQUEST);
+      throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_SCHEDULED, message: `Task ${taskKey} is not currently scheduled`, category: 'validation' } }, HttpStatus.BAD_REQUEST);
     }
 
     const previousStart = task.scheduled?.startW;
@@ -340,7 +351,7 @@ export class CTPService {
     const success = scheduler.unscheduleTaskWithStateChanges(taskKey, resetScore);
 
     if (!success) {
-      throw new HttpException(`Failed to unschedule task ${taskKey}`, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException({ error: { code: ErrorCodes.ENGINE_EXCEPTION, message: `Failed to unschedule task ${taskKey}`, category: 'engine' } }, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     return {
@@ -364,13 +375,13 @@ export class CTPService {
     const task = landscape.tasks?.getEntity(taskKey);
 
     if (!task) {
-      throw new HttpException(`Task ${taskKey} not found`, HttpStatus.NOT_FOUND);
+      throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
     }
     if (task.state === CTPTaskStateConstants.SCHEDULED) {
-      throw new HttpException(`Task ${taskKey} is already scheduled. Unschedule first.`, HttpStatus.BAD_REQUEST);
+      throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_SCHEDULED, message: `Task ${taskKey} is already scheduled. Unschedule first.`, category: 'validation' } }, HttpStatus.BAD_REQUEST);
     }
     if (task.pinned) {
-      throw new HttpException(`Task ${taskKey} is pinned`, HttpStatus.BAD_REQUEST);
+      throw new HttpException({ error: { code: ErrorCodes.TASK_IS_PINNED, message: `Task ${taskKey} is pinned`, category: 'validation' } }, HttpStatus.BAD_REQUEST);
     }
 
     // Propagate constraints
@@ -379,7 +390,7 @@ export class CTPService {
     // Build scoring
     const scoringConfig = this.configService.getScoring();
     if (!scoringConfig) {
-      throw new HttpException('Scoring configuration not found.', HttpStatus.BAD_REQUEST);
+      throw new HttpException({ error: { code: ErrorCodes.SCORING_CONFIG_MISSING, message: 'Scoring configuration not found.', category: 'config' } }, HttpStatus.BAD_REQUEST);
     }
     const scoring = new CTPScoring(scoringConfig.name, scoringConfig.key);
     for (const rule of scoringConfig.rules) {
@@ -426,12 +437,12 @@ export class CTPService {
     const landscape = this.ensureLandscape();
     const task = landscape.tasks?.getEntity(taskKey);
     if (!task) {
-      throw new HttpException(`Task ${taskKey} not found`, HttpStatus.NOT_FOUND);
+      throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
     }
 
     const resourceList = type === 'capacity' ? task.capacityResources : task.materialsResources;
     if (!resourceList) {
-      throw new HttpException(`No ${type} resources on task ${taskKey}`, HttpStatus.NOT_FOUND);
+      throw new HttpException({ error: { code: ErrorCodes.RESOURCE_NOT_FOUND, message: `No ${type} resources on task ${taskKey}`, category: 'validation' } }, HttpStatus.NOT_FOUND);
     }
 
     let found = false;
@@ -445,7 +456,7 @@ export class CTPService {
     });
 
     if (!found) {
-      throw new HttpException(`Resource ${resourceKey} not found on task ${taskKey}`, HttpStatus.NOT_FOUND);
+      throw new HttpException({ error: { code: ErrorCodes.RESOURCE_NOT_FOUND, message: `Resource ${resourceKey} not found on task ${taskKey}`, category: 'validation' } }, HttpStatus.NOT_FOUND);
     }
 
     const requiresResolve = previousMode !== mode &&
@@ -490,11 +501,11 @@ export class CTPService {
     const landscape = this.ensureLandscape();
     const task = landscape.tasks?.getEntity(taskKey);
     if (!task) {
-      throw new HttpException(`Task ${taskKey} not found`, HttpStatus.NOT_FOUND);
+      throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
     }
 
     if (pinned && task.state !== CTPTaskStateConstants.SCHEDULED) {
-      throw new HttpException(`Cannot pin task ${taskKey} — it is not currently scheduled`, HttpStatus.BAD_REQUEST);
+      throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_SCHEDULED, message: `Cannot pin task ${taskKey} — it is not currently scheduled`, category: 'validation' } }, HttpStatus.BAD_REQUEST);
     }
 
     task.pinned = pinned;
@@ -538,7 +549,7 @@ export class CTPService {
     const task = landscape.tasks?.getEntity(taskKey);
 
     if (!task) {
-      throw new HttpException(`Task ${taskKey} not found`, HttpStatus.NOT_FOUND);
+      throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
     }
 
     // Non-movable task types return empty options with a reason
@@ -585,7 +596,7 @@ export class CTPService {
     const task = landscape.tasks?.getEntity(taskKey);
 
     if (!task) {
-      throw new HttpException(`Task ${taskKey} not found`, HttpStatus.NOT_FOUND);
+      throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
     }
 
     // Re-evaluate to confirm option is still feasible
@@ -809,10 +820,7 @@ export class CTPService {
     // 1. Find source chain
     const sourceChain = landscape.processes?.getEntity(request.sourceChainKey);
     if (!sourceChain || !sourceChain.tasks || sourceChain.tasks.length === 0) {
-      throw new HttpException(
-        `Chain "${request.sourceChainKey}" not found`,
-        HttpStatus.NOT_FOUND,
-      );
+      throw new HttpException({ error: { code: ErrorCodes.CHAIN_EVALUATION_FAILED, message: `Chain "${request.sourceChainKey}" not found`, category: 'engine' } }, HttpStatus.NOT_FOUND);
     }
 
     // 2. Clone the source chain
@@ -900,7 +908,15 @@ export class CTPService {
       }),
     }));
 
-    // 8. Compute promise status if needByDate provided
+    // 8. Sort options by chain completion date (ascending = earliest first)
+    options.sort((a, b) => {
+      const aEnd = a.tasks[a.tasks.length - 1]?.end || '';
+      const bEnd = b.tasks[b.tasks.length - 1]?.end || '';
+      return new Date(aEnd).getTime() - new Date(bEnd).getTime();
+    });
+    options.forEach((opt, i) => { opt.rank = i + 1; });
+
+    // 9. Compute promise status if needByDate provided
     if (request.needByDate) {
       const needBy = new Date(request.needByDate).getTime();
       for (const option of options) {
@@ -917,14 +933,61 @@ export class CTPService {
       }
     }
 
+    // 10. Build summary
+    const feasibleOptions = options.filter(o => o.feasible !== false);
+    const earliest = feasibleOptions[0];
+    const latest = feasibleOptions[feasibleOptions.length - 1];
+
+    const summary: CTPQuerySummary = {
+      totalOptions: options.length,
+      feasibleOptions: feasibleOptions.length,
+      earliestCompletionDate: earliest
+        ? earliest.tasks[earliest.tasks.length - 1]?.end
+        : null,
+      earliestCompletionResources: earliest
+        ? earliest.tasks
+            .filter(t => t.taskType === 'PROCESS' || !t.taskType)
+            .map(t => t.resources.map(r => r.resourceName || r.resourceKey).join(', '))
+            .join(' → ')
+        : '',
+      latestCompletionDate: latest
+        ? latest.tasks[latest.tasks.length - 1]?.end
+        : null,
+      promiseStatus: null,
+      promiseSlackDays: null,
+      needByDate: request.needByDate || null,
+    };
+
+    // Compute promise status relative to need-by date
+    if (request.needByDate && summary.earliestCompletionDate) {
+      const earliestMs = new Date(summary.earliestCompletionDate).getTime();
+      const needByMs = new Date(request.needByDate).getTime();
+      const slackDays = Math.round((needByMs - earliestMs) / (24 * 3600 * 1000) * 10) / 10;
+      summary.promiseSlackDays = slackDays;
+      if (slackDays >= 2) {
+        summary.promiseStatus = 'on-time';
+      } else if (slackDays >= 0) {
+        summary.promiseStatus = 'tight';
+      } else {
+        summary.promiseStatus = 'cannot-meet';
+      }
+    }
+
+    // 11. Build infeasibility report
+    const infeasibilityReport = options.length === 0
+      ? {
+          reason: `No feasible placement found for "${request.orderName}" using chain ${request.sourceChainKey}`,
+          shortSummary: 'No feasible resource combinations found within the planning horizon',
+        }
+      : null;
+
     return {
       orderName: request.orderName,
       sourceChainKey: request.sourceChainKey,
-      feasible: options.length > 0,
+      feasible: feasibleOptions.length > 0,
       options,
-      infeasibilityReason: options.length === 0
-        ? `No feasible placement found for "${request.orderName}" using chain ${request.sourceChainKey}`
-        : null,
+      summary,
+      infeasibilityReport,
     };
   }
 
@@ -1058,7 +1121,7 @@ export class CTPService {
       // Auto-sync if not loaded
       this.stateService.syncFromConfig();
       const ls = this.stateService.getLandscape();
-      if (!ls) throw new HttpException('State not loaded.', HttpStatus.BAD_REQUEST);
+      if (!ls) throw new HttpException({ error: { code: ErrorCodes.STATE_NOT_LOADED, message: 'State not loaded.', category: 'config' } }, HttpStatus.BAD_REQUEST);
       return ls;
     }
     return landscape;
@@ -1162,7 +1225,7 @@ export class CTPService {
   private buildScoring(): CTPScoring {
     const scoringConfig = this.configService.getScoring();
     if (!scoringConfig) {
-      throw new HttpException('Scoring configuration not found.', HttpStatus.BAD_REQUEST);
+      throw new HttpException({ error: { code: ErrorCodes.SCORING_CONFIG_MISSING, message: 'Scoring configuration not found.', category: 'config' } }, HttpStatus.BAD_REQUEST);
     }
     const scoring = new CTPScoring(scoringConfig.name, scoringConfig.key);
     for (const rule of scoringConfig.rules) {

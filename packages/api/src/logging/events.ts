@@ -39,6 +39,7 @@ export interface SolveEvent extends BaseLogEvent {
   resourceCount: number;
   horizonDays: number;
   windowsTightened?: number;
+  scoringSource?: string;
   error?: string;
 }
 

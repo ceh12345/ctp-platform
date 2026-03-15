@@ -18,14 +18,31 @@ export class AllExceptionsFilter implements ExceptionFilter {
       ? exception.getStatus()
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message = exception instanceof Error
-      ? exception.message
-      : 'Unknown error';
+    // Check if HttpException already carries structured error envelope
+    const exceptionResponse = exception instanceof HttpException
+      ? exception.getResponse()
+      : null;
 
-    const stack = exception instanceof Error ? exception.stack : undefined;
+    const isStructured = typeof exceptionResponse === 'object'
+      && exceptionResponse !== null
+      && 'error' in exceptionResponse;
+
+    const errorBody = isStructured
+      ? exceptionResponse  // Already structured — pass through
+      : {
+          error: {
+            code: status >= 500 ? 'INTERNAL_ERROR' : 'UNKNOWN',
+            message: exception instanceof Error ? exception.message : 'Unknown error',
+            category: status >= 500 ? 'system' : 'engine',
+            timestamp: new Date().toISOString(),
+            tenant: request?.headers?.['x-tenant-id'] ?? 'unknown',
+          },
+        };
 
     // Only log unhandled (non-deliberate) exceptions as system_error
     if (!(exception instanceof HttpException)) {
+      const message = exception instanceof Error ? exception.message : 'Unknown error';
+      const stack = exception instanceof Error ? exception.stack : undefined;
       this.logger.systemError({
         tenantId: request?.headers?.['x-tenant-id'] ?? 'unknown',
         severity: 'fatal',
@@ -39,11 +56,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       });
     }
 
-    // NestJS Fastify adapter: .status() maps to reply.code() internally
-    response.status(status).send({
-      statusCode: status,
-      message: status >= 500 ? 'Internal server error' : message,
-    });
+    response.status(status).send(errorBody);
   }
 }
 

@@ -69,12 +69,29 @@ export interface CTPQueryOption {
   promiseStatus?: CTPQueryPromiseStatus;
 }
 
+export interface CTPQuerySummary {
+  totalOptions: number;
+  feasibleOptions: number;
+  earliestCompletionDate: string | null;
+  earliestCompletionResources: string;
+  latestCompletionDate: string | null;
+  promiseStatus: 'on-time' | 'tight' | 'cannot-meet' | null;
+  promiseSlackDays: number | null;
+  needByDate: string | null;
+}
+
+export interface InfeasibilityReport {
+  reason: string;
+  shortSummary: string | null;
+}
+
 export interface CTPQueryResponse {
   orderName: string;
   sourceChainKey: string;
   feasible: boolean;
   options: CTPQueryOption[];
-  infeasibilityReason: string | null;
+  summary: CTPQuerySummary | null;
+  infeasibilityReport: InfeasibilityReport | null;
 }
 
 // ── Chain Templates ──

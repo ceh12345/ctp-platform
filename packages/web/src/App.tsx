@@ -35,18 +35,85 @@ const FONT = "'DM Sans','Segoe UI',system-ui,sans-serif";
 const tenantId = new URLSearchParams(window.location.search).get('tenant') || 'demo-manufacturing';
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
+type ErrorCategory = 'validation' | 'engine' | 'config' | 'system';
+
+class ApiError extends Error {
+  code: string;
+  category: ErrorCategory;
+  status: number;
+  details: any;
+
+  constructor(message: string, code: string, category: ErrorCategory, status: number, details?: any) {
+    super(message);
+    this.code = code;
+    this.category = category;
+    this.status = status;
+    this.details = details;
+  }
+}
+
 async function api(path: string, options?: RequestInit) {
   const method = options?.method?.toUpperCase() ?? 'GET';
   const hasBody = method === 'POST' || method === 'PUT' || method === 'PATCH';
-  const res = await fetch(`${API_BASE}/v1${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Tenant-Id': tenantId,
-    },
-    ...(hasBody && !options?.body ? { body: '{}' } : {}),
-    ...options,
-  });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const start = performance.now();
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/v1${path}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Tenant-Id': tenantId,
+      },
+      ...(hasBody && !options?.body ? { body: '{}' } : {}),
+      ...options,
+    });
+  } catch (networkErr) {
+    console.error(`[API network] ${method} ${path} → connection failed:`, networkErr);
+    throw new ApiError(
+      'Cannot reach the API server. Check that the server is running and try again.',
+      'NETWORK_ERROR',
+      'system',
+      0,
+    );
+  }
+
+  if (!res.ok) {
+    let errorData: any = null;
+    try { errorData = await res.json(); } catch { /* no JSON body */ }
+
+    // Proxy returns 500 with no JSON when the API server is down
+    if (res.status >= 500 && !errorData) {
+      console.error(`[API network] ${method} ${path} → ${res.status} (no JSON body — API server likely down)`);
+      throw new ApiError(
+        'Cannot reach the API server. Check that the server is running and try again.',
+        'NETWORK_ERROR',
+        'system',
+        res.status,
+      );
+    }
+
+    const err = errorData?.error || {};
+    const apiError = new ApiError(
+      err.message || `API error: ${res.status} ${res.statusText}`,
+      err.code || 'UNKNOWN',
+      err.category || (res.status >= 500 ? 'system' : 'engine'),
+      res.status,
+      err.details,
+    );
+
+    console.error(
+      `[API ${apiError.category}] ${method} ${path} → ${res.status}:`,
+      apiError.message,
+      apiError.details || '',
+    );
+
+    throw apiError;
+  }
+
+  const elapsed = Math.round(performance.now() - start);
+  if (elapsed > 5000) {
+    console.warn(`[API] Slow response: ${method} ${path} took ${elapsed}ms`);
+  }
+
   return res.json();
 }
 
@@ -7965,6 +8032,124 @@ function parseActionsFromText(text: string): { cleanText: string; actions: ChatA
   return { cleanText, actions };
 }
 
+// ═══ CTP Option Card (collapsible) ═══
+function CTPOptionCardInner({ option, isActive, isEarliest, completionDate, resourceChain, onSelect, onBook }: {
+  option: any; isActive: boolean; isEarliest: boolean;
+  completionDate: string; resourceChain: string;
+  onSelect: () => void; onBook: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div
+      onClick={onSelect}
+      style={{
+        padding: '12px 16px', borderRadius: 8, marginBottom: 8, cursor: 'pointer',
+        background: isActive ? `${C.accent}12` : C.bg,
+        border: isActive ? `2px solid ${C.accent}` : `1px solid ${C.border}`,
+        transition: 'border-color 0.15s',
+      }}
+    >
+      {/* Compact summary — always visible */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11, color: C.textDim, fontWeight: 600, fontFamily: FONT }}>
+              Option {option.rank}
+            </span>
+            {isEarliest && (
+              <span style={{
+                fontSize: 10, padding: '1px 6px', borderRadius: 8,
+                background: C.greenDim, color: C.green, fontWeight: 600, fontFamily: FONT,
+              }}>
+                earliest
+              </span>
+            )}
+            {isActive && (
+              <span style={{
+                fontSize: 10, padding: '1px 6px', borderRadius: 8,
+                background: C.accentGlow, color: C.accent, fontWeight: 600, fontFamily: FONT,
+              }}>
+                viewing on Gantt
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginTop: 2, fontFamily: FONT }}>
+            Completes: {fmtDate(completionDate)}
+          </div>
+          <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2, fontFamily: FONT }}>
+            {resourceChain}
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 10, color: C.textDim, fontFamily: FONT }}>Score</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.textMuted, fontFamily: FONT }}>
+              {option.chainScore?.toFixed(2) ?? '\u2014'}
+            </div>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: C.textDim, fontSize: 14, padding: '4px',
+            }}
+            title={expanded ? 'Collapse detail' : 'Show task detail'}
+          >
+            {expanded ? '\u25BE' : '\u25B8'}
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onBook(); }}
+            style={{
+              padding: '6px 14px', borderRadius: 6, border: 'none',
+              background: C.accent, color: '#fff',
+              fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+            }}
+          >
+            Schedule
+          </button>
+        </div>
+      </div>
+      {/* Expanded task detail */}
+      {expanded && (
+        <div style={{
+          marginTop: 12, paddingTop: 10,
+          borderTop: `1px solid ${C.border}`,
+        }}>
+          {option.tasks.map((task: any, i: number) => {
+            const taskTypeLower = (task.taskType || '').toUpperCase();
+            const isSetup = taskTypeLower === 'SETUP' || taskTypeLower === 'SET_UP';
+            const isTeardown = taskTypeLower === 'TEAR_DOWN' || taskTypeLower === 'TEARDOWN';
+            const typeLabel = isSetup ? 'Setup' : isTeardown ? 'Teardown' : 'Process';
+            const typeBg = isSetup || isTeardown ? C.yellowDim : C.accentGlow;
+            const typeColor = isSetup || isTeardown ? C.yellow : C.accent;
+            return (
+              <div key={i} style={{
+                display: 'flex', gap: 12, padding: '4px 0',
+                fontSize: 12, alignItems: 'baseline', fontFamily: FONT,
+              }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 4,
+                  width: 60, textAlign: 'center', flexShrink: 0,
+                  background: typeBg, color: typeColor,
+                }}>
+                  {typeLabel}
+                </span>
+                <span style={{ color: C.text, flex: 1 }}>{task.taskName}</span>
+                <span style={{ color: C.textMuted, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                  {fmtDate(task.start)} \u2013 {fmtDate(task.end)}
+                </span>
+                <span style={{ color: C.textDim, fontSize: 11 }}>
+                  {task.resources.map((r: any) => r.resourceName || r.resourceKey).join(', ')}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ═══ CTP Query Form ═══
 function CTPQueryForm({ templates, loading, onEvaluate }: {
   templates: any[];
@@ -8013,7 +8198,7 @@ function CTPQueryForm({ templates, loading, onEvaluate }: {
           type="text"
           value={orderName}
           onChange={e => setOrderName(e.target.value)}
-          placeholder="e.g., Johnson Knee Replacement"
+          placeholder="e.g., Rush Order 500 units"
           style={{
             width: '100%', padding: '8px 10px', borderRadius: 6,
             border: `1px solid ${C.border}`, background: C.surface, color: C.text,
@@ -8646,9 +8831,52 @@ async function executeEvaluateNewOrder(sourceChainKey: string, orderName: string
       method: 'POST',
       body: JSON.stringify(body),
     });
+    // Use summary if available (Sprint 1b)
+    if (data.summary) {
+      const s = data.summary;
+      let result = '';
+
+      if (s.feasibleOptions === 0) {
+        result = `Cannot schedule "${orderName}" — no feasible options found.\n`;
+        if (data.infeasibilityReport?.shortSummary) {
+          result += `${data.infeasibilityReport.shortSummary}\n`;
+        }
+      } else {
+        // Lead with the answer
+        result = `Earliest delivery for "${orderName}": ${s.earliestCompletionDate}\n`;
+        result += `via ${s.earliestCompletionResources}\n`;
+
+        if (s.promiseStatus === 'on-time') {
+          result += `\u2713 ${s.promiseSlackDays} days before need-by date (${s.needByDate})\n`;
+        } else if (s.promiseStatus === 'tight') {
+          result += `\u26A0 Tight — only ${s.promiseSlackDays} days before need-by date\n`;
+        } else if (s.promiseStatus === 'cannot-meet') {
+          result += `\u2717 Cannot meet need-by date — ${Math.abs(s.promiseSlackDays!)} days late\n`;
+        }
+
+        result += `\n${s.feasibleOptions} options found`;
+        if (s.latestCompletionDate !== s.earliestCompletionDate) {
+          result += ` (${s.earliestCompletionDate} – ${s.latestCompletionDate})`;
+        }
+        result += `\n\n`;
+
+        for (const option of data.options) {
+          const lastTask = option.tasks[option.tasks.length - 1];
+          const resources = option.tasks
+            .filter((t: any) => t.taskType === 'PROCESS' || !t.taskType)
+            .map((t: any) => t.resources.map((r: any) => r.resourceName || r.resourceKey).join(', '))
+            .join(' \u2192 ');
+          result += `Option ${option.rank}: Completes ${lastTask.end} — ${resources}\n`;
+        }
+      }
+      result += `\nSchedule is unchanged. Use the CTP Query panel to schedule an option.`;
+      return result;
+    }
+
+    // Fallback: no summary (shouldn't happen with Sprint 1b backend)
     if (!data.feasible || !data.options || data.options.length === 0) {
       return `No feasible placement found for "${orderName}" using chain ${sourceChainKey}.\n\n` +
-        `Reason: ${data.infeasibilityReason || 'All resource combinations exhausted.'}`;
+        `Reason: ${data.infeasibilityReport?.reason || 'All resource combinations exhausted.'}`;
     }
     let result = `Found ${data.options.length} option(s) for "${orderName}"`;
     if (needByDate) result += ` (need by ${needByDate})`;
@@ -8667,14 +8895,6 @@ async function executeEvaluateNewOrder(sourceChainKey: string, orderName: string
         result += `  ${task.taskName}: ${task.start} — ${task.end} [${resources}]\n`;
       }
       result += '\n';
-    }
-    if (needByDate && data.options.length > 0) {
-      const allMeet = data.options.every((o: any) => o.promiseStatus?.status !== 'late');
-      if (allMeet) result += `All ${data.options.length} options meet the ${needByDate} deadline.\n`;
-      else {
-        const meetCount = data.options.filter((o: any) => o.promiseStatus?.status !== 'late').length;
-        result += `${meetCount} of ${data.options.length} options meet the ${needByDate} deadline.\n`;
-      }
     }
     result += `Schedule is unchanged. Use the CTP Query panel to schedule an option.`;
     return result;
@@ -9135,8 +9355,8 @@ export default function App() {
   const [scoringOverrides, setScoringOverrides] = useState<ScoringRuleOverride[] | null>(null);
 
   const handleScoringRulesChange = useCallback((rules: ScoringRuleOverride[]) => {
-    setScoringOverrides(rules);
-    setSolveStale(true);
+    setScoringOverrides(rules.length === 0 ? null : rules);
+    if (rules.length > 0) setSolveStale(true);
   }, []);
 
   // Derive active scoring rules from override state or last solve result
@@ -9149,12 +9369,19 @@ export default function App() {
     : solveResult?.scoring?.source === 'config' ? 'config'
     : null;
 
+  // Scoring validation — block solve if overrides don't sum to 100%
+  const scoringWeightPct = Math.round(
+    (scoringOverrides ?? []).filter(r => r.includeInSolve).reduce((s, r) => s + r.weight, 0) * 100,
+  );
+  const scoringValid = !scoringOverrides || (scoringWeightPct >= 99 && scoringWeightPct <= 101);
+
   // Immediate action state
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 4000);
+  const [toast, setToast] = useState<{ msg: string; severity: 'info' | 'warning' | 'error' } | null>(null);
+  const showToast = useCallback((msg: string, severity: 'info' | 'warning' | 'error' = 'info') => {
+    setToast({ msg, severity });
+    const duration = severity === 'error' ? 8000 : severity === 'warning' ? 5000 : 3000;
+    setTimeout(() => setToast(null), duration);
   }, []);
   // Gantt zoom state — lifted to App so it persists across tab switches
   const [ganttZoomLevel, setGanttZoomLevel] = useState('3 hours');
@@ -9256,6 +9483,11 @@ export default function App() {
   }, [experienceLevel]);
 
   const handleSolveConfirm = useCallback(async () => {
+    if (!scoringValid) {
+      showToast(`Scoring rules must sum to 100% (currently ${scoringWeightPct}%). Open Settings → Scoring Rules to fix.`, 'warning');
+      console.warn(`[Solve blocked] Scoring weights sum to ${scoringWeightPct}%`);
+      return;
+    }
     setShowSolvePreview(false);
     setSolving(true);
     setSelectedTask(null);
@@ -9337,14 +9569,39 @@ export default function App() {
       if (result.terminology) _terminology = result.terminology;
       if (result.locale) _locale = result.locale;
 
+      // Console warnings for diagnostics
+      if (result?.summary?.feasibilityRate < 70) {
+        console.warn(`[Solve] Low feasibility: ${result.summary.feasibilityRate}% (${result.summary.unscheduledTasks} infeasible)`);
+      }
+
       // Show results dialog
       setShowSolveResults(true);
     } catch (e: any) {
-      setError(e.message || 'Solve failed');
+      if (e instanceof ApiError) {
+        switch (e.category) {
+          case 'validation':
+            showToast(e.message, 'warning');
+            if (e.code === 'SCORING_WEIGHT_INVALID') setSettingsOpen(true);
+            break;
+          case 'config':
+            setError(`Configuration error: ${e.message}`);
+            break;
+          case 'engine':
+            setError(`Solver error: ${e.message}`);
+            showToast('Solver encountered an error. Try adjusting inputs and re-solving.', 'error');
+            break;
+          default:
+            setError(e.message);
+            break;
+        }
+      } else {
+        console.error('[Solve] Non-API error:', e);
+        setError(e.message || 'Solve failed');
+      }
     } finally {
       setSolving(false);
     }
-  }, [orderModes, taskPins, taskExcludes, taskUnschedules, materialModeOverrides, resourceModeOverrides, resourcePreferenceOverrides, priorityOverrides, windowOverrides, solverStrategy, experienceLevel, solveResult]);
+  }, [orderModes, taskPins, taskExcludes, taskUnschedules, materialModeOverrides, resourceModeOverrides, resourcePreferenceOverrides, priorityOverrides, windowOverrides, solverStrategy, experienceLevel, solveResult, scoringOverrides]);
 
   const handleSolveCancel = useCallback(() => {
     setShowSolvePreview(false);
@@ -9462,7 +9719,11 @@ export default function App() {
 
       setShowSolveResults(true);
     } catch (e: any) {
-      setError(e.message || 'Solve failed');
+      if (e instanceof ApiError) {
+        e.category === 'validation' ? showToast(e.message, 'warning') : setError(e.message);
+      } else {
+        setError(e.message || 'Solve failed');
+      }
     } finally {
       setSolving(false);
     }
@@ -9875,7 +10136,7 @@ export default function App() {
       });
       setCTPResult(result);
     } catch (err: any) {
-      setCTPResult({ feasible: false, options: [], infeasibilityReason: err.message });
+      setCTPResult({ feasible: false, options: [], summary: null, infeasibilityReport: { reason: err.message, shortSummary: err.message } });
     } finally {
       setCTPLoading(false);
     }
@@ -9922,9 +10183,12 @@ export default function App() {
       } else {
         showToast(`Cannot unschedule: ${res.message || 'Unknown error'}`);
       }
-    } catch (err) {
-      console.error('Unschedule error:', err);
-      showToast('Unschedule failed');
+    } catch (err: any) {
+      if (err instanceof ApiError && err.category === 'validation') {
+        showToast(err.message, 'warning');
+      } else {
+        showToast(err.message || 'Unschedule failed', 'error');
+      }
     } finally {
       setActionLoading(null);
     }
@@ -9944,9 +10208,12 @@ export default function App() {
       } else {
         showToast(`Cannot ${pinned ? 'pin' : 'unpin'}: ${res.message || 'Unknown error'}`);
       }
-    } catch (err) {
-      console.error('Pin error:', err);
-      showToast(`${pinned ? 'Pin' : 'Unpin'} failed`);
+    } catch (err: any) {
+      if (err instanceof ApiError && err.category === 'validation') {
+        showToast(err.message, 'warning');
+      } else {
+        showToast(err.message || `${pinned ? 'Pin' : 'Unpin'} failed`, 'error');
+      }
     } finally {
       setActionLoading(null);
     }
@@ -9968,9 +10235,12 @@ export default function App() {
       } else {
         showToast(`Cannot schedule: ${res.errors?.[0]?.reason || res.message || 'No feasible slot'}`);
       }
-    } catch (err) {
-      console.error('Schedule error:', err);
-      showToast('Schedule failed');
+    } catch (err: any) {
+      if (err instanceof ApiError && err.category === 'validation') {
+        showToast(err.message, 'warning');
+      } else {
+        showToast(err.message || 'Schedule failed', 'error');
+      }
     } finally {
       setActionLoading(null);
     }
@@ -10226,14 +10496,15 @@ export default function App() {
               if (e.shiftKey) { handleSolveConfirm(); }
               else { setShowSolvePreview(true); }
             }}
-            disabled={solving}
-            title="Click to preview, Shift+Click to solve immediately"
+            disabled={solving || !scoringValid}
+            title={!scoringValid ? `Scoring rules must sum to 100% (currently ${scoringWeightPct}%)` : 'Click to preview, Shift+Click to solve immediately'}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '7px 16px', borderRadius: 8, border: 'none',
-              background: solving ? C.textDim : C.accent, color: '#fff',
-              fontSize: 13, fontWeight: 600, cursor: solving ? 'default' : 'pointer',
+              background: !scoringValid ? C.red : solving ? C.textDim : C.accent, color: '#fff',
+              fontSize: 13, fontWeight: 600, cursor: solving || !scoringValid ? 'default' : 'pointer',
               fontFamily: FONT, transition: 'background 0.15s',
+              opacity: !scoringValid ? 0.8 : 1,
             }}
           >
             {solving ? (
@@ -10251,6 +10522,11 @@ export default function App() {
               <>▶ {t('solve', 'Solve All')}</>
             )}
           </button>
+          {!scoringValid && (
+            <span style={{ fontSize: 11, color: C.red, fontWeight: 600 }}>
+              Scoring rules must sum to 100% ({scoringWeightPct}%)
+            </span>
+          )}
           <button
             onClick={handleStartReplay}
             disabled={solving || replay.active}
@@ -10371,9 +10647,10 @@ export default function App() {
         <div style={{
           margin: '16px 24px 0', padding: '12px 18px', borderRadius: 10,
           background: C.redDim, border: `1px solid ${C.red}33`,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: FONT,
+          display: 'flex', alignItems: 'center', gap: 12, fontFamily: FONT,
         }}>
-          <span style={{ color: C.red, fontSize: 13, fontWeight: 500 }}>⚠ {error}</span>
+          <span style={{ color: C.red, fontWeight: 700, fontSize: 12 }}>Error</span>
+          <span style={{ color: C.red, fontSize: 13, fontWeight: 500, flex: 1 }}>{error}</span>
           <button
             onClick={() => { setError(null); loadData(); }}
             style={{
@@ -10382,6 +10659,15 @@ export default function App() {
             }}
           >
             {act('retry', 'Retry')}
+          </button>
+          <button
+            onClick={() => setError(null)}
+            style={{
+              background: 'none', border: 'none', color: C.red, cursor: 'pointer',
+              fontSize: 16, padding: '2px 6px', lineHeight: 1, opacity: 0.7,
+            }}
+          >
+            x
           </button>
         </div>
       )}
@@ -10920,94 +11206,117 @@ export default function App() {
 
               {ctpResult && !ctpLoading && (
                 <div style={{ marginTop: 16 }}>
-                  {!ctpResult.feasible ? (
-                    <div style={{
-                      padding: 16, borderRadius: 8, background: `${C.red}15`,
-                      border: `1px solid ${C.red}30`, fontSize: 13, color: C.text, fontFamily: FONT,
-                    }}>
-                      <strong>No feasible placement found.</strong>
-                      <div style={{ marginTop: 6, fontSize: 12, color: C.textMuted }}>
-                        {ctpResult.infeasibilityReason || 'All resource combinations exhausted.'}
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: FONT, marginBottom: 12 }}>
-                        {ctpResult.options.length} option{ctpResult.options.length !== 1 ? 's' : ''} found for "{ctpResult.orderName}"
-                      </div>
-                      {ctpResult.options.map((option: any, idx: number) => (
-                        <div key={idx} style={{
-                          marginBottom: 10, padding: 12, borderRadius: 8,
-                          background: ctpSelectedOption === idx ? `${C.accent}12` : C.surface2,
-                          border: ctpSelectedOption === idx ? `2px solid ${C.accent}` : `1px solid ${C.border}`,
-                          cursor: 'pointer', transition: 'border 0.15s',
-                        }} onClick={() => setCTPSelectedOption(idx)}>
-                          <div style={{
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                            marginBottom: 8,
-                          }}>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: FONT, display: 'flex', alignItems: 'center', gap: 8 }}>
-                              {idx === 0 ? '★ ' : ''}Option {option.rank}
-                              <span style={{ fontWeight: 400, color: C.textMuted, fontSize: 11 }}>
-                                score: {option.chainScore.toFixed(2)}
-                              </span>
-                              {option.promiseStatus && (
-                                <span style={{
-                                  fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
-                                  color: option.promiseStatus.status === 'early' ? C.green
-                                       : option.promiseStatus.status === 'on-time' ? C.yellow
-                                       : C.red,
-                                  background: option.promiseStatus.status === 'early' ? `${C.green}20`
-                                            : option.promiseStatus.status === 'on-time' ? `${C.yellow}20`
-                                            : `${C.red}20`,
-                                }}>
-                                  {option.promiseStatus.status === 'early'
-                                    ? `${option.promiseStatus.slackDays}d early`
-                                    : option.promiseStatus.status === 'on-time'
-                                    ? `On time`
-                                    : `${Math.abs(option.promiseStatus.slackDays)}d late`}
-                                </span>
-                              )}
-                            </span>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleCTPBook(ctpResult.sourceChainKey, ctpResult.orderName, option); }}
-                              style={{
-                                padding: '4px 12px', borderRadius: 6,
-                                background: C.green, color: '#fff', border: 'none',
-                                fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
-                              }}
-                            >
-                              Schedule This
-                            </button>
+                  {/* Promise Summary Banner */}
+                  {ctpResult.summary && (() => {
+                    const s = ctpResult.summary;
+                    if (s.feasibleOptions === 0) {
+                      return (
+                        <div style={{
+                          padding: '14px 18px', borderRadius: 10, marginBottom: 16,
+                          background: C.redDim, border: `1px solid ${C.red}`,
+                        }}>
+                          <div style={{ fontWeight: 700, fontSize: 15, color: C.red, fontFamily: FONT }}>
+                            Cannot fulfill this order
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            {option.tasks.map((task: any, ti: number) => {
-                              const resources = task.resources.map((r: any) => r.resourceName || r.resourceKey).join(', ');
-                              const startD = new Date(task.start);
-                              const endD = new Date(task.end);
-                              const dayStr = startD.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                              const startStr = startD.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                              const endStr = endD.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                              return (
-                                <div key={ti} style={{
-                                  display: 'flex', gap: 8, alignItems: 'baseline',
-                                  fontSize: 12, fontFamily: FONT, color: C.text,
-                                }}>
-                                  <span style={{ width: 80, fontWeight: 600, color: C.textMuted, flexShrink: 0 }}>
-                                    {task.taskType}
-                                  </span>
-                                  <span style={{ width: 160, flexShrink: 0 }}>
-                                    {dayStr} {startStr}–{endStr}
-                                  </span>
-                                  <span style={{ color: C.textMuted }}>{resources}</span>
-                                </div>
-                              );
-                            })}
+                          <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4, fontFamily: FONT }}>
+                            No feasible placement found within the current schedule.
                           </div>
                         </div>
-                      ))}
+                      );
+                    }
+                    const statusConfig: Record<string, { bg: string; border: string; color: string; icon: string }> = {
+                      'on-time':     { bg: C.greenDim,  border: C.green,  color: C.green,  icon: '\u2713' },
+                      'tight':       { bg: C.yellowDim, border: C.yellow, color: C.yellow, icon: '\u26A0' },
+                      'cannot-meet': { bg: C.redDim,    border: C.red,    color: C.red,    icon: '\u2717' },
+                    };
+                    const config = s.promiseStatus
+                      ? statusConfig[s.promiseStatus]
+                      : { bg: C.accentGlow, border: C.accent, color: C.accent, icon: '\uD83D\uDCC5' };
+                    const statusLabel = s.promiseStatus === 'on-time' ? 'Can deliver'
+                      : s.promiseStatus === 'tight' ? 'Tight \u2014 minimal buffer'
+                      : s.promiseStatus === 'cannot-meet' ? 'Cannot meet need-by date'
+                      : 'Earliest delivery';
+                    return (
+                      <div style={{
+                        padding: '14px 18px', borderRadius: 10, marginBottom: 16,
+                        background: config.bg, border: `1px solid ${config.border}`,
+                      }}>
+                        <div style={{ fontWeight: 700, fontSize: 15, color: config.color, fontFamily: FONT }}>
+                          {config.icon} {statusLabel}: {fmtDate(s.earliestCompletionDate)}
+                        </div>
+                        {s.earliestCompletionResources && (
+                          <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4, fontFamily: FONT }}>
+                            via {s.earliestCompletionResources}
+                          </div>
+                        )}
+                        {s.needByDate && s.promiseSlackDays != null && (
+                          <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4, fontFamily: FONT }}>
+                            {s.promiseSlackDays >= 0
+                              ? `${s.promiseSlackDays} day${Math.abs(s.promiseSlackDays) !== 1 ? 's' : ''} before need-by date (${fmtDateShort(s.needByDate)})`
+                              : `${Math.abs(s.promiseSlackDays)} day${Math.abs(s.promiseSlackDays) !== 1 ? 's' : ''} after need-by date (${fmtDateShort(s.needByDate)})`
+                            }
+                          </div>
+                        )}
+                        <div style={{ fontSize: 11, color: C.textDim, marginTop: 8, fontFamily: FONT }}>
+                          {s.feasibleOptions} option{s.feasibleOptions !== 1 ? 's' : ''} found
+                          {s.latestCompletionDate && s.earliestCompletionDate !== s.latestCompletionDate
+                            ? ` \u00B7 ${fmtDateShort(s.earliestCompletionDate)} \u2013 ${fmtDateShort(s.latestCompletionDate)} range`
+                            : ''
+                          }
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Infeasible state with bottleneck */}
+                  {!ctpResult.feasible && ctpResult.infeasibilityReport && (
+                    <div style={{ fontSize: 12, color: C.textMuted, fontFamily: FONT }}>
+                      {ctpResult.infeasibilityReport.shortSummary && (
+                        <div style={{
+                          padding: '10px 14px', borderRadius: 8, marginBottom: 12,
+                          background: C.bg, border: `1px solid ${C.border}`,
+                          fontWeight: 500, color: C.text,
+                        }}>
+                          {ctpResult.infeasibilityReport.shortSummary}
+                        </div>
+                      )}
+                      <div style={{ fontWeight: 600, marginBottom: 6, color: C.text }}>Suggestions</div>
+                      <div style={{ lineHeight: 1.8 }}>
+                        <div>{'\u2022'} Try a later need-by date to widen the search window</div>
+                        <div>{'\u2022'} Check the bottleneck resource's agenda for work that could be deferred</div>
+                        <div>{'\u2022'} Free up capacity by excluding lower-priority orders</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Feasible options — collapsible cards */}
+                  {ctpResult.feasible && ctpResult.options?.length > 0 && (
+                    <div>
+                      {ctpResult.options.map((option: any, idx: number) => {
+                        const isActive = ctpSelectedOption === idx;
+                        const isEarliest = idx === 0;
+                        const lastTask = option.tasks[option.tasks.length - 1];
+                        const completionDate = lastTask?.end;
+                        const resourceChain = option.tasks
+                          .filter((t: any) => t.taskType === 'PROCESS' || !t.taskType)
+                          .map((t: any) => t.resources.map((r: any) => r.resourceName || r.resourceKey).join(', '))
+                          .join(' \u2192 ');
+
+                        return (
+                          <CTPOptionCardInner
+                            key={idx}
+                            option={option}
+                            isActive={isActive}
+                            isEarliest={isEarliest}
+                            completionDate={completionDate}
+                            resourceChain={resourceChain}
+                            onSelect={() => setCTPSelectedOption(idx)}
+                            onBook={() => handleCTPBook(ctpResult.sourceChainKey, ctpResult.orderName, option)}
+                          />
+                        );
+                      })}
                       <div style={{ fontSize: 11, color: C.textMuted, marginTop: 8, fontFamily: FONT }}>
-                        Schedule is unchanged. Click "Schedule This" to add to the schedule.
+                        Schedule is unchanged. Click "Schedule" to add to the schedule.
                       </div>
                     </div>
                   )}
@@ -11035,12 +11344,21 @@ export default function App() {
       {toast && (
         <div style={{
           position: 'fixed', bottom: versionInfo ? 32 : 24, left: '50%', transform: 'translateX(-50%)',
-          background: C.surface2, color: C.text, border: `1px solid ${C.border}`,
+          background: toast.severity === 'error' ? C.redDim
+            : toast.severity === 'warning' ? C.yellowDim
+            : C.surface2,
+          color: toast.severity === 'error' ? C.red
+            : toast.severity === 'warning' ? C.yellow
+            : C.text,
+          border: `1px solid ${toast.severity === 'error' ? C.red
+            : toast.severity === 'warning' ? C.yellow
+            : C.border}33`,
           borderRadius: 8, padding: '10px 20px', fontSize: 13, fontWeight: 500,
           boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 10000,
           animation: 'toastIn 0.2s ease-out',
+          maxWidth: 500,
         }}>
-          {toast}
+          {toast.msg}
         </div>
       )}
 

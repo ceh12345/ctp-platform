@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { HttpException } from '@nestjs/common';
 import * as path from 'path';
 import { CTPService } from '../ctp.service';
 import { StateService } from '../../state/state.service';
@@ -63,7 +64,7 @@ describe('WhereTo API', () => {
 
       expect(() => {
         ctpService.whereTo('DOES-NOT-EXIST');
-      }).toThrow(/not found/);
+      }).toThrow(HttpException);
     });
 
     it('should filter by onlyResources', () => {
@@ -151,7 +152,7 @@ describe('WhereTo API', () => {
           contextHash: 'whatever',
           startTime: '2025-02-17T08:00:00',
         });
-      }).toThrow(/not found/);
+      }).toThrow(HttpException);
     });
 
     it('should return success:false for invalid contextHash', () => {
