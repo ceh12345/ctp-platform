@@ -51,8 +51,7 @@ _No sprints currently in progress._
 | Stafford Job Shop Rework | Strategy-aware scheduling gate (chainCompatible); Greedy bypass for job shops; per-task chain-aware scheduling with skip-and-retry; priority fix (numeric direct, tiers RUSH/HIGH/NORMAL/LOW); Gantt tenant timezone; tenant default strategy in API + UI | 2026-03-14 |
 | Engine — Scoring Rules + Due Date Hydration | 3 new scoring rules (DueDateScoringRule, ResourceUtilizationScoringRule, ResourcePreferenceScoringRule); due date hydration from orders onto chain-terminal tasks; scoringOverrides on solve request; scoring config in solve response | 2026-03-15 |
 | UI — Settings Panel + Scoring Rules Editor | Left-nav Settings panel (General, Scoring Rules, Solver); scoring weight sliders with add/remove/toggle; mini summary in nav; scoringOverrides via solve request (not persisted); solver timing consolidation | 2026-03-15 |
-| UI Sprint 22 — Error Handling | Structured error envelope (code/message/category), ApiError class, category-aware UI routing (validation→warning, engine→error), network error detection, toast severity levels, dismiss button on error banner | 2026-03-15 |
-| What-If Sprint 1b — CTP Query UX | Promise summary banner (green/yellow/red), options sorted by completion date, collapsible option cards, active option highlighting with "viewing on Gantt" badge, AI summary-first response, infeasibility suggestions | 2026-03-15 |
+| Demo Tuning + Resource Preference Fixes | EXCLUDED preference mode passthrough (hydrator→engine→API→UI); Solve Preview shows preference changes; resource preference overrides send all modes (not just non-AVAILABLE); unscheduled tasks show compatible resources + duration; non-primary resource filter fix; Stafford demo dataset tuning (EQ-003/EQ-004 windows + due dates) | 2026-03-15 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -100,6 +99,7 @@ _No sprints currently in progress._
 ## Parking Lot
 
 See `parking-lot.md` for deferred items including:
+- **Attribute-based resource matching** — `requiredAttributes` on task capacity resource entries (e.g., `qualifications contains "ASME-TIG"`). Filter candidate resources by attribute before combo explosion. Eliminates preference-based workarounds for hard requirements like certifications, machine capacities, and skill sets. Discovered during Stafford demo prep — AI suggested moving ASME welds to non-ASME welders because the constraint was modeled as a preference, not a requirement.
 - Negative maxGap (overlap support) — successor starts before predecessor ends
 - Multi-lane support — explicit `lane: true` on non-primary resources
 - Soft affinity scoring — prefer same nurse across chain phases
@@ -196,7 +196,6 @@ INFRA TRACK
   ui-17-bottleneck-display.md        ← Infeasible task bottleneck identification
   ui-18-solve-replay.md              ← Animated Gantt playback of solver sequence
   ui-20-conflict-categorization.md   ← Conflict type classification (availability/capacity/dependency)
-  ui-22-error-handling.md             ← Structured error handling (error envelope, ApiError, category routing, network detection)
   ui-scoring-rules.md                ← Settings panel with left-nav, scoring rules editor, solver stats
 
   AI Sprints:
@@ -208,7 +207,6 @@ INFRA TRACK
 
   What-If Sprints:
   what-if-sprint-1-ctp-query.md      ← Stateless CTP Query (clone-from-chain, AI tool, UI dialog)
-  what-if-sprint-1b-ctp-query-ux.md  ← CTP Query UX: summary banner, sort by completion, collapsible cards
   fix-ctp-needby-date.md             ← Need-by date & promise status quick fix
 
   Infrastructure:
@@ -228,4 +226,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 15, 2026 (UI Sprint 22 Error Handling + What-If Sprint 1b CTP Query UX)*
+*Last updated: Mar 15, 2026 (Engine Scoring Rules + UI Settings Panel — both complete)*

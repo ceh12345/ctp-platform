@@ -267,7 +267,7 @@ export class StateHydratorService {
             if (entry.mode) tr.mode = entry.mode;
             for (const pref of entry.preferences) {
               tr.preferences.push(
-                new CTPResourcePreference(pref.resource, pref.rank ?? 0),
+                new CTPResourcePreference(pref.resource, pref.rank ?? 0, pref.mode),
               );
             }
             capList.add(tr);

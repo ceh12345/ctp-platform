@@ -1383,7 +1383,7 @@ export class CTPService {
         scheduledEnd: task.scheduled
           ? CTPDateTime.toDateTime(task.scheduled.endW).toISO()
           : null,
-        durationSeconds: task.scheduled ? task.scheduled.duration() : null,
+        durationSeconds: task.scheduled ? task.scheduled.duration() : (task.duration?.duration() ?? null),
         assignedResources,
         score: task.score === Number.MAX_VALUE ? null : task.score,
         feasible: isScheduled,

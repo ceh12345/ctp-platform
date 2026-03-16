@@ -1053,7 +1053,7 @@ function ResourcePreferenceDialog({ open, onClose, selectedTaskKeys, tasks, reso
         const m = resourcePreferenceOverrides[taskKey]?.[cr.resourceKey];
         if (m && !existingMode) existingMode = m;
       }
-      modes[cr.resourceKey] = existingMode || 'AVAILABLE';
+      modes[cr.resourceKey] = existingMode || cr.defaultMode || 'AVAILABLE';
     }
     setLocalModes(modes);
   }, [open, compatResources, selectedTaskKeys, resourcePreferenceOverrides]);
@@ -1062,7 +1062,7 @@ function ResourcePreferenceDialog({ open, onClose, selectedTaskKeys, tasks, reso
 
   const total = selectedTaskKeys.length;
   const allExcluded = compatResources.length > 0 && compatResources.every(cr => localModes[cr.resourceKey] === 'EXCLUDED');
-  const hasChanges = Object.values(localModes).some(m => m !== 'AVAILABLE');
+  const hasChanges = compatResources.some(cr => localModes[cr.resourceKey] !== (cr.defaultMode || 'AVAILABLE'));
 
   return (
     <div onClick={onClose} style={{
@@ -1275,11 +1275,11 @@ const RESOURCE_PREF_MODES = [
 ];
 
 function getCompatibleResources(selectedTaskKeys: string[], tasks: any[]): {
-  resourceKey: string; resourceName: string; currentCount: number; compatibleCount: number;
+  resourceKey: string; resourceName: string; currentCount: number; compatibleCount: number; defaultMode: string;
 }[] {
   const resourceMap = new Map<string, {
     resourceKey: string; resourceName: string;
-    currentCount: number; compatibleCount: number;
+    currentCount: number; compatibleCount: number; defaultMode: string;
   }>();
 
   for (const taskKey of selectedTaskKeys) {
@@ -1297,6 +1297,7 @@ function getCompatibleResources(selectedTaskKeys: string[], tasks: any[]): {
           resourceKey: cr.resourceKey,
           resourceName: cr.resourceName ?? cr.resourceKey,
           currentCount: 0, compatibleCount: 0,
+          defaultMode: cr.mode || 'AVAILABLE',
         });
       }
       resourceMap.get(cr.resourceKey)!.compatibleCount++;
@@ -1508,7 +1509,7 @@ const FALLBACK_TIERS: SolverTierOption[] = [
 
 function SolvePreview({ orders, tasks, materials, resources,
   orderModes, taskPins, taskExcludes, taskUnschedules,
-  materialModes, modeOverrides,
+  materialModes, modeOverrides, resourcePreferenceOverrides,
   previousOrderModes, previousTaskPins, previousTaskExcludes, previousMaterialModes,
   strategy, onStrategyChange, strategyOptions,
   tier, onTierChange, tierOptions,
@@ -1521,6 +1522,7 @@ function SolvePreview({ orders, tasks, materials, resources,
   taskUnschedules: Set<string>;
   materialModes?: Record<string, string>;
   modeOverrides?: Record<string, string>;
+  resourcePreferenceOverrides?: Record<string, Record<string, string>>;
   previousOrderModes: Record<string, string>;
   previousTaskPins: Record<string, boolean>;
   previousTaskExcludes: Record<string, boolean>;
@@ -1668,9 +1670,35 @@ function SolvePreview({ orders, tasks, materials, resources,
       });
     }
 
+    // Resource preference overrides
+    const PREF_MODE_LABELS: Record<string, { label: string; icon: string; color: string }> = {
+      REQUIRED: { label: 'Required', icon: '◉', color: C.green },
+      PREFERRED: { label: 'Preferred', icon: '●', color: C.cyan },
+      AVAILABLE: { label: 'Available', icon: '○', color: C.textMuted },
+      EXCLUDED: { label: 'Excluded', icon: '⊘', color: C.red },
+    };
+    if (resourcePreferenceOverrides) {
+      Object.entries(resourcePreferenceOverrides).forEach(([taskKey, resModes]) => {
+        const task = tasks.find((tk: any) => tk.key === taskKey);
+        // Find each resource's default mode from compatibleResources
+        Object.entries(resModes).forEach(([resKey, mode]) => {
+          const cr = task?.compatibleResources?.find((c: any) => c.resourceKey === resKey);
+          const defaultMode = cr?.mode || 'AVAILABLE';
+          if (mode !== defaultMode) {
+            const config = PREF_MODE_LABELS[mode] || PREF_MODE_LABELS.AVAILABLE;
+            deltas.push({
+              icon: config.icon,
+              text: `${taskKey}: ${resKey} → ${config.label}`,
+              color: config.color,
+            });
+          }
+        });
+      });
+    }
+
     return deltas;
   }, [orders, tasks, materials, orderModes, taskPins, taskExcludes, taskUnschedules,
-      materialModes, modeOverrides, previousOrderModes, previousTaskPins, previousTaskExcludes, previousMaterialModes]);
+      materialModes, modeOverrides, resourcePreferenceOverrides, previousOrderModes, previousTaskPins, previousTaskExcludes, previousMaterialModes]);
 
   // Detect first solve
   const isFirstSolve = changes.length === 0 && !tasks.some((tk: any) => tk.feasible);
@@ -2245,19 +2273,32 @@ function SolveResultsDialog({ result, previousSnapshot, experienceLevel, onClose
                     <div style={{ color: C.red, fontWeight: 600, marginBottom: 4 }}>
                       {infeasibleTasks.length} infeasible task{infeasibleTasks.length !== 1 ? 's' : ''}
                     </div>
-                    {infeasibleTasks.slice(0, 5).map((t: any) => (
-                      <div key={t.key}
-                        onClick={() => { onTaskClick(t); onClose(); }}
-                        style={{ color: C.text, cursor: 'pointer', padding: '2px 0', display: 'flex', justifyContent: 'space-between' }}
-                        onMouseEnter={e => { e.currentTarget.style.color = C.accent; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = C.text; }}
-                      >
-                        <span>{t.name}</span>
-                        <span style={{ color: C.textDim, fontSize: 11 }}>
-                          {t.errors?.[0]?.reason || 'no feasible slot'}
-                        </span>
-                      </div>
-                    ))}
+                    {infeasibleTasks.slice(0, 5).map((t: any) => {
+                      const resNames = (t.assignedResources?.length > 0
+                        ? t.assignedResources
+                        : t.compatibleResources || []
+                      ).map((r: any) => r.resourceName || r.resourceKey).filter(Boolean);
+                      return (
+                        <div key={t.key}
+                          onClick={() => { onTaskClick(t); onClose(); }}
+                          style={{ color: C.text, cursor: 'pointer', padding: '3px 0', display: 'flex', flexDirection: 'column' }}
+                          onMouseEnter={e => { e.currentTarget.style.color = C.accent; }}
+                          onMouseLeave={e => { e.currentTarget.style.color = C.text; }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>{t.name}</span>
+                            <span style={{ color: C.textDim, fontSize: 11 }}>
+                              {t.errors?.[0]?.reason || 'no feasible slot'}
+                            </span>
+                          </div>
+                          {resNames.length > 0 && (
+                            <div style={{ fontSize: 10, color: C.textDim, marginTop: 1 }}>
+                              Resources: {resNames.join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                     {infeasibleTasks.length > 5 && (
                       <div style={{ color: C.textDim, fontSize: 11, marginTop: 4 }}>
                         +{infeasibleTasks.length - 5} more...
@@ -2857,7 +2898,7 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
       )}
 
       {/* Resource Preference Overrides */}
-      {task.compatibleResources?.length > 0 && showAt(experienceLevel, 'intermediate') && (
+      {task.compatibleResources?.length > 0 && (showAt(experienceLevel, 'intermediate') || !task.assignedResources?.length) && (
         <>
           <SectionLabel label="Resource Preference Overrides" />
           {resourcePreferenceOverrides?.[task.key] && Object.keys(resourcePreferenceOverrides[task.key]).length > 0 && (
@@ -2867,8 +2908,8 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
             }}>Clear Overrides</button>
           )}
           {task.compatibleResources.map((cr: any) => {
-            const currentMode = resourcePreferenceOverrides?.[task.key]?.[cr.resourceKey] || 'AVAILABLE';
-            const isOverridden = currentMode !== 'AVAILABLE';
+            const currentMode = resourcePreferenceOverrides?.[task.key]?.[cr.resourceKey] || cr.mode || 'AVAILABLE';
+            const isOverridden = currentMode !== (cr.mode || 'AVAILABLE');
             return (
               <div key={cr.resourceKey} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -5227,6 +5268,9 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
     return {
       ...tk,
       _resource: tk.assignedResources?.[0]?.resourceKey || '',
+      _allResourceKeys: (tk.assignedResources || []).map((r: any) => r.resourceKey).concat(
+        (tk.assignedResources || []).map((r: any) => r.requestedResource).filter(Boolean)
+      ),
       _status,
       _orderMode,
       _productName,
@@ -5294,10 +5338,16 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
 
 
   // Sync resourceFilter chip ↔ _resource column dropdown (ref prevents loop)
+  // Only sync to column filter if the resource is a primary resource (appears in _resource column)
   const colFilterChangedRef = useRef(false);
   useEffect(() => {
     if (colFilterChangedRef.current) { colFilterChangedRef.current = false; return; }
-    filter.setColumnFilter('_resource', resourceFilter ? new Set([resourceFilter]) : new Set());
+    if (resourceFilter) {
+      const isPrimaryResource = rows.some((t: any) => t._resource === resourceFilter);
+      filter.setColumnFilter('_resource', isPrimaryResource ? new Set([resourceFilter]) : new Set());
+    } else {
+      filter.setColumnFilter('_resource', new Set());
+    }
   }, [resourceFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const colFilter = (key: string) => {
@@ -5386,7 +5436,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   let preRows = filter.filtered;
   if (resourceFilter) {
     preRows = preRows.filter((t: any) =>
-      t.assignedResources?.some((r: any) => r.resourceKey === resourceFilter)
+      t.assignedResources?.some((r: any) => r.resourceKey === resourceFilter || r.requestedResource === resourceFilter)
     );
   }
   if (timeFilter?.after) {
@@ -6625,7 +6675,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask}
             onApiUnschedule={onApiUnschedule} onApiPin={onApiPin}
             onApiBulkUnschedule={onApiBulkUnschedule} actionLoading={actionLoading}
-            onResourceFilter={(key) => setResourceFilter(prev => prev === key ? null : key)}
+            onResourceFilter={(key) => { setResourceFilter(prev => prev === key ? null : key); if (resourceFilter !== key) setSubIdx(2); }}
             resourceFilter={resourceFilter}
             onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey} whereToOptions={whereToOptions}
             whereToLoading={whereToLoading} whereToCurrentAssignment={whereToCurrentAssignment}
@@ -9614,12 +9664,8 @@ export default function App() {
   ) => {
     const newOverrides = { ...resourcePreferenceOverrides };
     for (const taskKey of selectedTaskKeys) {
-      const taskOverrides: Record<string, string> = {};
-      for (const [resourceKey, mode] of Object.entries(resourceModes)) {
-        if (mode !== 'AVAILABLE') {
-          taskOverrides[resourceKey] = mode;
-        }
-      }
+      // Store all explicit mode selections — even AVAILABLE is an override if the default was EXCLUDED
+      const taskOverrides: Record<string, string> = { ...resourceModes };
       if (Object.keys(taskOverrides).length > 0) {
         newOverrides[taskKey] = taskOverrides;
       } else {
@@ -9639,12 +9685,8 @@ export default function App() {
     // Apply preferences first (compute inline to avoid stale closure)
     const newOverrides = { ...resourcePreferenceOverrides };
     for (const taskKey of selectedTaskKeys) {
-      const taskOverrides: Record<string, string> = {};
-      for (const [resourceKey, mode] of Object.entries(resourceModes)) {
-        if (mode !== 'AVAILABLE') {
-          taskOverrides[resourceKey] = mode;
-        }
-      }
+      // Store all explicit mode selections — even AVAILABLE is an override if the default was EXCLUDED
+      const taskOverrides: Record<string, string> = { ...resourceModes };
       if (Object.keys(taskOverrides).length > 0) {
         newOverrides[taskKey] = taskOverrides;
       } else {
@@ -10165,7 +10207,19 @@ export default function App() {
   // invalidate analytics so KPIs reflect the new landscape state.
   const applyStateRefresh = useCallback((updated: any) => {
     if (!updated.tasks) return;
-    setSolveResult(updated);
+    // Preserve compatibleResources from previous solve (state endpoint doesn't return them)
+    setSolveResult(prev => {
+      if (prev?.tasks) {
+        const prevCompatMap = new Map(
+          prev.tasks.map((t: any) => [t.key, t.compatibleResources])
+        );
+        updated.tasks = updated.tasks.map((t: any) => ({
+          ...t,
+          compatibleResources: t.compatibleResources || prevCompatMap.get(t.key) || [],
+        }));
+      }
+      return updated;
+    });
     setAnalyticsKpis([]);
     setAnalyticsDetail(null);
   }, []);
@@ -11125,6 +11179,7 @@ export default function App() {
           taskUnschedules={taskUnschedules}
           materialModes={materialModeOverrides}
           modeOverrides={resourceModeOverrides}
+          resourcePreferenceOverrides={resourcePreferenceOverrides}
           previousOrderModes={prevOrderModes}
           previousTaskPins={prevTaskPins}
           previousTaskExcludes={prevTaskExcludes}

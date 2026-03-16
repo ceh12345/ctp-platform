@@ -1971,7 +1971,7 @@
     "type": "SETUP",
     "process": "processing-equipment",
     "windowStart": "2026-03-15T18:00:00Z",
-    "windowEnd": "2026-03-28T06:00:00Z",
+    "windowEnd": "2026-03-24T10:00:00Z",
     "durationSeconds": 9000,
     "durationQty": 1,
     "durationType": 0,
@@ -2019,7 +2019,7 @@
     "type": "PROCESS",
     "process": "processing-equipment",
     "windowStart": "2026-03-15T18:00:00Z",
-    "windowEnd": "2026-03-28T06:00:00Z",
+    "windowEnd": "2026-03-24T10:00:00Z",
     "durationSeconds": 10800,
     "durationQty": 1,
     "durationType": 0,
@@ -2034,12 +2034,7 @@
         "resource": "FAB-JACK",
         "isPrimary": false,
         "qty": 1,
-        "mode": "ON",
-        "preferences": [
-          "FAB-JACK",
-          "FAB-LUKE",
-          "FAB-AROHA"
-        ]
+        "mode": "ON"
       }
     ],
     "linkId": {
@@ -2078,7 +2073,7 @@
     "type": "PROCESS",
     "process": "processing-equipment",
     "windowStart": "2026-03-15T18:00:00Z",
-    "windowEnd": "2026-03-28T06:00:00Z",
+    "windowEnd": "2026-03-24T10:00:00Z",
     "durationSeconds": 28800,
     "durationQty": 1,
     "durationType": 0,
@@ -2094,14 +2089,24 @@
         ]
       },
       {
-        "resource": "FAB-JACK",
         "isPrimary": false,
         "qty": 1,
         "mode": "ON",
         "preferences": [
-          "FAB-JACK",
-          "FAB-LUKE",
-          "FAB-AROHA"
+          {
+            "resource": "FAB-JACK",
+            "rank": 1
+          },
+          {
+            "resource": "FAB-LUKE",
+            "rank": 2,
+            "mode": "EXCLUDED"
+          },
+          {
+            "resource": "FAB-AROHA",
+            "rank": 3,
+            "mode": "EXCLUDED"
+          }
         ]
       }
     ],
@@ -2141,7 +2146,7 @@
     "type": "PROCESS",
     "process": "processing-equipment",
     "windowStart": "2026-03-15T18:00:00Z",
-    "windowEnd": "2026-03-28T06:00:00Z",
+    "windowEnd": "2026-03-24T18:00:00Z",
     "durationSeconds": 10800,
     "durationQty": 1,
     "durationType": 0,
@@ -2204,7 +2209,7 @@
     "type": "PROCESS",
     "process": "processing-equipment",
     "windowStart": "2026-03-15T18:00:00Z",
-    "windowEnd": "2026-03-28T06:00:00Z",
+    "windowEnd": "2026-03-24T18:00:00Z",
     "durationSeconds": 14400,
     "durationQty": 1,
     "durationType": 0,
@@ -2223,12 +2228,7 @@
         "resource": "FAB-JACK",
         "isPrimary": false,
         "qty": 1,
-        "mode": "ON",
-        "preferences": [
-          "FAB-JACK",
-          "FAB-LUKE",
-          "FAB-AROHA"
-        ]
+        "mode": "ON"
       }
     ],
     "linkId": {
@@ -2267,7 +2267,7 @@
     "type": "PROCESS",
     "process": "processing-equipment",
     "windowStart": "2026-03-15T18:00:00Z",
-    "windowEnd": "2026-03-28T06:00:00Z",
+    "windowEnd": "2026-03-24T18:00:00Z",
     "durationSeconds": 21600,
     "durationQty": 1,
     "durationType": 0,
@@ -2325,7 +2325,7 @@
     "type": "TEARDOWN",
     "process": "processing-equipment",
     "windowStart": "2026-03-15T18:00:00Z",
-    "windowEnd": "2026-03-28T06:00:00Z",
+    "windowEnd": "2026-03-24T18:00:00Z",
     "durationSeconds": 7200,
     "durationQty": 1,
     "durationType": 0,
@@ -2379,7 +2379,7 @@
     "type": "SETUP",
     "process": "processing-equipment",
     "windowStart": "2026-03-15T18:00:00Z",
-    "windowEnd": "2026-03-26T12:00:00Z",
+    "windowEnd": "2026-03-24T10:00:00Z",
     "durationSeconds": 9000,
     "durationQty": 1,
     "durationType": 0,
@@ -2427,7 +2427,7 @@
     "type": "PROCESS",
     "process": "processing-equipment",
     "windowStart": "2026-03-15T18:00:00Z",
-    "windowEnd": "2026-03-26T12:00:00Z",
+    "windowEnd": "2026-03-24T10:00:00Z",
     "durationSeconds": 10800,
     "durationQty": 1,
     "durationType": 0,
@@ -2442,12 +2442,7 @@
         "resource": "FAB-JACK",
         "isPrimary": false,
         "qty": 1,
-        "mode": "ON",
-        "preferences": [
-          "FAB-JACK",
-          "FAB-LUKE",
-          "FAB-AROHA"
-        ]
+        "mode": "ON"
       }
     ],
     "linkId": {
@@ -2486,7 +2481,7 @@
     "type": "PROCESS",
     "process": "processing-equipment",
     "windowStart": "2026-03-15T18:00:00Z",
-    "windowEnd": "2026-03-26T12:00:00Z",
+    "windowEnd": "2026-03-24T10:00:00Z",
     "durationSeconds": 28800,
     "durationQty": 1,
     "durationType": 0,
@@ -2502,14 +2497,24 @@
         ]
       },
       {
-        "resource": "FAB-JACK",
         "isPrimary": false,
         "qty": 1,
         "mode": "ON",
         "preferences": [
-          "FAB-JACK",
-          "FAB-LUKE",
-          "FAB-AROHA"
+          {
+            "resource": "FAB-JACK",
+            "rank": 1
+          },
+          {
+            "resource": "FAB-LUKE",
+            "rank": 2,
+            "mode": "EXCLUDED"
+          },
+          {
+            "resource": "FAB-AROHA",
+            "rank": 3,
+            "mode": "EXCLUDED"
+          }
         ]
       }
     ],
@@ -2549,7 +2554,7 @@
     "type": "PROCESS",
     "process": "processing-equipment",
     "windowStart": "2026-03-15T18:00:00Z",
-    "windowEnd": "2026-03-26T12:00:00Z",
+    "windowEnd": "2026-03-24T10:00:00Z",
     "durationSeconds": 10800,
     "durationQty": 1,
     "durationType": 0,
@@ -2612,7 +2617,7 @@
     "type": "PROCESS",
     "process": "processing-equipment",
     "windowStart": "2026-03-15T18:00:00Z",
-    "windowEnd": "2026-03-26T12:00:00Z",
+    "windowEnd": "2026-03-24T10:00:00Z",
     "durationSeconds": 14400,
     "durationQty": 1,
     "durationType": 0,
@@ -2631,12 +2636,7 @@
         "resource": "FAB-JACK",
         "isPrimary": false,
         "qty": 1,
-        "mode": "ON",
-        "preferences": [
-          "FAB-JACK",
-          "FAB-LUKE",
-          "FAB-AROHA"
-        ]
+        "mode": "ON"
       }
     ],
     "linkId": {
@@ -2675,7 +2675,7 @@
     "type": "PROCESS",
     "process": "processing-equipment",
     "windowStart": "2026-03-15T18:00:00Z",
-    "windowEnd": "2026-03-26T12:00:00Z",
+    "windowEnd": "2026-03-24T10:00:00Z",
     "durationSeconds": 21600,
     "durationQty": 1,
     "durationType": 0,
@@ -2733,7 +2733,7 @@
     "type": "TEARDOWN",
     "process": "processing-equipment",
     "windowStart": "2026-03-15T18:00:00Z",
-    "windowEnd": "2026-03-26T12:00:00Z",
+    "windowEnd": "2026-03-24T10:00:00Z",
     "durationSeconds": 7200,
     "durationQty": 1,
     "durationType": 0,
