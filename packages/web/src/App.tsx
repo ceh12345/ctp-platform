@@ -10238,7 +10238,7 @@ export default function App() {
   const applyStateRefresh = useCallback((updated: any) => {
     if (!updated.tasks) return;
     // Preserve compatibleResources from previous solve (state endpoint doesn't return them)
-    setSolveResult(prev => {
+    setSolveResult((prev: any) => {
       if (prev?.tasks) {
         const prevCompatMap = new Map(
           prev.tasks.map((t: any) => [t.key, t.compatibleResources])
