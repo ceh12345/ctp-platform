@@ -1510,6 +1510,7 @@ const FALLBACK_TIERS: SolverTierOption[] = [
 function SolvePreview({ orders, tasks, materials, resources,
   orderModes, taskPins, taskExcludes, taskUnschedules,
   materialModes, modeOverrides, resourcePreferenceOverrides,
+  priorityOverrides, windowOverrides,
   previousOrderModes, previousTaskPins, previousTaskExcludes, previousMaterialModes,
   strategy, onStrategyChange, strategyOptions,
   tier, onTierChange, tierOptions,
@@ -1523,6 +1524,8 @@ function SolvePreview({ orders, tasks, materials, resources,
   materialModes?: Record<string, string>;
   modeOverrides?: Record<string, string>;
   resourcePreferenceOverrides?: Record<string, Record<string, string>>;
+  priorityOverrides?: Record<string, number>;
+  windowOverrides?: Record<string, { startW?: string; endW?: string }>;
   previousOrderModes: Record<string, string>;
   previousTaskPins: Record<string, boolean>;
   previousTaskExcludes: Record<string, boolean>;
@@ -1696,9 +1699,39 @@ function SolvePreview({ orders, tasks, materials, resources,
       });
     }
 
+    // Priority overrides
+    if (priorityOverrides) {
+      Object.entries(priorityOverrides).forEach(([taskKey, pri]) => {
+        const task = tasks.find((tk: any) => tk.key === taskKey);
+        const origPri = task?.priority ?? task?.pri;
+        deltas.push({
+          icon: '⚡',
+          text: `${taskKey} priority: ${origPri ?? '?'} → ${pri}`,
+          color: C.yellow,
+        });
+      });
+    }
+
+    // Window overrides
+    if (windowOverrides) {
+      Object.entries(windowOverrides).forEach(([taskKey, wo]) => {
+        const parts: string[] = [];
+        if (wo.startW) parts.push(`start → ${fmtDate(wo.startW)}`);
+        if (wo.endW) parts.push(`end → ${fmtDate(wo.endW)}`);
+        if (parts.length > 0) {
+          deltas.push({
+            icon: '🕐',
+            text: `${taskKey} window: ${parts.join(', ')}`,
+            color: C.cyan,
+          });
+        }
+      });
+    }
+
     return deltas;
   }, [orders, tasks, materials, orderModes, taskPins, taskExcludes, taskUnschedules,
-      materialModes, modeOverrides, resourcePreferenceOverrides, previousOrderModes, previousTaskPins, previousTaskExcludes, previousMaterialModes]);
+      materialModes, modeOverrides, resourcePreferenceOverrides, priorityOverrides, windowOverrides,
+      previousOrderModes, previousTaskPins, previousTaskExcludes, previousMaterialModes]);
 
   // Detect first solve
   const isFirstSolve = changes.length === 0 && !tasks.some((tk: any) => tk.feasible);
@@ -9610,9 +9643,6 @@ export default function App() {
       setOrderModes({});
       setMaterialModeOverrides({});
       setResourceModeOverrides({});
-      setResourcePreferenceOverrides({});
-      setPriorityOverrides({});
-      setWindowOverrides({});
       setSelectedTasks(new Set());
 
       if (result.colors) setColors(result.colors);
@@ -11180,6 +11210,8 @@ export default function App() {
           materialModes={materialModeOverrides}
           modeOverrides={resourceModeOverrides}
           resourcePreferenceOverrides={resourcePreferenceOverrides}
+          priorityOverrides={priorityOverrides}
+          windowOverrides={windowOverrides}
           previousOrderModes={prevOrderModes}
           previousTaskPins={prevTaskPins}
           previousTaskExcludes={prevTaskExcludes}
