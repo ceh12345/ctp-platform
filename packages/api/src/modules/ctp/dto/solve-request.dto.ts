@@ -6,6 +6,7 @@ import {
   IsIn,
   IsObject,
   IsBoolean,
+  IsNumber,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -173,6 +174,28 @@ export class SolveRequestDto {
   @IsOptional()
   @IsBoolean()
   recordSolveSteps?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Skip config reload — solve against live landscape state',
+  })
+  @IsOptional()
+  @IsBoolean()
+  preserveLandscape?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Temp-pin non-target tasks during targeted solve. Only meaningful when taskKeys is also set.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  protectOthers?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Auto-include chain siblings in taskKeys (default: true)',
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  expandChains?: boolean;
 }
 
 export class UnscheduleTaskDto {
@@ -235,4 +258,22 @@ export class UpdateMaterialModesDto {
   })
   @IsObject()
   modes!: Record<string, string>;
+}
+
+export class SetTaskWindowDto {
+  @ApiPropertyOptional({ description: 'New window start (ISO datetime). Null to keep current.' })
+  @IsOptional()
+  @IsString()
+  windowStart?: string;
+
+  @ApiPropertyOptional({ description: 'New window end (ISO datetime). Null to keep current.' })
+  @IsOptional()
+  @IsString()
+  windowEnd?: string;
+}
+
+export class SetTaskPriorityDto {
+  @ApiPropertyOptional({ description: 'New priority value (1 = highest/rush, 100 = normal)', minimum: 1 })
+  @IsNumber()
+  priority!: number;
 }

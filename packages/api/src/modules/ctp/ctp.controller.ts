@@ -15,6 +15,8 @@ import {
   PinTaskDto,
   UpdateResourceModeDto,
   UpdateMaterialModesDto,
+  SetTaskWindowDto,
+  SetTaskPriorityDto,
 } from './dto/solve-request.dto';
 import { CTPQueryDto } from './dto/ctp-query.dto';
 import { CTPSolveResultDto } from './dto/solve-result.dto';
@@ -35,6 +37,7 @@ export class CTPController {
   @Post('solve')
   @ApiOperation({
     summary: 'Run scheduler with optional overrides and return results.',
+    description: 'When preserveLandscape is true, solves against the current in-memory state without reloading from config. When protectOthers is true with taskKeys, non-target scheduled tasks are temporarily pinned.',
   })
   @ApiBody({
     type: SolveRequestDto,
@@ -199,6 +202,36 @@ export class CTPController {
   @ApiResponse({ status: 200, description: 'Chain templates with task structure' })
   getChainTemplates() {
     return this.ctpService.getChainTemplates();
+  }
+
+  // ─── Endpoint 13: Set Task Window ───
+
+  @Patch('tasks/:taskKey/window')
+  @ApiOperation({
+    summary: 'Directly modify a task\'s scheduling window on the live landscape',
+    description: 'Mutates the task window in memory. Does NOT trigger a re-solve. Use with preserveLandscape solve for multi-step operations.',
+  })
+  @ApiParam({ name: 'taskKey', description: 'Task key to modify' })
+  @ApiBody({ type: SetTaskWindowDto })
+  @ApiResponse({ status: 200, description: 'Window updated' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  setTaskWindow(@Param('taskKey') taskKey: string, @Body() body: SetTaskWindowDto) {
+    return this.ctpService.setTaskWindow(taskKey, body.windowStart, body.windowEnd);
+  }
+
+  // ─── Endpoint 14: Set Task Priority ───
+
+  @Patch('tasks/:taskKey/priority')
+  @ApiOperation({
+    summary: 'Directly modify a task\'s priority on the live landscape',
+    description: 'Mutates the task priority in memory. Does NOT trigger a re-solve.',
+  })
+  @ApiParam({ name: 'taskKey', description: 'Task key to modify' })
+  @ApiBody({ type: SetTaskPriorityDto })
+  @ApiResponse({ status: 200, description: 'Priority updated' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  setTaskPriority(@Param('taskKey') taskKey: string, @Body() body: SetTaskPriorityDto) {
+    return this.ctpService.setTaskPriority(taskKey, body.priority);
   }
 
   // ─── Endpoint 9: Move-To ───

@@ -2,7 +2,9 @@
 
 ## Active
 
-_No sprints currently in progress._
+| Sprint | Name | Notes |
+|--------|------|-------|
+| Solver 7 | Preserve Landscape + Targeted Solve | `preserveLandscape` flag (skip syncFromConfig), `protectOthers` (temp-pin non-targets), `expandChains`, direct window/priority mutation endpoints, task snapshot/rollback, landscape hash. Unlocks AI recommendation apply, UI live-mutation workflow, surgical solve-selected. |
 
 ## Done
 
@@ -170,6 +172,7 @@ INFRA TRACK
   engine-sprint-chain-primary-anchor.md ← Primary-task-driven chain placement
   cpsat-integration-prompt.md          ← CP-SAT global optimizer exploration (C#, OR-Tools)
   solver-5-global-optimizer.md         ← Global optimizer spec
+  solver-7-preserve-landscape-engine-prompt.md ← preserveLandscape, protectOthers, expandChains, window/priority endpoints, rollback
   ui-19-versioning.md                  ← App versioning (footer, logo hover, /version endpoint)
 
   UI Sprints:
@@ -226,4 +229,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 15, 2026 (Engine Scoring Rules + UI Settings Panel — both complete)*
+*Last updated: Mar 17, 2026 (Solver 7 — Preserve Landscape active)*

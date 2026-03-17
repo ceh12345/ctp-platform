@@ -38,6 +38,24 @@ import { SolveRequestDto } from './dto/solve-request.dto';
 import { WhereToRequestDto, WhereToResponseDto, MoveToRequestDto, MoveToResponseDto } from './dto/whereto.dto';
 import { CTPQueryDto, CTPQueryResponse, CTPQueryOption, CTPQuerySummary, ChainTemplatesResponse } from './dto/ctp-query.dto';
 
+export interface TaskSnapshot {
+  key: string;
+  state: number;
+  priority: number;
+  originalPriority: number;
+  pinned: boolean;
+  includeInSolve: boolean;
+  score: number;
+  windowStartW: number;
+  windowEndW: number;
+  windowOrigStartW: number;
+  windowOrigEndW: number;
+  scheduledStartW: number | null;
+  scheduledEndW: number | null;
+  resourceAssignments: { index: number; scheduledResource: string | null }[];
+  errors: { agent: string; reason: string }[];
+}
+
 export interface CTPSolveResult {
   status: string;
   summary: {
@@ -109,13 +127,12 @@ export class CTPService {
   solve(request?: SolveRequestDto): CTPSolveResult {
     const startTime = Date.now();
 
-    // Reload fresh landscape before each solve
-    this.stateService.syncFromConfig();
-
-    const landscape = this.stateService.getLandscape();
-    if (!landscape) {
-      throw new HttpException({ error: { code: ErrorCodes.STATE_NOT_LOADED, message: 'State not loaded.', category: 'config' } }, HttpStatus.BAD_REQUEST);
+    // Only reload from config if NOT preserving landscape state
+    if (!request?.preserveLandscape) {
+      this.stateService.syncFromConfig();
     }
+
+    const landscape = this.ensureLandscape();
 
     // Hydrate due dates from orders onto tasks (terminal tasks only)
     landscape.hydrateDueDates();
@@ -202,6 +219,26 @@ export class CTPService {
       }
     }
 
+    // ─── 1j. Expand chains + protect others ───
+    let effectiveTaskKeys = request?.taskKeys;
+    if (effectiveTaskKeys && request?.expandChains !== false) {
+      effectiveTaskKeys = this.expandToChains(effectiveTaskKeys, landscape);
+    }
+
+    if (request?.protectOthers && effectiveTaskKeys) {
+      const targetSet = new Set(effectiveTaskKeys);
+      landscape.tasks.forEach(task => {
+        if (!targetSet.has(task.key) &&
+            task.state === CTPTaskStateConstants.SCHEDULED &&
+            !task.pinned &&
+            task.includeInSolve) {
+          task.pinned = true;
+          task.includeInSolve = false;
+          task._tempPinned = true;
+        }
+      });
+    }
+
     // ─── 2. Constraint propagation ───
     const propStart = Date.now();
     stats.windowsTightened = landscape.propagateConstraints();
@@ -245,11 +282,22 @@ export class CTPService {
     scheduler.initSettings(landscape.appSettings);
     scheduler.initScoring(scoring);
 
-    const taskList = this.buildTaskList(landscape, request);
+    const taskList = this.buildTaskList(landscape, request, effectiveTaskKeys);
 
     let engineSolveResult: EngineSolveResult | undefined;
-    if (taskList.length > 0) {
-      engineSolveResult = scheduler.schedule(taskList);
+    try {
+      if (taskList.length > 0) {
+        engineSolveResult = scheduler.schedule(taskList);
+      }
+    } finally {
+      // Always clean up temp pins from protectOthers
+      landscape.tasks.forEach(task => {
+        if (task._tempPinned) {
+          task.pinned = false;
+          task.includeInSolve = true;
+          task._tempPinned = false;
+        }
+      });
     }
 
     // ─── 5. Collect stats ───
@@ -1179,12 +1227,14 @@ export class CTPService {
   private buildTaskList(
     landscape: SchedulingLandscape,
     request?: SolveRequestDto,
+    effectiveTaskKeys?: string[],
   ): List<CTPTask> {
     const taskList = new List<CTPTask>();
 
-    // Priority: taskKeys > filter > all
-    if (request?.taskKeys) {
-      for (const key of request.taskKeys) {
+    // Priority: effectiveTaskKeys (expanded) > taskKeys > filter > all
+    const keysToUse = effectiveTaskKeys ?? request?.taskKeys;
+    if (keysToUse) {
+      for (const key of keysToUse) {
         const task = landscape.tasks.getEntity(key);
         if (task) taskList.add(task);
       }
@@ -1235,6 +1285,237 @@ export class CTPService {
       scoring.addConfig(config);
     }
     return scoring;
+  }
+
+  // ═══════════════════════════════════════
+  // Endpoint 10: Set Task Window
+  // ═══════════════════════════════════════
+
+  setTaskWindow(taskKey: string, windowStart?: string, windowEnd?: string): any {
+    const landscape = this.ensureLandscape();
+    const task = landscape.tasks?.getEntity(taskKey);
+
+    if (!task) {
+      throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
+    }
+    if (!task.window) {
+      throw new HttpException({ error: { code: ErrorCodes.ENGINE_EXCEPTION, message: `Task ${taskKey} has no window`, category: 'validation' } }, HttpStatus.BAD_REQUEST);
+    }
+
+    const previousStart = CTPDateTime.toDateTime(task.window.startW).toISO()!;
+    const previousEnd = CTPDateTime.toDateTime(task.window.endW).toISO()!;
+
+    if (windowStart) {
+      const newStartW = CTPDateTime.fromDateTime(windowStart);
+      task.window.startW = newStartW;
+      task.window.origStartW = newStartW;
+    }
+    if (windowEnd) {
+      const newEndW = CTPDateTime.fromDateTime(windowEnd);
+      task.window.endW = newEndW;
+      task.window.origEndW = newEndW;
+    }
+
+    // Validate window is still valid
+    if (task.window.startW >= task.window.endW) {
+      // Revert
+      task.window.startW = CTPDateTime.fromDateTime(previousStart);
+      task.window.endW = CTPDateTime.fromDateTime(previousEnd);
+      task.window.origStartW = task.window.startW;
+      task.window.origEndW = task.window.endW;
+      throw new HttpException({ error: { code: ErrorCodes.ENGINE_EXCEPTION, message: 'Invalid window: start >= end after modification', category: 'validation' } }, HttpStatus.BAD_REQUEST);
+    }
+
+    // If task was previously marked infeasible due to window, clear errors
+    if (task.state !== CTPTaskStateConstants.SCHEDULED) {
+      task.clearErrors();
+      task.includeInSolve = true;
+    }
+
+    return {
+      taskKey,
+      previousWindow: { start: previousStart, end: previousEnd },
+      newWindow: {
+        start: CTPDateTime.toDateTime(task.window.startW).toISO()!,
+        end: CTPDateTime.toDateTime(task.window.endW).toISO()!,
+      },
+      requiresResolve: true,
+    };
+  }
+
+  // ═══════════════════════════════════════
+  // Endpoint 11: Set Task Priority
+  // ═══════════════════════════════════════
+
+  setTaskPriority(taskKey: string, priority: number): any {
+    const landscape = this.ensureLandscape();
+    const task = landscape.tasks?.getEntity(taskKey);
+
+    if (!task) {
+      throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
+    }
+
+    const previousPriority = task.priority;
+    task.priority = priority;
+
+    return {
+      taskKey,
+      previousPriority,
+      newPriority: priority,
+      requiresResolve: true,
+    };
+  }
+
+  // ═══════════════════════════════════════
+  // Chain Expansion
+  // ═══════════════════════════════════════
+
+  private expandToChains(taskKeys: string[], landscape: SchedulingLandscape): string[] {
+    const expanded = new Set(taskKeys);
+    for (const key of taskKeys) {
+      const task = landscape.tasks.getEntity(key);
+      if (!task?.linkId?.name) continue;
+      const chain = landscape.processes.getEntity(task.linkId.name);
+      if (chain?.tasks) {
+        chain.tasks.forEach(t => expanded.add(t.key));
+      }
+    }
+    return [...expanded];
+  }
+
+  // ═══════════════════════════════════════
+  // Task Snapshot / Rollback
+  // ═══════════════════════════════════════
+
+  captureTaskSnapshot(taskKey: string): TaskSnapshot | null {
+    const landscape = this.stateService.getLandscape();
+    if (!landscape) return null;
+    const task = landscape.tasks?.getEntity(taskKey);
+    if (!task) return null;
+    return this.snapshotTask(task);
+  }
+
+  captureAllSnapshots(): Map<string, TaskSnapshot> {
+    const snapshots = new Map<string, TaskSnapshot>();
+    const landscape = this.stateService.getLandscape();
+    if (!landscape) return snapshots;
+    landscape.tasks.forEach(task => {
+      snapshots.set(task.key, this.snapshotTask(task));
+    });
+    return snapshots;
+  }
+
+  restoreSnapshots(snapshots: Map<string, TaskSnapshot>): void {
+    const landscape = this.ensureLandscape();
+
+    // First pass: unschedule anything that was scheduled during the failed sequence
+    for (const [key, snapshot] of snapshots) {
+      const task = landscape.tasks.getEntity(key);
+      if (task && task.state === CTPTaskStateConstants.SCHEDULED &&
+          snapshot.state !== CTPTaskStateConstants.SCHEDULED) {
+        landscape.unscheduleTask(key, true);
+      }
+    }
+
+    // Second pass: restore fields
+    for (const [, snapshot] of snapshots) {
+      this.restoreTaskFromSnapshot(snapshot, landscape);
+    }
+  }
+
+  private snapshotTask(task: CTPTask): TaskSnapshot {
+    const resourceAssignments: { index: number; scheduledResource: string | null }[] = [];
+    let idx = 0;
+    task.capacityResources?.forEach(tr => {
+      resourceAssignments.push({ index: idx, scheduledResource: tr.scheduledResource ?? null });
+      idx++;
+    });
+
+    return {
+      key: task.key,
+      state: task.state,
+      priority: task.priority ?? 100,
+      originalPriority: task.originalPriority ?? 100,
+      pinned: task.pinned,
+      includeInSolve: task.includeInSolve,
+      score: task.score,
+      windowStartW: task.window?.startW ?? 0,
+      windowEndW: task.window?.endW ?? 0,
+      windowOrigStartW: task.window?.origStartW ?? 0,
+      windowOrigEndW: task.window?.origEndW ?? 0,
+      scheduledStartW: task.scheduled?.startW ?? null,
+      scheduledEndW: task.scheduled?.endW ?? null,
+      resourceAssignments,
+      errors: task.errors.map(e => ({ agent: e.agent, reason: e.reason })),
+    };
+  }
+
+  private restoreTaskFromSnapshot(snapshot: TaskSnapshot, landscape: SchedulingLandscape): void {
+    const task = landscape.tasks.getEntity(snapshot.key);
+    if (!task) return;
+
+    task.state = snapshot.state;
+    task.priority = snapshot.priority;
+    task.originalPriority = snapshot.originalPriority;
+    task.pinned = snapshot.pinned;
+    task.includeInSolve = snapshot.includeInSolve;
+    task.score = snapshot.score;
+
+    if (task.window) {
+      task.window.startW = snapshot.windowStartW;
+      task.window.endW = snapshot.windowEndW;
+      task.window.origStartW = snapshot.windowOrigStartW;
+      task.window.origEndW = snapshot.windowOrigEndW;
+    }
+
+    task.errors = snapshot.errors.map(e => ({ agent: e.agent, reason: e.reason, type: '' }));
+
+    let ridx = 0;
+    snapshot.resourceAssignments.forEach(ra => {
+      if (task.capacityResources) {
+        let i = 0;
+        task.capacityResources.forEach(tr => {
+          if (i === ra.index) {
+            tr.scheduledResource = ra.scheduledResource ?? undefined;
+          }
+          i++;
+        });
+      }
+      ridx++;
+    });
+  }
+
+  // ═══════════════════════════════════════
+  // Landscape Hash
+  // ═══════════════════════════════════════
+
+  computeLandscapeHash(): string {
+    const landscape = this.stateService.getLandscape();
+    if (!landscape) return '0';
+    let hash = 0;
+    landscape.tasks.forEach(task => {
+      hash ^= this.simpleHash(task.key);
+      hash ^= (task.state << 4);
+      hash ^= ((task.priority ?? 100) << 8);
+      hash ^= (task.pinned ? 0x10000 : 0);
+      if (task.scheduled) {
+        hash ^= (task.scheduled.startW & 0xFFFF);
+        hash ^= ((task.scheduled.endW & 0xFFFF) << 16);
+      }
+      if (task.window) {
+        hash ^= (task.window.startW & 0xFFFF);
+      }
+    });
+    return hash.toString(36);
+  }
+
+  private simpleHash(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return hash;
   }
 
   private formatWhereToResponse(result: WhereToResult, reason?: string): WhereToResponseDto {

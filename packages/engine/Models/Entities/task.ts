@@ -209,6 +209,9 @@ export class CTPTask extends CTPKeyEntity implements ITask {
   public priority: number = 100;
   public originalPriority: number = 100;  // snapshot at hydration time
 
+  /** Transient: true if this task was temporarily pinned by protectOthers. Never serialized. */
+  public _tempPinned: boolean = false;
+
   // Due date fields — hydrated from order at solve time, not persisted
   public dueDate: number = 0;         // epoch seconds, from order
   public lateDueDate: number = 0;     // epoch seconds, from order
