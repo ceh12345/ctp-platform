@@ -25,6 +25,7 @@ export class CTPResource extends CTPBaseResource implements IResource {
   public assignments: CTPAssignments | null = null;
   public available: AvailableMatrix;
   public class: string;
+  public hourlyRate: number = 0;
 
   constructor(c?: string, t?: string, n?: string, k?: string) {
     super(t, n, k);

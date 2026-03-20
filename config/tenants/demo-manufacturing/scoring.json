@@ -2,10 +2,11 @@
   "name": "Manufacturing Demo",
   "key": "demo-mfg",
   "rules": [
-    { "ruleName": "DueDateScoringRule", "weight": 0.30, "objective": 0, "includeInSolve": true, "penaltyFactor": 1.5 },
-    { "ruleName": "EarliestStartTimeScoringRule", "weight": 0.25, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 },
-    { "ruleName": "ChangeoverScoringRule", "weight": 0.20, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 },
-    { "ruleName": "WhiteSpaceScoringRule", "weight": 0.15, "objective": 1, "includeInSolve": true, "penaltyFactor": 0 },
-    { "ruleName": "ResourcePreferenceScoringRule", "weight": 0.10, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 }
+    { "ruleName": "DueDateScoringRule", "weight": 0.25, "objective": 0, "includeInSolve": true, "penaltyFactor": 1.5, "group": "Schedule Quality" },
+    { "ruleName": "EarliestStartTimeScoringRule", "weight": 0.15, "objective": 0, "includeInSolve": true, "penaltyFactor": 0, "group": "Schedule Quality" },
+    { "ruleName": "ChangeoverScoringRule", "weight": 0.15, "objective": 0, "includeInSolve": true, "penaltyFactor": 0, "group": "Resource Efficiency" },
+    { "ruleName": "WhiteSpaceScoringRule", "weight": 0.10, "objective": 1, "includeInSolve": true, "penaltyFactor": 0, "group": "Resource Efficiency" },
+    { "ruleName": "ResourcePreferenceScoringRule", "weight": 0.10, "objective": 0, "includeInSolve": true, "penaltyFactor": 0, "group": "Schedule Quality" },
+    { "ruleName": "ResourceCostScoringRule", "weight": 0.25, "objective": 0, "includeInSolve": true, "penaltyFactor": 0, "group": "Cost" }
   ]
 }

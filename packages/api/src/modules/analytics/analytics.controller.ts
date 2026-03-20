@@ -47,4 +47,11 @@ export class AnalyticsController {
   getCriticalPathAnalytics() {
     return this.analyticsService.getCriticalPathAnalytics();
   }
+
+  @Get('cost')
+  @ApiOperation({ summary: 'Cost analysis — resource cost breakdown by resource and order' })
+  @ApiResponse({ status: 200, description: 'Cost analytics with per-resource and per-order breakdown' })
+  getCostAnalytics() {
+    return this.analyticsService.getCostAnalytics();
+  }
 }

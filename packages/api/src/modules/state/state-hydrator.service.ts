@@ -209,6 +209,7 @@ export class StateHydratorService {
       );
       if (item.hierarchy?.level1) resource.hierarchy.first = item.hierarchy.level1;
       if (item.hierarchy?.level2) resource.hierarchy.second = item.hierarchy.level2;
+      if (item.hourlyRate !== undefined) resource.hourlyRate = item.hourlyRate;
       const resAttrs = this.normalizeTypedAttributes(item.typedAttributes);
       if (resAttrs) {
         resource.typedAttributes.fromArray(resAttrs);

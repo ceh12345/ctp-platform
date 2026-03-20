@@ -8,6 +8,7 @@ import {
   LatestStartTimeScoringRule,
 } from "../AI/Scoring/starttimescoring";
 import { WhiteSpaceScoringRule } from "../AI/Scoring/whitespacescoring";
+import { ResourceCostScoringRule } from "../AI/Scoring/resourcecostscoringrule";
 
 export class ScoringFactory {
   public static createScoringRule(
@@ -31,6 +32,8 @@ export class ScoringFactory {
       return new ResourceUtilizationScoringRule(w, o, penalty);
     if (key === "resourcepreferencescoringrule")
       return new ResourcePreferenceScoringRule(w, o, penalty);
+    if (key === "resourcecostscoringrule")
+      return new ResourceCostScoringRule(w, o, penalty);
 
     throw new Error(name + " Scoring Rule not found");
   }

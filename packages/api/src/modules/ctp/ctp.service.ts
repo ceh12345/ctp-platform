@@ -1743,6 +1743,23 @@ export class CTPService {
         windowEnd: task.window ? CTPDateTime.toDateTime(task.window.endW).toISO() : null,
       };
 
+      // Per-task resource cost (computed from hourlyRate × duration)
+      if (isScheduled && task.scheduled) {
+        let resourceCost = 0;
+        const durationHrs = task.scheduled.duration() / 3600;
+        task.capacityResources?.forEach((entry) => {
+          if (entry.scheduledResource) {
+            const resEntity = landscape.resources.getEntity(entry.scheduledResource);
+            if (resEntity?.hourlyRate) {
+              resourceCost += resEntity.hourlyRate * durationHrs;
+            }
+          }
+        });
+        if (resourceCost > 0) {
+          taskResult.cost = { total: Math.round(resourceCost * 100) / 100, resource: Math.round(resourceCost * 100) / 100 };
+        }
+      }
+
       // Add detail fields for intermediate+
       if (detailLevel !== 'novice') {
         taskResult.blendedScore = task.score !== Number.MAX_VALUE ? task.score : null;
@@ -2035,6 +2052,44 @@ export class CTPService {
 
     if (criticalPathResult) {
       result.criticalPath = criticalPathResult;
+    }
+
+    // Cost summary (aggregate from per-task costs)
+    const tasksWithCost = tasks.filter((t: any) => t.cost?.total > 0);
+    if (tasksWithCost.length > 0) {
+      const totalCost = tasksWithCost.reduce((s: number, t: any) => s + t.cost.total, 0);
+      const costByResource = new Map<string, { name: string; cost: number }>();
+      for (const t of tasksWithCost) {
+        for (const r of (t.assignedResources || [])) {
+          const prev = costByResource.get(r.resourceKey);
+          const portion = t.cost.total / (t.assignedResources?.length || 1);
+          costByResource.set(r.resourceKey, {
+            name: r.resourceName || r.resourceKey,
+            cost: (prev?.cost ?? 0) + portion,
+          });
+        }
+      }
+      const costByOrder = new Map<string, { name: string; cost: number }>();
+      for (const t of tasksWithCost) {
+        if (t.orderRef) {
+          const prev = costByOrder.get(t.orderRef);
+          costByOrder.set(t.orderRef, {
+            name: t.orderRef,
+            cost: (prev?.cost ?? 0) + t.cost.total,
+          });
+        }
+      }
+
+      (result as any).costSummary = {
+        totalScheduleCost: Math.round(totalCost * 100) / 100,
+        resourceCost: Math.round(totalCost * 100) / 100,
+        costByResource: [...costByResource.entries()]
+          .map(([k, v]) => ({ resourceKey: k, resourceName: v.name, cost: Math.round(v.cost * 100) / 100 }))
+          .sort((a, b) => b.cost - a.cost),
+        costByOrder: [...costByOrder.entries()]
+          .map(([k, v]) => ({ orderKey: k, cost: Math.round(v.cost * 100) / 100 }))
+          .sort((a, b) => b.cost - a.cost),
+      };
     }
 
     return result;

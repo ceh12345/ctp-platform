@@ -4,6 +4,7 @@
     "name": "CNC Machine 01",
     "type": "CNC",
     "class": "REUSABLE",
+    "hourlyRate": 120,
     "hierarchy": {
       "level1": "CNC Bay",
       "level2": "Line A"
@@ -19,6 +20,7 @@
     "name": "CNC Machine 02",
     "type": "CNC",
     "class": "REUSABLE",
+    "hourlyRate": 95,
     "hierarchy": {
       "level1": "CNC Bay",
       "level2": "Line A"
@@ -34,6 +36,7 @@
     "name": "Assembly Station 01",
     "type": "Assembly",
     "class": "REUSABLE",
+    "hourlyRate": 65,
     "hierarchy": {
       "level1": "Assembly",
       "level2": "Line A"

@@ -43,6 +43,7 @@ export interface IScoringConfigurationDTO {
   objective: number;
   includeInSolve: boolean;
   penaltyFactor: number;
+  group?: string;
 }
 
 export class CTPScoringConfiguration implements IScoringConfigurationDTO {
@@ -51,6 +52,7 @@ export class CTPScoringConfiguration implements IScoringConfigurationDTO {
   public objective: number;
   public includeInSolve: boolean;
   public penaltyFactor: number;
+  public group?: string;
 
   constructor(n: string, w: number, o?: number) {
     this.ruleName = n;

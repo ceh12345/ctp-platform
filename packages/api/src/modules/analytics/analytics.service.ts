@@ -4,6 +4,7 @@ import {
   CTPTaskStateConstants,
   CTPTaskTypeConstants,
   DisjunctiveGraph,
+  CTPResource,
 } from '@ctp/engine';
 import { StateService } from '../state/state.service';
 import { ConfigService } from '../../config/config.service';
@@ -725,9 +726,146 @@ export class AnalyticsService {
       });
     }
 
+    // Cost KPIs (only if any resources have hourlyRate)
+    const costData = this.computeCostData(landscape);
+    if (costData && costData.totalCost > 0) {
+      const locale = this.configService.getLocale();
+      const currency = locale?.currency || 'USD';
+      const loc = locale?.locale || 'en-US';
+      const fmtCost = (v: number) => v.toLocaleString(loc, { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+      kpis.push({
+        key: 'total-schedule-cost',
+        name: 'Total Schedule Cost',
+        group: 'Cost',
+        value: fmtCost(costData.totalCost),
+        numericValue: costData.totalCost,
+        status: 'info',
+        unit: currency,
+      });
+      kpis.push({
+        key: 'most-expensive-resource',
+        name: 'Most Expensive Resource',
+        group: 'Cost',
+        value: `${costData.mostExpensiveResource.name} (${fmtCost(costData.mostExpensiveResource.cost)})`,
+        numericValue: costData.mostExpensiveResource.cost,
+        status: 'info',
+        unit: currency,
+      });
+      kpis.push({
+        key: 'avg-cost-per-task',
+        name: 'Avg Cost per Task',
+        group: 'Cost',
+        value: fmtCost(costData.avgCostPerTask),
+        numericValue: costData.avgCostPerTask,
+        status: 'info',
+        unit: currency,
+      });
+      kpis.push({
+        key: 'most-expensive-order',
+        name: 'Most Expensive Order',
+        group: 'Cost',
+        value: costData.mostExpensiveOrder ? `${costData.mostExpensiveOrder.key} (${fmtCost(costData.mostExpensiveOrder.cost)})` : '—',
+        numericValue: costData.mostExpensiveOrder?.cost ?? 0,
+        status: 'info',
+        unit: currency,
+      });
+    }
+
     return {
       kpis,
       meta: { computedAt: new Date().toISOString() },
+    };
+  }
+
+  private computeCostData(landscape: any): any {
+    let totalCost = 0;
+    let taskCount = 0;
+    const costByResource = new Map<string, { name: string; cost: number; taskCount: number }>();
+    const costByOrder = new Map<string, { cost: number }>();
+
+    landscape.tasks.forEach((task: any) => {
+      if (task.state !== CTPTaskStateConstants.SCHEDULED || !task.scheduled) return;
+      const durationHrs = (task.scheduled.endW - task.scheduled.startW) / 3600;
+      let taskCost = 0;
+
+      task.capacityResources?.forEach((entry: any) => {
+        if (!entry.scheduledResource) return;
+        const res = landscape.resources.getEntity(entry.scheduledResource);
+        if (!res?.hourlyRate) return;
+        const cost = res.hourlyRate * durationHrs;
+        taskCost += cost;
+
+        const prev = costByResource.get(entry.scheduledResource);
+        costByResource.set(entry.scheduledResource, {
+          name: res.name || entry.scheduledResource,
+          cost: (prev?.cost ?? 0) + cost,
+          taskCount: (prev?.taskCount ?? 0) + 1,
+        });
+      });
+
+      if (taskCost > 0) {
+        totalCost += taskCost;
+        taskCount++;
+        const orderKey = task.linkId?.name;
+        if (orderKey) {
+          const prev = costByOrder.get(orderKey);
+          costByOrder.set(orderKey, { cost: (prev?.cost ?? 0) + taskCost });
+        }
+      }
+    });
+
+    if (totalCost === 0) return null;
+
+    const resourceArr = [...costByResource.entries()]
+      .map(([k, v]) => ({ key: k, name: v.name, cost: Math.round(v.cost * 100) / 100, taskCount: v.taskCount }))
+      .sort((a, b) => b.cost - a.cost);
+
+    const orderArr = [...costByOrder.entries()]
+      .map(([k, v]) => ({ key: k, cost: Math.round(v.cost * 100) / 100 }))
+      .sort((a, b) => b.cost - a.cost);
+
+    return {
+      totalCost: Math.round(totalCost * 100) / 100,
+      avgCostPerTask: taskCount > 0 ? Math.round((totalCost / taskCount) * 100) / 100 : 0,
+      mostExpensiveResource: resourceArr[0] || { name: '—', cost: 0 },
+      mostExpensiveOrder: orderArr[0] || null,
+      costByResource: resourceArr,
+      costByOrder: orderArr,
+      taskCount,
+    };
+  }
+
+  getCostAnalytics(): any {
+    const landscape = this.stateService.getLandscape();
+    if (!landscape) return { status: 'no_data' };
+
+    const costData = this.computeCostData(landscape);
+    if (!costData) return { status: 'no_cost_data', message: 'No resources with hourly rates configured' };
+
+    const locale = this.configService.getLocale();
+    const currency = locale?.currency || 'USD';
+    const loc = locale?.locale || 'en-US';
+    const fmtCost = (v: number) => v.toLocaleString(loc, { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+    return {
+      status: 'ok',
+      currency,
+      totalCost: costData.totalCost,
+      totalCostFormatted: fmtCost(costData.totalCost),
+      avgCostPerTask: costData.avgCostPerTask,
+      avgCostPerTaskFormatted: fmtCost(costData.avgCostPerTask),
+      taskCount: costData.taskCount,
+      costByResource: costData.costByResource.map((r: any) => ({
+        ...r,
+        costFormatted: fmtCost(r.cost),
+        percentOfTotal: costData.totalCost > 0 ? Math.round((r.cost / costData.totalCost) * 100) : 0,
+      })),
+      costByOrder: costData.costByOrder.map((o: any) => ({
+        ...o,
+        costFormatted: fmtCost(o.cost),
+        percentOfTotal: costData.totalCost > 0 ? Math.round((o.cost / costData.totalCost) * 100) : 0,
+      })),
     };
   }
 

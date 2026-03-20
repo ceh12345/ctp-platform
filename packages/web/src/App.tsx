@@ -7045,6 +7045,7 @@ interface ScoringRuleOverride {
   objective: number;
   includeInSolve: boolean;
   penaltyFactor: number;
+  group?: string;
 }
 
 const RULE_CATALOG: Record<string, {
@@ -7057,6 +7058,7 @@ const RULE_CATALOG: Record<string, {
   DueDateScoringRule: { desc: 'Penalize lateness — only fires on the last task in each order chain', objective: 0, defaultWeight: 0.35, defaultPenalty: 2.0 },
   ResourceUtilizationScoringRule: { desc: 'Spread work across resources — avoids overloading bottlenecks', objective: 1, defaultWeight: 0.20, defaultPenalty: 0 },
   ResourcePreferenceScoringRule: { desc: 'Honor operator/machine preferences — tiebreaker for resource assignment', objective: 0, defaultWeight: 0.10, defaultPenalty: 0 },
+  ResourceCostScoringRule: { desc: 'Minimize hourly resource cost — prefers cheaper machines/operators', objective: 0, defaultWeight: 0.20, defaultPenalty: 0 },
 };
 
 function displayRuleName(name: string): string {
@@ -7071,6 +7073,7 @@ const RULE_ABBREV: Record<string, string> = {
   ChangeoverScoringRule: 'Chgover',
   ResourceUtilizationScoringRule: 'Util',
   ResourcePreferenceScoringRule: 'Pref',
+  ResourceCostScoringRule: 'ResCost',
 };
 
 // ── Scoring Rules Editor ─────────────────────────────────────────────────
@@ -7080,8 +7083,10 @@ function ScoringRulesEditor({ rules, onChange, source }: {
   onChange: (rules: ScoringRuleOverride[]) => void;
   source: 'config' | 'override' | null;
 }) {
-  const [addRule, setAddRule] = useState('');
+  const [activeRule, setActiveRule] = useState<string | null>(null);
+  const [showAddDropdown, setShowAddDropdown] = useState(false);
   const [showJson, setShowJson] = useState(false);
+  const ruleRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const totalWeight = rules.filter(r => r.includeInSolve).reduce((s, r) => s + r.weight, 0);
   const totalPct = Math.round(totalWeight * 100);
@@ -7090,6 +7095,19 @@ function ScoringRulesEditor({ rules, onChange, source }: {
   const availableRules = Object.keys(RULE_CATALOG).filter(
     name => !rules.some(r => r.ruleName === name),
   );
+
+  // Group rules
+  const groups = useMemo(() => {
+    const g = new Map<string, { rules: ScoringRuleOverride[]; indices: number[] }>();
+    rules.forEach((rule, idx) => {
+      const name = rule.group || 'Other';
+      if (!g.has(name)) g.set(name, { rules: [], indices: [] });
+      g.get(name)!.rules.push(rule);
+      g.get(name)!.indices.push(idx);
+    });
+    return g;
+  }, [rules]);
+  const hasGroups = groups.size > 1 || (groups.size === 1 && !groups.has('Other'));
 
   const updateRule = (idx: number, patch: Partial<ScoringRuleOverride>) => {
     const next = rules.map((r, i) => i === idx ? { ...r, ...patch } : r);
@@ -7100,168 +7118,239 @@ function ScoringRulesEditor({ rules, onChange, source }: {
     onChange(rules.filter((_, i) => i !== idx));
   };
 
-  const handleAdd = () => {
-    if (!addRule) return;
-    const cat = RULE_CATALOG[addRule];
+  const handleAdd = (ruleName: string) => {
+    const cat = RULE_CATALOG[ruleName];
     if (!cat) return;
     onChange([...rules, {
-      ruleName: addRule,
+      ruleName,
       weight: cat.defaultWeight,
       objective: cat.objective,
       includeInSolve: true,
       penaltyFactor: cat.defaultPenalty,
     }]);
-    setAddRule('');
+    setShowAddDropdown(false);
+    setTimeout(() => {
+      setActiveRule(ruleName);
+      ruleRefs.current[ruleName]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+  };
+
+  const scrollToRule = (ruleName: string) => {
+    setActiveRule(ruleName);
+    ruleRefs.current[ruleName]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Fixed header: title + total weight */}
-      <div style={{ flexShrink: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <SectionLabel label="Scoring Rules" />
+      {/* Header: title + source badge + add button */}
+      <div style={{
+        flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '0 0 10px', borderBottom: `1px solid ${C.border}`, marginBottom: 10,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Scoring Rules</span>
           <span style={{
-            fontSize: 11, padding: '2px 8px', borderRadius: 4,
+            fontSize: 10, padding: '2px 6px', borderRadius: 4,
             background: source === 'override' ? C.yellowDim : C.accentGlow,
             color: source === 'override' ? C.yellow : C.accent,
           }}>
-            {source === 'override' ? 'Modified' : 'From config'}
+            {source === 'override' ? 'Modified' : 'Config'}
           </span>
         </div>
-        <div style={{
-          padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-          background: isValid ? C.greenDim : C.redDim,
-          color: isValid ? C.green : C.red,
-          display: 'flex', justifyContent: 'space-between',
-          marginBottom: 10,
-        }}>
-          <span>Total weight: {totalPct}%</span>
-          <span>{isValid ? 'Valid' : 'Must sum to 100%'}</span>
-        </div>
-      </div>
-
-      {/* Scrollable rule cards */}
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-        {rules.map((rule, idx) => {
-          const cat = RULE_CATALOG[rule.ruleName];
-          return (
-            <div key={rule.ruleName} style={{
-              padding: '12px 14px', borderRadius: 10, background: C.bg,
-              border: `1px solid ${C.border}`,
-              opacity: rule.includeInSolve ? 1 : 0.45,
-              transition: 'opacity 0.15s',
-            }}>
-              {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontWeight: 700, fontSize: 13, color: C.text }}>
-                    {displayRuleName(rule.ruleName)}
-                  </span>
-                  <span style={{
-                    fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 600,
-                    background: rule.objective === 1 ? C.greenDim : C.accentGlow,
-                    color: rule.objective === 1 ? C.green : C.accent,
-                  }}>
-                    {rule.objective === 1 ? 'maximize' : 'minimize'}
-                  </span>
-                </div>
-                <button onClick={() => removeRule(idx)} style={{
-                  background: 'none', border: 'none', color: C.textDim, cursor: 'pointer',
-                  fontSize: 14, padding: '2px 6px', lineHeight: 1,
-                }}>x</button>
-              </div>
-              {/* Description */}
-              {cat && <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 8 }}>{cat.desc}</div>}
-              {/* Weight slider */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span style={{ fontSize: 11, color: C.textMuted, width: 42 }}>Weight</span>
-                <input type="range" min={0} max={100} step={1}
-                  value={Math.round(rule.weight * 100)}
-                  onChange={e => updateRule(idx, { weight: parseInt(e.target.value) / 100 })}
-                  style={{ flex: 1, accentColor: C.accent }}
-                />
-                <span style={{ fontSize: 12, color: C.text, fontWeight: 600, width: 32, textAlign: 'right' }}>
-                  {Math.round(rule.weight * 100)}%
-                </span>
-              </div>
-              {/* Penalty factor — DueDate only */}
-              {rule.ruleName === 'DueDateScoringRule' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 11, color: C.textMuted, width: 42 }}>Penalty</span>
-                  <input type="number" min={0} max={10} step={0.5}
-                    value={rule.penaltyFactor}
-                    onChange={e => updateRule(idx, { penaltyFactor: parseFloat(e.target.value) || 0 })}
+        {availableRules.length > 0 && (
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setShowAddDropdown(!showAddDropdown)} style={{
+              padding: '4px 12px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+              background: C.accent, color: '#fff', border: 'none', cursor: 'pointer',
+            }}>+ Add Rule</button>
+            {showAddDropdown && (
+              <div style={{
+                position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 10,
+                background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.3)', minWidth: 200, padding: 4,
+              }}>
+                {availableRules.map(name => (
+                  <div key={name} onClick={() => handleAdd(name)}
                     style={{
-                      width: 56, padding: '3px 6px', borderRadius: 4, fontSize: 12,
-                      background: C.surface2, border: `1px solid ${C.border}`, color: C.text,
+                      padding: '6px 10px', borderRadius: 4, fontSize: 12, color: C.text,
+                      cursor: 'pointer',
                     }}
-                  />
-                  <span style={{ fontSize: 10, color: C.textDim }}>Late amplifier (0=symmetric, 2=3x)</span>
-                </div>
-              )}
-              {/* Include toggle */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: C.textMuted, cursor: 'pointer' }}>
-                <input type="checkbox" checked={rule.includeInSolve}
-                  onChange={e => updateRule(idx, { includeInSolve: e.target.checked })}
-                  style={{ accentColor: C.accent }}
-                />
-                Include in solve
-              </label>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Add rule */}
-      {availableRules.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-          <select value={addRule} onChange={e => setAddRule(e.target.value)}
-            style={{
-              flex: 1, padding: '6px 8px', borderRadius: 6, fontSize: 12,
-              background: C.surface2, border: `1px solid ${C.border}`, color: C.text,
-            }}
-          >
-            <option value="">Add a scoring rule...</option>
-            {availableRules.map(name => (
-              <option key={name} value={name}>{displayRuleName(name)}</option>
-            ))}
-          </select>
-          <button onClick={handleAdd} disabled={!addRule} style={{
-            padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-            background: addRule ? C.accent : C.surface2,
-            color: addRule ? '#fff' : C.textDim,
-            border: 'none', cursor: addRule ? 'pointer' : 'default',
-          }}>Add</button>
-        </div>
-      )}
-
-      {/* Reset button */}
-      {source === 'override' && (
-        <button onClick={() => onChange([])} style={{
-          padding: '6px 12px', borderRadius: 6, fontSize: 11,
-          background: 'none', border: `1px solid ${C.border}`, color: C.textMuted,
-          cursor: 'pointer', marginBottom: 12, width: '100%',
-        }}>Reset to tenant config</button>
-      )}
-
-      {/* JSON preview */}
-      <div>
-        <button onClick={() => setShowJson(!showJson)} style={{
-          background: 'none', border: 'none', color: C.accent, fontSize: 11,
-          cursor: 'pointer', padding: 0, textDecoration: 'underline',
-        }}>{showJson ? 'Hide' : 'Show'} scoring.json</button>
-        {showJson && (
-          <pre style={{
-            marginTop: 6, padding: 10, borderRadius: 8, fontSize: 11,
-            background: C.bg, border: `1px solid ${C.border}`, color: C.textMuted,
-            overflowX: 'auto', whiteSpace: 'pre-wrap',
-          }}>
-            {JSON.stringify({ rules }, null, 2)}
-          </pre>
+                    onMouseEnter={e => { e.currentTarget.style.background = `${C.accent}15`; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    {displayRuleName(name)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
-      </div>{/* end scrollable */}
+
+      {/* Two-column layout: left nav + right panel */}
+      <div style={{ display: 'flex', flex: 1, gap: 0, minHeight: 0 }}>
+        {/* Left nav — grouped rule names */}
+        <div style={{
+          width: 160, flexShrink: 0, borderRight: `1px solid ${C.border}`,
+          overflowY: 'auto', paddingRight: 0,
+        }}>
+          {[...groups.entries()].map(([groupName, { rules: groupRules }]) => (
+            <div key={groupName}>
+              {hasGroups && (
+                <div style={{
+                  padding: '8px 12px 4px', fontSize: 9, fontWeight: 700,
+                  textTransform: 'uppercase', letterSpacing: 0.8,
+                  color: C.textDim,
+                }}>
+                  {groupName} ({Math.round(groupRules.filter(r => r.includeInSolve).reduce((s, r) => s + r.weight, 0) * 100)}%)
+                </div>
+              )}
+              {groupRules.map(rule => (
+                <div key={rule.ruleName}
+                  onClick={() => scrollToRule(rule.ruleName)}
+                  style={{
+                    padding: '6px 12px', cursor: 'pointer',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    borderLeft: activeRule === rule.ruleName ? `3px solid ${C.accent}` : '3px solid transparent',
+                    background: activeRule === rule.ruleName ? `${C.accent}10` : 'transparent',
+                    opacity: rule.includeInSolve ? 1 : 0.45,
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => { if (activeRule !== rule.ruleName) e.currentTarget.style.background = `${C.text}08`; }}
+                  onMouseLeave={e => { if (activeRule !== rule.ruleName) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <span style={{ fontSize: 11, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {RULE_ABBREV[rule.ruleName] || displayRuleName(rule.ruleName)}
+                  </span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums',
+                    color: C.text, minWidth: 28, textAlign: 'right' as const,
+                  }}>
+                    {Math.round(rule.weight * 100)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))}
+          {/* Reset button */}
+          {source === 'override' && (
+            <div style={{ padding: '8px 12px' }}>
+              <button onClick={() => onChange([])} style={{
+                padding: '4px 8px', borderRadius: 4, fontSize: 10,
+                background: 'none', border: `1px solid ${C.border}`, color: C.textMuted,
+                cursor: 'pointer', width: '100%',
+              }}>Reset</button>
+            </div>
+          )}
+        </div>
+
+        {/* Right panel — rule detail cards */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px' }}>
+          {rules.map((rule, idx) => {
+            const cat = RULE_CATALOG[rule.ruleName];
+            return (
+              <div key={rule.ruleName}
+                ref={el => { ruleRefs.current[rule.ruleName] = el; }}
+                style={{
+                  padding: '12px 14px', borderRadius: 10, background: C.bg,
+                  border: activeRule === rule.ruleName ? `1px solid ${C.accent}44` : `1px solid ${C.border}`,
+                  opacity: rule.includeInSolve ? 1 : 0.45,
+                  transition: 'opacity 0.15s, border 0.15s',
+                  marginBottom: 8,
+                }}
+                onClick={() => setActiveRule(rule.ruleName)}
+              >
+                {/* Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: C.text }}>
+                      {displayRuleName(rule.ruleName)}
+                    </span>
+                    <span style={{
+                      fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 600,
+                      background: rule.objective === 1 ? C.greenDim : C.accentGlow,
+                      color: rule.objective === 1 ? C.green : C.accent,
+                    }}>
+                      {rule.objective === 1 ? 'maximize' : 'minimize'}
+                    </span>
+                  </div>
+                  <button onClick={(e) => { e.stopPropagation(); removeRule(idx); }} style={{
+                    background: 'none', border: 'none', color: C.textDim, cursor: 'pointer',
+                    fontSize: 14, padding: '2px 6px', lineHeight: 1,
+                  }}>x</button>
+                </div>
+                {/* Description */}
+                {cat && <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 8 }}>{cat.desc}</div>}
+                {/* Weight slider */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, color: C.textMuted, width: 42 }}>Weight</span>
+                  <input type="range" min={0} max={100} step={1}
+                    value={Math.round(rule.weight * 100)}
+                    onChange={e => updateRule(idx, { weight: parseInt(e.target.value) / 100 })}
+                    style={{ flex: 1, accentColor: C.accent }}
+                  />
+                  <span style={{ fontSize: 12, color: C.text, fontWeight: 600, width: 32, textAlign: 'right' as const }}>
+                    {Math.round(rule.weight * 100)}%
+                  </span>
+                </div>
+                {/* Penalty factor — DueDate only */}
+                {rule.ruleName === 'DueDateScoringRule' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 11, color: C.textMuted, width: 42 }}>Penalty</span>
+                    <input type="number" min={0} max={10} step={0.5}
+                      value={rule.penaltyFactor}
+                      onChange={e => updateRule(idx, { penaltyFactor: parseFloat(e.target.value) || 0 })}
+                      style={{
+                        width: 56, padding: '3px 6px', borderRadius: 4, fontSize: 12,
+                        background: C.surface2, border: `1px solid ${C.border}`, color: C.text,
+                      }}
+                    />
+                    <span style={{ fontSize: 10, color: C.textDim }}>Late amplifier (0=symmetric, 2=3x)</span>
+                  </div>
+                )}
+                {/* Include toggle */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: C.textMuted, cursor: 'pointer' }}
+                  onClick={e => e.stopPropagation()}>
+                  <input type="checkbox" checked={rule.includeInSolve}
+                    onChange={e => updateRule(idx, { includeInSolve: e.target.checked })}
+                    style={{ accentColor: C.accent }}
+                  />
+                  Include in solve
+                </label>
+              </div>
+            );
+          })}
+
+          {/* JSON preview */}
+          <div style={{ marginTop: 4 }}>
+            <button onClick={() => setShowJson(!showJson)} style={{
+              background: 'none', border: 'none', color: C.accent, fontSize: 11,
+              cursor: 'pointer', padding: 0, textDecoration: 'underline',
+            }}>{showJson ? 'Hide' : 'Show'} scoring.json</button>
+            {showJson && (
+              <pre style={{
+                marginTop: 6, padding: 10, borderRadius: 8, fontSize: 11,
+                background: C.bg, border: `1px solid ${C.border}`, color: C.textMuted,
+                overflowX: 'auto', whiteSpace: 'pre-wrap',
+              }}>
+                {JSON.stringify({ rules }, null, 2)}
+              </pre>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Pinned weight total at bottom */}
+      <div style={{
+        flexShrink: 0, padding: '8px 12px', borderTop: `1px solid ${C.border}`, marginTop: 8,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        borderRadius: 8, fontSize: 12, fontWeight: 600,
+        background: isValid ? C.greenDim : C.redDim,
+        color: isValid ? C.green : C.red,
+      }}>
+        <span>Total weight: {totalPct}%</span>
+        <span>{isValid ? '\u2713 Valid' : '\u26A0 Must sum to 100%'}</span>
+      </div>
     </div>
   );
 }
@@ -7397,37 +7486,6 @@ function SettingsContent({ experienceLevel, onExperienceChange, stats, solveResu
             >
               {section.label}
             </div>
-            {/* Scoring rules mini-summary under nav item */}
-            {section.key === 'scoring' && activeSection === 'scoring' && scoringRules.length > 0 && (() => {
-              const active = scoringRules.filter(r => r.includeInSolve);
-              const totalPct = Math.round(active.reduce((s, r) => s + r.weight, 0) * 100);
-              const isValid = totalPct >= 99 && totalPct <= 101;
-              return (
-                <div style={{
-                  padding: '4px 14px 8px 18px',
-                  borderLeft: '2px solid transparent',
-                }}>
-                  {active.map(r => (
-                    <div key={r.ruleName} style={{
-                      display: 'flex', justifyContent: 'space-between', gap: 4,
-                      fontSize: 10, color: C.text, lineHeight: 1.8,
-                      fontFamily: 'monospace', opacity: 0.75,
-                    }}>
-                      <span>{RULE_ABBREV[r.ruleName] || displayRuleName(r.ruleName)}</span>
-                      <span style={{ fontWeight: 700 }}>{Math.round(r.weight * 100)}</span>
-                    </div>
-                  ))}
-                  <div style={{
-                    display: 'flex', justifyContent: 'flex-end', gap: 4,
-                    fontSize: 10, fontWeight: 700, marginTop: 2,
-                    color: isValid ? C.green : C.red,
-                    fontFamily: 'monospace',
-                  }}>
-                    <span>{isValid ? '\u2713' : '\u2717'} {totalPct}%</span>
-                  </div>
-                </div>
-              );
-            })()}
           </div>
         ))}
       </div>
@@ -7902,6 +7960,88 @@ function generateRecommendations(summary: BottleneckSummary[]): string[] {
   return recs;
 }
 
+function CostDetail({ data, experienceLevel }: {
+  data: any; experienceLevel: ExperienceLevel;
+}) {
+  if (!data || data.status !== 'ok') return null;
+
+  return (
+    <div>
+      {/* Summary KPIs */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        {[
+          { icon: '\uD83D\uDCB0', label: 'Total Cost', value: data.totalCostFormatted, color: C.text, sub: `${data.taskCount} tasks with cost` },
+          { icon: '\uD83D\uDCCA', label: 'Avg per Task', value: data.avgCostPerTaskFormatted, color: C.text, sub: `across ${data.taskCount} tasks` },
+        ].map((kpi, i) => (
+          <div key={i} style={{
+            flex: '1 1 140px', padding: '12px 14px', background: C.surface2, borderRadius: 10,
+            border: `1px solid ${C.border}`, minWidth: 140,
+          }}>
+            <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 4 }}>{kpi.icon} {kpi.label}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: kpi.color, fontFamily: FONT }}>{kpi.value}</div>
+            <div style={{ fontSize: 10, color: C.textDim, marginTop: 2 }}>{kpi.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Cost by resource — bar chart */}
+      <div style={{ padding: '12px 14px', background: C.surface2, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Cost by resource</div>
+        {(data.costByResource || []).map((rb: any) => (
+          <div key={rb.key} style={{
+            display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0',
+            borderBottom: `1px solid ${C.border}`,
+          }}>
+            <span style={{ flex: 1, fontSize: 12, color: C.text }}>{rb.name}</span>
+            <span style={{ fontSize: 11, color: C.textMuted, minWidth: 50, textAlign: 'right' as const }}>
+              {rb.taskCount} task{rb.taskCount !== 1 ? 's' : ''}
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: C.text, minWidth: 70, textAlign: 'right' as const }}>
+              {rb.costFormatted}
+            </span>
+            <div style={{ width: 100, height: 6, background: C.surface, borderRadius: 3 }}>
+              <div style={{
+                width: `${rb.percentOfTotal}%`, height: '100%', borderRadius: 3,
+                background: rb.percentOfTotal > 20 ? C.accent : C.green,
+              }} />
+            </div>
+            <span style={{ fontSize: 10, color: C.textDim, minWidth: 30, textAlign: 'right' as const }}>
+              {rb.percentOfTotal}%
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Cost by order (intermediate+) */}
+      {showAt(experienceLevel, 'intermediate') && (
+        <div style={{ padding: '12px 14px', background: C.surface2, borderRadius: 10, border: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Cost by order</div>
+          {(data.costByOrder || []).map((o: any) => (
+            <div key={o.key} style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0',
+              borderBottom: `1px solid ${C.border}`,
+            }}>
+              <span style={{ flex: 1, fontSize: 12, color: C.text }}>{o.key}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: C.text, minWidth: 70, textAlign: 'right' as const }}>
+                {o.costFormatted}
+              </span>
+              <div style={{ width: 100, height: 6, background: C.surface, borderRadius: 3 }}>
+                <div style={{
+                  width: `${o.percentOfTotal}%`, height: '100%', borderRadius: 3,
+                  background: C.purple,
+                }} />
+              </div>
+              <span style={{ fontSize: 10, color: C.textDim, minWidth: 30, textAlign: 'right' as const }}>
+                {o.percentOfTotal}%
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CriticalPathDetail({ data, experienceLevel, onTaskClick }: {
   data: any; experienceLevel: ExperienceLevel; onTaskClick?: (key: string) => void;
 }) {
@@ -8236,6 +8376,8 @@ function AnalyticsTab({ kpis, detail, selectedKpi, onSelectKpi, loading, experie
       const task = tasks.find((t: any) => t.key === key);
       if (task) onNavigateToCase?.(key);
     }} />;
+  } else if (selectedGroup === 'Cost' && detail) {
+    detailContent = <CostDetail data={detail} experienceLevel={experienceLevel} />;
   } else if (selectedKpi && !detail) {
     detailContent = (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: C.textMuted }}>
@@ -10768,6 +10910,9 @@ export default function App() {
       } else if (kpi.group === 'Critical Path') {
         const data = await api('/analytics/critical-path');
         setAnalyticsDetail(data);
+      } else if (kpi.group === 'Cost') {
+        const data = await api('/analytics/cost');
+        setAnalyticsDetail(data);
       }
     } catch { setAnalyticsDetail(null); }
     finally { setAnalyticsLoading(false); }
@@ -11284,7 +11429,7 @@ export default function App() {
       </div>
 
       {/* Modals */}
-      <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Settings" width={680}>
+      <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Settings" width={860}>
         <SettingsContent
           experienceLevel={experienceLevel}
           onExperienceChange={handleExperienceChange}

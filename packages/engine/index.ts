@@ -82,6 +82,7 @@ export * from './AI/Scoring/resourceutilizationscoringrule';
 export * from './AI/Scoring/scoringrule';
 export * from './AI/Scoring/starttimescoring';
 export * from './AI/Scoring/whitespacescoring';
+export * from './AI/Scoring/resourcecostscoringrule';
 
 // Engines
 export * from './Engines/availableengine';

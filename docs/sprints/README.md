@@ -2,7 +2,9 @@
 
 ## Active
 
-_No sprints currently in progress._
+| Sprint | Name | Notes |
+|--------|------|-------|
+| Engine — Cost Scoring Model | 5 cost-based scoring rules | ResourceCost, ChangeoverCost, Overtime, Lateness, Material. Grouped UI (Schedule Quality / Resource Efficiency / Cost). Design complete, building rule by rule (~2h each). |
 
 ## Done
 
@@ -70,6 +72,9 @@ _No sprints currently in progress._
 
 | Sprint | Name | Notes |
 |--------|------|-------|
+| Engine — Attribute-Based Resource Matching | Hard-filter preferences by attribute requirements | `requiredAttributes` on task slots, `AttributeMatcher` engine, rejection logging, bottleneck integration. Acme healthcare proof case (surgeon specialty, OR equipment, anesthesiologist certs). CC-ready prompt exists. |
+| AI Sprint 3 — Recommendation Engine | Diagnose → recommend → apply pipeline | 8 action types (move_resource, expand_window, bump, reprioritize, redirect, exclude, pin, change_strategy). Command sequencer with rollback. Design complete. |
+| Solver Phase B — Metaheuristic Improvement | Tabu search + ILS on disjunctive graph | Critical-block neighborhood moves on Phase A graph. Powers Thorough (5-30s) and Best Quality (30s-5m) strategy tiers. Designed Phase B-ready in Phase A. Language TBD (TypeScript or C#). |
 | UI Sprint 14 | Error Display & API Error Handling | Surface engine errors in UI instead of generic 500 |
 | UI Sprint 13 | Resource Explorer | Calendar/Agenda sub-views under Schedule tab |
 | WhereTo on task detail | Button on detail panel | Trigger WhereTo for setup/teardown/unscheduled tasks |
@@ -83,7 +88,11 @@ _No sprints currently in progress._
 | Solver Prompt 3 | Balanced Strategy (Bump Backtracking) | Evaluate if still needed post-Phase 3 |
 | Solver Prompt 4 | Stress Tests — Quick vs Chain | Phase 3 stable |
 | Solver 5 | CP-SAT Global Optimizer | Replace greedy selection with OR-Tools CP-SAT for global combo optimization; C# exploration |
-| UI Sprint 6 | What-If Mode | Solver Prompt 2 (if needed) |
+| Solver 9 — Phase B Tabu Search | Tabu search on disjunctive graph critical blocks | Depends on Phase A (done). Thorough tier: 100 iterations, 5-30s. Critical-block neighborhood (Taillard N7 / Nowicki-Smutnicki). |
+| Solver 10 — Phase B ILS | Iterated Local Search (multi-pass) | Depends on Solver 9. Best Quality tier: perturbation + restart. 30s-5min. |
+| Engine — Cost Analytics KPIs | Cost group in Analytics catalog | Depends on cost scoring rules. Total cost, cost by resource, cost by order, changeover cost, overtime premium. |
+| Engine — Solve Snapshots | Store and compare solve outputs | Per-task assignments, scores, costs. Named snapshots with diff. Powers What-If comparison. |
+| UI Sprint 6 | What-If Mode | Solve Snapshots (or simplified output comparison) |
 | UI Sprint 7 | Time Fence | — |
 | UI Sprint 8 | Task Swap | UI Sprint 4 |
 | UI Sprint 9 | Capacity Adjustment | API work |
@@ -102,7 +111,7 @@ _No sprints currently in progress._
 ## Parking Lot
 
 See `parking-lot.md` for deferred items including:
-- **Attribute-based resource matching** — `requiredAttributes` on task capacity resource entries (e.g., `qualifications contains "ASME-TIG"`). Filter candidate resources by attribute before combo explosion. Eliminates preference-based workarounds for hard requirements like certifications, machine capacities, and skill sets. Discovered during Stafford demo prep — AI suggested moving ASME welds to non-ASME welders because the constraint was modeled as a preference, not a requirement.
+- ~~**Attribute-based resource matching**~~ — promoted to Up Next (CC-ready prompt exists, Acme healthcare proof case)
 - Negative maxGap (overlap support) — successor starts before predecessor ends
 - Multi-lane support — explicit `lane: true` on non-primary resources
 - Soft affinity scoring — prefer same nurse across chain phases
@@ -127,7 +136,7 @@ SOLVER TRACK                          UI TRACK                              AI T
          ▼                      │
   Prompt 4: Stress Tests        │     ├──→ Sprint 8: Task Swap (needs 4)
                                 │     │
-                                └─────┼──→ Sprint 6: What-If (needs 3-5 + P2?)
+                                └─────┼──→ Sprint 6: What-If (needs snapshots)
                                       │
 ✓ Engine: Cadence Profiles            ├──→ Sprint 9: Capacity Adjustment
 ✗ Solver 2.5: Reverted                │
@@ -135,16 +144,27 @@ SOLVER TRACK                          UI TRACK                              AI T
 ✓ Phase 2: Window Tightening          │
 ✓ Phase 3: Chain Context Engine      ✓ Sprint 11: Process Category
   + Bump-and-Retry                   ✓ Sprint 12: Advanced Filters
-                                      ├──→ Sprint 13: Resource Explorer
-                                      ├──→ Sprint 14: Error Handling
-                                    ✓ Sprint 15: Resource Agenda
-                                    ✓ Sprint 16: WhereTo Resource Diversity
-                                    ✓ Sprint 17: Bottleneck Display       ✓ AI-1: Read-Only Chat
-                                    ✓ Sprint 20: Conflict Categorization         │
-                                      └──→ Sprint 18: Solve Replay       ✓ AI-2: Investigation Tools (7 tools)
-                                           (needs Phase 3 steps)          + AI-2b: query_resources
-                                                                                 │
-                                                                           └──→ AI-3: Chat Actions (planned)
+✓ Solver 7: Preserve Landscape        ├──→ Sprint 13: Resource Explorer
+✓ Solver 8: Disjunctive Graph A       ├──→ Sprint 14: Error Handling
+         │                          ✓ Sprint 15: Resource Agenda
+         ├──→ Solver 9: Tabu Search  ✓ Sprint 16: WhereTo Resource Diversity
+         │    (Phase B, TS or C#)   ✓ Sprint 17: Bottleneck Display       ✓ AI-1: Read-Only Chat
+         │           │              ✓ Sprint 20: Conflict Categorization         │
+         │    Solver 10: ILS             └──→ Sprint 18: Solve Replay     ✓ AI-2: Investigation Tools (7 tools)
+         │    (Best Quality tier)          (needs Phase 3 steps)          + AI-2b: query_resources
+         │                                                                       │
+         └──→ Solver 5: CP-SAT                                           ✓ AI-2C: Chat Actions
+              (C# / OR-Tools)                                                    │
+                                                                           └──→ AI-3: Recommendations
+                                                                                (diagnose/apply pipeline)
+
+ENGINE SPRINTS (CURRENT + PLANNED)
+──────────────────────────────────
+🔧 Cost Scoring Model (5 rules: ResourceCost, ChangeoverCost, Overtime, Lateness, Material)
+   └──→ Cost Analytics KPIs
+📋 Attribute-Based Resource Matching (CC-ready, Acme proof case)
+   └──→ feeds into Bottleneck Display + AI explanation
+✓ Currency Locale Support (fmtCurrency helper)
 
 INFRA TRACK
 ───────────
@@ -178,7 +198,15 @@ INFRA TRACK
   disjunctive-graph-session1-prompt_1.md ← Session 1: graph construction, critical path computation, API endpoint
   disjunctive-graph-session2-prompt_1.md ← Session 2: analytics KPIs, AI get_critical_path tool
   disjunctive-graph-session3-prompt_3.md ← Session 3: Gantt highlighting, task detail slack, task table column
-  ui-19-versioning.md                  ← App versioning (footer, logo hover, /version endpoint)
+  cost-scoring-model-design.md           ← 5 cost rules design (ResourceCost, Changeover, Overtime, Lateness, Material)
+  attribute-resource-matching-sprint.md  ← Attribute matching sprint prompt (CC-ready, Acme proof case)
+  ai-recommendations-design.md           ← AI diagnose/apply pipeline, 8 action types, command sequencer
+  preserve-landscape-engine-prompt.md    ← preserveLandscape, protectOthers, expandChains, window/priority endpoints
+  edge-cases-state-management.md         ← 12 edge cases for multi-step operations + state management
+  locale-currency-spec.md               ← Add currency to tenant locale config + fmtCurrency helper
+  metaheuristic-scheduling-overview.docx ← 8-page overview document (executive summary, Phase A/B, cross-domain)
+  stafford-demo-script.md               ← Demo script with critical path narration (5-Axis Mill bottleneck)
+  ui-19-versioning.md                    ← App versioning (footer, logo hover, /version endpoint)
 
   UI Sprints:
   ui-1-select-and-act.md             ← Checkboxes, selection toolbar, unscheduled panel
@@ -234,4 +262,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 19, 2026 (Solver 7 + Solver 8 Phase A + Currency locale — all complete)*
+*Last updated: Mar 19, 2026 (Cost Scoring active, Phase B + Attribute Matching + AI Recommendations in Up Next)*

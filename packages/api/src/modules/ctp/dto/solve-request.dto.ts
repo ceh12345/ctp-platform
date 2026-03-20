@@ -165,6 +165,7 @@ export class SolveRequestDto {
     objective: number;
     includeInSolve: boolean;
     penaltyFactor: number;
+    group?: string;
   }[];
 
   @ApiPropertyOptional({
