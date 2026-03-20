@@ -1,5 +1,6 @@
 {
   "locale": "en-US",
+  "currency": "USD",
   "dateFormat": "short",
   "timeFormat": "short",
   "numberLocale": "en-US",

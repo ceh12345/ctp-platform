@@ -2,9 +2,7 @@
 
 ## Active
 
-| Sprint | Name | Notes |
-|--------|------|-------|
-| Solver 7 | Preserve Landscape + Targeted Solve | `preserveLandscape` flag (skip syncFromConfig), `protectOthers` (temp-pin non-targets), `expandChains`, direct window/priority mutation endpoints, task snapshot/rollback, landscape hash. Unlocks AI recommendation apply, UI live-mutation workflow, surgical solve-selected. |
+_No sprints currently in progress._
 
 ## Done
 
@@ -54,6 +52,9 @@
 | Engine — Scoring Rules + Due Date Hydration | 3 new scoring rules (DueDateScoringRule, ResourceUtilizationScoringRule, ResourcePreferenceScoringRule); due date hydration from orders onto chain-terminal tasks; scoringOverrides on solve request; scoring config in solve response | 2026-03-15 |
 | UI — Settings Panel + Scoring Rules Editor | Left-nav Settings panel (General, Scoring Rules, Solver); scoring weight sliders with add/remove/toggle; mini summary in nav; scoringOverrides via solve request (not persisted); solver timing consolidation | 2026-03-15 |
 | Demo Tuning + Resource Preference Fixes | EXCLUDED preference mode passthrough (hydrator→engine→API→UI); Solve Preview shows preference changes; resource preference overrides send all modes (not just non-AVAILABLE); unscheduled tasks show compatible resources + duration; non-primary resource filter fix; Stafford demo dataset tuning (EQ-003/EQ-004 windows + due dates) | 2026-03-15 |
+| Solver 7 — Preserve Landscape | `preserveLandscape` flag (skip syncFromConfig), `protectOthers` (temp-pin non-targets), `expandChains`, direct window/priority mutation endpoints (`PATCH tasks/:key/window`, `PATCH tasks/:key/priority`), task snapshot/rollback, landscape hash | 2026-03-17 |
+| Solver 8 — Disjunctive Graph Phase A | DisjunctiveGraph engine class with critical path computation + multi-resource support; `GET /ctp/critical-path` + per-task slack/isOnCriticalPath in solve response; Analytics critical path KPIs + detail view; Gantt critical path toggle; task detail slack section; task table slack column; AI `get_critical_path` tool; Overview KPI card; WhereTo critical path banner | 2026-03-17 |
+| Currency Locale Support | `currency` field on all tenant locale.json (NZD for Stafford, USD for rest); `fmtCurrency` frontend helper using Intl.NumberFormat | 2026-03-19 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -173,6 +174,10 @@ INFRA TRACK
   cpsat-integration-prompt.md          ← CP-SAT global optimizer exploration (C#, OR-Tools)
   solver-5-global-optimizer.md         ← Global optimizer spec
   solver-7-preserve-landscape-engine-prompt.md ← preserveLandscape, protectOthers, expandChains, window/priority endpoints, rollback
+  solver-8-disjunctive-graph-design.md ← Phase A+B design: disjunctive graph, critical path, tabu search architecture
+  disjunctive-graph-session1-prompt_1.md ← Session 1: graph construction, critical path computation, API endpoint
+  disjunctive-graph-session2-prompt_1.md ← Session 2: analytics KPIs, AI get_critical_path tool
+  disjunctive-graph-session3-prompt_3.md ← Session 3: Gantt highlighting, task detail slack, task table column
   ui-19-versioning.md                  ← App versioning (footer, logo hover, /version endpoint)
 
   UI Sprints:
@@ -229,4 +234,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 17, 2026 (Solver 7 — Preserve Landscape active)*
+*Last updated: Mar 19, 2026 (Solver 7 + Solver 8 Phase A + Currency locale — all complete)*

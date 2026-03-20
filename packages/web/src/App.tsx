@@ -217,6 +217,18 @@ function fmtNum(v: number | null | undefined): string {
   return v.toLocaleString(loc);
 }
 
+function fmtCurrency(value: number | null | undefined): string {
+  if (value == null) return '—';
+  const loc = _locale?.locale || 'en-US';
+  const cur = _locale?.currency || 'USD';
+  return value.toLocaleString(loc, {
+    style: 'currency',
+    currency: cur,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
+
 /** Get human-readable priority label from a task.
  *  Prefers typedAttributes.priority text (URGENT, ADD-ON, ELECTIVE, etc.)
  *  Falls back to numeric tier: 1-10 RUSH, 11-30 HIGH, 31-70 NORMAL, 71-100 LOW */
@@ -2750,6 +2762,15 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
           <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginTop: 16, marginBottom: 8 }}>
             🗺️ Available Positions
           </div>
+          {task.isOnCriticalPath && (
+            <div style={{
+              padding: '6px 10px', borderRadius: 6, marginBottom: 8,
+              background: '#f9731615', border: '1px solid #f9731630',
+              fontSize: 11, color: '#f97316',
+            }}>
+              {'\u26A1'} This task is on the critical path — moving it may shorten the schedule
+            </div>
+          )}
           {(whereToSource === 'panel' ? whereToOptions : whereToOptions.slice(0, 5)).map((option: any) => {
             const ghostColor = option.rank === 1 ? C.green : option.rank <= 3 ? C.accent : C.textDim;
             return (
@@ -2879,6 +2900,37 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
             </div>
           )}
         </div>
+      )}
+
+      {/* Schedule Flexibility (slack) */}
+      {task.feasible && task.slack !== undefined && task.slack !== null && (
+        <>
+          <SectionLabel label="Schedule Flexibility" />
+          <DetailRow label="Slack" value={
+            task.isOnCriticalPath ? 'Zero (critical path)'
+            : task.slack < 60 ? `${Math.round(task.slack)}s`
+            : task.slack < 3600 ? `${Math.floor(task.slack / 60)}m`
+            : `${Math.floor(task.slack / 3600)}h ${Math.floor((task.slack % 3600) / 60)}m`
+          } color={task.isOnCriticalPath ? '#f97316' : task.slack < 1800 ? C.yellow : C.green} />
+          {task.isOnCriticalPath && (
+            <div style={{
+              padding: '6px 10px', borderRadius: 6, marginTop: 4,
+              background: '#f9731615', border: '1px solid #f9731630',
+              fontSize: 11, color: '#f97316',
+            }}>
+              {'\u26A1'} On critical path — any delay extends the makespan
+            </div>
+          )}
+          {!task.isOnCriticalPath && task.slack < 1800 && (
+            <div style={{
+              padding: '6px 10px', borderRadius: 6, marginTop: 4,
+              background: C.yellow + '15', border: `1px solid ${C.yellow}30`,
+              fontSize: 11, color: C.yellow,
+            }}>
+              {'\u26A0'} Near-critical — less than 30 minutes of slack
+            </div>
+          )}
+        </>
       )}
 
       {/* Product Output */}
@@ -3743,6 +3795,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   const [ganttSearch, setGanttSearch] = useState('');
   const [hideEmpty, setHideEmpty] = useState(false);
   const [hiddenWorkCenters, setHiddenWorkCenters] = useState<Set<string>>(new Set());
+  const [showCriticalPath, setShowCriticalPath] = useState(false);
 
   // Compute time range from actual scheduled task data (exclude excluded tasks/orders)
   const scheduled = tasks.filter((t: any) => {
@@ -3960,6 +4013,20 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
             <span style={{ color: C.textDim, fontSize: 12, cursor: 'help' }}>&#x24D8;</span>
           </HoverTooltip>
         </label>
+        <button
+          onClick={() => setShowCriticalPath(prev => !prev)}
+          style={{
+            padding: '3px 10px', borderRadius: 6, cursor: 'pointer',
+            fontSize: 11, fontWeight: 600, fontFamily: FONT,
+            background: showCriticalPath ? '#f9731622' : 'transparent',
+            color: showCriticalPath ? '#f97316' : C.textMuted,
+            border: showCriticalPath ? '1px solid #f9731644' : '1px solid transparent',
+            display: 'flex', alignItems: 'center', gap: 4,
+            transition: 'all 0.15s',
+          }}
+        >
+          {'\uD83D\uDD17'} Critical Path
+        </button>
         {allWorkCenters.map(wc => (
           <button key={wc} onClick={() => {
             setHiddenWorkCenters(prev => {
@@ -4153,6 +4220,8 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                     const willUnsched = taskUnschedules?.has(t.key);
                     const isReplayFlash = replayActive && replay?.flashTaskKey === t.key;
                     const flashAnim = isReplayFlash && replay?.flashAction;
+                    const isCritical = showCriticalPath && t.isOnCriticalPath;
+                    const isDimmed = showCriticalPath && !t.isOnCriticalPath;
                     return (
                       <div
                         key={t.key}
@@ -4171,13 +4240,14 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                           position: 'absolute', left: `${left}%`, width: `${w}%`,
                           top: 6, height: LANE_H - 12, borderRadius: 4,
                           background: barColor,
-                          opacity: actionLoading === t.key ? 0.45 : isExcluded ? 0.2 : 0.85,
+                          opacity: isDimmed ? 0.35 : actionLoading === t.key ? 0.45 : isExcluded ? 0.2 : 0.85,
                           cursor: 'pointer',
                           display: 'flex', alignItems: 'center', paddingLeft: 4,
                           overflow: 'hidden', fontSize: 10, color: '#fff', fontWeight: 500,
-                          transition: 'opacity 0.2s, box-shadow 0.2s, transform 0.2s',
+                          transition: 'opacity 0.2s, box-shadow 0.2s, transform 0.2s, border-top 0.2s',
                           border: willUnsched ? `2px dashed ${C.red}` : 'none',
-                          ...(isPinned && { boxShadow: `0 0 0 2px ${C.accent}` }),
+                          ...(isCritical && { borderTop: '2px solid #f97316', boxShadow: '0 0 6px #f9731640' }),
+                          ...(isPinned && !isCritical && { boxShadow: `0 0 0 2px ${C.accent}` }),
                           ...(isExcluded && { filter: 'grayscale(1)' }),
                           ...(actionLoading === t.key && { animation: 'pulse 1s ease-in-out infinite' }),
                           ...(flashAnim === 'schedule' || flashAnim === 'retry-success'
@@ -4639,6 +4709,16 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
           {hovered.score != null && (
             <div style={{ color: C.textMuted }}>Score: {hovered.score.toFixed(2)}</div>
           )}
+          {hovered.isOnCriticalPath && (
+            <div style={{ fontSize: 10, color: '#f97316', fontWeight: 600, marginTop: 2 }}>
+              {'\u26A1'} Critical path — zero slack
+            </div>
+          )}
+          {!hovered.isOnCriticalPath && hovered.slack !== undefined && hovered.slack !== null && (
+            <div style={{ fontSize: 10, color: C.textDim, marginTop: 2 }}>
+              Slack: {hovered.slack < 60 ? `${Math.round(hovered.slack)}s` : hovered.slack < 3600 ? `${Math.floor(hovered.slack / 60)}m` : `${Math.floor(hovered.slack / 3600)}h ${Math.floor((hovered.slack % 3600) / 60)}m`}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -4669,6 +4749,7 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
   const [sortBy, setSortBy] = useState<'start' | 'priority' | 'worstGap' | 'name'>('start');
   const isTimeRangeZoom = TIME_RANGE_OPTIONS.some(t => t.label === zoomLevel);
   const [lastTimeRange, setLastTimeRange] = useState(() => isTimeRangeZoom ? zoomLevel : '3 hours');
+  const showCriticalPath = false; // Critical path toggle is on the resource Gantt only
 
   // Filter scheduled tasks (same as GanttChart)
   const scheduled = tasks.filter((tk: any) => {
@@ -4940,6 +5021,8 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
               const isPinned = taskPins?.[tk.key];
               const isExcluded = taskExcludes?.[tk.key];
               const willUnsched = taskUnschedules?.has(tk.key);
+              const isCriticalCase = showCriticalPath && tk.isOnCriticalPath;
+              const isDimmedCase = showCriticalPath && !tk.isOnCriticalPath;
               return (
                 <div key={tk.key}
                   onMouseEnter={e => { setHovered(tk); setHoveredGap(null); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
@@ -4949,11 +5032,13 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
                   style={{
                     position: 'absolute', left: `${left}%`, width: `${w}%`,
                     top: 6, height: CASE_LANE_H - 12, borderRadius: 4,
-                    background: barColor, opacity: isExcluded ? 0.2 : 0.85, cursor: 'pointer',
+                    background: barColor, opacity: isDimmedCase ? 0.35 : isExcluded ? 0.2 : 0.85, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', paddingLeft: 4,
                     overflow: 'hidden', fontSize: 10, color: '#fff', fontWeight: 500,
+                    transition: 'opacity 0.2s, border-top 0.2s, box-shadow 0.2s',
                     border: willUnsched ? `2px dashed ${C.red}` : 'none',
-                    ...(isPinned && { boxShadow: `0 0 0 2px ${C.accent}` }),
+                    ...(isCriticalCase && { borderTop: '2px solid #f97316', boxShadow: '0 0 6px #f9731640' }),
+                    ...(isPinned && !isCriticalCase && { boxShadow: `0 0 0 2px ${C.accent}` }),
                     ...(isExcluded && { filter: 'grayscale(1)' }),
                   }}>
                   {willUnsched && (
@@ -5012,6 +5097,16 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
           <div style={{ color: C.textMuted }}>{t('duration', 'Duration')}: {fmtDuration(hovered.durationSeconds)}</div>
           {hovered.assignedResources?.length > 0 && (
             <div style={{ color: C.textMuted }}>Resources: {hovered.assignedResources.map((r: any) => r.resourceKey).join(', ')}</div>
+          )}
+          {hovered.isOnCriticalPath && (
+            <div style={{ fontSize: 10, color: '#f97316', fontWeight: 600, marginTop: 2 }}>
+              {'\u26A1'} Critical path — zero slack
+            </div>
+          )}
+          {!hovered.isOnCriticalPath && hovered.slack !== undefined && hovered.slack !== null && (
+            <div style={{ fontSize: 10, color: C.textDim, marginTop: 2 }}>
+              Slack: {hovered.slack < 60 ? `${Math.round(hovered.slack)}s` : hovered.slack < 3600 ? `${Math.floor(hovered.slack / 60)}m` : `${Math.floor(hovered.slack / 3600)}h ${Math.floor((hovered.slack % 3600) / 60)}m`}
+            </div>
           )}
         </div>
       )}
@@ -5312,6 +5407,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
       _priorityRank,
       _type,
       _processCategory,
+      _slackSort: tk.isOnCriticalPath ? -1 : (tk.slack ?? Infinity),
     };
   }), [caseTasks, taskPins, taskExcludes, taskUnschedules, orderModes, products, priorityOverrides]);
 
@@ -5704,6 +5800,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
               <SortHeader label={t('processCategory', 'Category')} k="_processCategory" current={sortKey} dir={sortDir} onSort={toggle}
                 filterProps={colFilter('_processCategory')} />
               {showAt(experienceLevel, 'intermediate') && <SortHeader label={t('score', 'Score')} k="score" current={sortKey} dir={sortDir} onSort={toggle} />}
+              {showAt(experienceLevel, 'intermediate') && <SortHeader label="Slack" k="_slackSort" current={sortKey} dir={sortDir} onSort={toggle} />}
               <SortHeader label="Status" k="_status" current={sortKey} dir={sortDir} onSort={toggle} />
               {hasActions && <th style={{
                 padding: '10px 12px', textAlign: 'center', fontSize: 12, fontWeight: 600,
@@ -5773,6 +5870,14 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                   <td style={cellStyle}>{tk._processCategory || '—'}</td>
                   {showAt(experienceLevel, 'intermediate') && <td style={{ ...cellStyle, textAlign: 'right' }}>
                     {tk.score != null ? tk.score.toFixed(2) : '—'}
+                  </td>}
+                  {showAt(experienceLevel, 'intermediate') && <td style={{ ...cellStyle, textAlign: 'right' }}>
+                    {!tk.feasible || tk.slack === undefined || tk.slack === null ? '—'
+                      : tk.isOnCriticalPath ? <span style={{ color: '#f97316', fontWeight: 600, fontSize: 11 }}>{'\u26A1'} Critical</span>
+                      : <span style={{ color: tk.slack < 1800 ? C.yellow : tk.slack < 7200 ? C.textMuted : C.green, fontSize: 11 }}>
+                          {tk.slack < 60 ? `${Math.round(tk.slack)}s` : tk.slack < 3600 ? `${Math.floor(tk.slack / 60)}m` : `${Math.floor(tk.slack / 3600)}h ${Math.floor((tk.slack % 3600) / 60)}m`}
+                        </span>
+                    }
                   </td>}
                   <td style={cellStyle}>
                     {taskStatusBadge(tk._status)}
@@ -6312,7 +6417,7 @@ function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskCli
 function OverviewTab({ summary, tasks, resources, orders, materials, products, colors, onTabChange, onTaskClick, onResourceClick, experienceLevel = 'novice',
   taskPins, taskExcludes, taskUnschedules, orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask, onWhereTo,
-  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset, onViewAgenda }: {
+  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset, onViewAgenda, criticalPath }: {
   summary: any; tasks: any[]; resources: any[]; orders: any[]; materials: any[];
   products: any[]; colors: any; onTabChange: (t: string) => void;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
@@ -6328,6 +6433,7 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
   setZoomLevel?: (v: string | ((prev: string) => string)) => void;
   scrollOffset?: number;
   setScrollOffset?: (v: number | ((prev: number) => number)) => void;
+  criticalPath?: any;
 }) {
   const avgUtil = resources.length > 0
     ? resources.reduce((s: number, r: any) => s + r.utilization, 0) / resources.length
@@ -6356,6 +6462,12 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
         {showAt(experienceLevel, 'expert') && summary?.makespan != null && (
           <KPI icon="⏱" label={t('makespan', 'Makespan')} value={fmtDuration(summary.makespan)} color={C.text}
             sub={`${fmtDateShort(summary.horizonStart)} – ${fmtDateShort(summary.horizonEnd)}`} />
+        )}
+        {showAt(experienceLevel, 'intermediate') && criticalPath && (
+          <KPI icon={'\uD83D\uDD17'} label="Critical Path"
+            value={criticalPath.makespanFormatted}
+            color={C.text}
+            sub={`Bottleneck: ${criticalPath.bottleneckResource?.resourceName} (${criticalPath.bottleneckResource?.percentOfCriticalPath}%)`} />
         )}
       </div>
 
@@ -7790,6 +7902,141 @@ function generateRecommendations(summary: BottleneckSummary[]): string[] {
   return recs;
 }
 
+function CriticalPathDetail({ data, experienceLevel, onTaskClick }: {
+  data: any; experienceLevel: ExperienceLevel; onTaskClick?: (key: string) => void;
+}) {
+  if (!data || data.status !== 'ok') return null;
+
+  const fmtDur = (s: number) => {
+    if (s < 60) return `${Math.round(s)}s`;
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+
+  return (
+    <div>
+      {/* Summary KPIs */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        {[
+          { icon: '\u23F1', label: 'Critical Path', value: data.makespanFormatted, color: C.text, sub: `${data.criticalTasks} of ${data.totalTasks} tasks` },
+          { icon: '\uD83D\uDD34', label: 'Bottleneck', value: data.bottleneckResource.resourceName, color: C.red, sub: `${data.bottleneckResource.percentOfCriticalPath}% of critical path` },
+          { icon: '\u26A0', label: 'Near-Critical', value: String(data.nearCriticalTasks), color: data.nearCriticalTasks > 5 ? C.yellow : C.green, sub: '< 30min slack' },
+          { icon: '\uD83D\uDCCA', label: 'Avg Slack', value: data.avgSlackFormatted, color: data.avgSlack < 1800 ? C.yellow : C.green, sub: 'non-critical tasks' },
+        ].map((kpi, i) => (
+          <div key={i} style={{
+            flex: '1 1 120px', padding: '12px 14px', background: C.surface2, borderRadius: 10,
+            border: `1px solid ${C.border}`, minWidth: 120,
+          }}>
+            <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 4 }}>{kpi.icon} {kpi.label}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: kpi.color, fontFamily: FONT }}>{kpi.value}</div>
+            <div style={{ fontSize: 10, color: C.textDim, marginTop: 2 }}>{kpi.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Critical path strip */}
+      <div style={{ padding: '12px 14px', background: C.surface2, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Critical path by resource</div>
+        <div style={{ display: 'flex', gap: 2, height: 32, borderRadius: 8, overflow: 'hidden', marginBottom: 10 }}>
+          {(data.segments || []).map((seg: any, i: number) => {
+            const pct = data.makespan > 0 ? (seg.totalDuration / data.makespan) * 100 : 0;
+            const colors = [C.accent, C.purple, C.green, '#f97316', C.cyan, C.yellow, C.red];
+            const color = colors[i % colors.length];
+            return (
+              <div key={i} style={{
+                width: `${pct}%`, background: color + '40',
+                borderLeft: i > 0 ? `1px solid ${C.border}` : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 10, fontWeight: 600, color, overflow: 'hidden', whiteSpace: 'nowrap',
+                minWidth: pct > 8 ? undefined : 0,
+              }}>
+                {pct > 8 && seg.resourceName}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 11, color: C.textMuted }}>
+          {(data.segments || []).map((seg: any, i: number) => {
+            const colors = [C.accent, C.purple, C.green, '#f97316', C.cyan, C.yellow, C.red];
+            const color = colors[i % colors.length];
+            const pct = data.makespan > 0 ? Math.round((seg.totalDuration / data.makespan) * 100) : 0;
+            return (
+              <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: color }} />
+                {seg.resourceName} ({pct}%)
+              </span>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Resource breakdown */}
+      <div style={{ padding: '12px 14px', background: C.surface2, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Resource contribution to critical path</div>
+        {(data.resourceBreakdown || []).map((rb: any) => (
+          <div key={rb.resourceKey} style={{
+            display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0',
+            borderBottom: `1px solid ${C.border}`,
+          }}>
+            <span style={{ flex: 1, fontSize: 12, color: C.text }}>{rb.resourceName}</span>
+            <span style={{ fontSize: 11, color: C.textMuted, minWidth: 50, textAlign: 'right' as const }}>
+              {rb.taskCount} task{rb.taskCount !== 1 ? 's' : ''}
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: C.text, minWidth: 50, textAlign: 'right' as const }}>
+              {rb.criticalTimeFormatted}
+            </span>
+            <div style={{ width: 100, height: 6, background: C.surface, borderRadius: 3 }}>
+              <div style={{
+                width: `${rb.percentOfCriticalPath}%`, height: '100%', borderRadius: 3,
+                background: rb.percentOfCriticalPath > 40 ? C.red : rb.percentOfCriticalPath > 20 ? C.yellow : C.accent,
+              }} />
+            </div>
+            <span style={{ fontSize: 10, color: C.textDim, minWidth: 30, textAlign: 'right' as const }}>
+              {rb.percentOfCriticalPath}%
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Slack distribution (intermediate+) */}
+      {showAt(experienceLevel, 'intermediate') && (
+        <div style={{ padding: '12px 14px', background: C.surface2, borderRadius: 10, border: `1px solid ${C.border}`, marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Slack distribution</div>
+          {(data.slackBuckets || []).map((bucket: any) => (
+            <div key={bucket.label} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0' }}>
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: bucket.color, flexShrink: 0 }} />
+              <span style={{ flex: 1, fontSize: 12, color: C.text }}>{bucket.label}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{bucket.count}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Critical path task list (expert+) */}
+      {showAt(experienceLevel, 'expert') && (
+        <div style={{ padding: '12px 14px', background: C.surface2, borderRadius: 10, border: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Critical path tasks</div>
+          {(data.pathTasks || []).map((pt: any, i: number) => (
+            <div key={pt.key} onClick={() => onTaskClick?.(pt.key)} style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px',
+              borderBottom: `1px solid ${C.border}`, cursor: onTaskClick ? 'pointer' : 'default',
+              fontSize: 12,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = C.surface; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <span style={{ color: C.textDim, minWidth: 20 }}>{i + 1}</span>
+              <span style={{ flex: 1, color: C.text }}>{pt.name}</span>
+              <span style={{ color: C.textMuted, minWidth: 80 }}>{pt.resourceName}</span>
+              <span style={{ color: C.text, fontWeight: 600, minWidth: 50, textAlign: 'right' as const }}>{pt.durationFormatted}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AnalyticsTab({ kpis, detail, selectedKpi, onSelectKpi, loading, experienceLevel = 'novice' as ExperienceLevel, onNavigateToCase, tasks = [], onNavigateToConflicts }: {
   kpis: any[];
   detail: any;
@@ -7984,6 +8231,11 @@ function AnalyticsTab({ kpis, detail, selectedKpi, onSelectKpi, loading, experie
     detailContent = <SchedulingDetail data={detail} experienceLevel={experienceLevel} />;
   } else if (selectedGroup === 'Chain Integrity' && detail) {
     detailContent = <ChainDetail data={detail} experienceLevel={experienceLevel} onNavigateToCase={onNavigateToCase} />;
+  } else if (selectedGroup === 'Critical Path' && detail) {
+    detailContent = <CriticalPathDetail data={detail} experienceLevel={experienceLevel} onTaskClick={(key) => {
+      const task = tasks.find((t: any) => t.key === key);
+      if (task) onNavigateToCase?.(key);
+    }} />;
   } else if (selectedKpi && !detail) {
     detailContent = (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200, color: C.textMuted }}>
@@ -8389,6 +8641,8 @@ If you don't have enough information to answer, say so.
       prompt += `- ${task.key} (${task.name}): ${task.scheduledStart || '?'}–${task.scheduledEnd || '?'} on ${resources}`;
       if (task.orderRef) prompt += ` [${tl('order', 'Order')}: ${task.orderRef}]`;
       if (task.windowStart || task.windowEnd) prompt += ` [window: ${task.windowStart || '?'} to ${task.windowEnd || '?'}]`;
+      if (task.isOnCriticalPath) prompt += ` [CRITICAL PATH]`;
+      else if (task.slack !== undefined && task.slack < 1800) prompt += ` [near-critical, slack: ${Math.round(task.slack / 60)}min]`;
       prompt += '\n';
     }
   }
@@ -8439,6 +8693,19 @@ If you don't have enough information to answer, say so.
     }
   }
 
+  // Critical path
+  if (solveResult.criticalPath) {
+    const cp = solveResult.criticalPath;
+    prompt += `\n## Critical Path Analysis\n`;
+    prompt += `- Makespan: ${cp.makespanFormatted}\n`;
+    prompt += `- Bottleneck resource: ${cp.bottleneckResource?.resourceName} (${cp.bottleneckResource?.percentOfCriticalPath}% of critical path)\n`;
+    prompt += `- ${cp.criticalTasks} of ${cp.totalTasks} tasks are on the critical path\n`;
+    prompt += `- ${cp.nearCriticalTasks ?? 0} tasks are near-critical (< 30min slack)\n`;
+    if (cp.segments?.length > 0) {
+      prompt += `- Critical path flows through: ${cp.segments.map((s: any) => s.resourceName || s.resourceKey).join(' → ')}\n`;
+    }
+  }
+
   // Solve stats
   if (solveResult.stats) {
     prompt += `\n## Solve Statistics\n`;
@@ -8479,6 +8746,7 @@ If you don't have enough information to answer, say so.
   prompt += `- compare_tasks: Compare multiple tasks side by side\n`;
   prompt += `- query_resources: Find resources by attribute (lights, surface, park, certification, capability, etc.)\n`;
   prompt += `- evaluate_new_order: Stateless CTP query — evaluate when a new order can be scheduled by cloning an existing chain. Use when the planner asks "when can I schedule a new...", "can I fit another...", "where can I add...". The schedule is NOT modified.\n`;
+  prompt += `- get_critical_path: Get the critical path analysis — bottleneck resource, critical segments, slack distribution. Use when the planner asks about makespan, bottlenecks, schedule length, or what is driving the timeline.\n`;
   prompt += `\n## Attribute Questions — Where to Look\n`;
   prompt += `Task attributes (sport, division, homeTeam, phase, procedureType, operation, etc.) are already in the schedule summary above. Answer task attribute questions directly from context — do NOT call query_resources for tasks.\n`;
   prompt += `Resource attributes (lighting, surface, park, certification, capability, fencing, etc.) are NOT in the schedule summary. Always call query_resources for questions about resource properties.\n`;
@@ -8607,6 +8875,11 @@ const AI_TOOLS = [
     name: 'evaluate_new_order',
     description: 'Evaluate when a new order can be scheduled by cloning an existing chain\'s structure. Returns ranked placement options without changing the current schedule. Use when the user asks "when can I schedule...", "can I fit...", "where can I add...".',
     input_schema: { type: 'object' as const, properties: { source_chain_key: { type: 'string' as const, description: 'Key of an existing chain to use as template (e.g., "C001"). If the user says a procedure name, find a matching chain first.' }, order_name: { type: 'string' as const, description: 'Name for the new order (e.g., "Johnson Knee Replacement")' }, preferred_surgeon: { type: 'string' as const, description: 'Optional: preferred surgeon/primary resource key' }, need_by_date: { type: 'string' as const, description: 'Customer need-by date (ISO format, e.g., "2026-03-20"). If the user says "by Friday" or "need it March 20", convert to a date.' } }, required: ['source_chain_key', 'order_name'] },
+  },
+  {
+    name: 'get_critical_path',
+    description: 'Get the critical path analysis showing which tasks and resources drive the makespan. Returns the bottleneck resource, critical path segments, per-resource contribution, and slack distribution. Use when the user asks about makespan, bottlenecks, schedule length, or what is driving the timeline.',
+    input_schema: { type: 'object' as const, properties: {}, required: [] as string[] },
   },
 ];
 
@@ -8986,6 +9259,50 @@ async function executeEvaluateNewOrder(sourceChainKey: string, orderName: string
   }
 }
 
+async function executeGetCriticalPath(): Promise<string> {
+  try {
+    const data = await api('/analytics/critical-path');
+
+    if (data.status !== 'ok') {
+      return 'No critical path available — solve the schedule first.';
+    }
+
+    const fmtDur = (s: number) => {
+      if (s < 60) return `${Math.round(s)}s`;
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    };
+
+    let result = `Critical Path Analysis:\n`;
+    result += `Makespan: ${data.makespanFormatted}\n`;
+    result += `Bottleneck: ${data.bottleneckResource.resourceName} (${data.bottleneckResource.percentOfCriticalPath}% of critical path)\n`;
+    result += `Critical tasks: ${data.criticalTasks} of ${data.totalTasks}\n`;
+    result += `Near-critical tasks (< 30min slack): ${data.nearCriticalTasks}\n`;
+    result += `Average slack (non-critical): ${data.avgSlackFormatted}\n\n`;
+
+    result += `Critical path segments:\n`;
+    for (const seg of data.segments) {
+      const pct = data.makespan > 0 ? Math.round((seg.totalDuration / data.makespan) * 100) : 0;
+      const taskNames = seg.tasks.map((t: any) => t.name).join(', ');
+      result += `  ${seg.resourceName}: ${fmtDur(seg.totalDuration)} (${pct}%) — ${taskNames}\n`;
+    }
+
+    result += `\nResource breakdown:\n`;
+    for (const rb of data.resourceBreakdown) {
+      result += `  ${rb.resourceName}: ${rb.criticalTimeFormatted} (${rb.percentOfCriticalPath}%, ${rb.taskCount} tasks)\n`;
+    }
+
+    result += `\nSlack distribution:\n`;
+    for (const bucket of data.slackBuckets) {
+      result += `  ${bucket.label}: ${bucket.count} tasks\n`;
+    }
+
+    return result;
+  } catch (err: any) {
+    return `Error fetching critical path: ${err.message}`;
+  }
+}
+
 async function executeTool(toolName: string, input: any, solveResult: any): Promise<string> {
   switch (toolName) {
     case 'where_can_task_go': return await executeWhereTo(input.task_key, input.start_after, input.start_before);
@@ -8996,6 +9313,7 @@ async function executeTool(toolName: string, input: any, solveResult: any): Prom
     case 'compare_tasks': return executeCompareTasks(input.task_keys, solveResult);
     case 'query_resources': return await executeQueryResources(input.attribute, input.value, input.include_availability ?? false, input.start_time, input.end_time);
     case 'evaluate_new_order': return await executeEvaluateNewOrder(input.source_chain_key, input.order_name, input.preferred_surgeon, input.need_by_date);
+    case 'get_critical_path': return await executeGetCriticalPath();
     default: return `Unknown tool: ${toolName}`;
   }
 }
@@ -10447,6 +10765,9 @@ export default function App() {
       } else if (kpi.group === 'Chain Integrity') {
         const data = await api('/analytics/chains');
         setAnalyticsDetail(data);
+      } else if (kpi.group === 'Critical Path') {
+        const data = await api('/analytics/critical-path');
+        setAnalyticsDetail(data);
       }
     } catch { setAnalyticsDetail(null); }
     finally { setAnalyticsLoading(false); }
@@ -10830,6 +11151,7 @@ export default function App() {
             orders={orders} materials={materials} products={products} colors={colors} onTabChange={setActiveTab}
             onTaskClick={handleTaskClick} onResourceClick={handleResourceClick}
             experienceLevel={experienceLevel}
+            criticalPath={solveResult?.criticalPath}
             taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             orderModes={orderModes}
             onPinTask={(key, pinned) => {

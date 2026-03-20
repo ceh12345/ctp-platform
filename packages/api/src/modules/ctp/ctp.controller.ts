@@ -204,6 +204,19 @@ export class CTPController {
     return this.ctpService.getChainTemplates();
   }
 
+  // ─── Endpoint 15: Critical Path Analysis ───
+
+  @Get('critical-path')
+  @ApiOperation({
+    summary: 'Compute critical path analysis for the current schedule',
+    description: 'Builds a disjunctive graph from the scheduled landscape and returns the critical path, bottleneck resource, per-task slack, and critical-path segments by resource. Read-only.',
+  })
+  @ApiResponse({ status: 200, description: 'Critical path analysis' })
+  @ApiResponse({ status: 400, description: 'No scheduled tasks' })
+  getCriticalPath() {
+    return this.ctpService.getCriticalPath();
+  }
+
   // ─── Endpoint 13: Set Task Window ───
 
   @Patch('tasks/:taskKey/window')

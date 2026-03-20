@@ -1,6 +1,7 @@
 {
   "locale": "en-NZ",
   "timezone": "Pacific/Auckland",
+  "currency": "NZD",
   "formats": {
     "date": "d MMM yyyy",
     "time": "h:mm a",

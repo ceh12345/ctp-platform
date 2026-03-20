@@ -1,6 +1,7 @@
 {
   "locale": "en-US",
   "timezone": "America/Denver",
+  "currency": "USD",
   "formats": {
     "date": "MMM d, yyyy",
     "time": "h:mm a",

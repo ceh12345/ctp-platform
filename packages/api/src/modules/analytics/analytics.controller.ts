@@ -40,4 +40,11 @@ export class AnalyticsController {
   getSummary() {
     return this.analyticsService.getSummary();
   }
+
+  @Get('critical-path')
+  @ApiOperation({ summary: 'Critical path analysis for Analytics tab' })
+  @ApiResponse({ status: 200, description: 'Critical path analysis with resource breakdown and slack distribution' })
+  getCriticalPathAnalytics() {
+    return this.analyticsService.getCriticalPathAnalytics();
+  }
 }

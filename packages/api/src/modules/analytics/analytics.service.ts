@@ -3,6 +3,7 @@ import {
   CTPDateTime,
   CTPTaskStateConstants,
   CTPTaskTypeConstants,
+  DisjunctiveGraph,
 } from '@ctp/engine';
 import { StateService } from '../state/state.service';
 import { ConfigService } from '../../config/config.service';
@@ -673,9 +674,147 @@ export class AnalyticsService {
       });
     }
 
+    // Critical Path KPIs
+    const graph = DisjunctiveGraph.buildFromLandscape(landscape);
+    const cp = graph?.criticalPath;
+    if (cp) {
+      kpis.push({
+        key: 'critical-path-length',
+        name: 'Critical Path',
+        group: 'Critical Path',
+        value: cp.makespanFormatted,
+        numericValue: cp.makespan,
+        status: 'info',
+        unit: '',
+      });
+      kpis.push({
+        key: 'critical-path-bottleneck',
+        name: 'Bottleneck Resource',
+        group: 'Critical Path',
+        value: `${cp.bottleneckResource.resourceName} (${cp.bottleneckResource.percentOfCriticalPath}%)`,
+        numericValue: cp.bottleneckResource.percentOfCriticalPath,
+        status: cp.bottleneckResource.percentOfCriticalPath > 50 ? 'warning' : 'good',
+        unit: '%',
+      });
+      kpis.push({
+        key: 'critical-path-tasks',
+        name: 'Critical Tasks',
+        group: 'Critical Path',
+        value: `${cp.criticalTasks} of ${cp.totalTasks}`,
+        numericValue: cp.criticalTasks,
+        status: 'info',
+        unit: '',
+      });
+      kpis.push({
+        key: 'near-critical-tasks',
+        name: 'Near-Critical (<30m slack)',
+        group: 'Critical Path',
+        value: cp.nearCriticalTasks,
+        numericValue: cp.nearCriticalTasks,
+        status: cp.nearCriticalTasks > 5 ? 'warning' : 'good',
+        unit: '',
+      });
+      kpis.push({
+        key: 'avg-slack',
+        name: 'Average Slack',
+        group: 'Critical Path',
+        value: this.formatDuration(cp.avgSlack),
+        numericValue: cp.avgSlack,
+        status: cp.avgSlack < 1800 ? 'warning' : 'good',
+        unit: '',
+      });
+    }
+
     return {
       kpis,
       meta: { computedAt: new Date().toISOString() },
     };
+  }
+
+  getCriticalPathAnalytics(): any {
+    const landscape = this.stateService.getLandscape();
+    if (!landscape) return { status: 'no_data' };
+
+    const graph = DisjunctiveGraph.buildFromLandscape(landscape);
+    if (!graph.criticalPath) return { status: 'no_critical_path', message: 'No scheduled tasks' };
+
+    const cp = graph.criticalPath;
+
+    // Per-resource breakdown
+    const resourceCritTime = new Map<string, { name: string; time: number; taskCount: number }>();
+    for (const node of graph.nodes) {
+      if (!node.isOnCriticalPath) continue;
+      const prev = resourceCritTime.get(node.resourceKey);
+      resourceCritTime.set(node.resourceKey, {
+        name: node.resourceName,
+        time: (prev?.time ?? 0) + node.duration,
+        taskCount: (prev?.taskCount ?? 0) + 1,
+      });
+    }
+    const resourceBreakdown: any[] = [];
+    for (const [key, val] of resourceCritTime) {
+      resourceBreakdown.push({
+        resourceKey: key,
+        resourceName: val.name,
+        criticalTime: val.time,
+        criticalTimeFormatted: this.formatDuration(val.time),
+        taskCount: val.taskCount,
+        percentOfCriticalPath: cp.makespan > 0 ? Math.round((val.time / cp.makespan) * 100) : 0,
+      });
+    }
+    resourceBreakdown.sort((a, b) => b.criticalTime - a.criticalTime);
+
+    // Slack distribution buckets
+    const slackBuckets = [
+      { label: 'Critical (0)', count: 0, color: '#ef4444' },
+      { label: '< 30min', count: 0, color: '#f97316' },
+      { label: '30min – 2h', count: 0, color: '#eab308' },
+      { label: '2h – 8h', count: 0, color: '#22c55e' },
+      { label: '> 8h', count: 0, color: '#3b82f6' },
+    ];
+    for (const node of graph.nodes) {
+      if (node.isOnCriticalPath) slackBuckets[0].count++;
+      else if (node.totalSlack < 1800) slackBuckets[1].count++;
+      else if (node.totalSlack < 7200) slackBuckets[2].count++;
+      else if (node.totalSlack < 28800) slackBuckets[3].count++;
+      else slackBuckets[4].count++;
+    }
+
+    // Path tasks for strip visualization
+    const pathTasks = cp.path.map(p => ({
+      key: p.key,
+      name: p.name,
+      resourceKey: p.resourceKey,
+      resourceName: p.resourceName,
+      duration: p.duration,
+      durationFormatted: this.formatDuration(p.duration),
+      start: p.start,
+      end: p.end,
+    }));
+
+    return {
+      status: 'ok',
+      makespan: cp.makespan,
+      makespanFormatted: cp.makespanFormatted,
+      criticalTasks: cp.criticalTasks,
+      totalTasks: cp.totalTasks,
+      criticalPercent: cp.totalTasks > 0 ? Math.round((cp.criticalTasks / cp.totalTasks) * 100) : 0,
+      bottleneckResource: cp.bottleneckResource,
+      avgSlack: cp.avgSlack,
+      avgSlackFormatted: this.formatDuration(cp.avgSlack),
+      nearCriticalTasks: cp.nearCriticalTasks,
+      resourceBreakdown,
+      slackBuckets,
+      segments: cp.segments,
+      pathTasks,
+    };
+  }
+
+  private formatDuration(seconds: number): string {
+    if (seconds < 60) return `${Math.round(seconds)}s`;
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    if (hrs > 0) return `${hrs}h ${mins}m`;
+    return `${mins}m`;
   }
 }

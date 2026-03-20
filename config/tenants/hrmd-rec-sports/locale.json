@@ -1,6 +1,7 @@
 {
   "locale": "en-US",
   "timezone": "America/Denver",
+  "currency": "USD",
   "actions": {
     "solveAll": "Build Schedule"
   }

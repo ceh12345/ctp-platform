@@ -28,6 +28,7 @@ import {
   CTPSolveResult as EngineSolveResult,
   CTPInterval,
   CTPResourcePreference,
+  DisjunctiveGraph,
 } from '@ctp/engine';
 import { ErrorCodes } from '../../common/error-codes';
 import { StateService } from '../state/state.service';
@@ -107,6 +108,17 @@ export interface CTPSolveResult {
   };
   solveResult?: EngineSolveResult;
   solveSteps?: any[];
+  criticalPath?: {
+    taskKeys: string[];
+    makespan: number;
+    makespanFormatted: string;
+    bottleneckResource: { resourceKey: string; resourceName: string; totalCriticalTime: number; percentOfCriticalPath: number };
+    criticalTasks: number;
+    totalTasks: number;
+    avgSlack: number;
+    nearCriticalTasks: number;
+    segments: { resourceKey: string; resourceName: string; taskKeys: string[]; totalDuration: number }[];
+  };
 }
 
 @Injectable()
@@ -1367,6 +1379,48 @@ export class CTPService {
   }
 
   // ═══════════════════════════════════════
+  // Endpoint 15: Critical Path Analysis
+  // ═══════════════════════════════════════
+
+  getCriticalPath(): any {
+    const landscape = this.ensureLandscape();
+
+    let scheduledCount = 0;
+    landscape.tasks.forEach(t => {
+      if (t.state === CTPTaskStateConstants.SCHEDULED) scheduledCount++;
+    });
+
+    if (scheduledCount === 0) {
+      throw new HttpException({ error: { code: ErrorCodes.ENGINE_EXCEPTION, message: 'No scheduled tasks — solve first', category: 'engine' } }, HttpStatus.BAD_REQUEST);
+    }
+
+    const graph = DisjunctiveGraph.buildFromLandscape(landscape);
+
+    if (!graph.criticalPath) {
+      return { status: 'no_critical_path', message: 'Could not compute critical path' };
+    }
+
+    return {
+      status: 'ok',
+      ...graph.criticalPath,
+      nodes: graph.nodes.map(nd => ({
+        key: nd.key,
+        name: nd.name,
+        type: nd.type,
+        chainKey: nd.chainKey,
+        resourceKey: nd.resourceKey,
+        resourceName: nd.resourceName,
+        start: CTPDateTime.toDateTime(nd.startW).toISO()!,
+        end: CTPDateTime.toDateTime(nd.endW).toISO()!,
+        duration: nd.duration,
+        slack: nd.totalSlack,
+        isOnCriticalPath: nd.isOnCriticalPath,
+        criticalBlockId: nd.criticalBlockId,
+      })),
+    };
+  }
+
+  // ═══════════════════════════════════════
   // Chain Expansion
   // ═══════════════════════════════════════
 
@@ -1911,7 +1965,46 @@ export class CTPService {
       responseStats.scoreBreakdown = stats.scoreBreakdown;
     }
 
-    return {
+    // ─── Critical path analysis ───
+    let criticalPathResult: CTPSolveResult['criticalPath'] | undefined;
+
+    if (scheduledCount > 0) {
+      const graph = DisjunctiveGraph.buildFromLandscape(landscape);
+
+      // Annotate per-task slack and critical path status
+      if (graph.criticalPath) {
+        for (const node of graph.nodes) {
+          const taskResult = tasks.find((t: any) => t.key === node.key);
+          if (taskResult) {
+            taskResult.slack = node.totalSlack;
+            taskResult.isOnCriticalPath = node.isOnCriticalPath;
+            taskResult.criticalBlockId = node.criticalBlockId;
+          }
+        }
+
+        // Include critical path summary at intermediate+ detail level
+        if (detailLevel !== 'novice') {
+          criticalPathResult = {
+            taskKeys: graph.criticalPath.path.map(p => p.key),
+            makespan: graph.criticalPath.makespan,
+            makespanFormatted: graph.criticalPath.makespanFormatted,
+            bottleneckResource: graph.criticalPath.bottleneckResource,
+            criticalTasks: graph.criticalPath.criticalTasks,
+            totalTasks: graph.criticalPath.totalTasks,
+            avgSlack: graph.criticalPath.avgSlack,
+            nearCriticalTasks: graph.criticalPath.nearCriticalTasks,
+            segments: graph.criticalPath.segments.map(s => ({
+              resourceKey: s.resourceKey,
+              resourceName: s.resourceName,
+              taskKeys: s.tasks.map(t => t.key),
+              totalDuration: s.totalDuration,
+            })),
+          };
+        }
+      }
+    }
+
+    const result: CTPSolveResult = {
       status: 'ok',
       summary: {
         totalTasks,
@@ -1939,6 +2032,12 @@ export class CTPService {
       terminology,
       locale,
     };
+
+    if (criticalPathResult) {
+      result.criticalPath = criticalPathResult;
+    }
+
+    return result;
   }
 
   private serializeInfeasibilityReport(report: any): any {
