@@ -108,12 +108,14 @@ export class CTPTaskMaterialInput implements ITaskMaterialInput {
   public requiredQty: number;
   public scrapRate: number;
   public unitOfMeasure: string;
+  public unitCost: number;
 
   constructor(productKey?: string, qty?: number, scrapRate?: number, uom?: string) {
     this.productKey = productKey ?? "";
     this.requiredQty = qty ?? 0;
     this.scrapRate = scrapRate ?? 0.0;
     this.unitOfMeasure = uom ?? "pcs";
+    this.unitCost = 0;
   }
 
   // Gross qty needed accounting for scrap
@@ -216,6 +218,7 @@ export class CTPTask extends CTPKeyEntity implements ITask {
   public dueDate: number = 0;         // epoch seconds, from order
   public lateDueDate: number = 0;     // epoch seconds, from order
   public orderPriority: number = 0;   // from order priority
+  public latenessPenaltyPerDay: number = 0;  // dollar cost per day late, from order
 
   public resetScore() {
     this.score = Number.MAX_VALUE;

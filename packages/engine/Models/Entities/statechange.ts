@@ -35,15 +35,17 @@ export class CTPStateChangeResource {
   public resource: CTPResource;
   public limit: number;
   public type: string;
-  public duration: number
+  public duration: number;
+  public cost: number;
 
- constructor(res: CTPResource, ty: string, f: string, t: string,d: number) {    
+ constructor(res: CTPResource, ty: string, f: string, t: string,d: number) {
     this.type = ty;
     this.resource = res;
     this.fromState = f;
     this.toState = t;
     this.duration = d;
     this.limit =0;
+    this.cost = 0;
   }
   public getName() : string{
     return  this.fromState + "->" + this.toState ;
@@ -60,6 +62,7 @@ export class CTPStateChange extends CTPKeyEntity implements IStateChange {
   public duration: number;
   public resourceType: string;
   public penalty: number;
+  public cost: number;
 
   constructor(res: string, ty?: string, f?: string, t?: string) {
     super();
@@ -73,6 +76,7 @@ export class CTPStateChange extends CTPKeyEntity implements IStateChange {
     this.type = ty && ty != "" ? ty : CTPStateChangeConstants.PROCESS_CHANGE;
     this.hashKey = this.createhash();
     this.penalty = 0;
+    this.cost = 0;
   }
 
   createhash(): string {

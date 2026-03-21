@@ -335,6 +335,9 @@ export class SchedulingLandscape implements ILandscape {
           if (!hasSuccessor.has(task.key)) {
             task.dueDate = order.dueDate;
             task.lateDueDate = order.lateDueDate;
+            if (order.latenessPenaltyPerDay > 0) {
+              task.latenessPenaltyPerDay = order.latenessPenaltyPerDay;
+            }
           }
           if (task.orderPriority === 0 && order.priority > 0) {
             task.orderPriority = order.priority;

@@ -114,6 +114,7 @@ export interface IOrderData {
   dueDate: string;
   lateDueDate?: string;
   priority?: number;
+  latenessPenaltyPerDay?: number;
 }
 
 // Material inventory data
@@ -124,6 +125,7 @@ export interface IMaterialData {
   onHand: number;
   incoming?: number;
   incomingDate?: string | null;
+  unitCost?: number;
 }
 
 // Raw entity data shapes
@@ -180,6 +182,7 @@ export interface IStateChangeData {
   toState: string;
   duration: number;
   penalty?: number;
+  cost?: number;
 }
 
 export interface IProcessData {

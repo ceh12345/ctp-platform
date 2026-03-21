@@ -135,6 +135,7 @@ export class StateHydratorService {
         order.lateDueDate = CTPDateTime.fromDateTime(DateTime.fromISO(item.lateDueDate));
       }
       order.priority = item.priority ?? 0;
+      if (item.latenessPenaltyPerDay !== undefined) order.latenessPenaltyPerDay = item.latenessPenaltyPerDay;
       landscape.orders.addEntity(order);
     }
   }
@@ -329,14 +330,20 @@ export class StateHydratorService {
       if (item.inputMaterials && Array.isArray(item.inputMaterials)) {
         const matInputs = new CTPTaskMaterialInputList();
         for (const mi of item.inputMaterials) {
-          matInputs.add(
-            new CTPTaskMaterialInput(
-              mi.productKey,
-              mi.requiredQty,
-              mi.scrapRate ?? 0,
-              mi.unitOfMeasure ?? 'pcs',
-            ),
+          const matInput = new CTPTaskMaterialInput(
+            mi.productKey,
+            mi.requiredQty,
+            mi.scrapRate ?? 0,
+            mi.unitOfMeasure ?? 'pcs',
           );
+          // Look up unitCost from materials config
+          if (mi.unitCost !== undefined) {
+            matInput.unitCost = mi.unitCost;
+          } else {
+            const matData = this.configService.getMaterials().find(m => m.key === mi.productKey);
+            if (matData?.unitCost !== undefined) matInput.unitCost = matData.unitCost;
+          }
+          matInputs.add(matInput);
         }
         task.inputMaterials = matInputs;
       }
@@ -448,6 +455,7 @@ export class StateHydratorService {
       );
       if (item.duration !== undefined) sc.duration = item.duration;
       if (item.penalty !== undefined) sc.penalty = item.penalty;
+      if (item.cost !== undefined) sc.cost = item.cost;
       stateChanges.addEntity(sc);
     }
     return stateChanges;

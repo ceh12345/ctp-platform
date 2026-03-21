@@ -18,6 +18,7 @@ export class CTPOrder extends CTPKeyEntity implements IOrder {
   public fillRate: number = 0;
   public priority: number = 0;
   public scheduledQty: number = 0;
+  public latenessPenaltyPerDay: number = 0;
 
   constructor(t?: string, n?: string, k?: string) {
     super(t, n, k);

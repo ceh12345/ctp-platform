@@ -7049,16 +7049,20 @@ interface ScoringRuleOverride {
 }
 
 const RULE_CATALOG: Record<string, {
-  desc: string; objective: number; defaultWeight: number; defaultPenalty: number;
+  desc: string; objective: number; defaultWeight: number; defaultPenalty: number; defaultGroup?: string;
 }> = {
-  EarliestStartTimeScoringRule: { desc: 'Prefer earlier placement — builds buffer before due dates', objective: 0, defaultWeight: 0.15, defaultPenalty: 0 },
-  LatestStartTimeScoringRule: { desc: 'Prefer later placement — JIT strategy, delays work to reduce WIP', objective: 0, defaultWeight: 0.15, defaultPenalty: 0 },
-  WhiteSpaceScoringRule: { desc: 'Prefer slots with more flexibility — preserves options for later tasks', objective: 1, defaultWeight: 0.15, defaultPenalty: 0 },
-  ChangeoverScoringRule: { desc: 'Minimize changeover/setup time — batch similar work together', objective: 0, defaultWeight: 0.20, defaultPenalty: 0 },
-  DueDateScoringRule: { desc: 'Penalize lateness — only fires on the last task in each order chain', objective: 0, defaultWeight: 0.35, defaultPenalty: 2.0 },
-  ResourceUtilizationScoringRule: { desc: 'Spread work across resources — avoids overloading bottlenecks', objective: 1, defaultWeight: 0.20, defaultPenalty: 0 },
-  ResourcePreferenceScoringRule: { desc: 'Honor operator/machine preferences — tiebreaker for resource assignment', objective: 0, defaultWeight: 0.10, defaultPenalty: 0 },
-  ResourceCostScoringRule: { desc: 'Minimize hourly resource cost — prefers cheaper machines/operators', objective: 0, defaultWeight: 0.20, defaultPenalty: 0 },
+  EarliestStartTimeScoringRule: { desc: 'Prefer earlier placement — builds buffer before due dates', objective: 0, defaultWeight: 0.15, defaultPenalty: 0, defaultGroup: 'Schedule Quality' },
+  LatestStartTimeScoringRule: { desc: 'Prefer later placement — JIT strategy, delays work to reduce WIP', objective: 0, defaultWeight: 0.15, defaultPenalty: 0, defaultGroup: 'Schedule Quality' },
+  WhiteSpaceScoringRule: { desc: 'Prefer slots with more flexibility — preserves options for later tasks', objective: 1, defaultWeight: 0.15, defaultPenalty: 0, defaultGroup: 'Resource Efficiency' },
+  ChangeoverScoringRule: { desc: 'Minimize changeover/setup time — batch similar work together', objective: 0, defaultWeight: 0.20, defaultPenalty: 0, defaultGroup: 'Resource Efficiency' },
+  DueDateScoringRule: { desc: 'Penalize lateness — only fires on the last task in each order chain', objective: 0, defaultWeight: 0.35, defaultPenalty: 2.0, defaultGroup: 'Schedule Quality' },
+  ResourceUtilizationScoringRule: { desc: 'Spread work across resources — avoids overloading bottlenecks', objective: 1, defaultWeight: 0.20, defaultPenalty: 0, defaultGroup: 'Resource Efficiency' },
+  ResourcePreferenceScoringRule: { desc: 'Honor operator/machine preferences — tiebreaker for resource assignment', objective: 0, defaultWeight: 0.10, defaultPenalty: 0, defaultGroup: 'Schedule Quality' },
+  ResourceCostScoringRule: { desc: 'Minimize hourly resource cost — prefers cheaper machines/operators', objective: 0, defaultWeight: 0.20, defaultPenalty: 0, defaultGroup: 'Cost' },
+  ChangeoverCostScoringRule: { desc: 'Minimize changeover dollar cost — batch similar products to avoid expensive setups', objective: 0, defaultWeight: 0.15, defaultPenalty: 0, defaultGroup: 'Cost' },
+  LatenessCostScoringRule: { desc: 'Minimize lateness penalties — dollar cost per day late from order contracts', objective: 0, defaultWeight: 0.15, defaultPenalty: 0, defaultGroup: 'Cost' },
+  MaterialCostScoringRule: { desc: 'Minimize material waste cost — accounts for scrap rates and unit costs', objective: 0, defaultWeight: 0.10, defaultPenalty: 0, defaultGroup: 'Cost' },
+  OvertimeCostScoringRule: { desc: 'Minimize overtime premium — extra cost for hours outside standard availability', objective: 0, defaultWeight: 0.10, defaultPenalty: 0, defaultGroup: 'Cost' },
 };
 
 function displayRuleName(name: string): string {
@@ -7074,6 +7078,10 @@ const RULE_ABBREV: Record<string, string> = {
   ResourceUtilizationScoringRule: 'Util',
   ResourcePreferenceScoringRule: 'Pref',
   ResourceCostScoringRule: 'ResCost',
+  ChangeoverCostScoringRule: 'ChgCost',
+  LatenessCostScoringRule: 'LateCost',
+  MaterialCostScoringRule: 'MatCost',
+  OvertimeCostScoringRule: 'OTCost',
 };
 
 // ── Scoring Rules Editor ─────────────────────────────────────────────────
@@ -7127,6 +7135,7 @@ function ScoringRulesEditor({ rules, onChange, source }: {
       objective: cat.objective,
       includeInSolve: true,
       penaltyFactor: cat.defaultPenalty,
+      group: cat.defaultGroup,
     }]);
     setShowAddDropdown(false);
     setTimeout(() => {

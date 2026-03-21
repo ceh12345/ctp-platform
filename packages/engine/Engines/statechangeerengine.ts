@@ -201,11 +201,13 @@ export class StateChangeEngine
                 // is now infeasible becuase change over is longer than segment
                 schedule.slot.hasInfeasibleDueToChangeOver = !i.stillFeasible();
 
-                i.states.push(new CTPStateChangeResource(resSlot.resource, 
-                                                        CTPStateChangeConstants.PROCESS_CHANGE, 
-                                                        fromChange, 
+                const scr = new CTPStateChangeResource(resSlot.resource,
+                                                        CTPStateChangeConstants.PROCESS_CHANGE,
+                                                        fromChange,
                                                         toChange,
-                                                        coTask.duration));
+                                                        coTask.duration);
+                scr.cost = coTask.cost ?? 0;
+                i.states.push(scr);
               }
             }
           }

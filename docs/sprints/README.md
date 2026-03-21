@@ -72,8 +72,9 @@
 
 | Sprint | Name | Notes |
 |--------|------|-------|
-| Engine — Attribute-Based Resource Matching | Hard-filter preferences by attribute requirements | `requiredAttributes` on task slots, `AttributeMatcher` engine, rejection logging, bottleneck integration. Acme healthcare proof case (surgeon specialty, OR equipment, anesthesiologist certs). CC-ready prompt exists. |
-| AI Sprint 3 — Recommendation Engine | Diagnose → recommend → apply pipeline | 8 action types (move_resource, expand_window, bump, reprioritize, redirect, exclude, pin, change_strategy). Command sequencer with rollback. Design complete. |
+| Engine — Schedule Configurations | Named, saveable solver profiles | Bundles scoring rules + strategy + tier + experience level. Backend schema includes future fields (constraint toggles, horizon override, solver depth, cost visibility) — UI reveals progressively. CRUD API + config picker in Solve Preview + Save/Save As in Settings. Spec complete. |
+| AI Sprint 3 — Recommendation Engine | Diagnose → recommend → apply pipeline | 8 action types (move_resource, expand_window, bump, reprioritize, redirect, exclude, pin, change_strategy). Command sequencer with rollback. Depends on preserveLandscape (done). Design complete. |
+| Engine — Attribute-Based Resource Matching | Hard-filter preferences by attribute requirements | `requiredAttributes` on task slots, `AttributeMatcher` engine, rejection logging, bottleneck integration. Acme healthcare proof case. Makes AI recommendations correct (won't suggest non-ASME welders). CC-ready prompt exists. |
 | Solver Phase B — Metaheuristic Improvement | Tabu search + ILS on disjunctive graph | Critical-block neighborhood moves on Phase A graph. Powers Thorough (5-30s) and Best Quality (30s-5m) strategy tiers. Designed Phase B-ready in Phase A. Language TBD (TypeScript or C#). |
 | UI Sprint 14 | Error Display & API Error Handling | Surface engine errors in UI instead of generic 500 |
 | UI Sprint 13 | Resource Explorer | Calendar/Agenda sub-views under Schedule tab |
@@ -162,8 +163,11 @@ ENGINE SPRINTS (CURRENT + PLANNED)
 ──────────────────────────────────
 🔧 Cost Scoring Model (5 rules: ResourceCost, ChangeoverCost, Overtime, Lateness, Material)
    └──→ Cost Analytics KPIs
+📋 Schedule Configurations (named profiles: scoring + strategy + tier; backend complete, UI progressive)
+   └──→ replaces ephemeral scoringOverrides + strategy picker
 📋 Attribute-Based Resource Matching (CC-ready, Acme proof case)
    └──→ feeds into Bottleneck Display + AI explanation
+📋 Scoring Dialog Nav (left-side click-to-scroll + pinned Add Rule)
 ✓ Currency Locale Support (fmtCurrency helper)
 
 INFRA TRACK
@@ -204,6 +208,8 @@ INFRA TRACK
   preserve-landscape-engine-prompt.md    ← preserveLandscape, protectOthers, expandChains, window/priority endpoints
   edge-cases-state-management.md         ← 12 edge cases for multi-step operations + state management
   locale-currency-spec.md               ← Add currency to tenant locale config + fmtCurrency helper
+  schedule-configurations-spec.md       ← Named solver profiles (scoring + strategy + tier + future fields); CRUD API + UI picker
+  scoring-dialog-nav-spec.md            ← Scoring rules left-side nav + pinned Add Rule button + grouped display
   metaheuristic-scheduling-overview.docx ← 8-page overview document (executive summary, Phase A/B, cross-domain)
   stafford-demo-script.md               ← Demo script with critical path narration (5-Axis Mill bottleneck)
   ui-19-versioning.md                    ← App versioning (footer, logo hover, /version endpoint)
@@ -262,4 +268,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 19, 2026 (Cost Scoring active, Phase B + Attribute Matching + AI Recommendations in Up Next)*
+*Last updated: Mar 20, 2026 (Cost Scoring active, Schedule Configurations + Attribute Matching + AI Recommendations + Phase B in Up Next)*

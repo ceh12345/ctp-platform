@@ -83,6 +83,10 @@ export * from './AI/Scoring/scoringrule';
 export * from './AI/Scoring/starttimescoring';
 export * from './AI/Scoring/whitespacescoring';
 export * from './AI/Scoring/resourcecostscoringrule';
+export * from './AI/Scoring/changeovercostscoringrule';
+export * from './AI/Scoring/latenesscostscoringrule';
+export * from './AI/Scoring/materialcostscoringrule';
+export * from './AI/Scoring/overtimecostscoringrule';
 
 // Engines
 export * from './Engines/availableengine';

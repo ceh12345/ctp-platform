@@ -1743,9 +1743,10 @@ export class CTPService {
         windowEnd: task.window ? CTPDateTime.toDateTime(task.window.endW).toISO() : null,
       };
 
-      // Per-task resource cost (computed from hourlyRate × duration)
+      // Per-task cost breakdown (resource + material)
       if (isScheduled && task.scheduled) {
         let resourceCost = 0;
+        let materialCost = 0;
         const durationHrs = task.scheduled.duration() / 3600;
         task.capacityResources?.forEach((entry) => {
           if (entry.scheduledResource) {
@@ -1755,8 +1756,18 @@ export class CTPService {
             }
           }
         });
-        if (resourceCost > 0) {
-          taskResult.cost = { total: Math.round(resourceCost * 100) / 100, resource: Math.round(resourceCost * 100) / 100 };
+        task.inputMaterials?.forEach((input) => {
+          if (input.unitCost > 0) {
+            materialCost += input.grossQty() * input.unitCost;
+          }
+        });
+        const totalCost = resourceCost + materialCost;
+        if (totalCost > 0) {
+          taskResult.cost = {
+            total: Math.round(totalCost * 100) / 100,
+            resource: Math.round(resourceCost * 100) / 100,
+            material: Math.round(materialCost * 100) / 100,
+          };
         }
       }
 

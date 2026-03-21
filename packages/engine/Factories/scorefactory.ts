@@ -9,6 +9,10 @@ import {
 } from "../AI/Scoring/starttimescoring";
 import { WhiteSpaceScoringRule } from "../AI/Scoring/whitespacescoring";
 import { ResourceCostScoringRule } from "../AI/Scoring/resourcecostscoringrule";
+import { ChangeoverCostScoringRule } from "../AI/Scoring/changeovercostscoringrule";
+import { LatenessCostScoringRule } from "../AI/Scoring/latenesscostscoringrule";
+import { MaterialCostScoringRule } from "../AI/Scoring/materialcostscoringrule";
+import { OvertimeCostScoringRule } from "../AI/Scoring/overtimecostscoringrule";
 
 export class ScoringFactory {
   public static createScoringRule(
@@ -34,6 +38,14 @@ export class ScoringFactory {
       return new ResourcePreferenceScoringRule(w, o, penalty);
     if (key === "resourcecostscoringrule")
       return new ResourceCostScoringRule(w, o, penalty);
+    if (key === "changeovercostscoringrule")
+      return new ChangeoverCostScoringRule(w, o, penalty);
+    if (key === "latenesscostscoringrule")
+      return new LatenessCostScoringRule(w, o, penalty);
+    if (key === "materialcostscoringrule")
+      return new MaterialCostScoringRule(w, o, penalty);
+    if (key === "overtimecostscoringrule")
+      return new OvertimeCostScoringRule(w, o, penalty);
 
     throw new Error(name + " Scoring Rule not found");
   }

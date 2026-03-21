@@ -2,8 +2,8 @@
   "name": "Community Sports Scheduling",
   "key": "hrmd-sports",
   "rules": [
-    { "ruleName": "EarliestStartTimeScoringRule", "weight": 0.50, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 },
-    { "ruleName": "WhiteSpaceScoringRule", "weight": 0.30, "objective": 1, "includeInSolve": true, "penaltyFactor": 0 },
-    { "ruleName": "ChangeoverScoringRule", "weight": 0.20, "objective": 0, "includeInSolve": true, "penaltyFactor": 0 }
+    { "ruleName": "EarliestStartTimeScoringRule", "weight": 0.50, "objective": 0, "includeInSolve": true, "penaltyFactor": 0, "group": "Schedule Quality" },
+    { "ruleName": "WhiteSpaceScoringRule", "weight": 0.30, "objective": 1, "includeInSolve": true, "penaltyFactor": 0, "group": "Resource Efficiency" },
+    { "ruleName": "ChangeoverScoringRule", "weight": 0.20, "objective": 0, "includeInSolve": true, "penaltyFactor": 0, "group": "Resource Efficiency" }
   ]
 }
