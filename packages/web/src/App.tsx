@@ -217,7 +217,8 @@ function fmtNum(v: number | null | undefined): string {
   return v.toLocaleString(loc);
 }
 
-function fmtCurrency(value: number | null | undefined): string {
+// exported for future use in cost display components
+export function fmtCurrency(value: number | null | undefined): string {
   if (value == null) return '—';
   const loc = _locale?.locale || 'en-US';
   const cur = _locale?.currency || 'USD';
@@ -5037,9 +5038,9 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
                     overflow: 'hidden', fontSize: 10, color: '#fff', fontWeight: 500,
                     transition: 'opacity 0.2s, border-top 0.2s, box-shadow 0.2s',
                     border: willUnsched ? `2px dashed ${C.red}` : 'none',
-                    ...(isCriticalCase && { borderTop: '2px solid #f97316', boxShadow: '0 0 6px #f9731640' }),
-                    ...(isPinned && !isCriticalCase && { boxShadow: `0 0 0 2px ${C.accent}` }),
-                    ...(isExcluded && { filter: 'grayscale(1)' }),
+                    ...(isCriticalCase ? { borderTop: '2px solid #f97316', boxShadow: '0 0 6px #f9731640' } : {}),
+                    ...(isPinned && !isCriticalCase ? { boxShadow: `0 0 0 2px ${C.accent}` } : {}),
+                    ...(isExcluded ? { filter: 'grayscale(1)' } : {}),
                   }}>
                   {willUnsched && (
                     <div style={{
@@ -8055,12 +8056,6 @@ function CriticalPathDetail({ data, experienceLevel, onTaskClick }: {
   data: any; experienceLevel: ExperienceLevel; onTaskClick?: (key: string) => void;
 }) {
   if (!data || data.status !== 'ok') return null;
-
-  const fmtDur = (s: number) => {
-    if (s < 60) return `${Math.round(s)}s`;
-    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-  };
 
   return (
     <div>
