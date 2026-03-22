@@ -4,7 +4,7 @@
 
 | Sprint | Name | Notes |
 |--------|------|-------|
-| Engine — Cost Scoring Model | 5 cost-based scoring rules | ResourceCost, ChangeoverCost, Overtime, Lateness, Material. Grouped UI (Schedule Quality / Resource Efficiency / Cost). Design complete, building rule by rule (~2h each). |
+| AI Sprint 3 — Recommendation Engine | Diagnose + recommend + apply pipeline | 8 action types, command sequencer with rollback, `POST /ctp/diagnose` + `POST /ctp/apply-recommendation`. AI chat agent integration. |
 
 ## Done
 
@@ -57,6 +57,8 @@
 | Solver 7 — Preserve Landscape | `preserveLandscape` flag (skip syncFromConfig), `protectOthers` (temp-pin non-targets), `expandChains`, direct window/priority mutation endpoints (`PATCH tasks/:key/window`, `PATCH tasks/:key/priority`), task snapshot/rollback, landscape hash | 2026-03-17 |
 | Solver 8 — Disjunctive Graph Phase A | DisjunctiveGraph engine class with critical path computation + multi-resource support; `GET /ctp/critical-path` + per-task slack/isOnCriticalPath in solve response; Analytics critical path KPIs + detail view; Gantt critical path toggle; task detail slack section; task table slack column; AI `get_critical_path` tool; Overview KPI card; WhereTo critical path banner | 2026-03-17 |
 | Currency Locale Support | `currency` field on all tenant locale.json (NZD for Stafford, USD for rest); `fmtCurrency` frontend helper using Intl.NumberFormat | 2026-03-19 |
+| Engine — Cost Scoring Model | 5 cost scoring rules (ResourceCost, ChangeoverCost, Overtime, Lateness, Material); `hourlyRate` on resources, `cost` on state changes, `latenessPenaltyPerDay` on orders, `unitCost` on materials; grouped scoring editor; cost KPIs in Analytics; per-task + schedule-level cost in solve response | 2026-03-20 |
+| Sprint 22 — Schedule Configurations | Named saveable config bundles (scoring + strategy + tier); CRUD backend + UI manager tab + toolbar config switcher dropdown; compare view with color-coded diffs; Settings Panel integration (modified tracking, Save/Save As/Reset); `configurationKey` on solve request; Stafford 3 configs seed data | 2026-03-21 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -268,4 +270,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 20, 2026 (Cost Scoring active, Schedule Configurations + Attribute Matching + AI Recommendations + Phase B in Up Next)*
+*Last updated: Mar 22, 2026 (AI Sprint 3 — Recommendation Engine active)*
