@@ -204,6 +204,31 @@ export interface IHorizonConfig {
 }
 
 // The main interface
+export interface IScheduleConfiguration {
+  key: string;
+  name: string;
+  description?: string;
+  owner: 'tenant' | string;
+  isDefault: boolean;
+  updatedAt: string;
+  scoring: {
+    ruleName: string;
+    weight: number;
+    objective: number;
+    includeInSolve: boolean;
+    penaltyFactor: number;
+    group?: string;
+  }[];
+  strategy: string;
+  tier: string;
+  suggestedExperienceLevel?: string;
+  solverDepth?: { bumpLimit?: number; tabuTenure?: number; iterationCount?: number };
+  constraints?: { enforceMaxGap?: boolean; enforceMaterials?: boolean; enforceCadence?: boolean; enforceAttributes?: boolean };
+  horizon?: { start?: string; end?: string };
+  defaultFilters?: { resourceGroups?: string[]; orderKeys?: string[]; timeRangeDays?: number };
+  costVisibility?: { resource?: boolean; changeover?: boolean; overtime?: boolean; lateness?: boolean; material?: boolean };
+}
+
 export interface IConfigStore {
   // Tenant
   getTenant(): ITenantConfig | null;
@@ -257,6 +282,10 @@ export interface IConfigStore {
   // Strategies
   getStrategyOverrides(): TenantStrategyOverride[];
   getCustomStrategies(): TenantCustomStrategy[];
+
+  // Configurations
+  getConfigurations(): IScheduleConfiguration[];
+  saveConfigurations(configs: IScheduleConfiguration[]): void;
 
   // Reload from disk
   reload(): void;

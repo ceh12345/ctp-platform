@@ -18,6 +18,7 @@ import {
   IMaterialData,
   IProcessData,
   ICadenceData,
+  IScheduleConfiguration,
 } from './interfaces/config-store.interface';
 import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
 
@@ -301,6 +302,22 @@ export class FileConfigStore implements IConfigStore {
     const filePath = path.join(this.tenantDir, 'data', 'state-changes.json');
     this.writeJsonFile(filePath, stateChanges);
     this.cache.delete('stateChanges');
+  }
+
+  // ── Configurations ──────────────────────────────────────────────────
+
+  getConfigurations(): IScheduleConfiguration[] {
+    return this.getCached('configurations', () =>
+      this.readJsonFile<IScheduleConfiguration[]>(
+        path.join(this.tenantDir, 'configurations.json'),
+      ),
+    ) ?? [];
+  }
+
+  saveConfigurations(configs: IScheduleConfiguration[]): void {
+    const filePath = path.join(this.tenantDir, 'configurations.json');
+    this.writeJsonFile(filePath, configs);
+    this.cache.delete('configurations');
   }
 
   // ── Reload ──────────────────────────────────────────────────────────

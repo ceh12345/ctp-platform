@@ -6,6 +6,7 @@ import { StateHydratorService } from '../../state/state-hydrator.service';
 import { ConfigService } from '../../../config/config.service';
 import { FileConfigStore } from '../../../config/file-config-store';
 import { StrategyConfigService } from '../../../config/strategy-config.service';
+import { ScheduleConfigurationService } from '../../../config/schedule-configuration.service';
 import { LoggerService } from '../../../logging/logger.service';
 
 const CONFIG_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..', '..', 'config');
@@ -17,7 +18,8 @@ function createServices(tenantId: string) {
   const stateService = new StateService(hydrator, configService);
   const strategyConfigService = new StrategyConfigService(configService);
   const logger = new LoggerService();
-  const ctpService = new CTPService(stateService, configService, strategyConfigService, logger);
+  const schedConfigService = new ScheduleConfigurationService(configService);
+  const ctpService = new CTPService(stateService, configService, strategyConfigService, logger, schedConfigService);
   return { ctpService, stateService, configService };
 }
 

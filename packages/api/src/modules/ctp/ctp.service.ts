@@ -36,6 +36,7 @@ import { ConfigService } from '../../config/config.service';
 import { StrategyConfigService } from '../../config/strategy-config.service';
 import { LoggerService } from '../../logging/logger.service';
 import { SolveRequestDto } from './dto/solve-request.dto';
+import { ScheduleConfigurationService } from '../../config/schedule-configuration.service';
 import { WhereToRequestDto, WhereToResponseDto, MoveToRequestDto, MoveToResponseDto } from './dto/whereto.dto';
 import { CTPQueryDto, CTPQueryResponse, CTPQueryOption, CTPQuerySummary, ChainTemplatesResponse } from './dto/ctp-query.dto';
 
@@ -130,6 +131,7 @@ export class CTPService {
     private readonly configService: ConfigService,
     private readonly strategyConfigService: StrategyConfigService,
     private readonly logger: LoggerService,
+    private readonly scheduleConfigService: ScheduleConfigurationService,
   ) {}
 
   // ═══════════════════════════════════════
@@ -149,7 +151,11 @@ export class CTPService {
     // Hydrate due dates from orders onto tasks (terminal tasks only)
     landscape.hydrateDueDates();
 
-    const requestedStrategy = request?.strategy || landscape.appSettings?.solverStrategy || 'Chain';
+    // Resolve configuration for strategy if configurationKey provided
+    const configForStrategy = request?.configurationKey
+      ? this.scheduleConfigService.resolveForSolve(request.configurationKey)
+      : null;
+    const requestedStrategy = request?.strategy || configForStrategy?.strategy || landscape.appSettings?.solverStrategy || 'Chain';
 
     // Validate strategy key against tenant config
     if (request?.strategy && !this.strategyConfigService.validateStrategy(request.strategy)) {
@@ -256,9 +262,14 @@ export class CTPService {
     stats.windowsTightened = landscape.propagateConstraints();
     stats.propagationTimeMs = Date.now() - propStart;
 
-    // ─── 3. Build scoring ───
-    const scoringSource = request?.scoringOverrides ? 'override' : 'config';
-    const scoringRules = request?.scoringOverrides ?? this.configService.getScoring()?.rules;
+    // ─── 3. Build scoring (resolve from configuration if provided) ───
+    const resolvedConfig = request?.configurationKey
+      ? this.scheduleConfigService.resolveForSolve(request.configurationKey)
+      : null;
+    const scoringSource = request?.scoringOverrides ? 'override' : resolvedConfig ? 'configuration' : 'config';
+    const scoringRules = request?.scoringOverrides
+      ?? resolvedConfig?.scoring
+      ?? this.configService.getScoring()?.rules;
     if (!scoringRules || scoringRules.length === 0) {
       throw new HttpException({ error: { code: ErrorCodes.SCORING_CONFIG_MISSING, message: 'Scoring configuration not found.', category: 'config' } }, HttpStatus.BAD_REQUEST);
     }

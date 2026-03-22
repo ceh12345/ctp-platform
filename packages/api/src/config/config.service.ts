@@ -16,6 +16,7 @@ import {
   IOrderData,
   IMaterialData,
   ICadenceData,
+  IScheduleConfiguration,
 } from './interfaces/config-store.interface';
 import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
 import { FileConfigStore } from './file-config-store';
@@ -118,6 +119,14 @@ export class ConfigService {
 
   getCustomStrategies(): TenantCustomStrategy[] {
     return this.store.getCustomStrategies();
+  }
+
+  getConfigurations(): IScheduleConfiguration[] {
+    return this.store.getConfigurations();
+  }
+
+  saveConfigurations(configs: IScheduleConfiguration[]): void {
+    this.store.saveConfigurations(configs);
   }
 
   reloadConfig(): void {

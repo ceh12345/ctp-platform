@@ -58,11 +58,10 @@ async function api(path: string, options?: RequestInit) {
   const start = performance.now();
   let res: Response;
   try {
+    const headers: Record<string, string> = { 'X-Tenant-Id': tenantId };
+    if (hasBody) headers['Content-Type'] = 'application/json';
     res = await fetch(`${API_BASE}/v1${path}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Tenant-Id': tenantId,
-      },
+      headers,
       ...(hasBody && !options?.body ? { body: '{}' } : {}),
       ...options,
     });
@@ -1528,6 +1527,7 @@ function SolvePreview({ orders, tasks, materials, resources,
   strategy, onStrategyChange, strategyOptions,
   tier, onTierChange, tierOptions,
   experienceLevel,
+  configName, scoringSummary,
   onConfirm, onCancel }: {
   orders: any[]; tasks: any[]; materials: any[]; resources: any[];
   orderModes: Record<string, string>;
@@ -1550,6 +1550,8 @@ function SolvePreview({ orders, tasks, materials, resources,
   onTierChange: (t: string) => void;
   tierOptions: SolverTierOption[];
   experienceLevel: ExperienceLevel;
+  configName?: string;
+  scoringSummary?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -2007,6 +2009,23 @@ function SolvePreview({ orders, tasks, materials, resources,
               </div>
             );
           })()}
+
+          {/* Active config + scoring summary */}
+          {configName && (
+            <div style={{
+              padding: '8px 12px', background: C.bg, borderRadius: 8,
+              border: `1px solid ${C.border}`, marginBottom: 8,
+            }}>
+              <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 4 }}>
+                Configuration: <span style={{ color: C.text, fontWeight: 600 }}>{configName}</span>
+              </div>
+              {scoringSummary && (
+                <div style={{ fontSize: 10, color: C.textDim, lineHeight: 1.6 }}>
+                  {scoringSummary}
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ height: 8 }} />
 
@@ -2469,7 +2488,7 @@ function SolveResultsDialog({ result, previousSnapshot, experienceLevel, onClose
                   <span style={{ color: C.textDim, fontWeight: 600 }}>Score breakdown:</span>
                   {Object.entries(stats.scoreBreakdown).map(([key, val]) => (
                     <span key={key} style={{ color: C.text }}>
-                      {key}: <strong>{Math.round(val as number)}</strong>
+                      {key.replace('ScoringRule', '')}: <strong>{typeof val === 'number' ? Math.round(val) : JSON.stringify(val)}</strong>
                     </span>
                   ))}
                 </div>
@@ -7087,10 +7106,11 @@ const RULE_ABBREV: Record<string, string> = {
 
 // ── Scoring Rules Editor ─────────────────────────────────────────────────
 
-function ScoringRulesEditor({ rules, onChange, source }: {
+function ScoringRulesEditor({ rules, onChange, source, configName }: {
   rules: ScoringRuleOverride[];
   onChange: (rules: ScoringRuleOverride[]) => void;
   source: 'config' | 'override' | null;
+  configName?: string;
 }) {
   const [activeRule, setActiveRule] = useState<string | null>(null);
   const [showAddDropdown, setShowAddDropdown] = useState(false);
@@ -7159,6 +7179,7 @@ function ScoringRulesEditor({ rules, onChange, source }: {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Scoring Rules</span>
+          {configName && <span style={{ fontSize: 11, color: C.textMuted, marginLeft: 6 }}>— {configName}</span>}
           <span style={{
             fontSize: 10, padding: '2px 6px', borderRadius: 4,
             background: source === 'override' ? C.yellowDim : C.accentGlow,
@@ -7367,7 +7388,7 @@ function ScoringRulesEditor({ rules, onChange, source }: {
 
 // ── Solver Section ───────────────────────────────────────────────────────
 
-function SolverSection({ stats, solveResult }: { stats?: any; solveResult?: any }) {
+function SolverSection({ stats, solveResult, configName }: { stats?: any; solveResult?: any; configName?: string }) {
   if (!stats) {
     return (
       <div style={{ color: C.textMuted, fontSize: 13, padding: '20px 0' }}>
@@ -7386,6 +7407,7 @@ function SolverSection({ stats, solveResult }: { stats?: any; solveResult?: any 
         background: C.bg, border: `1px solid ${C.border}`,
         fontSize: 13, color: C.textMuted, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap',
       }}>
+        {configName && <span>Config: <strong style={{ color: C.text }}>{configName}</strong></span>}
         <span>Strategy: <strong style={{ color: C.text }}>{stats.strategy || '-'}</strong></span>
         <span>Time: <strong style={{ color: C.text }}>{(stats.totalTimeMs / 1000).toFixed(2)}s</strong></span>
         {sr?.contextsEvaluated != null && (
@@ -7416,7 +7438,7 @@ function SolverSection({ stats, solveResult }: { stats?: any; solveResult?: any 
         ))}
       </div>
 
-      {stats.scoreBreakdown && (
+      {stats.scoreBreakdown && Object.keys(stats.scoreBreakdown).length > 0 && (
         <>
           <SectionLabel label="Score Breakdown" />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 16 }}>
@@ -7426,7 +7448,7 @@ function SolverSection({ stats, solveResult }: { stats?: any; solveResult?: any 
                 borderRadius: 6, background: C.bg, border: `1px solid ${C.border}`, fontSize: 12,
               }}>
                 <span style={{ color: C.textMuted }}>{key.replace('ScoringRule', '')}</span>
-                <span style={{ color: C.text, fontWeight: 600 }}>{Math.round(val as number)}</span>
+                <span style={{ color: C.text, fontWeight: 600 }}>{typeof val === 'number' ? Math.round(val) : String(val)}</span>
               </div>
             ))}
           </div>
@@ -7435,7 +7457,7 @@ function SolverSection({ stats, solveResult }: { stats?: any; solveResult?: any 
 
       <SectionLabel label="All Statistics" />
       <div style={{ fontSize: 12 }}>
-        {Object.entries(stats).map(([k, v]) => (
+        {Object.entries(stats).filter(([, v]) => typeof v !== 'object' || v === null).map(([k, v]) => (
           <div key={k} style={{
             display: 'flex', justifyContent: 'space-between', padding: '4px 0',
             borderBottom: `1px solid ${C.border}`,
@@ -7457,7 +7479,7 @@ const SETTINGS_SECTIONS: { key: string; label: string; icon: string; minLevel: E
   { key: 'solver',   label: 'Solver',        icon: 'D', minLevel: 'expert' },
 ];
 
-function SettingsContent({ experienceLevel, onExperienceChange, stats, solveResult, scoringRules, onScoringRulesChange, scoringSource }: {
+function SettingsContent({ experienceLevel, onExperienceChange, stats, solveResult, scoringRules, onScoringRulesChange, scoringSource, configName }: {
   experienceLevel: ExperienceLevel;
   onExperienceChange: (level: ExperienceLevel) => void;
   stats?: any;
@@ -7465,6 +7487,7 @@ function SettingsContent({ experienceLevel, onExperienceChange, stats, solveResu
   scoringRules: ScoringRuleOverride[];
   onScoringRulesChange: (rules: ScoringRuleOverride[]) => void;
   scoringSource: 'config' | 'override' | null;
+  configName?: string;
 }) {
   const [activeSection, setActiveSection] = useState('general');
   const visibleSections = SETTINGS_SECTIONS.filter(s => showAt(experienceLevel, s.minLevel));
@@ -7537,11 +7560,11 @@ function SettingsContent({ experienceLevel, onExperienceChange, stats, solveResu
         )}
 
         {activeSection === 'scoring' && (
-          <ScoringRulesEditor rules={scoringRules} onChange={onScoringRulesChange} source={scoringSource} />
+          <ScoringRulesEditor rules={scoringRules} onChange={onScoringRulesChange} source={scoringSource} configName={configName} />
         )}
 
         {activeSection === 'solver' && (
-          <SolverSection stats={stats} solveResult={solveResult} />
+          <SolverSection stats={stats} solveResult={solveResult} configName={configName} />
         )}
       </div>
     </div>
@@ -8177,6 +8200,371 @@ function CriticalPathDetail({ data, experienceLevel, onTaskClick }: {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONFIGURATIONS TAB
+// ═══════════════════════════════════════════════════════════════
+
+function ConfigurationsTab({ configurations, activeConfigKey, onActivate, onSetDefault, onDelete, onDuplicate, onCreate, onRename,
+  isModified, modifiedConfig, activeConfig, onSave, onSaveAs, onReset }: {
+  configurations: any[];
+  activeConfigKey: string;
+  onActivate: (key: string) => void;
+  onSetDefault: (key: string) => void;
+  onDelete: (key: string) => void;
+  onDuplicate: (config: any) => void;
+  onCreate: () => void;
+  onRename: (key: string, newName: string) => void;
+  isModified?: boolean;
+  modifiedConfig?: any;
+  activeConfig?: any;
+  onSave?: () => void;
+  onSaveAs?: () => void;
+  onReset?: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [renameKey, setRenameKey] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareA, setCompareA] = useState<string>('');
+  const [compareB, setCompareB] = useState<string>('');
+
+  if (configurations.length === 0) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', color: C.textMuted, fontFamily: FONT }}>
+        <div style={{ fontSize: 16, marginBottom: 8 }}>No configurations yet</div>
+        <button onClick={onCreate} style={{
+          padding: '8px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+          background: C.accent, color: '#fff', border: 'none', cursor: 'pointer',
+        }}>+ New Configuration</button>
+      </div>
+    );
+  }
+
+  const scoringSummary = (scoring: any[]) => {
+    if (!scoring || scoring.length === 0) return '—';
+    return scoring
+      .filter((r: any) => r.includeInSolve)
+      .slice(0, 5)
+      .map((r: any) => `${RULE_ABBREV[r.ruleName] || displayRuleName(r.ruleName)} ${Math.round(r.weight * 100)}%`)
+      .join(' \u00B7 ');
+  };
+
+  const tierLabel = (tier: string) => {
+    switch (tier) {
+      case 'quick': return '\u26A1 Quick';
+      case 'balanced': return '\uD83C\uDFAF Balanced';
+      case 'thorough': return '\uD83D\uDD2C Thorough';
+      case 'best': return '\uD83C\uDFC6 Best';
+      default: return tier;
+    }
+  };
+
+  // Compare view
+  if (compareMode) {
+    const configA = configurations.find(c => c.key === compareA);
+    const configB = configurations.find(c => c.key === compareB);
+    return (
+      <div style={{ fontFamily: FONT }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.text }}>Compare Configurations</h2>
+          <button onClick={() => setCompareMode(false)} style={{
+            padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+            background: C.surface2, border: `1px solid ${C.border}`, color: C.text, cursor: 'pointer',
+          }}>Back</button>
+        </div>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+          <select value={compareA} onChange={e => setCompareA(e.target.value)} style={{
+            flex: 1, padding: '8px 10px', borderRadius: 6, fontSize: 13,
+            background: C.surface2, border: `1px solid ${C.border}`, color: C.text,
+          }}>
+            <option value="">Select Config A...</option>
+            {configurations.map(c => <option key={c.key} value={c.key}>{c.name}{c.isDefault ? ' (default)' : ''}</option>)}
+          </select>
+          <select value={compareB} onChange={e => setCompareB(e.target.value)} style={{
+            flex: 1, padding: '8px 10px', borderRadius: 6, fontSize: 13,
+            background: C.surface2, border: `1px solid ${C.border}`, color: C.text,
+          }}>
+            <option value="">Select Config B...</option>
+            {configurations.map(c => <option key={c.key} value={c.key}>{c.name}{c.isDefault ? ' (default)' : ''}</option>)}
+          </select>
+        </div>
+        {configA && configB && <ConfigDiff configA={configA} configB={configB} labelA={configA.name} labelB={configB.name} />}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ fontFamily: FONT }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.text }}>Configurations</h2>
+        <button onClick={onCreate} style={{
+          padding: '6px 16px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+          background: C.accent, color: '#fff', border: 'none', cursor: 'pointer',
+        }}>+ New Configuration</button>
+      </div>
+
+      {/* Config cards */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {configurations.map(config => {
+          const isActive = config.key === activeConfigKey;
+          const isDefault = config.isDefault;
+          return (
+            <div key={config.key} style={{
+              padding: '16px 20px', borderRadius: 12, background: C.surface,
+              border: isActive ? `1px solid ${C.accent}44` : `1px solid ${C.border}`,
+              borderLeft: isActive ? `3px solid ${C.accent}` : `3px solid transparent`,
+              transition: 'all 0.15s',
+            }}>
+              {/* Top row: name + badges + actions */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {renameKey === config.key ? (
+                    <input autoFocus value={renameValue}
+                      onChange={e => setRenameValue(e.target.value)}
+                      onBlur={() => { if (renameValue.trim()) onRename(config.key, renameValue.trim()); setRenameKey(null); }}
+                      onKeyDown={e => { if (e.key === 'Enter') { if (renameValue.trim()) onRename(config.key, renameValue.trim()); setRenameKey(null); } if (e.key === 'Escape') setRenameKey(null); }}
+                      style={{ fontSize: 15, fontWeight: 700, color: C.text, background: C.surface2, border: `1px solid ${C.accent}`, borderRadius: 4, padding: '2px 6px', width: 200 }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{config.name}</span>
+                  )}
+                  {isDefault && <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: C.greenDim, color: C.green, fontWeight: 600 }}>{'\u2605'} Default</span>}
+                  {isActive && <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: C.accentGlow, color: C.accent, fontWeight: 600 }}>{'\u25CF'} Active</span>}
+                  {isActive && isModified && <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: C.yellowDim, color: C.yellow, fontWeight: 600 }}>{'\u26A0'} Modified</span>}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 11, color: C.textMuted }}>{config.strategy}</span>
+                  <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: C.surface2, color: C.text, fontWeight: 600 }}>{tierLabel(config.tier)}</span>
+                </div>
+              </div>
+
+              {/* Description */}
+              {config.description && (
+                <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {config.description}
+                </div>
+              )}
+
+              {/* Scoring summary */}
+              <div style={{ fontSize: 11, color: C.textDim, marginBottom: 8, fontFamily: FONT }}>
+                {scoringSummary(config.scoring)}
+              </div>
+
+              {/* Actions row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 10, color: C.textDim }}>
+                  {config.updatedAt ? `Modified ${new Date(config.updatedAt).toLocaleDateString()}` : ''}
+                </span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {!isActive && (
+                    <button onClick={() => onActivate(config.key)} style={{
+                      padding: '4px 10px', borderRadius: 5, fontSize: 11, fontWeight: 600,
+                      background: C.accent + '22', color: C.accent, border: `1px solid ${C.accent}33`, cursor: 'pointer',
+                    }}>Activate</button>
+                  )}
+                  <button onClick={() => onDuplicate(config)} style={{
+                    padding: '4px 10px', borderRadius: 5, fontSize: 11, fontWeight: 600,
+                    background: C.surface2, color: C.text, border: `1px solid ${C.border}`, cursor: 'pointer',
+                  }}>Duplicate</button>
+                  {/* Overflow menu */}
+                  <div style={{ position: 'relative' }}>
+                    <button onClick={() => setMenuOpen(menuOpen === config.key ? null : config.key)} style={{
+                      padding: '4px 8px', borderRadius: 5, fontSize: 13,
+                      background: C.surface2, color: C.textMuted, border: `1px solid ${C.border}`, cursor: 'pointer',
+                    }}>{'\u22EF'}</button>
+                    {menuOpen === config.key && (
+                      <div style={{
+                        position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 20,
+                        background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.3)', minWidth: 160, padding: 4,
+                      }}>
+                        <div onClick={() => { setRenameKey(config.key); setRenameValue(config.name); setMenuOpen(null); }}
+                          style={{ padding: '6px 10px', borderRadius: 4, fontSize: 12, color: C.text, cursor: 'pointer' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = `${C.text}08`; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                        >Rename</div>
+                        {!isDefault && (
+                          <div onClick={() => { onSetDefault(config.key); setMenuOpen(null); }}
+                            style={{ padding: '6px 10px', borderRadius: 4, fontSize: 12, color: C.text, cursor: 'pointer' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = `${C.text}08`; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                          >Set as Default</div>
+                        )}
+                        {!isDefault && (
+                          <div onClick={() => { setConfirmDelete(config.key); setMenuOpen(null); }}
+                            style={{ padding: '6px 10px', borderRadius: 4, fontSize: 12, color: C.red, cursor: 'pointer' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = `${C.red}10`; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                          >Delete</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Modified: diff + save/reset */}
+              {isActive && isModified && modifiedConfig && activeConfig && (
+                <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 8, background: `${C.yellow}08`, border: `1px solid ${C.yellow}22` }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: C.yellow, marginBottom: 8 }}>Unsaved changes:</div>
+                  <ConfigDiff configA={activeConfig} configB={modifiedConfig} labelA="Saved" labelB="Modified" />
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                    <button onClick={onSave} style={{
+                      padding: '5px 14px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                      background: C.accent, color: '#fff', border: 'none', cursor: 'pointer',
+                    }}>Save</button>
+                    <button onClick={onSaveAs} style={{
+                      padding: '5px 14px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                      background: C.surface2, color: C.text, border: `1px solid ${C.border}`, cursor: 'pointer',
+                    }}>Save As...</button>
+                    <button onClick={onReset} style={{
+                      padding: '5px 14px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                      background: 'none', color: C.textMuted, border: `1px solid ${C.border}`, cursor: 'pointer',
+                    }}>Reset</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Delete confirmation */}
+              {confirmDelete === config.key && (
+                <div style={{
+                  marginTop: 8, padding: '8px 12px', borderRadius: 6,
+                  background: C.redDim, border: `1px solid ${C.red}33`,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}>
+                  <span style={{ fontSize: 12, color: C.red }}>Delete "{config.name}"?</span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => setConfirmDelete(null)} style={{
+                      padding: '3px 10px', borderRadius: 4, fontSize: 11,
+                      background: C.surface2, border: `1px solid ${C.border}`, color: C.text, cursor: 'pointer',
+                    }}>Cancel</button>
+                    <button onClick={() => { onDelete(config.key); setConfirmDelete(null); }} style={{
+                      padding: '3px 10px', borderRadius: 4, fontSize: 11,
+                      background: C.red, border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 600,
+                    }}>Delete</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Compare button */}
+      {configurations.length >= 2 && (
+        <button onClick={() => { setCompareMode(true); setCompareA(configurations[0]?.key ?? ''); setCompareB(configurations[1]?.key ?? ''); }}
+          style={{
+            marginTop: 16, padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+            background: C.surface2, border: `1px solid ${C.border}`, color: C.text, cursor: 'pointer',
+            width: '100%',
+          }}>Compare Two Configurations</button>
+      )}
+    </div>
+  );
+}
+
+// ── ConfigDiff component ──────────────────────────────────────────────
+
+function ConfigDiff({ configA, configB, labelA, labelB }: {
+  configA: any; configB: any; labelA: string; labelB: string;
+}) {
+  // diff types: 'same' | 'changed' | 'only-a' | 'only-b'
+  type DiffType = 'same' | 'changed' | 'only-a' | 'only-b';
+  const rows: { label: string; valueA: string; valueB: string; diff: DiffType }[] = [];
+
+  const diffType = (a: string, b: string): DiffType => {
+    if (a === '—' && b !== '—') return 'only-b';
+    if (a !== '—' && b === '—') return 'only-a';
+    if (a !== b) return 'changed';
+    return 'same';
+  };
+
+  // Strategy
+  const sA = configA.strategy || '—', sB = configB.strategy || '—';
+  rows.push({ label: 'Strategy', valueA: sA, valueB: sB, diff: diffType(sA, sB) });
+
+  // Tier
+  const tA = configA.tier || '—', tB = configB.tier || '—';
+  rows.push({ label: 'Tier', valueA: tA, valueB: tB, diff: diffType(tA, tB) });
+
+  // Experience level
+  const expA = configA.suggestedExperienceLevel || '—';
+  const expB = configB.suggestedExperienceLevel || '—';
+  rows.push({ label: 'Experience Level', valueA: expA, valueB: expB, diff: diffType(expA, expB) });
+
+  // Scoring rules
+  const allRuleNames = new Set<string>();
+  (configA.scoring || []).forEach((r: any) => allRuleNames.add(r.ruleName));
+  (configB.scoring || []).forEach((r: any) => allRuleNames.add(r.ruleName));
+
+  for (const name of allRuleNames) {
+    const rA = (configA.scoring || []).find((r: any) => r.ruleName === name);
+    const rB = (configB.scoring || []).find((r: any) => r.ruleName === name);
+    const wA = rA ? `${Math.round(rA.weight * 100)}%` : '—';
+    const wB = rB ? `${Math.round(rB.weight * 100)}%` : '—';
+    rows.push({
+      label: RULE_ABBREV[name] || displayRuleName(name),
+      valueA: wA, valueB: wB,
+      diff: diffType(wA, wB),
+    });
+    // Penalty factor if different
+    if (rA?.penaltyFactor || rB?.penaltyFactor) {
+      const pA = String(rA?.penaltyFactor ?? 0);
+      const pB = String(rB?.penaltyFactor ?? 0);
+      if (pA !== pB) {
+        rows.push({ label: '  penalty', valueA: pA, valueB: pB, diff: 'changed' });
+      }
+    }
+  }
+
+  const diffCount = rows.filter(r => r.diff !== 'same').length;
+
+  // Color mapping: changed=yellow, added(only-b)=green, deleted(only-a)=red, same=dim
+  const rowBg = (d: DiffType) => d === 'changed' ? `${C.yellow}10` : d === 'only-a' ? `${C.red}10` : d === 'only-b' ? `${C.green}10` : 'transparent';
+  const labelColor = (d: DiffType) => d === 'changed' ? C.yellow : d === 'only-a' ? C.red : d === 'only-b' ? C.green : C.textDim;
+  const valColorA = (d: DiffType) => d === 'changed' ? C.yellow : d === 'only-a' ? C.red : d === 'same' ? C.textDim : C.textDim;
+  const valColorB = (d: DiffType) => d === 'changed' ? C.yellow : d === 'only-b' ? C.green : d === 'same' ? C.textDim : C.textDim;
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ display: 'flex', borderBottom: `2px solid ${C.border}`, marginBottom: 4 }}>
+        <div style={{ width: 160, padding: '8px 12px', fontSize: 11, fontWeight: 700, color: C.textDim, textTransform: 'uppercase' }}>Field</div>
+        <div style={{ flex: 1, padding: '8px 12px', fontSize: 11, fontWeight: 700, color: C.accent }}>{labelA}</div>
+        <div style={{ flex: 1, padding: '8px 12px', fontSize: 11, fontWeight: 700, color: C.purple }}>{labelB}</div>
+        <div style={{ width: 60, padding: '8px 8px', fontSize: 11, fontWeight: 700, color: C.textDim, textAlign: 'center' as const }}>Status</div>
+      </div>
+      {/* Rows */}
+      {rows.map((row, i) => (
+        <div key={i} style={{
+          display: 'flex', borderBottom: `1px solid ${C.border}`,
+          background: rowBg(row.diff),
+        }}>
+          <div style={{ width: 160, padding: '6px 12px', fontSize: 12, color: labelColor(row.diff), fontWeight: row.diff !== 'same' ? 600 : 400 }}>{row.label}</div>
+          <div style={{ flex: 1, padding: '6px 12px', fontSize: 12, color: valColorA(row.diff), fontWeight: row.diff !== 'same' ? 600 : 400, fontVariantNumeric: 'tabular-nums' }}>
+            {row.valueA}
+          </div>
+          <div style={{ flex: 1, padding: '6px 12px', fontSize: 12, color: valColorB(row.diff), fontWeight: row.diff !== 'same' ? 600 : 400, fontVariantNumeric: 'tabular-nums' }}>
+            {row.valueB}
+          </div>
+          <div style={{ width: 60, padding: '6px 8px', fontSize: 10, textAlign: 'center' as const, color: labelColor(row.diff), fontWeight: 600 }}>
+            {row.diff === 'changed' ? '\u0394' : row.diff === 'only-a' ? '\u2212' : row.diff === 'only-b' ? '+' : ''}
+          </div>
+        </div>
+      ))}
+      {/* Summary */}
+      <div style={{ padding: '10px 12px', fontSize: 12, color: C.textMuted, display: 'flex', gap: 12 }}>
+        <span>{diffCount} difference{diffCount !== 1 ? 's' : ''}</span>
+        {rows.some(r => r.diff === 'changed') && <span style={{ color: C.yellow }}>{'\u0394'} Changed</span>}
+        {rows.some(r => r.diff === 'only-b') && <span style={{ color: C.green }}>+ Added</span>}
+        {rows.some(r => r.diff === 'only-a') && <span style={{ color: C.red }}>{'\u2212'} Removed</span>}
+      </div>
     </div>
   );
 }
@@ -9858,7 +10246,7 @@ function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput, onC
    MAIN APP
    ═══════════════════════════════════════════════════════════════ */
 
-const TABS = ['Overview', 'Schedule', 'Orders', 'Conflicts', 'Materials', 'Analytics'];
+const TABS = ['Overview', 'Schedule', 'Orders', 'Conflicts', 'Materials', 'Analytics', 'Configurations'];
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -9900,6 +10288,10 @@ export default function App() {
   const [priorityOverrides, setPriorityOverrides] = useState<Record<string, number>>({});
   const [windowOverrides, setWindowOverrides] = useState<Record<string, { startW?: string; endW?: string }>>({});
   const [scoringOverrides, setScoringOverrides] = useState<ScoringRuleOverride[] | null>(null);
+  const [configurations, setConfigurations] = useState<any[]>([]);
+  const [activeConfigKey, setActiveConfigKey] = useState<string>('default');
+  const [activeConfig, setActiveConfig] = useState<any>(null);
+  const [configDropdownOpen, setConfigDropdownOpen] = useState(false);
 
   const handleScoringRulesChange = useCallback((rules: ScoringRuleOverride[]) => {
     setScoringOverrides(rules.length === 0 ? null : rules);
@@ -9910,11 +10302,37 @@ export default function App() {
   const activeScoringRules: ScoringRuleOverride[] = scoringOverrides
     ?? solveResult?.scoring?.rules
     ?? [];
-  const scoringSource: 'config' | 'override' | null = scoringOverrides
+  // Detect if active config has been modified in Settings
+  const isConfigModified = useMemo(() => {
+    if (!activeConfig || !scoringOverrides) return false;
+    const savedScoring = activeConfig.scoring || [];
+    if (scoringOverrides.length !== savedScoring.length) return true;
+    for (let i = 0; i < scoringOverrides.length; i++) {
+      const o = scoringOverrides[i];
+      const s = savedScoring[i];
+      if (!s || o.ruleName !== s.ruleName || Math.round(o.weight * 100) !== Math.round(s.weight * 100)
+        || o.objective !== s.objective || o.includeInSolve !== s.includeInSolve
+        || o.penaltyFactor !== s.penaltyFactor) return true;
+    }
+    return false;
+  }, [activeConfig, scoringOverrides]);
+
+  const scoringSource: 'config' | 'override' | null = isConfigModified
     ? 'override'
-    : solveResult?.scoring?.source === 'override' ? 'override'
+    : scoringOverrides ? 'config'
     : solveResult?.scoring?.source === 'config' ? 'config'
     : null;
+
+  // Build modified config snapshot for diff display
+  const modifiedConfig = useMemo(() => {
+    if (!isConfigModified || !activeConfig) return null;
+    return {
+      ...activeConfig,
+      scoring: scoringOverrides ?? activeConfig.scoring,
+      strategy: solverStrategy,
+      tier: selectedTier,
+    };
+  }, [isConfigModified, activeConfig, scoringOverrides, solverStrategy, selectedTier]);
 
   // Scoring validation — block solve if overrides don't sum to 100%
   const scoringWeightPct = Math.round(
@@ -9999,6 +10417,22 @@ export default function App() {
         api('/health/version').catch(() => null),
       ]);
       if (versionData) setVersionInfo(versionData);
+      // Load configurations
+      try {
+        const configList = await api('/configurations');
+        if (configList?.configurations) {
+          setConfigurations(configList.configurations);
+          setActiveConfigKey(configList.activeKey || 'default');
+          const active = configList.configurations.find((c: any) => c.key === (configList.activeKey || 'default'));
+          if (active) {
+            setActiveConfig(active);
+            // Initialize session from active config
+            if (active.scoring?.length > 0) setScoringOverrides(active.scoring);
+            if (active.strategy) setSolverStrategy(active.strategy);
+            if (active.tier) setSelectedTier(active.tier);
+          }
+        }
+      } catch { /* configurations endpoint optional */ }
       setSolveResult(result);
       setProducts(prods);
       setColors(result.colors || colorsData || {});
@@ -10085,6 +10519,7 @@ export default function App() {
 
       body.strategy = solverStrategy;
       body.detailLevel = experienceLevel;
+      if (activeConfigKey) body.configurationKey = activeConfigKey;
       if (scoringOverrides && scoringOverrides.length > 0) body.scoringOverrides = scoringOverrides;
 
       const result = await api('/ctp/solve', {
@@ -10922,6 +11357,139 @@ export default function App() {
     finally { setAnalyticsLoading(false); }
   }, [analyticsKpis]);
 
+  // ── Configuration handlers ──
+  const reloadConfigurations = useCallback(async () => {
+    try {
+      const configList = await api('/configurations');
+      if (configList?.configurations) {
+        setConfigurations(configList.configurations);
+        setActiveConfigKey(configList.activeKey || 'default');
+        const active = configList.configurations.find((c: any) => c.key === (configList.activeKey || 'default'));
+        if (active) setActiveConfig(active);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleConfigActivate = useCallback(async (key: string) => {
+    await api(`/configurations/${key}/activate`, { method: 'POST' });
+    setActiveConfigKey(key);
+    const config = configurations.find(c => c.key === key);
+    if (config) {
+      setActiveConfig(config);
+      // Load config's settings into session state — this is the new baseline, not a modification
+      setScoringOverrides(config.scoring ?? null);
+      setSolverStrategy(config.strategy || 'Chain');
+      setSelectedTier(config.tier || 'quick');
+      // Reset baseline — config switch is a clean state, not stale
+      setSolveStale(false);
+      setPrevOrderModes({ ...orderModes });
+      setPrevTaskPins({ ...taskPins });
+      setPrevTaskExcludes({ ...taskExcludes });
+      setPrevMaterialModes({ ...materialModeOverrides });
+    }
+  }, [configurations, orderModes, taskPins, taskExcludes, materialModeOverrides]);
+
+  const handleConfigSetDefault = useCallback(async (key: string) => {
+    await api(`/configurations/${key}/set-default`, { method: 'POST' });
+    await reloadConfigurations();
+  }, [reloadConfigurations]);
+
+  const handleConfigDelete = useCallback(async (key: string) => {
+    try {
+      await api(`/configurations/${key}`, { method: 'DELETE' });
+      // Optimistic removal then reload
+      setConfigurations(prev => prev.filter(c => c.key !== key));
+      await reloadConfigurations();
+    } catch (err) {
+      console.error('Delete config failed:', err);
+      showToast('Failed to delete configuration', 'warning');
+    }
+  }, [reloadConfigurations, showToast]);
+
+  const handleConfigDuplicate = useCallback(async (config: any) => {
+    const name = prompt('Name for the duplicate:', `${config.name} (Copy)`);
+    if (!name) return;
+    await api('/configurations', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        description: config.description,
+        scoring: config.scoring,
+        strategy: config.strategy,
+        tier: config.tier,
+        suggestedExperienceLevel: config.suggestedExperienceLevel,
+      }),
+    });
+    await reloadConfigurations();
+  }, [reloadConfigurations]);
+
+  const handleConfigCreate = useCallback(async () => {
+    const name = prompt('Configuration name:');
+    if (!name) return;
+    const desc = prompt('Description (optional):') || undefined;
+    // Initialize from active config's scoring or fallback
+    const initScoring = activeConfig?.scoring ?? activeScoringRules;
+    await api('/configurations', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        description: desc,
+        scoring: initScoring,
+        strategy: solverStrategy,
+        tier: selectedTier,
+      }),
+    });
+    await reloadConfigurations();
+  }, [reloadConfigurations, activeConfig, activeScoringRules, solverStrategy, selectedTier]);
+
+  const handleConfigRename = useCallback(async (key: string, newName: string) => {
+    await api(`/configurations/${key}`, { method: 'PUT', body: JSON.stringify({ name: newName }) });
+    await reloadConfigurations();
+  }, [reloadConfigurations]);
+
+  const handleConfigSave = useCallback(async () => {
+    if (!activeConfig || !scoringOverrides) return;
+    await api(`/configurations/${activeConfig.key}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        scoring: scoringOverrides,
+        strategy: solverStrategy,
+        tier: selectedTier,
+      }),
+    });
+    setScoringOverrides(null);
+    await reloadConfigurations();
+    showToast('Configuration saved');
+  }, [activeConfig, scoringOverrides, solverStrategy, selectedTier, reloadConfigurations, showToast]);
+
+  const handleConfigSaveAs = useCallback(async () => {
+    if (!scoringOverrides) return;
+    const name = prompt('Save as new configuration:');
+    if (!name) return;
+    await api('/configurations', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        scoring: scoringOverrides,
+        strategy: solverStrategy,
+        tier: selectedTier,
+      }),
+    });
+    setScoringOverrides(null);
+    await reloadConfigurations();
+    showToast(`Configuration "${name}" created`);
+  }, [scoringOverrides, solverStrategy, selectedTier, reloadConfigurations, showToast]);
+
+  const handleConfigReset = useCallback(() => {
+    setScoringOverrides(null);
+    if (activeConfig) {
+      setSolverStrategy(activeConfig.strategy || 'Chain');
+      setSelectedTier(activeConfig.tier || 'quick');
+    }
+    showToast('Changes discarded');
+  }, [activeConfig, showToast]);
+
+
   // Auto-load analytics summary when switching to Analytics tab
   useEffect(() => {
     if (activeTab === 'Analytics' && analyticsKpis.length === 0 && !analyticsLoading && solveResult) {
@@ -11030,20 +11598,75 @@ export default function App() {
             <span style={{ color: C.textDim, fontSize: 13, marginLeft: 8 }}>{t('tenantDisplayName', 'CTP Platform')}</span>
           </div>
           {summary && (
-            <span style={{ color: C.textDim, fontSize: 12, marginLeft: 8 }}>
+            <span style={{ color: C.textMuted, fontSize: 12, marginLeft: 8, fontWeight: 500 }}>
               {fmtDateShort(summary.horizonStart)} – {fmtDateShort(summary.horizonEnd)}
+            </span>
+          )}
+          {summary && (
+            <span style={{ color: C.textMuted, fontSize: 11, marginLeft: 10, display: 'flex', gap: 8, fontWeight: 500 }}>
+              <span>{resources.length} {t('resources', 'resources')}</span>
+              <span>{'\u00B7'}</span>
+              <span>{summary.totalTasks} {t('tasks', 'tasks')}</span>
+              <span>{'\u00B7'}</span>
+              <span>{orders.length} {t('orders', 'orders')}</span>
             </span>
           )}
         </div>
 
         {/* Right */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          {summary && (
-            <div style={{ display: 'flex', gap: 16, fontSize: 12, color: C.textMuted }}>
-              <span>{resources.length} {t('resources', 'resources')}</span>
-              <span>{summary.totalTasks} {t('tasks', 'tasks')}</span>
-              <span>{orders.length} {t('orders', 'orders')}</span>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Config switcher dropdown */}
+          {activeConfig && (
+              <div style={{ position: 'relative' }}>
+                <button onClick={() => setConfigDropdownOpen(!configDropdownOpen)} style={{
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                  background: C.surface2, border: `1px solid ${C.border}`,
+                  color: C.text, cursor: 'pointer', fontFamily: FONT,
+                }}>
+                  <span style={{ position: 'relative' }}>
+                    {'\u2699'}
+                    {isConfigModified && <span style={{
+                      position: 'absolute', top: -2, right: -4,
+                      width: 6, height: 6, borderRadius: '50%', background: C.yellow,
+                    }} />}
+                  </span>
+                  {activeConfig.name}
+                  <span style={{ fontSize: 8, color: C.textDim }}>{'\u25BE'}</span>
+                </button>
+                {configDropdownOpen && (
+                  <>
+                    <div onClick={() => setConfigDropdownOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 999 }} />
+                    <div style={{
+                      position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 1000,
+                      background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10,
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.4)', minWidth: 220, padding: 4,
+                      fontFamily: FONT,
+                    }}>
+                      {configurations.map(config => (
+                        <div key={config.key}
+                          onClick={() => { handleConfigActivate(config.key); setConfigDropdownOpen(false); }}
+                          style={{
+                            padding: '8px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer',
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            color: config.key === activeConfigKey ? C.accent : C.text,
+                            fontWeight: config.key === activeConfigKey ? 600 : 400,
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = `${C.accent}10`; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                        >
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {config.isDefault && <span style={{ color: C.green, fontSize: 10 }}>{'\u2605'}</span>}
+                            {config.key === activeConfigKey && <span style={{ color: C.accent, fontSize: 8 }}>{'\u25CF'}</span>}
+                            {config.name}
+                          </span>
+                          <span style={{ fontSize: 10, color: C.textDim }}>{config.strategy}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
           )}
           <button
             onClick={(e) => {
@@ -11171,6 +11794,7 @@ export default function App() {
           const conflictCount = tab === 'Conflicts' ? deriveConflicts(tasks, resources, materials).length : 0;
           const shortageCount = tab === 'Materials' ? materials.filter((m: any) => deriveMaterialStatus(m) === 'shortage').length : 0;
           const badge = tab === 'Conflicts' ? conflictCount : tab === 'Materials' ? shortageCount : 0;
+          const hasConfigChanges = tab === 'Configurations' && isConfigModified;
           return (
             <button
               key={tab}
@@ -11190,6 +11814,12 @@ export default function App() {
                   marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 8,
                   background: C.redDim, color: C.red, fontWeight: 700,
                 }}>{badge}</span>
+              )}
+              {hasConfigChanges && (
+                <span style={{
+                  marginLeft: 6, width: 8, height: 8, borderRadius: '50%',
+                  background: C.yellow, display: 'inline-block',
+                }} />
               )}
             </button>
           );
@@ -11424,6 +12054,13 @@ export default function App() {
         {activeTab === 'Materials' && <MaterialsTab materials={materials}
           materialModes={materialModeOverrides}
           onMaterialModeChange={(key, mode) => { setMaterialModeOverrides(prev => ({ ...prev, [key]: mode })); setSolveStale(true); }} />}
+        {activeTab === 'Configurations' && <ConfigurationsTab
+          configurations={configurations} activeConfigKey={activeConfigKey}
+          onActivate={handleConfigActivate} onSetDefault={handleConfigSetDefault}
+          onDelete={handleConfigDelete} onDuplicate={handleConfigDuplicate}
+          onCreate={handleConfigCreate} onRename={handleConfigRename}
+          isModified={isConfigModified} modifiedConfig={modifiedConfig} activeConfig={activeConfig}
+          onSave={handleConfigSave} onSaveAs={handleConfigSaveAs} onReset={handleConfigReset} />}
         {activeTab === 'Analytics' && <AnalyticsTab kpis={analyticsKpis} detail={analyticsDetail}
           selectedKpi={selectedKpi} onSelectKpi={handleSelectKpi} loading={analyticsLoading}
           experienceLevel={experienceLevel} onNavigateToCase={(caseKey) => { setScheduleCaseFilter(caseKey); setActiveTab('Schedule'); }}
@@ -11442,6 +12079,7 @@ export default function App() {
           scoringRules={activeScoringRules}
           onScoringRulesChange={handleScoringRulesChange}
           scoringSource={scoringSource}
+          configName={activeConfig?.name}
         />
       </Modal>
       <Modal open={userOpen} onClose={() => setUserOpen(false)} title="User Profile">
@@ -11694,6 +12332,8 @@ export default function App() {
           onTierChange={handleTierChange}
           tierOptions={tierOptions}
           experienceLevel={experienceLevel}
+          configName={activeConfig?.name}
+          scoringSummary={activeScoringRules.filter(r => r.includeInSolve).slice(0, 6).map(r => `${RULE_ABBREV[r.ruleName] || displayRuleName(r.ruleName)} ${Math.round(r.weight * 100)}%`).join(' \u00B7 ')}
           onConfirm={handleSolveConfirm}
           onCancel={handleSolveCancel}
         />

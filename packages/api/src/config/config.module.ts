@@ -3,8 +3,11 @@ import * as path from 'path';
 import { FileConfigStore } from './file-config-store';
 import { ConfigService } from './config.service';
 import { StrategyConfigService } from './strategy-config.service';
+import { ScheduleConfigurationService } from './schedule-configuration.service';
+import { ScheduleConfigurationController } from './schedule-configuration.controller';
 
 @Module({
+  controllers: [ScheduleConfigurationController],
   providers: [
     {
       provide: 'CONFIG_STORE',
@@ -18,7 +21,8 @@ import { StrategyConfigService } from './strategy-config.service';
     },
     ConfigService,
     StrategyConfigService,
+    ScheduleConfigurationService,
   ],
-  exports: ['CONFIG_STORE', ConfigService, StrategyConfigService],
+  exports: ['CONFIG_STORE', ConfigService, StrategyConfigService, ScheduleConfigurationService],
 })
 export class ConfigModule {}

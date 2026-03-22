@@ -177,6 +177,13 @@ export class SolveRequestDto {
   recordSolveSteps?: boolean;
 
   @ApiPropertyOptional({
+    description: 'Use a named schedule configuration (loads scoring + strategy + tier)',
+  })
+  @IsOptional()
+  @IsString()
+  configurationKey?: string;
+
+  @ApiPropertyOptional({
     description: 'Skip config reload — solve against live landscape state',
   })
   @IsOptional()
