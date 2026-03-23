@@ -4,7 +4,7 @@
 
 | Sprint | Name | Notes |
 |--------|------|-------|
-| AI Sprint 3 — Recommendation Engine | Diagnose + recommend + apply pipeline | 8 action types, command sequencer with rollback, `POST /ctp/diagnose` + `POST /ctp/apply-recommendation`. AI chat agent integration. |
+_No sprints currently in progress._
 
 ## Done
 
@@ -58,7 +58,8 @@
 | Solver 8 — Disjunctive Graph Phase A | DisjunctiveGraph engine class with critical path computation + multi-resource support; `GET /ctp/critical-path` + per-task slack/isOnCriticalPath in solve response; Analytics critical path KPIs + detail view; Gantt critical path toggle; task detail slack section; task table slack column; AI `get_critical_path` tool; Overview KPI card; WhereTo critical path banner | 2026-03-17 |
 | Currency Locale Support | `currency` field on all tenant locale.json (NZD for Stafford, USD for rest); `fmtCurrency` frontend helper using Intl.NumberFormat | 2026-03-19 |
 | Engine — Cost Scoring Model | 5 cost scoring rules (ResourceCost, ChangeoverCost, Overtime, Lateness, Material); `hourlyRate` on resources, `cost` on state changes, `latenessPenaltyPerDay` on orders, `unitCost` on materials; grouped scoring editor; cost KPIs in Analytics; per-task + schedule-level cost in solve response | 2026-03-20 |
-| Sprint 22 — Schedule Configurations | Named saveable config bundles (scoring + strategy + tier); CRUD backend + UI manager tab + toolbar config switcher dropdown; compare view with color-coded diffs; Settings Panel integration (modified tracking, Save/Save As/Reset); `configurationKey` on solve request; Stafford 3 configs seed data | 2026-03-21 |
+| Sprint 22 — Schedule Configurations | Named saveable config bundles (scoring + strategy + tier); CRUD backend + UI manager tab + toolbar config switcher dropdown; compare view with color-coded diffs; Settings Panel integration (modified tracking, Save/Save As/Reset); `configurationKey` on solve request; Stafford 3 configs seed data; Duplicate-only creation (no Add) | 2026-03-21 |
+| AI Sprint 3 — Recommendation Engine | `POST /ctp/diagnose` (root cause classification, ranked recs with tradeoffs); `POST /ctp/apply-recommendation` (command sequencer with staleness check + rollback); compound recs (window+redirect, bump+move, redirect-others); AI `diagnose_tasks` tool; token optimization — UI executes fixes via action buttons (55% token reduction) | 2026-03-23 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -270,4 +271,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 22, 2026 (AI Sprint 3 — Recommendation Engine active)*
+*Last updated: Mar 23, 2026 (AI Sprint 3 complete — no active sprint)*
