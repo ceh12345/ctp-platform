@@ -91,15 +91,9 @@ The before/after diff shows only fields that changed. Weights show the delta. St
 
 ### Actions
 
-**+ New Config** — Opens a dialog:
-- Name (required)
-- Description (optional)
-- Initialize from: dropdown of existing configs (copies scoring/strategy/tier), or "Blank" (defaults)
-- On confirm → `POST /v1/configurations` → new card appears
+**Duplicate** — The primary way to create new configurations. Opens name dialog pre-filled with "{name} (Copy)" → creates via POST with all settings copied (scoring/strategy/tier). The copy starts valid because its source was valid. No "Add" button — "Add" is just "Duplicate Default" with extra steps.
 
 **Activate** — `POST /v1/configurations/:key/activate` → active indicator moves, Solve Preview and Settings now use this config
-
-**Duplicate** — Opens name dialog pre-filled with "{name} (Copy)" → creates via POST with the same scoring/strategy/tier
 
 **Rename** — Inline edit or small dialog. `PUT /v1/configurations/:key` with new name. Key doesn't change.
 

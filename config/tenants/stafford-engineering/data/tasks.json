@@ -2266,8 +2266,8 @@
     "name": "Dairy Co-op Milk Vat - Final Assembly",
     "type": "PROCESS",
     "process": "processing-equipment",
-    "windowStart": "2026-03-15T18:00:00Z",
-    "windowEnd": "2026-03-24T18:00:00Z",
+    "windowStart": "2026-03-23T12:00:00Z",
+    "windowEnd": "2026-03-24T00:00:00Z",
     "durationSeconds": 21600,
     "durationQty": 1,
     "durationType": 0,
@@ -2276,7 +2276,11 @@
         "resource": "ASSEMBLY-02",
         "isPrimary": true,
         "qty": 1,
-        "mode": "ON"
+        "mode": "ON",
+        "preferences": [
+          "ASSEMBLY-02",
+          "ASSEMBLY-01"
+        ]
       },
       {
         "resource": "ASSY-HAYDEN",

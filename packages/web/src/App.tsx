@@ -8208,7 +8208,7 @@ function CriticalPathDetail({ data, experienceLevel, onTaskClick }: {
 // CONFIGURATIONS TAB
 // ═══════════════════════════════════════════════════════════════
 
-function ConfigurationsTab({ configurations, activeConfigKey, onActivate, onSetDefault, onDelete, onDuplicate, onCreate, onRename,
+function ConfigurationsTab({ configurations, activeConfigKey, onActivate, onSetDefault, onDelete, onDuplicate, onRename,
   isModified, modifiedConfig, activeConfig, onSave, onSaveAs, onReset }: {
   configurations: any[];
   activeConfigKey: string;
@@ -8216,7 +8216,6 @@ function ConfigurationsTab({ configurations, activeConfigKey, onActivate, onSetD
   onSetDefault: (key: string) => void;
   onDelete: (key: string) => void;
   onDuplicate: (config: any) => void;
-  onCreate: () => void;
   onRename: (key: string, newName: string) => void;
   isModified?: boolean;
   modifiedConfig?: any;
@@ -8237,10 +8236,7 @@ function ConfigurationsTab({ configurations, activeConfigKey, onActivate, onSetD
     return (
       <div style={{ padding: 40, textAlign: 'center', color: C.textMuted, fontFamily: FONT }}>
         <div style={{ fontSize: 16, marginBottom: 8 }}>No configurations yet</div>
-        <button onClick={onCreate} style={{
-          padding: '8px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-          background: C.accent, color: '#fff', border: 'none', cursor: 'pointer',
-        }}>+ New Configuration</button>
+        <div style={{ fontSize: 12 }}>Run a solve to create the default configuration.</div>
       </div>
     );
   }
@@ -8303,10 +8299,6 @@ function ConfigurationsTab({ configurations, activeConfigKey, onActivate, onSetD
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.text }}>Configurations</h2>
-        <button onClick={onCreate} style={{
-          padding: '6px 16px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-          background: C.accent, color: '#fff', border: 'none', cursor: 'pointer',
-        }}>+ New Configuration</button>
       </div>
 
       {/* Config cards */}
@@ -8845,7 +8837,7 @@ function AnalyticsTab({ kpis, detail, selectedKpi, onSelectKpi, loading, experie
    CHAT PANEL — AI SCHEDULING ASSISTANT
    ═══════════════════════════════════════════════════════════════ */
 
-type ChatActionType = 'whereTo' | 'openTask' | 'openResource' | 'filterChain' | 'openTab' | 'navigateOrder';
+type ChatActionType = 'whereTo' | 'openTask' | 'openResource' | 'filterChain' | 'openTab' | 'navigateOrder' | 'applyFix';
 
 interface ChatAction {
   type: ChatActionType;
@@ -8857,6 +8849,7 @@ interface ChatAction {
   tab?: string;
   startAfter?: string;
   startBefore?: string;
+  recId?: string;
 }
 
 interface ChatMessage {
@@ -8893,6 +8886,7 @@ function parseActionsFromText(text: string): { cleanText: string; actions: ChatA
         tab: get('tab'),
         startAfter: get('startAfter'),
         startBefore: get('startBefore'),
+        recId: get('recId'),
       });
     }
   }
@@ -9281,6 +9275,25 @@ If you don't have enough information to answer, say so.
   prompt += `- query_resources: Find resources by attribute (lights, surface, park, certification, capability, etc.)\n`;
   prompt += `- evaluate_new_order: Stateless CTP query — evaluate when a new order can be scheduled by cloning an existing chain. Use when the planner asks "when can I schedule a new...", "can I fit another...", "where can I add...". The schedule is NOT modified.\n`;
   prompt += `- get_critical_path: Get the critical path analysis — bottleneck resource, critical segments, slack distribution. Use when the planner asks about makespan, bottlenecks, schedule length, or what is driving the timeline.\n`;
+  prompt += `- diagnose_tasks: Analyze why tasks are infeasible and get ranked fix recommendations with tradeoffs. Use when the planner asks "why can't X schedule?", "what's wrong with X?", "how can I fix X?". Returns root cause + actionable options.\n`;
+  prompt += `\n## Diagnosing and Fixing Problems\n`;
+  prompt += `When the planner asks about infeasible tasks or how to fix them:\n`;
+  prompt += `1. Call diagnose_tasks to get root causes AND fix recommendations in ONE step\n`;
+  prompt += `2. Explain the root cause in plain language — why it can't schedule, which resources are blocked, by whom\n`;
+  prompt += `3. Present 2-3 options conversationally with tradeoffs\n`;
+  prompt += `4. Include an action button for each option: <action type="applyFix" recId="recommendation-id" label="Apply: description" />\n`;
+  prompt += `5. The user clicks a button to apply — you do NOT execute the fix yourself\n`;
+  prompt += `6. After the user clicks, the UI executes the fix and refreshes the schedule automatically\n`;
+  prompt += `You CANNOT apply fixes yourself. Present the options with action buttons and let the user click to execute.\n`;
+  prompt += `When the user says "fix it" or "apply option 1", respond with the appropriate action button so they can click it.\n`;
+  prompt += `Do NOT say "I'll apply that now" — say "Click the button below to apply:" and include the action tag.\n`;
+  prompt += `Example:\n`;
+  prompt += `  "EQ-003 can't schedule because Jack P. is fully booked. I see two options:\n`;
+  prompt += `  1. **Move to Luke** ($55/hr, standard TIG) — available Tuesday afternoon\n`;
+  prompt += `  <action type="applyFix" recId="move-EQ003-abc" label="Apply: Move to Luke" />\n`;
+  prompt += `  2. **Extend window 1 day** — Jack has a slot Wednesday morning\n`;
+  prompt += `  <action type="applyFix" recId="window-EQ003-1d" label="Apply: Extend window 1 day" />\n`;
+  prompt += `  Which would you prefer?"\n`;
   prompt += `\n## Attribute Questions — Where to Look\n`;
   prompt += `Task attributes (sport, division, homeTeam, phase, procedureType, operation, etc.) are already in the schedule summary above. Answer task attribute questions directly from context — do NOT call query_resources for tasks.\n`;
   prompt += `Resource attributes (lighting, surface, park, certification, capability, fencing, etc.) are NOT in the schedule summary. Always call query_resources for questions about resource properties.\n`;
@@ -9414,6 +9427,11 @@ const AI_TOOLS = [
     name: 'get_critical_path',
     description: 'Get the critical path analysis showing which tasks and resources drive the makespan. Returns the bottleneck resource, critical path segments, per-resource contribution, and slack distribution. Use when the user asks about makespan, bottlenecks, schedule length, or what is driving the timeline.',
     input_schema: { type: 'object' as const, properties: {}, required: [] as string[] },
+  },
+  {
+    name: 'diagnose_tasks',
+    description: 'Analyze why tasks are infeasible and get ranked fix recommendations with tradeoffs. Returns root cause classification, blocking tasks, and actionable recommendations (move resource, expand window, bump lower priority, change strategy). Use when the planner asks why something won\'t schedule, what\'s blocking a task, or how to fix infeasibilities.',
+    input_schema: { type: 'object' as const, properties: { task_keys: { type: 'array' as const, items: { type: 'string' as const }, description: 'Task keys to diagnose. Leave empty to diagnose all infeasible tasks.' } }, required: [] as string[] },
   },
 ];
 
@@ -9837,7 +9855,58 @@ async function executeGetCriticalPath(): Promise<string> {
   }
 }
 
-async function executeTool(toolName: string, input: any, solveResult: any): Promise<string> {
+async function executeDiagnoseTasks(taskKeys?: string[], onDiagnoseComplete?: (data: any) => void): Promise<string> {
+  try {
+    const body: any = { maxRecommendations: 3 };
+    if (taskKeys?.length) body.taskKeys = taskKeys;
+    const data = await api('/ctp/diagnose', { method: 'POST', body: JSON.stringify(body) });
+
+    // Store full response for action button execution (NOT sent to AI)
+    if (onDiagnoseComplete) onDiagnoseComplete(data);
+
+    if (!data.diagnoses?.length) {
+      return 'No infeasible tasks found — all tasks are scheduled.';
+    }
+
+    let result = '';
+    for (const d of data.diagnoses) {
+      result += `── ${d.taskName} (${d.taskKey}) ──\n`;
+      result += `Status: ${d.status}\n`;
+      result += `Root cause: ${d.rootCause.type} — ${d.rootCause.summary}\n`;
+      if (d.rootCause.blockingTasks?.length) {
+        result += `Blocked by:\n`;
+        for (const bt of d.rootCause.blockingTasks) {
+          result += `  - ${bt.taskName} (priority ${bt.priority}) ${bt.start}–${bt.end}\n`;
+        }
+      }
+      if (d.recommendations?.length) {
+        result += `\nRecommendations:\n`;
+        for (const rec of d.recommendations) {
+          result += `  ${rec.rank}. [${rec.action}] ${rec.description} (score: ${rec.score.toFixed(1)})\n`;
+          if (rec.tradeoffs.gains.length) result += `     Gains: ${rec.tradeoffs.gains.join('; ')}\n`;
+          if (rec.tradeoffs.costs.length) result += `     Costs: ${rec.tradeoffs.costs.join('; ')}\n`;
+          result += `     Action button: <action type="applyFix" recId="${rec.id}" label="Apply: ${rec.description.substring(0, 60)}" />\n`;
+        }
+      }
+      result += '\n';
+    }
+
+    if (data.globalRecommendations?.length) {
+      result += `── Global Recommendations ──\n`;
+      for (const rec of data.globalRecommendations) {
+        result += `  ${rec.rank}. [${rec.action}] ${rec.description}\n`;
+        result += `     Action button: <action type="applyFix" recId="${rec.id}" label="Apply: ${rec.description.substring(0, 60)}" />\n`;
+      }
+    }
+
+    result += `\nPresent these options to the planner with action buttons. They click to apply — you do NOT execute fixes.`;
+    return result;
+  } catch (err: any) {
+    return `Error diagnosing tasks: ${err.message}`;
+  }
+}
+
+async function executeTool(toolName: string, input: any, solveResult: any, onDiagnoseComplete?: (data: any) => void): Promise<string> {
   switch (toolName) {
     case 'where_can_task_go': return await executeWhereTo(input.task_key, input.start_after, input.start_before);
     case 'get_resource_agenda': return executeResourceAgenda(input.resource_key, input.date, solveResult);
@@ -9848,6 +9917,7 @@ async function executeTool(toolName: string, input: any, solveResult: any): Prom
     case 'query_resources': return await executeQueryResources(input.attribute, input.value, input.include_availability ?? false, input.start_time, input.end_time);
     case 'evaluate_new_order': return await executeEvaluateNewOrder(input.source_chain_key, input.order_name, input.preferred_surgeon, input.need_by_date);
     case 'get_critical_path': return await executeGetCriticalPath();
+    case 'diagnose_tasks': return await executeDiagnoseTasks(input.task_keys, onDiagnoseComplete);
     default: return `Unknown tool: ${toolName}`;
   }
 }
@@ -9860,6 +9930,7 @@ function actionIcon(type: ChatActionType): string {
     case 'filterChain':    return '\uD83D\uDD17';
     case 'openTab':        return '\u2192';
     case 'navigateOrder':  return '\uD83D\uDCE6';
+    case 'applyFix':       return '\u2705';
     default:               return '\u2192';
   }
 }
@@ -9872,25 +9943,29 @@ function ChatActionButtons({ actions, onAction }: { actions: ChatAction[]; onAct
       marginTop: 8, paddingTop: 8,
       borderTop: `1px solid ${C.border}`,
     }}>
-      {actions.map((action, i) => (
+      {actions.map((action, i) => {
+        const isFix = action.type === 'applyFix';
+        const btnColor = isFix ? C.green : C.accent;
+        return (
         <button
           key={i}
           onClick={() => onAction(action)}
           style={{
             padding: '5px 10px', borderRadius: 6,
-            border: `1px solid ${C.accent}44`,
-            background: `${C.accent}12`,
-            color: C.accent, fontSize: 11, fontWeight: 600,
+            border: `1px solid ${btnColor}44`,
+            background: `${btnColor}12`,
+            color: btnColor, fontSize: 11, fontWeight: 600,
             cursor: 'pointer', fontFamily: FONT,
             display: 'flex', alignItems: 'center', gap: 4,
             transition: 'background 0.15s',
           }}
-          onMouseEnter={e => (e.currentTarget.style.background = `${C.accent}22`)}
-          onMouseLeave={e => (e.currentTarget.style.background = `${C.accent}12`)}
+          onMouseEnter={e => (e.currentTarget.style.background = `${btnColor}22`)}
+          onMouseLeave={e => (e.currentTarget.style.background = `${btnColor}12`)}
         >
           {actionIcon(action.type)} {action.label}
         </button>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -9981,12 +10056,13 @@ function ChatCollapsedStrip({ lastMessage, onExpand }: { lastMessage: string | n
   );
 }
 
-function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput, onChatAction, collapsed, onCollapsedExpand, onCollapse }: {
-  solveResult: any; open: boolean; onClose: () => void; selectedTask?: any; initialInput?: string; onChatAction?: (action: ChatAction) => void; collapsed?: boolean; onCollapsedExpand?: () => void; onCollapse?: () => void;
+function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput, onChatAction, collapsed, onCollapsedExpand, onCollapse, onScheduleChanged }: {
+  solveResult: any; open: boolean; onClose: () => void; selectedTask?: any; initialInput?: string; onChatAction?: (action: ChatAction) => void; collapsed?: boolean; onCollapsedExpand?: () => void; onCollapse?: () => void; onScheduleChanged?: () => Promise<void>;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [lastDiagnoseResponse, setLastDiagnoseResponse] = useState<any>(null);
 
   // Pre-fill input from external trigger (e.g. Ask AI button)
   useEffect(() => {
@@ -10078,7 +10154,7 @@ function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput, onC
         // Execute tools and collect results
         const toolResults: any[] = [];
         for (const toolUse of toolUseBlocks) {
-          const result = await executeTool(toolUse.name, toolUse.input, solveResult);
+          const result = await executeTool(toolUse.name, toolUse.input, solveResult, setLastDiagnoseResponse);
           toolResults.push({ type: 'tool_result', tool_use_id: toolUse.id, content: result });
         }
 
@@ -10179,7 +10255,40 @@ function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput, onC
 
       {/* Messages */}
       <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
-        {messages.map(m => <ChatBubble key={m.id} message={m} onAction={onChatAction} />)}
+        {messages.map(m => <ChatBubble key={m.id} message={m} onAction={async (action: ChatAction) => {
+          if (action.type === 'applyFix' && action.recId) {
+            if (!lastDiagnoseResponse) { return; }
+            const allRecs = [
+              ...(lastDiagnoseResponse.diagnoses?.flatMap((d: any) => d.recommendations) || []),
+              ...(lastDiagnoseResponse.globalRecommendations || []),
+            ];
+            const rec = allRecs.find((r: any) => r.id === action.recId);
+            if (!rec) { return; }
+            try {
+              const result = await api('/ctp/apply-recommendation', {
+                method: 'POST',
+                body: JSON.stringify({
+                  recommendationId: rec.id,
+                  commands: rec.commands,
+                  landscapeHash: lastDiagnoseResponse.landscapeHash,
+                }),
+              });
+              if (result.stale) {
+                setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: 'Schedule has changed — please ask me to re-diagnose.', timestamp: Date.now() }]);
+              } else if (result.success) {
+                setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: `Applied: ${rec.description}. Schedule updated.`, timestamp: Date.now() }]);
+                if (onScheduleChanged) await onScheduleChanged();
+                setLastDiagnoseResponse(null);
+              } else {
+                setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: `Fix failed${result.rolledBack ? ' (rolled back)' : ''}: ${result.reason}`, timestamp: Date.now() }]);
+              }
+            } catch (err: any) {
+              setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: `Error: ${err.message}`, timestamp: Date.now() }]);
+            }
+          } else {
+            onChatAction?.(action);
+          }
+        }} />)}
 
         {/* Suggested questions */}
         {messages.length <= 1 && solveResult && (
@@ -11423,25 +11532,6 @@ export default function App() {
     await reloadConfigurations();
   }, [reloadConfigurations]);
 
-  const handleConfigCreate = useCallback(async () => {
-    const name = prompt('Configuration name:');
-    if (!name) return;
-    const desc = prompt('Description (optional):') || undefined;
-    // Initialize from active config's scoring or fallback
-    const initScoring = activeConfig?.scoring ?? activeScoringRules;
-    await api('/configurations', {
-      method: 'POST',
-      body: JSON.stringify({
-        name,
-        description: desc,
-        scoring: initScoring,
-        strategy: solverStrategy,
-        tier: selectedTier,
-      }),
-    });
-    await reloadConfigurations();
-  }, [reloadConfigurations, activeConfig, activeScoringRules, solverStrategy, selectedTier]);
-
   const handleConfigRename = useCallback(async (key: string, newName: string) => {
     await api(`/configurations/${key}`, { method: 'PUT', body: JSON.stringify({ name: newName }) });
     await reloadConfigurations();
@@ -12058,7 +12148,7 @@ export default function App() {
           configurations={configurations} activeConfigKey={activeConfigKey}
           onActivate={handleConfigActivate} onSetDefault={handleConfigSetDefault}
           onDelete={handleConfigDelete} onDuplicate={handleConfigDuplicate}
-          onCreate={handleConfigCreate} onRename={handleConfigRename}
+          onRename={handleConfigRename}
           isModified={isConfigModified} modifiedConfig={modifiedConfig} activeConfig={activeConfig}
           onSave={handleConfigSave} onSaveAs={handleConfigSaveAs} onReset={handleConfigReset} />}
         {activeTab === 'Analytics' && <AnalyticsTab kpis={analyticsKpis} detail={analyticsDetail}
@@ -12066,7 +12156,10 @@ export default function App() {
           experienceLevel={experienceLevel} onNavigateToCase={(caseKey) => { setScheduleCaseFilter(caseKey); setActiveTab('Schedule'); }}
           tasks={tasks} onNavigateToConflicts={() => setActiveTab('Conflicts')} />}
       </main>
-      <ChatPanel solveResult={solveResult} open={chatOpen} onClose={() => setChatOpen(false)} selectedTask={selectedTask} initialInput={chatInitialInput} onChatAction={handleChatAction} collapsed={chatCollapsed} onCollapsedExpand={() => setChatCollapsed(false)} onCollapse={() => setChatCollapsed(true)} />
+      <ChatPanel solveResult={solveResult} open={chatOpen} onClose={() => setChatOpen(false)} selectedTask={selectedTask} initialInput={chatInitialInput} onChatAction={handleChatAction} collapsed={chatCollapsed} onCollapsedExpand={() => setChatCollapsed(false)} onCollapse={() => setChatCollapsed(true)} onScheduleChanged={async () => {
+        const updated = await api('/ctp/state?detailLevel=' + experienceLevel);
+        if (updated?.tasks) setSolveResult((prev: any) => ({ ...prev, ...updated }));
+      }} />
       </div>
 
       {/* Modals */}

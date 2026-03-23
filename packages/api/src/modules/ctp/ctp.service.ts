@@ -36,6 +36,11 @@ import { ConfigService } from '../../config/config.service';
 import { StrategyConfigService } from '../../config/strategy-config.service';
 import { LoggerService } from '../../logging/logger.service';
 import { SolveRequestDto } from './dto/solve-request.dto';
+import {
+  DiagnoseRequestDto, DiagnoseResponse, TaskDiagnosis, RootCause,
+  Recommendation, RecommendationCommand, BlockingTaskSummary,
+  ApplyRecommendationRequestDto, ApplyRecommendationResponse,
+} from './dto/diagnose.dto';
 import { ScheduleConfigurationService } from '../../config/schedule-configuration.service';
 import { WhereToRequestDto, WhereToResponseDto, MoveToRequestDto, MoveToResponseDto } from './dto/whereto.dto';
 import { CTPQueryDto, CTPQueryResponse, CTPQueryOption, CTPQuerySummary, ChainTemplatesResponse } from './dto/ctp-query.dto';
@@ -1429,6 +1434,670 @@ export class CTPService {
         criticalBlockId: nd.criticalBlockId,
       })),
     };
+  }
+
+  // ═══════════════════════════════════════
+  // Endpoint 16: Diagnose
+  // ═══════════════════════════════════════
+
+  diagnose(request: DiagnoseRequestDto): DiagnoseResponse {
+    const landscape = this.ensureLandscape();
+    const landscapeHash = this.computeLandscapeHash();
+    const timestamp = new Date().toISOString();
+
+    // 1. Identify target tasks
+    let targetTasks: CTPTask[] = [];
+    if (request.taskKeys?.length) {
+      for (const k of request.taskKeys) {
+        const t = landscape.tasks.getEntity(k);
+        if (t) targetTasks.push(t);
+      }
+    } else {
+      landscape.tasks.forEach(t => {
+        if (t.state !== CTPTaskStateConstants.SCHEDULED && t.includeInSolve && !t.pinned) {
+          targetTasks.push(t);
+        }
+      });
+    }
+
+    const maxRecs = request.maxRecommendations ?? 5;
+    const allowedActions = request.actionTypes ?? null;
+    const diagnoses: TaskDiagnosis[] = [];
+
+    for (const task of targetTasks) {
+      // 2. Classify root cause
+      const rootCause = this.classifyRootCause(task, landscape);
+
+      // 3. Generate recommendations
+      const recommendations: Recommendation[] = [];
+
+      if (!allowedActions || allowedActions.includes('move_resource')) {
+        recommendations.push(...this.generateMoveResourceRecs(task, landscape));
+      }
+      if (!allowedActions || allowedActions.includes('expand_window')) {
+        recommendations.push(...this.generateExpandWindowRecs(task, landscape));
+      }
+      if (!allowedActions || allowedActions.includes('bump_lower_priority')) {
+        recommendations.push(...this.generateBumpRecs(task, landscape));
+      }
+
+      // 3e. Compound recommendations (when single actions are insufficient)
+      if (!allowedActions || allowedActions.length > 1) {
+        recommendations.push(...this.generateCompoundRecs(task, landscape, recommendations, rootCause));
+      }
+
+      // 4. Sort and rank
+      recommendations.sort((a, b) => a.score - b.score);
+      recommendations.forEach((r, i) => r.rank = i + 1);
+
+      diagnoses.push({
+        taskKey: task.key,
+        taskName: task.name,
+        orderKey: task.linkId?.name ?? null,
+        chainKey: task.linkId?.name ?? null,
+        status: task.state === CTPTaskStateConstants.SCHEDULED ? 'scheduled' : 'infeasible',
+        rootCause,
+        infeasibilityReport: task.infeasibilityReport ? this.serializeInfeasibilityReport(task.infeasibilityReport) : undefined,
+        recommendations: recommendations.slice(0, maxRecs),
+      });
+    }
+
+    // 5. Global recommendations
+    const globalRecommendations = this.generateGlobalRecs(targetTasks, landscape);
+
+    return { diagnoses, globalRecommendations, timestamp, landscapeHash };
+  }
+
+  private classifyRootCause(task: CTPTask, landscape: SchedulingLandscape): RootCause {
+    const report = task.infeasibilityReport;
+    const errorReasons = task.errors.map(e => e.reason.toLowerCase());
+
+    // Material shortage?
+    if (errorReasons.some(r => r.includes('material') || r.includes('shortage'))) {
+      return { type: 'material_shortage', summary: 'Material shortage prevents scheduling' };
+    }
+
+    // All resources excluded?
+    if (report?.slots?.every((s: any) => s.resources?.every((r: any) => r.status === 'blocked'))) {
+      let hasExcluded = false;
+      task.capacityResources?.forEach(tr => { if (tr.mode === 'EXCLUDED') hasExcluded = true; });
+      if (hasExcluded) {
+        return { type: 'resource_excluded', summary: 'All compatible resources are excluded or offline', bottleneckSlot: report.bottleneckSlot ?? undefined };
+      }
+    }
+
+    if (report) {
+      const bottleneck = report.slots?.find((s: any) => s.isBottleneck);
+      const blockingTasks: BlockingTaskSummary[] = [];
+      if (bottleneck?.resources) {
+        for (const res of bottleneck.resources) {
+          for (const bt of (res.blockingTasks || [])) {
+            const blockerTask = landscape.tasks.getEntity(bt.taskKey);
+            blockingTasks.push({
+              taskKey: bt.taskKey,
+              taskName: bt.taskName || bt.taskKey,
+              orderKey: blockerTask?.linkId?.name ?? null,
+              priority: blockerTask?.priority ?? 100,
+              resourceKey: res.resourceKey || '',
+              start: bt.startW ? CTPDateTime.toDateTime(bt.startW).toISO()! : '',
+              end: bt.endW ? CTPDateTime.toDateTime(bt.endW).toISO()! : '',
+            });
+          }
+        }
+      }
+
+      // Window too tight?
+      const windowDuration = task.window ? (task.window.endW - task.window.startW) : 0;
+      const taskDuration = task.duration?.duration() ?? 0;
+      if (windowDuration > 0 && windowDuration < taskDuration * 1.5) {
+        return {
+          type: 'window_too_tight',
+          summary: `Window is ${Math.round(windowDuration / 3600)}h but task needs ${Math.round(taskDuration / 3600)}h`,
+          bottleneckSlot: report.bottleneckSlot ?? undefined,
+          blockingTasks,
+        };
+      }
+
+      return {
+        type: 'no_capacity',
+        summary: report.reason || `No capacity on ${report.bottleneckSlot} within window`,
+        bottleneckSlot: report.bottleneckSlot ?? undefined,
+        blockingTasks,
+      };
+    }
+
+    return { type: 'unknown', summary: 'Unable to determine root cause' };
+  }
+
+  private generateMoveResourceRecs(task: CTPTask, landscape: SchedulingLandscape): Recommendation[] {
+    try {
+      const result = this.whereTo(task.key, {});
+      if (!result?.options?.length) return [];
+
+      return result.options.slice(0, 3).map((opt: any, i: number) => ({
+        id: `move-${task.key}-${opt.contextHash || i}`,
+        action: 'move_resource' as const,
+        description: `Move to ${(opt.resources || []).map((r: any) => r.resourceName || r.resourceKey).join(' + ')} at ${opt.start}`,
+        score: opt.score ?? (10 + i * 5),
+        rank: i + 1,
+        tradeoffs: {
+          gains: [`Task becomes feasible`],
+          costs: opt.changeover ? [`${opt.changeover.durationMinutes}min changeover`] : [],
+          metrics: { changeoversAdded: opt.changeover ? 1 : 0 },
+        },
+        commands: [{
+          type: 'move_to' as const,
+          taskKey: task.key,
+          contextHash: opt.contextHash,
+          startTime: opt.start,
+        }],
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  private generateExpandWindowRecs(task: CTPTask, landscape: SchedulingLandscape): Recommendation[] {
+    if (!task.window) return [];
+    const recs: Recommendation[] = [];
+
+    const expansions = [
+      { days: 1, label: '1 day' },
+      { days: 2, label: '2 days' },
+      { days: 5, label: '1 week' },
+    ];
+
+    for (const exp of expansions) {
+      const newEndW = task.window.endW + (exp.days * 86400);
+      const newEndDate = CTPDateTime.toDateTime(newEndW).toISO()!;
+
+      // Check if any resource has availability in the expanded range
+      let hasCapacity = false;
+      let capResourceName = '';
+      task.capacityResources?.forEach(tr => {
+        if (hasCapacity) return;
+        tr.preferences.forEach(pref => {
+          if (hasCapacity) return;
+          const res = landscape.resources.getEntity(pref.resourceKey);
+          if (!res?.available?.staticOriginal) return;
+          let ptr: any = res.available.staticOriginal.head;
+          while (ptr) {
+            if (ptr.data.endW > task.window!.endW && ptr.data.startW < newEndW) {
+              const gap = Math.min(ptr.data.endW, newEndW) - Math.max(ptr.data.startW, task.window!.endW);
+              if (gap >= (task.duration?.duration() ?? 0)) {
+                hasCapacity = true;
+                capResourceName = res.name || pref.resourceKey;
+                return;
+              }
+            }
+            ptr = ptr.next;
+          }
+        });
+      });
+
+      if (hasCapacity) {
+        // Build window commands for the whole chain (siblings need expanded windows too)
+        const windowCommands: RecommendationCommand[] = [];
+        const chainTaskKeys: string[] = [task.key];
+        windowCommands.push({ type: 'set_window' as const, taskKey: task.key, windowEnd: newEndDate });
+
+        if (task.linkId?.name) {
+          const chain = landscape.processes.getEntity(task.linkId.name);
+          chain?.tasks?.forEach(sibling => {
+            if (sibling.key !== task.key && sibling.window) {
+              const sibEndW = sibling.window.endW;
+              if (sibEndW < newEndW) {
+                windowCommands.push({ type: 'set_window' as const, taskKey: sibling.key, windowEnd: newEndDate });
+              }
+              chainTaskKeys.push(sibling.key);
+            }
+          });
+        }
+
+        recs.push({
+          id: `window-${task.key}-${exp.days}d`,
+          action: 'expand_window',
+          description: `Extend window by ${exp.label}${capResourceName ? ` — capacity on ${capResourceName}` : ''}`,
+          score: 50 + (exp.days * 10),
+          rank: 0,
+          tradeoffs: {
+            gains: ['Task becomes schedulable'],
+            costs: [`Delivery may slip ${exp.days} day(s)`],
+            metrics: { dueDateImpactDays: exp.days },
+          },
+          commands: [
+            ...windowCommands,
+            { type: 'solve' as const, taskKeys: chainTaskKeys, scope: 'targeted' as const, expandChains: true },
+          ],
+        });
+        break; // only suggest smallest sufficient expansion
+      }
+    }
+
+    return recs;
+  }
+
+  private generateBumpRecs(task: CTPTask, landscape: SchedulingLandscape): Recommendation[] {
+    const report = task.infeasibilityReport;
+    if (!report) return [];
+    const taskPriority = task.priority ?? 100;
+    const recs: Recommendation[] = [];
+
+    const blockers = (report.slots || [])
+      .flatMap((s: any) => s.resources || [])
+      .flatMap((r: any) => r.blockingTasks || [])
+      .filter((bt: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.taskKey === bt.taskKey) === i);
+
+    for (const blocker of blockers) {
+      const blockerTask = landscape.tasks.getEntity(blocker.taskKey);
+      if (!blockerTask) continue;
+      if (blockerTask.pinned) continue;
+      const blockerPriority = blockerTask.priority ?? 100;
+      if (blockerPriority <= taskPriority) continue; // only bump lower priority
+
+      recs.push({
+        id: `bump-${task.key}-${blocker.taskKey}`,
+        action: 'bump_lower_priority',
+        description: `Unschedule ${blockerTask.name} (priority ${blockerPriority}) to free capacity`,
+        score: 30 + (blockerPriority - taskPriority),
+        rank: 0,
+        tradeoffs: {
+          gains: [`Frees capacity on ${report.bottleneckSlot || 'bottleneck resource'}`],
+          costs: [`${blockerTask.name} must reschedule`],
+          metrics: { tasksDisplaced: 1 },
+        },
+        commands: [
+          { type: 'unschedule' as const, taskKey: blocker.taskKey },
+          { type: 'solve' as const, taskKeys: [task.key, blocker.taskKey], scope: 'targeted' as const, expandChains: true },
+        ],
+      });
+    }
+
+    return recs;
+  }
+
+  private generateGlobalRecs(infeasibleTasks: CTPTask[], landscape: SchedulingLandscape): Recommendation[] {
+    const recs: Recommendation[] = [];
+
+    // If many infeasible share a bottleneck, suggest order deferral
+    if (infeasibleTasks.length >= 3) {
+      const bnCounts = new Map<string, number>();
+      for (const t of infeasibleTasks) {
+        const bn = t.infeasibilityReport?.bottleneckSlot;
+        if (bn) bnCounts.set(bn, (bnCounts.get(bn) ?? 0) + 1);
+      }
+      const top = [...bnCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+      if (top && top[1] >= 3) {
+        recs.push({
+          id: `global-bottleneck-${top[0]}`,
+          action: 'change_strategy',
+          description: `${top[1]} tasks blocked by ${top[0]} — consider re-solving with Balanced strategy or deferring low-priority work`,
+          score: 60,
+          rank: 0,
+          tradeoffs: {
+            gains: ['May resolve multiple infeasibilities'],
+            costs: ['Longer solve time', 'Some tasks may move'],
+          },
+          commands: [{ type: 'solve' as const, strategy: 'Chain', scope: 'full' as const }],
+        });
+      }
+    }
+
+    // Suggest strategy upgrade if using quick/greedy
+    if (infeasibleTasks.length > 0) {
+      const strategy = landscape.appSettings?.solverStrategy ?? 'Chain';
+      if (strategy === 'Greedy' || strategy === 'ChainFirstFit') {
+        recs.push({
+          id: 'global-strategy-chain',
+          action: 'change_strategy',
+          description: 'Re-solve with Chain strategy — better chain-aware placement',
+          score: 70,
+          rank: 0,
+          tradeoffs: {
+            gains: ['Better chain integrity', 'May resolve infeasible tasks'],
+            costs: ['Slightly longer solve time'],
+          },
+          commands: [{ type: 'solve' as const, strategy: 'Chain', scope: 'full' as const }],
+        });
+      }
+    }
+
+    recs.forEach((r, i) => r.rank = i + 1);
+    return recs;
+  }
+
+  // ═══════════════════════════════════════
+  // Compound Recommendation Generator
+  // ═══════════════════════════════════════
+
+  private generateCompoundRecs(
+    task: CTPTask,
+    landscape: SchedulingLandscape,
+    existingRecs: Recommendation[],
+    rootCause: RootCause,
+  ): Recommendation[] {
+    const recs: Recommendation[] = [];
+    const hasMoveRecs = existingRecs.some(r => r.action === 'move_resource');
+    const hasWindowRecs = existingRecs.some(r => r.action === 'expand_window');
+    const hasBumpRecs = existingRecs.some(r => r.action === 'bump_lower_priority');
+
+    // Compound 1: Extend Window + Redirect Resource
+    if (!hasMoveRecs && rootCause.type === 'no_capacity') {
+      const c = this.tryWindowPlusRedirect(task, landscape);
+      if (c) recs.push(c);
+    }
+
+    // Compound 2: Bump Blocker + Move to Freed Slot
+    if (!hasWindowRecs && hasBumpRecs && rootCause.blockingTasks?.length) {
+      const c = this.tryBumpPlusMove(task, landscape, rootCause);
+      if (c) recs.push(c);
+    }
+
+    // Compound 3: Redirect Others Off Bottleneck + Solve Target
+    if (!hasMoveRecs && rootCause.type === 'no_capacity') {
+      const c = this.tryRedirectOthersPlusSolve(task, landscape, rootCause);
+      if (c) recs.push(c);
+    }
+
+    return recs;
+  }
+
+  private tryWindowPlusRedirect(task: CTPTask, landscape: SchedulingLandscape): Recommendation | null {
+    if (!task.window) return null;
+
+    const report = task.infeasibilityReport;
+    const bottleneck = report?.slots?.find((s: any) => s.isBottleneck);
+    const bottleneckResourceKey = bottleneck?.resources?.find(
+      (r: any) => r.status === 'blocked'
+    )?.resourceKey;
+    if (!bottleneckResourceKey) return null;
+
+    const expansions = [
+      { seconds: 86400, label: '1 day' },
+      { seconds: 172800, label: '2 days' },
+    ];
+
+    for (const exp of expansions) {
+      const newEndW = task.window.endW + exp.seconds;
+
+      // Find an alternative resource (not the bottleneck)
+      let altKey = '';
+      let altName = '';
+      task.capacityResources?.forEach(tr => {
+        if (altKey) return;
+        tr.preferences?.forEach(pref => {
+          if (altKey) return;
+          if (pref.resourceKey === bottleneckResourceKey) return;
+          const res = landscape.resources?.getEntity(pref.resourceKey);
+          if (res) { altKey = pref.resourceKey; altName = res.name || pref.resourceKey; }
+        });
+      });
+      if (!altKey) continue;
+
+      const newEndISO = CTPDateTime.toDateTime(newEndW).toISO()!;
+      const bnRes = landscape.resources?.getEntity(bottleneckResourceKey);
+      const bnName = bnRes?.name || bottleneckResourceKey;
+
+      // Build window commands for chain siblings too
+      const windowCmds: RecommendationCommand[] = [
+        { type: 'set_window' as const, taskKey: task.key, windowEnd: newEndISO },
+      ];
+      const chainTaskKeys = [task.key];
+      if (task.linkId?.name) {
+        const chain = landscape.processes.getEntity(task.linkId.name);
+        chain?.tasks?.forEach(sib => {
+          if (sib.key !== task.key && sib.window && sib.window.endW < newEndW) {
+            windowCmds.push({ type: 'set_window' as const, taskKey: sib.key, windowEnd: newEndISO });
+          }
+          if (sib.key !== task.key) chainTaskKeys.push(sib.key);
+        });
+      }
+
+      return {
+        id: `compound-window-redirect-${task.key}-${exp.seconds}`,
+        action: 'expand_window' as const,
+        description: `Extend window ${exp.label} and redirect from ${bnName} to ${altName}`,
+        score: 35 + (exp.seconds / 86400) * 5,
+        rank: 0,
+        tradeoffs: {
+          gains: [
+            `Task schedulable on ${altName} with wider window`,
+            `Frees ${bnName} for higher-priority work`,
+          ],
+          costs: [
+            `Window extends ${exp.label}`,
+            `Task moves from ${bnName} to ${altName}`,
+          ],
+          metrics: { dueDateImpactDays: Math.ceil(exp.seconds / 86400), tasksDisplaced: 0 },
+        },
+        commands: [
+          ...windowCmds,
+          { type: 'set_resource_preference' as const, taskKeys: [task.key], resourceKey: bottleneckResourceKey, mode: 'EXCLUDED' },
+          { type: 'set_resource_preference' as const, taskKeys: [task.key], resourceKey: altKey, mode: 'PREFERRED' },
+          { type: 'solve' as const, taskKeys: chainTaskKeys, scope: 'targeted' as const, expandChains: true },
+        ],
+      };
+    }
+    return null;
+  }
+
+  private tryBumpPlusMove(
+    task: CTPTask,
+    landscape: SchedulingLandscape,
+    rootCause: RootCause,
+  ): Recommendation | null {
+    if (!rootCause.blockingTasks?.length) return null;
+    const taskPriority = task.priority ?? 100;
+
+    const candidates = rootCause.blockingTasks
+      .filter(bt => {
+        const blocker = landscape.tasks.getEntity(bt.taskKey);
+        if (!blocker) return false;
+        if (blocker.pinned) return false;
+        return (blocker.priority ?? 100) > taskPriority;
+      })
+      .sort((a, b) => b.priority - a.priority);
+
+    if (candidates.length === 0) return null;
+    const best = candidates[0];
+    const blockerTask = landscape.tasks.getEntity(best.taskKey);
+    if (!blockerTask) return null;
+
+    let blockerSlackDays = 0;
+    if (blockerTask.dueDate && blockerTask.scheduled) {
+      blockerSlackDays = Math.round((blockerTask.dueDate - blockerTask.scheduled.endW) / 86400);
+    }
+
+    return {
+      id: `compound-bump-move-${task.key}-${best.taskKey}`,
+      action: 'bump_lower_priority' as const,
+      description: `Bump ${blockerTask.name} (priority ${best.priority}) and schedule ${task.name} in the freed slot`,
+      score: 25 + (best.priority - taskPriority),
+      rank: 0,
+      tradeoffs: {
+        gains: [
+          `${task.name} gets the freed slot — no window extension needed`,
+          'Due date unaffected',
+        ],
+        costs: [
+          `${blockerTask.name} must reschedule`,
+          blockerSlackDays <= 0
+            ? `${blockerTask.name} has no slack — may become late`
+            : `${blockerTask.name} has ${blockerSlackDays}d slack`,
+        ],
+        metrics: { tasksDisplaced: 1, dueDateImpactDays: 0 },
+      },
+      commands: [
+        { type: 'unschedule' as const, taskKey: best.taskKey },
+        { type: 'solve' as const, taskKeys: [task.key, best.taskKey], scope: 'targeted' as const, expandChains: true },
+      ],
+    };
+  }
+
+  private tryRedirectOthersPlusSolve(
+    task: CTPTask,
+    landscape: SchedulingLandscape,
+    rootCause: RootCause,
+  ): Recommendation | null {
+    const report = task.infeasibilityReport;
+    if (!report) return null;
+
+    const bottleneck = report.slots?.find((s: any) => s.isBottleneck);
+    const bnKey = bottleneck?.resources?.find((r: any) => r.status === 'blocked')?.resourceKey;
+    if (!bnKey) return null;
+
+    // Only for tasks with NO alternatives (like ASME welds → only Jack)
+    let targetHasAlts = false;
+    task.capacityResources?.forEach(tr => {
+      if (tr.preferences && tr.preferences.length > 1) targetHasAlts = true;
+    });
+    if (targetHasAlts) return null;
+
+    // Find other tasks on the bottleneck that CAN move
+    const redirectCandidates: CTPTask[] = [];
+    landscape.tasks.forEach(t => {
+      if (t.key === task.key) return;
+      if (t.state !== CTPTaskStateConstants.SCHEDULED) return;
+      if (t.pinned) return;
+      let isOnBn = false;
+      let hasAlt = false;
+      t.capacityResources?.forEach(tr => {
+        if (tr.scheduledResource === bnKey) isOnBn = true;
+        if (tr.preferences && tr.preferences.length > 1) hasAlt = true;
+      });
+      if (isOnBn && hasAlt) redirectCandidates.push(t);
+    });
+
+    if (redirectCandidates.length === 0) return null;
+
+    redirectCandidates.sort((a, b) => (b.priority ?? 100) - (a.priority ?? 100));
+    const toRedirect = redirectCandidates.slice(0, 3);
+    const redirectKeys = toRedirect.map(t => t.key);
+    const redirectNames = toRedirect.map(t => t.name).join(', ');
+    const bnRes = landscape.resources?.getEntity(bnKey);
+    const bnName = bnRes?.name || bnKey;
+
+    return {
+      id: `compound-redirect-others-${task.key}`,
+      action: 'redirect_work' as const,
+      description: `Move ${toRedirect.length} task(s) off ${bnName} to free capacity for ${task.name}: ${redirectNames}`,
+      score: 30,
+      rank: 0,
+      tradeoffs: {
+        gains: [
+          `Frees capacity on ${bnName} for ${task.name}`,
+          `${task.name} stays on its required resource`,
+        ],
+        costs: [
+          `${toRedirect.length} task(s) redirected to alternative resources`,
+        ],
+        metrics: { tasksDisplaced: toRedirect.length, dueDateImpactDays: 0 },
+      },
+      commands: [
+        { type: 'set_resource_preference' as const, taskKeys: redirectKeys, resourceKey: bnKey, mode: 'EXCLUDED' },
+        { type: 'solve' as const, taskKeys: [...redirectKeys, task.key], scope: 'targeted' as const, expandChains: true },
+      ],
+    };
+  }
+
+  // ═══════════════════════════════════════
+  // Endpoint 17: Apply Recommendation
+  // ═══════════════════════════════════════
+
+  applyRecommendation(request: ApplyRecommendationRequestDto): ApplyRecommendationResponse {
+    const landscape = this.ensureLandscape();
+
+    // 1. Staleness check
+    const currentHash = this.computeLandscapeHash();
+    if (currentHash !== request.landscapeHash) {
+      return {
+        success: false,
+        stale: true,
+        actionsApplied: [],
+        reason: 'Landscape has changed since diagnosis. Please re-diagnose.',
+      };
+    }
+
+    // 2. Snapshot for rollback
+    const snapshots = this.captureAllSnapshots();
+    const actionsApplied: ApplyRecommendationResponse['actionsApplied'] = [];
+
+    // 3. Execute commands
+    try {
+      for (const cmd of request.commands) {
+        switch (cmd.type) {
+          case 'move_to':
+            this.moveTo(cmd.taskKey!, { contextHash: cmd.contextHash!, startTime: cmd.startTime! });
+            actionsApplied.push({ type: cmd.type, taskKey: cmd.taskKey, result: 'ok' });
+            break;
+
+          case 'unschedule': {
+            const task = landscape.tasks.getEntity(cmd.taskKey!);
+            if (task?.type === CTPTaskTypeConstants.SET_UP || task?.type === CTPTaskTypeConstants.TEAR_DOWN) {
+              actionsApplied.push({ type: cmd.type, taskKey: cmd.taskKey, result: 'skipped', detail: 'Setup/teardown managed automatically' });
+              break;
+            }
+            this.unscheduleTask(cmd.taskKey!, true);
+            actionsApplied.push({ type: cmd.type, taskKey: cmd.taskKey, result: 'ok' });
+            break;
+          }
+
+          case 'set_window':
+            this.setTaskWindow(cmd.taskKey!, cmd.windowStart ?? undefined, cmd.windowEnd ?? undefined);
+            actionsApplied.push({ type: cmd.type, taskKey: cmd.taskKey, result: 'ok' });
+            break;
+
+          case 'set_priority': {
+            this.setTaskPriority(cmd.taskKey!, cmd.priority!);
+            actionsApplied.push({ type: cmd.type, taskKey: cmd.taskKey, result: 'ok' });
+            break;
+          }
+
+          case 'set_resource_preference':
+            for (const tk of (cmd.taskKeys || [cmd.taskKey!])) {
+              this.updateResourceMode(tk, cmd.resourceKey!, cmd.mode!, 'capacity');
+            }
+            actionsApplied.push({ type: cmd.type, taskKey: cmd.taskKey, result: 'ok' });
+            break;
+
+          case 'set_order_mode':
+            landscape.applyOrderModes({ [cmd.orderKey!]: cmd.mode! });
+            actionsApplied.push({ type: cmd.type, taskKey: cmd.orderKey, result: 'ok' });
+            break;
+
+          case 'pin':
+            this.pinTask(cmd.taskKey!, cmd.pinned ?? true);
+            actionsApplied.push({ type: cmd.type, taskKey: cmd.taskKey, result: 'ok' });
+            break;
+
+          case 'solve': {
+            const solveRequest: any = {
+              preserveLandscape: true,
+              strategy: cmd.strategy,
+              taskKeys: cmd.taskKeys,
+            };
+            if (cmd.scope === 'targeted') solveRequest.protectOthers = true;
+            if (cmd.expandChains !== false) solveRequest.expandChains = true;
+            this.solve(solveRequest);
+            actionsApplied.push({ type: cmd.type, result: 'ok', detail: `scope=${cmd.scope || 'full'}` });
+            break;
+          }
+        }
+      }
+    } catch (err: any) {
+      // 4. Rollback on failure
+      this.restoreSnapshots(snapshots);
+      return {
+        success: false,
+        rolledBack: true,
+        actionsApplied,
+        reason: err.message,
+      };
+    }
+
+    // 5. Return refreshed state
+    const newState = this.getState(request.detailLevel ?? 'novice');
+    return { success: true, actionsApplied, newState };
   }
 
   // ═══════════════════════════════════════

@@ -19,6 +19,7 @@ import {
   SetTaskPriorityDto,
 } from './dto/solve-request.dto';
 import { CTPQueryDto } from './dto/ctp-query.dto';
+import { DiagnoseRequestDto, ApplyRecommendationRequestDto } from './dto/diagnose.dto';
 import { CTPSolveResultDto } from './dto/solve-result.dto';
 import {
   WhereToRequestDto,
@@ -258,5 +259,32 @@ export class CTPController {
   @ApiResponse({ status: 404, description: 'Task not found' })
   moveTo(@Param('taskKey') taskKey: string, @Body() body: MoveToRequestDto) {
     return this.ctpService.moveTo(taskKey, body);
+  }
+
+  // ─── Endpoint 16: Diagnose ───
+
+  @Post('diagnose')
+  @ApiOperation({
+    summary: 'Diagnose infeasible/suboptimal tasks and recommend resolutions',
+    description: 'Analyzes root causes, generates ranked recommendations with tradeoffs. Read-only — does not modify the schedule.',
+  })
+  @ApiBody({ type: DiagnoseRequestDto })
+  @ApiResponse({ status: 200, description: 'Diagnoses with ranked recommendations' })
+  diagnose(@Body() body: DiagnoseRequestDto) {
+    return this.ctpService.diagnose(body);
+  }
+
+  // ─── Endpoint 17: Apply Recommendation ───
+
+  @Post('apply-recommendation')
+  @ApiOperation({
+    summary: 'Apply a recommendation from diagnose results',
+    description: 'Executes a command sequence with staleness check and rollback on failure. Used by AI chat and future UI workflows.',
+  })
+  @ApiBody({ type: ApplyRecommendationRequestDto })
+  @ApiResponse({ status: 200, description: 'Recommendation applied with result' })
+  @ApiResponse({ status: 409, description: 'Landscape changed — re-diagnose required' })
+  applyRecommendation(@Body() body: ApplyRecommendationRequestDto) {
+    return this.ctpService.applyRecommendation(body);
   }
 }
