@@ -83,6 +83,7 @@
 | UI Sprint 14 | Error Display & API Error Handling | Surface engine errors in UI instead of generic 500 |
 | UI Sprint 13 | Resource Explorer | Calendar/Agenda sub-views under Schedule tab |
 | WhereTo on task detail | Button on detail panel | Trigger WhereTo for setup/teardown/unscheduled tasks |
+| UI Sprint 24 — Gantt Resource Filtering | Filter Gantt rows by WHERE selection | Lift hierarchy selection state to ScheduleTab, pass to GanttChart, hide non-matching resource rows. Declutters Gantt to the area the planner is working on. |
 
 ## Backlog
 
