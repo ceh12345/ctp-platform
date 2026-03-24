@@ -4,7 +4,9 @@
 
 | Sprint | Name | Notes |
 |--------|------|-------|
-_No sprints currently in progress._
+| Sprint | Name | Notes |
+|--------|------|-------|
+| UI Sprint 23 | Task Page — Hierarchy Browser + Attribute Search | Multi-level resource hierarchy tree (Work Center → Type → Resource) with checkboxes + utilization bars; attribute search with autocomplete; combined filtering with chips; backend: resource attributes in solve response |
 
 ## Done
 
@@ -75,9 +77,8 @@ _No sprints currently in progress._
 
 | Sprint | Name | Notes |
 |--------|------|-------|
-| Engine — Schedule Configurations | Named, saveable solver profiles | Bundles scoring rules + strategy + tier + experience level. Backend schema includes future fields (constraint toggles, horizon override, solver depth, cost visibility) — UI reveals progressively. CRUD API + config picker in Solve Preview + Save/Save As in Settings. Spec complete. |
-| AI Sprint 3 — Recommendation Engine | Diagnose → recommend → apply pipeline | 8 action types (move_resource, expand_window, bump, reprioritize, redirect, exclude, pin, change_strategy). Command sequencer with rollback. Depends on preserveLandscape (done). Design complete. |
 | Engine — Attribute-Based Resource Matching | Hard-filter preferences by attribute requirements | `requiredAttributes` on task slots, `AttributeMatcher` engine, rejection logging, bottleneck integration. Acme healthcare proof case. Makes AI recommendations correct (won't suggest non-ASME welders). CC-ready prompt exists. |
+| UI — Action Queue | Batch command builder | Stage multiple actions (unschedule, redirect, reprioritize, solve) and execute atomically via `POST /ctp/execute`. Presets/macros for common scenarios (machine breakdown, rush order). Spec complete. |
 | Solver Phase B — Metaheuristic Improvement | Tabu search + ILS on disjunctive graph | Critical-block neighborhood moves on Phase A graph. Powers Thorough (5-30s) and Best Quality (30s-5m) strategy tiers. Designed Phase B-ready in Phase A. Language TBD (TypeScript or C#). |
 | UI Sprint 14 | Error Display & API Error Handling | Surface engine errors in UI instead of generic 500 |
 | UI Sprint 13 | Resource Explorer | Calendar/Agenda sub-views under Schedule tab |
@@ -159,17 +160,21 @@ SOLVER TRACK                          UI TRACK                              AI T
          │                                                                       │
          └──→ Solver 5: CP-SAT                                           ✓ AI-2C: Chat Actions
               (C# / OR-Tools)                                                    │
-                                                                           └──→ AI-3: Recommendations
-                                                                                (diagnose/apply pipeline)
+                                                                           ✓ AI-3: Recommendations
+                                                                                (diagnose + UI execute)
+                                                                                     │
+                                                                               └──→ UI: Action Queue
+                                                                                    (batch command builder)
 
 ENGINE SPRINTS (CURRENT + PLANNED)
 ──────────────────────────────────
-🔧 Cost Scoring Model (5 rules: ResourceCost, ChangeoverCost, Overtime, Lateness, Material)
-   └──→ Cost Analytics KPIs
-📋 Schedule Configurations (named profiles: scoring + strategy + tier; backend complete, UI progressive)
-   └──→ replaces ephemeral scoringOverrides + strategy picker
+✓ Cost Scoring Model (5 rules: ResourceCost, ChangeoverCost, Overtime, Lateness, Material)
+✓ Schedule Configurations (named profiles, duplicate-only, compare view)
+✓ AI Sprint 3 Recommendations (diagnose + apply sequencer + compound recs + token optimization)
 📋 Attribute-Based Resource Matching (CC-ready, Acme proof case)
    └──→ feeds into Bottleneck Display + AI explanation
+📋 UI Action Queue (batch command builder, presets/macros)
+   └──→ reuses apply-recommendation command sequencer
 📋 Scoring Dialog Nav (left-side click-to-scroll + pinned Add Rule)
 ✓ Currency Locale Support (fmtCurrency helper)
 
@@ -208,6 +213,12 @@ INFRA TRACK
   cost-scoring-model-design.md           ← 5 cost rules design (ResourceCost, Changeover, Overtime, Lateness, Material)
   attribute-resource-matching-sprint.md  ← Attribute matching sprint prompt (CC-ready, Acme proof case)
   ai-recommendations-design.md           ← AI diagnose/apply pipeline, 8 action types, command sequencer
+  ai-3-session1-diagnose-prompt.md       ← Session 1: diagnose endpoint, root cause, recommendation generators
+  ai-3-session2-apply-prompt.md          ← Session 2: apply endpoint, command sequencer, rollback
+  ai-3-session3-chat-wiring-prompt.md    ← Session 3: AI tool wiring, action buttons
+  ai-diagnose-ui-execute-spec.md         ← Token optimization — AI diagnoses, UI executes (55% reduction)
+  compound-recommendations-spec.md       ← Compound recs (window+redirect, bump+move, redirect-others)
+  ui-action-queue-spec.md               ← Batch command builder, presets/macros, POST /ctp/execute
   preserve-landscape-engine-prompt.md    ← preserveLandscape, protectOthers, expandChains, window/priority endpoints
   edge-cases-state-management.md         ← 12 edge cases for multi-step operations + state management
   locale-currency-spec.md               ← Add currency to tenant locale config + fmtCurrency helper
@@ -271,4 +282,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 23, 2026 (AI Sprint 3 complete — no active sprint)*
+*Last updated: Mar 23, 2026 (UI Sprint 23 — Hierarchy Browser + Attribute Search active)*

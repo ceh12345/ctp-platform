@@ -5169,6 +5169,13 @@ function deriveTaskStatus(tk: any, taskPins?: Record<string, boolean>, taskExclu
   return 'unscheduled';
 }
 
+/** Extended status check — returns 'rush' for rush tasks regardless of their base status.
+ *  Used by the filter to support Rush as a pseudo-status chip. */
+function deriveTaskStatusExtended(tk: any): string {
+  if ((tk.priority ?? 100) <= 10) return 'rush';
+  return tk._status;
+}
+
 const TASK_STATUS_CONFIG: Record<string, { label: string; color: string; icon?: string }> = {
   scheduled:   { label: 'Scheduled',   color: C.green },
   unscheduled: { label: 'Unscheduled', color: C.yellow },
@@ -5348,6 +5355,203 @@ function TaskBulkActions({ filteredTasks, taskPins, taskExcludes, orderModes,
    TASK TABLE
    ═══════════════════════════════════════════════════════════════ */
 
+// ═══════════════════════════════════════════════════════════════
+// RESOURCE HIERARCHY BROWSER
+// ═══════════════════════════════════════════════════════════════
+
+function ResourceHierarchyBrowser({ resources, selectedResources, onSelectionChange }: {
+  resources: any[];
+  selectedResources: Set<string>;
+  onSelectionChange: (s: Set<string>) => void;
+}) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // Build tree: workCenter → resourceType → resource
+  const tree = useMemo(() => {
+    const wcMap = new Map<string, Map<string, any[]>>();
+    for (const r of resources) {
+      const wc = r.workCenter || 'Other';
+      const rt = r.line || r.resourceType || r.resourceClass || 'Resource';
+      if (!wcMap.has(wc)) wcMap.set(wc, new Map());
+      const rtMap = wcMap.get(wc)!;
+      if (!rtMap.has(rt)) rtMap.set(rt, []);
+      rtMap.get(rt)!.push(r);
+    }
+    return wcMap;
+  }, [resources]);
+
+  const toggleExpand = (key: string) => {
+    setExpanded(prev => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
+  };
+
+  const toggleResource = (key: string) => {
+    onSelectionChange((() => { const n = new Set(selectedResources); if (n.has(key)) n.delete(key); else n.add(key); return n; })());
+  };
+
+  const toggleGroup = (keys: string[]) => {
+    const allSelected = keys.every(k => selectedResources.has(k));
+    onSelectionChange((() => {
+      const n = new Set(selectedResources);
+      keys.forEach(k => allSelected ? n.delete(k) : n.add(k));
+      return n;
+    })());
+  };
+
+  if (resources.length === 0) return null;
+
+  const selectedCount = selectedResources.size;
+  const totalRes = resources.length;
+
+  return (
+    <div style={{ fontSize: 12, fontFamily: FONT }}>
+      {[...tree.entries()].map(([wc, rtMap]) => {
+        const wcKeys = [...rtMap.values()].flat().map(r => r.resourceKey);
+        const wcSelected = wcKeys.filter(k => selectedResources.has(k)).length;
+        const isExpanded = expanded.has(wc);
+        return (
+          <div key={wc}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', cursor: 'pointer' }}
+              onClick={() => toggleExpand(wc)}>
+              <span style={{ fontSize: 10, color: C.textDim, width: 12 }}>{isExpanded ? '\u25BE' : '\u25B8'}</span>
+              <input type="checkbox" checked={wcSelected === wcKeys.length && wcKeys.length > 0}
+                ref={el => { if (el) el.indeterminate = wcSelected > 0 && wcSelected < wcKeys.length; }}
+                onChange={() => toggleGroup(wcKeys)}
+                onClick={e => e.stopPropagation()}
+                style={{ accentColor: C.accent }} />
+              <span style={{ fontWeight: 600, color: C.text }}>{wc}</span>
+              <span style={{ fontSize: 10, color: C.textDim }}>({wcKeys.length} resources)</span>
+            </div>
+            {isExpanded && [...rtMap.entries()].map(([rt, resList]) => {
+              const rtKeys = resList.map((r: any) => r.resourceKey);
+              const rtSelected = rtKeys.filter((k: string) => selectedResources.has(k)).length;
+              return (
+                <div key={rt} style={{ paddingLeft: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
+                    <input type="checkbox" checked={rtSelected === rtKeys.length && rtKeys.length > 0}
+                      ref={el => { if (el) el.indeterminate = rtSelected > 0 && rtSelected < rtKeys.length; }}
+                      onChange={() => toggleGroup(rtKeys)}
+                      style={{ accentColor: C.accent }} />
+                    <span style={{ color: C.textMuted, fontWeight: 500 }}>{rt}</span>
+                  </div>
+                  {resList.map((r: any) => (
+                    <div key={r.resourceKey} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0 2px 20' }}>
+                      <input type="checkbox" checked={selectedResources.has(r.resourceKey)}
+                        onChange={() => toggleResource(r.resourceKey)}
+                        style={{ accentColor: C.accent }} />
+                      <span style={{ color: C.text, flex: 1 }}>{r.resourceName}</span>
+                      <div style={{ width: 60, height: 4, background: C.surface2, borderRadius: 2 }}>
+                        <div style={{
+                          width: `${Math.min(r.utilization ?? 0, 100)}%`, height: '100%', borderRadius: 2,
+                          background: (r.utilization ?? 0) > 85 ? C.red : (r.utilization ?? 0) > 60 ? C.yellow : C.green,
+                        }} />
+                      </div>
+                      <span style={{ fontSize: 10, color: C.textDim, minWidth: 28, textAlign: 'right' as const }}>{Math.round(r.utilization ?? 0)}%</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+      {selectedCount > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, padding: '4px 0', borderTop: `1px solid ${C.border}` }}>
+          <span style={{ fontSize: 11, color: C.textMuted }}>{selectedCount} of {totalRes} resources selected</span>
+          <button onClick={() => onSelectionChange(new Set())} style={{
+            fontSize: 10, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline',
+          }}>Clear</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ATTRIBUTE SEARCH
+// ═══════════════════════════════════════════════════════════════
+
+function AttributeSearch({ resources, selectedAttributes, onAttributesChange }: {
+  resources: any[];
+  selectedAttributes: { name: string; value: string }[];
+  onAttributesChange: (attrs: { name: string; value: string }[]) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Build attribute index: { displayValue → { name, value, resourceKeys[] } }
+  const attrIndex = useMemo(() => {
+    const index: { display: string; name: string; value: string; resourceKeys: string[] }[] = [];
+    const seen = new Map<string, Set<string>>();
+    for (const r of resources) {
+      for (const a of (r.attributes || [])) {
+        const vals = Array.isArray(a.value) ? a.value : [a.value];
+        for (const v of vals) {
+          const key = `${a.name}:${v}`;
+          if (!seen.has(key)) seen.set(key, new Set());
+          seen.get(key)!.add(r.resourceKey);
+        }
+      }
+    }
+    for (const [key, resKeys] of seen) {
+      const [name, ...rest] = key.split(':');
+      const value = rest.join(':');
+      index.push({ display: `${value} (${name})`, name, value, resourceKeys: [...resKeys] });
+    }
+    index.sort((a, b) => a.display.localeCompare(b.display));
+    return index;
+  }, [resources]);
+
+  const suggestions = query.length >= 1
+    ? attrIndex.filter(a => a.display.toLowerCase().includes(query.toLowerCase()) &&
+        !selectedAttributes.some(s => s.name === a.name && s.value === a.value)).slice(0, 8)
+    : [];
+
+  const addAttribute = (attr: { name: string; value: string }) => {
+    onAttributesChange([...selectedAttributes, attr]);
+    setQuery('');
+    setShowSuggestions(false);
+  };
+
+
+
+  return (
+    <div style={{ fontSize: 12, fontFamily: FONT }}>
+      <div style={{ position: 'relative' }}>
+        <input value={query} onChange={e => { setQuery(e.target.value); setShowSuggestions(true); }}
+          onFocus={() => setShowSuggestions(true)}
+          placeholder="Search resource attributes..."
+          style={{
+            width: '100%', padding: '6px 10px', borderRadius: 6, fontSize: 12,
+            background: C.surface2, border: `1px solid ${C.border}`, color: C.text,
+            boxSizing: 'border-box',
+          }} />
+        {showSuggestions && suggestions.length > 0 && (
+          <>
+            <div onClick={() => setShowSuggestions(false)} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 100,
+              background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.3)', maxHeight: 200, overflowY: 'auto',
+            }}>
+              {suggestions.map(s => (
+                <div key={`${s.name}:${s.value}`} onClick={() => addAttribute({ name: s.name, value: s.value })}
+                  style={{ padding: '6px 10px', cursor: 'pointer', fontSize: 12, color: C.text }}
+                  onMouseEnter={e => { e.currentTarget.style.background = `${C.accent}10`; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <span style={{ fontWeight: 600 }}>{s.value}</span>
+                  <span style={{ color: C.textDim, marginLeft: 6 }}>({s.name})</span>
+                  <span style={{ color: C.textDim, marginLeft: 6, fontSize: 10 }}>{s.resourceKeys.length} resource{s.resourceKeys.length !== 1 ? 's' : ''}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExcludes, taskUnschedules, orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask,
   onApiUnschedule, onApiPin, onApiBulkUnschedule, onApiBulkPin,
@@ -5358,7 +5562,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected,
   onSetResourcePreference, resourcePreferenceOverrides,
   priorityOverrides, onSetPriority: _onSetPriority, onRushSelected,
-  onApiSchedule, actionLoading }: {
+  onApiSchedule, actionLoading, resourceUtilization }: {
   tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
   orderModes?: Record<string, string>;
@@ -5396,6 +5600,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   priorityOverrides?: Record<string, number>;
   onSetPriority?: (key: string, priority: number) => void;
   onRushSelected?: (keys: string[]) => void;
+  resourceUtilization?: any[];
 }) {
   const { sortKey, sortDir, toggle, sorted } = useSort('key');
   const [activeTypeChips, setActiveTypeChips] = useState<Set<string>>(new Set(['PROCESS']));
@@ -5464,8 +5669,57 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
     return filtered;
   }, [enriched, activeTypeChips, priorityFilter, priorityOverrides]);
 
-  const statusDeriver = useCallback((row: any) => row._status, []);
-  const filter = useFilter(typeFiltered, { statusDeriver });
+  // Use extended deriver that supports 'rush' as a pseudo-status
+  const statusDeriver = useCallback((row: any) => deriveTaskStatusExtended(row), []);
+
+  // Resource hierarchy + attribute filter state
+  const [hierarchyResources, setHierarchyResources] = useState<Set<string>>(new Set());
+  const [attrFilters, setAttrFilters] = useState<{ name: string; value: string }[]>([]);
+  const [showHierarchy, setShowHierarchy] = useState(false);
+
+  // Build resource attribute lookup: resourceKey → attributes
+  const resAttrMap = useMemo(() => {
+    const m = new Map<string, any[]>();
+    for (const r of (resourceUtilization || [])) {
+      m.set(r.resourceKey, r.attributes || []);
+    }
+    return m;
+  }, [resourceUtilization]);
+
+  // Apply hierarchy + attribute filters
+  const hierarchyFiltered = useMemo(() => {
+    let filtered = typeFiltered;
+    if (hierarchyResources.size > 0) {
+      filtered = filtered.filter(tk => {
+        if (tk.feasible && tk.assignedResources?.length) {
+          return tk.assignedResources.some((ar: any) => hierarchyResources.has(ar.resourceKey));
+        }
+        if (tk.compatibleResources?.length) {
+          return tk.compatibleResources.some((cr: any) => hierarchyResources.has(cr.resourceKey));
+        }
+        return false;
+      });
+    }
+    if (attrFilters.length > 0) {
+      filtered = filtered.filter(tk => {
+        const taskResKeys: string[] = [];
+        if (tk.assignedResources?.length) taskResKeys.push(...tk.assignedResources.map((ar: any) => ar.resourceKey));
+        if (tk.compatibleResources?.length) taskResKeys.push(...tk.compatibleResources.map((cr: any) => cr.resourceKey));
+        return taskResKeys.some(rk => {
+          const attrs = resAttrMap.get(rk) || [];
+          return attrFilters.every(sel => {
+            return attrs.some((a: any) => {
+              const vals = Array.isArray(a.value) ? a.value : [a.value];
+              return a.name === sel.name && vals.some((v: any) => String(v).toLowerCase().includes(sel.value.toLowerCase()));
+            });
+          });
+        });
+      });
+    }
+    return filtered;
+  }, [typeFiltered, hierarchyResources, attrFilters, resAttrMap]);
+
+  const filter = useFilter(hierarchyFiltered, { statusDeriver });
 
   // Time filter reference points (relative to schedule data, not browser clock)
   const scheduledForTz = useMemo(() => tasks.filter((tk: any) => tk.scheduledStart), [tasks]);
@@ -5523,6 +5777,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   const pinnedCount = typeFiltered.filter(tk => tk._status === 'pinned').length;
   const infeasibleCount = typeFiltered.filter(tk => tk._status === 'infeasible').length;
   const excludedCount = typeFiltered.filter(tk => tk._status === 'excluded').length;
+  const rushCount = typeFiltered.filter(tk => (tk.priority ?? 100) <= 10).length;
 
   const statusOptions = [
     { value: 'all', label: 'All', count: typeFiltered.length },
@@ -5531,6 +5786,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
     { value: 'pinned', label: t('pinnedStatus', 'Pinned'), color: C.yellow, count: pinnedCount },
     { value: 'infeasible', label: t('infeasibleStatus', 'Infeasible'), color: C.red, count: infeasibleCount },
     { value: 'excluded', label: t('excludedStatus', 'Excluded'), color: C.textDim, count: excludedCount },
+    { value: 'rush', label: '\uD83D\uDD25 Rush', color: '#f97316', count: rushCount },
   ].filter(opt => opt.value === 'all' || opt.count > 0);
 
   const hasActions = !!(onPinTask || onExcludeTask || onUnscheduleTask);
@@ -5613,19 +5869,21 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
           </span>
         </div>
       )}
-      {/* Row 1: Search (full width) */}
+      {/* ═══ UNIFIED FILTER BAR ═══ */}
       <div style={{ marginBottom: 8 }}>
         <SearchBox value={filter.search} onChange={filter.setSearch} placeholder="Search tasks..." />
       </div>
-      {/* Row 2: Status chips + Type chips */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+
+      {/* Row 1: STATUS */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: C.textDim, minWidth: 44, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</span>
         <StatusToggles options={statusOptions} active={filter.status} onChange={filter.setStatus} />
         {distinctTypes.length > 1 && (
           <>
-            <div style={{ width: 1, height: 20, background: C.border }} />
+            <div style={{ width: 1, height: 16, background: C.border }} />
             <button onClick={toggleAllTypes} style={{
-              padding: '4px 12px', borderRadius: 6, cursor: 'pointer',
-              fontSize: 12, fontWeight: 600, fontFamily: FONT,
+              padding: '3px 10px', borderRadius: 6, cursor: 'pointer',
+              fontSize: 11, fontWeight: 600, fontFamily: FONT,
               background: allTypesActive ? C.accent + '22' : 'transparent',
               color: allTypesActive ? C.accent : C.textMuted,
               border: allTypesActive ? `1px solid ${C.accent}44` : '1px solid transparent',
@@ -5636,62 +5894,112 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
               const label = typ.charAt(0) + typ.slice(1).toLowerCase().replace(/_/g, ' ');
               return (
                 <button key={typ} onClick={() => toggleTypeChip(typ)} style={{
-                  padding: '4px 12px', borderRadius: 6, cursor: 'pointer',
-                  fontSize: 12, fontWeight: 600, fontFamily: FONT,
+                  padding: '3px 10px', borderRadius: 6, cursor: 'pointer',
+                  fontSize: 11, fontWeight: 600, fontFamily: FONT,
                   background: isActive ? C.accent + '22' : 'transparent',
                   color: isActive ? C.accent : C.textMuted,
                   border: isActive ? `1px solid ${C.accent}44` : '1px solid transparent',
                 }}>
-                  {label}<span style={{ marginLeft: 4, opacity: 0.7 }}>({count})</span>
+                  {label}<span style={{ marginLeft: 4, opacity: 0.6 }}>({count})</span>
                 </button>
               );
             })}
           </>
         )}
-        <div style={{ width: 1, height: 20, background: C.border }} />
+      </div>
+
+      {/* Row 2: WHEN */}
+      {onTimeFilterChange && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: C.textDim, minWidth: 44, textTransform: 'uppercase', letterSpacing: '0.05em' }}>When</span>
+          <button style={presetBtnStyle} onClick={() => onTimeFilterChange({ after: new Date(snapMidnightMs(schedStart)).toISOString() })}>Schedule Start</button>
+          <button style={presetBtnStyle} onClick={() => onTimeFilterChange({ after: new Date(schedStart).toISOString() })}>Now {'\u2192'}</button>
+          <button style={presetBtnStyle} onClick={() => onTimeFilterChange({ after: new Date(schedStart).toISOString(), before: new Date(schedStart + 4 * 3600_000).toISOString() })}>Next 4h</button>
+          <button style={presetBtnStyle} onClick={() => { const d = snapMidnightMs(schedStart); onTimeFilterChange({ after: new Date(d).toISOString(), before: new Date(d + 86_400_000).toISOString() }); }}>Today</button>
+          <button style={presetBtnStyle} onClick={() => { const d = snapMidnightMs(schedStart) + 86_400_000; onTimeFilterChange({ after: new Date(d).toISOString(), before: new Date(d + 86_400_000).toISOString() }); }}>Tomorrow</button>
+          {timeFilter?.after && <FilterChip label={`After: ${fmtPreset(timeFilter.after)}`} onClear={() => onTimeFilterChange({ ...timeFilter, after: undefined })} />}
+          {timeFilter?.before && <FilterChip label={`Before: ${fmtPreset(timeFilter.before)}`} onClear={() => onTimeFilterChange({ ...timeFilter, before: undefined })} />}
+        </div>
+      )}
+
+      {/* Row 3: WORK */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: C.textDim, minWidth: 44, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Work</span>
         <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} style={{
-          padding: '4px 8px', borderRadius: 6, fontSize: 12, fontFamily: FONT,
+          padding: '4px 8px', borderRadius: 6, fontSize: 11, fontFamily: FONT,
           border: `1px solid ${priorityFilter !== 'all' ? C.purple : C.border}`,
           background: priorityFilter !== 'all' ? C.purple + '12' : C.surface2,
           color: priorityFilter !== 'all' ? C.purple : C.text, cursor: 'pointer',
         }}>
           <option value="all">All Priorities</option>
-          <option value="rush">Rush Only</option>
+          <option value="rush">{'\uD83D\uDD25'} Rush (1-10)</option>
+          <option value="high">{'\u2B06'} High (11-25)</option>
+          <option value="medium">Normal (26-75)</option>
+          <option value="low">{'\u2B07'} Low (76-100)</option>
           <option value="override">Has Override</option>
-          <option value="high">High (1-25)</option>
-          <option value="medium">Medium (26-75)</option>
-          <option value="low">Low (76-100)</option>
         </select>
-        <span style={{ marginLeft: 'auto', fontSize: 12, color: C.textDim }}>{rows.length} results</span>
+        {resourceFilterName && onResourceFilterChange && (
+          <FilterChip label={`Resource: ${resourceFilterName}`} onClear={() => onResourceFilterChange(null)} />
+        )}
       </div>
-      <ActiveFilters filter={filter} />
-      {/* Row 3: Time presets + active chips + Clear */}
-      {onTimeFilterChange && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-          <button style={presetBtnStyle} onClick={() => onTimeFilterChange({ after: new Date(snapMidnightMs(schedStart)).toISOString() })}>Schedule Start</button>
-          <button style={presetBtnStyle} onClick={() => onTimeFilterChange({ after: new Date(schedStart).toISOString() })}>Now →</button>
-          <button style={presetBtnStyle} onClick={() => onTimeFilterChange({ after: new Date(schedStart).toISOString(), before: new Date(schedStart + 4 * 3600_000).toISOString() })}>Next 4h</button>
-          <button style={presetBtnStyle} onClick={() => { const d = snapMidnightMs(schedStart); onTimeFilterChange({ after: new Date(d).toISOString(), before: new Date(d + 86_400_000).toISOString() }); }}>Today</button>
-          <button style={presetBtnStyle} onClick={() => { const d = snapMidnightMs(schedStart) + 86_400_000; onTimeFilterChange({ after: new Date(d).toISOString(), before: new Date(d + 86_400_000).toISOString() }); }}>Tomorrow</button>
-          {resourceFilterName && onResourceFilterChange && <>
-            <span style={{ color: C.textDim, fontSize: 12, userSelect: 'none' }}>·</span>
-            <FilterChip label={`Resource: ${resourceFilterName}`} onClear={() => onResourceFilterChange(null)} />
-          </>}
-          {timeFilter?.after && <>
-            <span style={{ color: C.textDim, fontSize: 12, userSelect: 'none' }}>·</span>
-            <FilterChip label={`After: ${fmtPreset(timeFilter.after)}`} onClear={() => onTimeFilterChange({ ...timeFilter, after: undefined })} />
-          </>}
-          {timeFilter?.before && <>
-            <span style={{ color: C.textDim, fontSize: 12, userSelect: 'none' }}>·</span>
-            <FilterChip label={`Before: ${fmtPreset(timeFilter.before)}`} onClear={() => onTimeFilterChange({ ...timeFilter, before: undefined })} />
-          </>}
-          {(resourceFilterName || timeFilter?.after || timeFilter?.before) && <>
-            <div style={{ flex: 1 }} />
-            <button onClick={() => { onResourceFilterChange?.(null); onTimeFilterChange({}); }}
-              style={{ fontSize: 11, color: C.textMuted, background: 'none', border: 'none', cursor: 'pointer', fontFamily: FONT }}>
-              Clear
+
+      {/* Row 4: WHERE */}
+      {resourceUtilization && resourceUtilization.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: C.textDim, minWidth: 44, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Where</span>
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setShowHierarchy(!showHierarchy)} style={{
+              padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+              background: hierarchyResources.size > 0 ? C.accent + '22' : showHierarchy ? C.surface2 : 'transparent',
+              color: hierarchyResources.size > 0 ? C.accent : C.textMuted,
+              border: hierarchyResources.size > 0 ? `1px solid ${C.accent}44` : `1px solid ${C.border}`,
+              display: 'flex', alignItems: 'center', gap: 4,
+            }}>
+              {showHierarchy ? '\u25BE' : '\u25B8'} Resources
+              {hierarchyResources.size > 0 && <span style={{ fontSize: 10, opacity: 0.7 }}>({hierarchyResources.size})</span>}
             </button>
-          </>}
+            {showHierarchy && (
+              <>
+                <div onClick={() => setShowHierarchy(false)} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, zIndex: 100, width: 320,
+                  padding: '10px 12px', background: C.surface, borderRadius: 10,
+                  border: `1px solid ${C.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                  maxHeight: 400, overflowY: 'auto',
+                }}>
+                  <ResourceHierarchyBrowser resources={resourceUtilization} selectedResources={hierarchyResources} onSelectionChange={setHierarchyResources} />
+                </div>
+              </>
+            )}
+          </div>
+          <div style={{ flex: 1, maxWidth: 260 }}>
+            <AttributeSearch resources={resourceUtilization} selectedAttributes={attrFilters} onAttributesChange={setAttrFilters} />
+          </div>
+        </div>
+      )}
+
+      <ActiveFilters filter={filter} />
+
+      {/* Active filter summary */}
+      {(hierarchyResources.size > 0 || attrFilters.length > 0 || filter.status !== 'all' || timeFilter?.after || timeFilter?.before || priorityFilter !== 'all' || resourceFilterName) && (
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6, alignItems: 'center', padding: '4px 0', borderTop: `1px solid ${C.border}` }}>
+          <span style={{ fontSize: 10, color: C.textDim }}>Active:</span>
+          {hierarchyResources.size > 0 && (
+            <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 600, background: C.accent + '22', color: C.accent, border: `1px solid ${C.accent}33`, display: 'flex', alignItems: 'center', gap: 3 }}>
+              {hierarchyResources.size} resource{hierarchyResources.size !== 1 ? 's' : ''}
+              <span onClick={() => setHierarchyResources(new Set())} style={{ cursor: 'pointer', opacity: 0.7 }}>{'\u2715'}</span>
+            </span>
+          )}
+          {attrFilters.map((attr, i) => (
+            <span key={i} style={{ padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 600, background: C.purple + '22', color: C.purple, border: `1px solid ${C.purple}33`, display: 'flex', alignItems: 'center', gap: 3 }}>
+              {attr.value}
+              <span onClick={() => setAttrFilters(prev => prev.filter((_, j) => j !== i))} style={{ cursor: 'pointer', opacity: 0.7 }}>{'\u2715'}</span>
+            </span>
+          ))}
+          <span style={{ marginLeft: 'auto', fontSize: 11, color: C.textDim }}>{rows.length} of {hierarchyFiltered.length} tasks</span>
+          <button onClick={() => { setHierarchyResources(new Set()); setAttrFilters([]); filter.setStatus('all'); onTimeFilterChange?.({}); setPriorityFilter('all'); onResourceFilterChange?.(null); }} style={{
+            fontSize: 10, color: C.textMuted, background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
+          }}>Clear all</button>
         </div>
       )}
       {selectedTasks && selectedTasks.size > 0 ? (() => {
@@ -6898,7 +7206,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             onExcludeSelected={onExcludeSelected} onIncludeSelected={onIncludeSelected}
             onSetResourcePreference={onSetResourcePreference} resourcePreferenceOverrides={resourcePreferenceOverrides}
             priorityOverrides={priorityOverrides} onSetPriority={onSetPriority} onRushSelected={onRushSelected}
-            onApiSchedule={onApiSchedule} actionLoading={actionLoading} />
+            onApiSchedule={onApiSchedule} actionLoading={actionLoading}
+            resourceUtilization={resources} />
         </Card>
       )}
     </div>
