@@ -6,7 +6,7 @@
 |--------|------|-------|
 | Sprint | Name | Notes |
 |--------|------|-------|
-| UI Sprint 23 | Task Page — Hierarchy Browser + Attribute Search | Multi-level resource hierarchy tree (Work Center → Type → Resource) with checkboxes + utilization bars; attribute search with autocomplete; combined filtering with chips; backend: resource attributes in solve response |
+_No sprints currently in progress._
 
 ## Done
 
@@ -62,6 +62,7 @@
 | Engine — Cost Scoring Model | 5 cost scoring rules (ResourceCost, ChangeoverCost, Overtime, Lateness, Material); `hourlyRate` on resources, `cost` on state changes, `latenessPenaltyPerDay` on orders, `unitCost` on materials; grouped scoring editor; cost KPIs in Analytics; per-task + schedule-level cost in solve response | 2026-03-20 |
 | Sprint 22 — Schedule Configurations | Named saveable config bundles (scoring + strategy + tier); CRUD backend + UI manager tab + toolbar config switcher dropdown; compare view with color-coded diffs; Settings Panel integration (modified tracking, Save/Save As/Reset); `configurationKey` on solve request; Stafford 3 configs seed data; Duplicate-only creation (no Add) | 2026-03-21 |
 | AI Sprint 3 — Recommendation Engine | `POST /ctp/diagnose` (root cause classification, ranked recs with tradeoffs); `POST /ctp/apply-recommendation` (command sequencer with staleness check + rollback); compound recs (window+redirect, bump+move, redirect-others); AI `diagnose_tasks` tool; token optimization — UI executes fixes via action buttons (55% token reduction) | 2026-03-23 |
+| UI Sprint 23 — Unified Filter Bar | 4-row labeled filter bar (Status/When/Work/Where); ResourceHierarchyBrowser (Work Center → Type → Resource tree with checkboxes + utilization bars); AttributeSearch with autocomplete; Rush status chip; active filter summary with Clear all; resource attributes in solve response | 2026-03-23 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -283,4 +284,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 23, 2026 (UI Sprint 23 — Hierarchy Browser + Attribute Search active)*
+*Last updated: Mar 23, 2026 (UI Sprint 23 complete — no active sprint)*
