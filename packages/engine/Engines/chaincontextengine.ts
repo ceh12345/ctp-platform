@@ -1095,13 +1095,19 @@ export class ChainContextEngine {
 
     for (let i = 0; i < combo.contexts.length; i++) {
       const ctx = combo.contexts[i];
+      const task = ctx.task;
+
+      // Skip pinned+scheduled tasks (actuals) — their position and resource
+      // assignments were already set by applyCommitmentStack
+      if (task.pinned && task.state === CTPTaskStateConstants.SCHEDULED) continue;
+
       const assignedStart = combo.startTimes[i].assignedStart;
 
       const startTimeNode = this.findStartTimeNode(ctx, assignedStart);
       if (!startTimeNode) continue;
 
       const best = new BestScheduleContext(ctx, startTimeNode, assignedStart);
-      scheduleEngine.schedule(landscape, ctx.task, best, direction);
+      scheduleEngine.schedule(landscape, task, best, direction);
       results.push(best);
     }
 
@@ -1327,6 +1333,11 @@ export class ChainContextEngine {
               chainKey: blockerTask?.linkId?.name || null,
               startW: a.startW,
               endW: a.endW,
+              commitmentLevel: blockerTask?.commitmentLevel,
+              dispatched: blockerTask?.dispatched,
+              materialsPulled: blockerTask?.materialsPulled,
+              holdReason: blockerTask?.holdReason,
+              percentComplete: blockerTask?.percentComplete,
             });
           }
         }

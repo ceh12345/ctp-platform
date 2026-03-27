@@ -13,6 +13,7 @@ export class StateService {
   ) {}
 
   syncFromConfig() {
+    this.configService.reloadConfig();
     const tenantId = this.configService.getTenantId();
     const landscape = this.hydrator.buildLandscape();
     this.landscapes.set(tenantId, landscape);

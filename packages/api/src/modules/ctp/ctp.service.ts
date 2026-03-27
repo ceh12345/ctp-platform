@@ -1,4 +1,6 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import { DateTime } from 'luxon';
 import {
   CTPScheduler,
@@ -7,6 +9,7 @@ import {
   CTPDateTime,
   CTPTaskStateConstants,
   CTPTaskTypeConstants,
+  CTPWipStateConstants,
   CTPResourceModeConstants,
   SolveStatistics,
   List,
@@ -28,6 +31,8 @@ import {
   CTPSolveResult as EngineSolveResult,
   CTPInterval,
   CTPResourcePreference,
+  CTPAssignment,
+  CTPAssignmentConstants,
   DisjunctiveGraph,
 } from '@ctp/engine';
 import { ErrorCodes } from '../../common/error-codes';
@@ -155,6 +160,9 @@ export class CTPService {
 
     // Hydrate due dates from orders onto tasks (terminal tasks only)
     landscape.hydrateDueDates();
+
+    // Apply commitment stack — derive levels, enforce pinning for layers 1-4
+    this.applyCommitmentStack(landscape);
 
     // Resolve configuration for strategy if configurationKey provided
     const configForStrategy = request?.configurationKey
@@ -1691,19 +1699,48 @@ export class CTPService {
     for (const blocker of blockers) {
       const blockerTask = landscape.tasks.getEntity(blocker.taskKey);
       if (!blockerTask) continue;
-      if (blockerTask.pinned) continue;
+
+      // Commitment level checks
+      if (blockerTask.commitmentLevel === 'running') continue; // can't bump running tasks
+
+      if (blockerTask.commitmentLevel === 'on_hold') {
+        // Suggest resolving the hold instead of bumping
+        recs.push({
+          id: `resolve-hold-${task.key}-${blocker.taskKey}`,
+          action: 'expand_window' as const,
+          description: `Resolve hold on ${blockerTask.name} to recover capacity — ${blockerTask.holdReason || 'on hold'}`,
+          score: 15, // highest priority — dead capacity recovery
+          rank: 0,
+          tradeoffs: {
+            gains: [`Recovers ${Math.round(blockerTask.effectiveRemainingDuration() / 3600 * 10) / 10}h of dead capacity`],
+            costs: ['Requires resolving the hold issue'],
+          },
+          commands: [], // Manual resolution — no auto-command
+        });
+        continue;
+      }
+
+      if (blockerTask.pinned && blockerTask.commitmentLevel !== 'dispatched') continue;
+
       const blockerPriority = blockerTask.priority ?? 100;
       if (blockerPriority <= taskPriority) continue; // only bump lower priority
+
+      const dispatchedWarning = blockerTask.commitmentLevel === 'dispatched'
+        ? `${blockerTask.name} is dispatched — materials may be pulled, operator assigned`
+        : '';
 
       recs.push({
         id: `bump-${task.key}-${blocker.taskKey}`,
         action: 'bump_lower_priority',
-        description: `Unschedule ${blockerTask.name} (priority ${blockerPriority}) to free capacity`,
-        score: 30 + (blockerPriority - taskPriority),
+        description: `Unschedule ${blockerTask.name} (priority ${blockerPriority}${blockerTask.commitmentLevel === 'dispatched' ? ', dispatched' : ''}) to free capacity`,
+        score: 30 + (blockerPriority - taskPriority) + (blockerTask.commitmentLevel === 'dispatched' ? 20 : 0),
         rank: 0,
         tradeoffs: {
           gains: [`Frees capacity on ${report.bottleneckSlot || 'bottleneck resource'}`],
-          costs: [`${blockerTask.name} must reschedule`],
+          costs: [
+            `${blockerTask.name} must reschedule`,
+            ...(dispatchedWarning ? [dispatchedWarning] : []),
+          ],
           metrics: { tasksDisplaced: 1 },
         },
         commands: [
@@ -1893,7 +1930,8 @@ export class CTPService {
       .filter(bt => {
         const blocker = landscape.tasks.getEntity(bt.taskKey);
         if (!blocker) return false;
-        if (blocker.pinned) return false;
+        if (blocker.commitmentLevel === 'running' || blocker.commitmentLevel === 'on_hold') return false;
+        if (blocker.pinned && blocker.commitmentLevel !== 'dispatched') return false;
         return (blocker.priority ?? 100) > taskPriority;
       })
       .sort((a, b) => b.priority - a.priority);
@@ -2101,6 +2139,98 @@ export class CTPService {
   }
 
   // ═══════════════════════════════════════
+  // Commitment Stack Transitions
+  // ═══════════════════════════════════════
+
+  dispatchTasks(taskKeys: string[], actualResources?: string[]): any {
+    const landscape = this.ensureLandscape();
+    const results: any[] = [];
+    for (const key of taskKeys) {
+      const task = landscape.tasks.getEntity(key);
+      if (!task) { results.push({ taskKey: key, result: 'not_found' }); continue; }
+      if (task.state !== CTPTaskStateConstants.SCHEDULED) {
+        results.push({ taskKey: key, result: 'skipped', detail: 'Must be scheduled first' });
+        continue;
+      }
+      task.dispatched = true;
+      task.dispatchedAt = new Date().toISOString();
+      task.materialsPulled = true;
+      task.pinned = true;
+      if (actualResources?.length) {
+        task.actualResources = actualResources;
+        if (task.capacityResources) {
+          const pairs = this.matchActualsToSlots(actualResources, task.capacityResources, landscape);
+          pairs.forEach((resKey, idx) => { task.capacityResources![idx].scheduledResource = resKey; });
+        }
+      }
+      task.commitmentLevel = 'dispatched';
+      results.push({ taskKey: key, result: 'ok' });
+    }
+    return { status: 'ok', results };
+  }
+
+  startTask(taskKey: string, actualStart?: string, actualResources?: string[]): any {
+    const landscape = this.ensureLandscape();
+    const task = landscape.tasks.getEntity(taskKey);
+    if (!task) throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
+    task.wipstate = CTPWipStateConstants.IN_PROCESS;
+    task.actualStart = actualStart || new Date().toISOString();
+    if (actualResources?.length) {
+      task.actualResources = actualResources;
+      if (task.capacityResources) {
+        const pairs = this.matchActualsToSlots(actualResources, task.capacityResources, landscape);
+        pairs.forEach((resKey, idx) => { task.capacityResources![idx].scheduledResource = resKey; });
+      }
+    }
+    task.pinned = true;
+    task.commitmentLevel = 'running';
+    return { status: 'ok', taskKey, commitmentLevel: 'running', actualStart: task.actualStart };
+  }
+
+  holdTask(taskKey: string, holdReason: string, estimatedResumeTime?: string): any {
+    const landscape = this.ensureLandscape();
+    const task = landscape.tasks.getEntity(taskKey);
+    if (!task) throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
+    task.wipstate = CTPWipStateConstants.ON_HOLD;
+    task.holdReason = holdReason;
+    task.estimatedResumeTime = estimatedResumeTime || null;
+    task.pinned = true;
+    task.commitmentLevel = 'on_hold';
+    return { status: 'ok', taskKey, commitmentLevel: 'on_hold', holdReason };
+  }
+
+  resumeTask(taskKey: string): any {
+    const landscape = this.ensureLandscape();
+    const task = landscape.tasks.getEntity(taskKey);
+    if (!task) throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
+    task.wipstate = CTPWipStateConstants.IN_PROCESS;
+    task.holdReason = null;
+    task.estimatedResumeTime = null;
+    task.commitmentLevel = 'running';
+    return { status: 'ok', taskKey, commitmentLevel: 'running' };
+  }
+
+  completeTask(taskKey: string, actualEnd?: string): any {
+    const landscape = this.ensureLandscape();
+    const task = landscape.tasks.getEntity(taskKey);
+    if (!task) throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
+    task.wipstate = CTPWipStateConstants.COMPLETED;
+    task.actualEnd = actualEnd || new Date().toISOString();
+    task.percentComplete = 100;
+    task.includeInSolve = false;
+    return { status: 'ok', taskKey, actualEnd: task.actualEnd };
+  }
+
+  updateProgress(taskKey: string, body: { percentComplete?: number; remainingDuration?: number }): any {
+    const landscape = this.ensureLandscape();
+    const task = landscape.tasks.getEntity(taskKey);
+    if (!task) throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
+    if (body.percentComplete != null) task.percentComplete = body.percentComplete;
+    if (body.remainingDuration != null) task.remainingDuration = body.remainingDuration;
+    return { status: 'ok', taskKey, percentComplete: task.percentComplete, remainingDuration: task.effectiveRemainingDuration() };
+  }
+
+  // ═══════════════════════════════════════
   // Chain Expansion
   // ═══════════════════════════════════════
 
@@ -2252,6 +2382,227 @@ export class CTPService {
     return hash;
   }
 
+  // ═══════════════════════════════════════
+  // Commitment Stack
+  // ═══════════════════════════════════════
+
+  private applyCommitmentStack(landscape: SchedulingLandscape): void {
+    landscape.tasks.forEach(task => {
+      // Derive commitment level
+      if (task.wipstate === CTPWipStateConstants.IN_PROCESS) {
+        task.commitmentLevel = 'running';
+      } else if (task.wipstate === CTPWipStateConstants.ON_HOLD) {
+        task.commitmentLevel = 'on_hold';
+      } else if (task.wipstate === CTPWipStateConstants.COMPLETED) {
+        task.commitmentLevel = 'completed';
+        task.pinned = true;
+        // Keep in landscape so chain successors can reference the completed position
+        // If we have actuals, update the scheduled window to match reality
+        if (task.actualStart) {
+          const startW = CTPDateTime.fromDateTime(task.actualStart);
+          const endW = task.actualEnd ? CTPDateTime.fromDateTime(task.actualEnd)
+            : startW + (task.duration?.duration() ?? 0);
+          if (!task.scheduled) {
+            task.scheduled = new CTPInterval(startW, endW, 1);
+          } else {
+            task.scheduled.startW = startW;
+            task.scheduled.endW = endW;
+          }
+          task.state = CTPTaskStateConstants.SCHEDULED;
+          // Pair actual resources to capacity slots and consume capacity
+          if (task.actualResources.length && task.capacityResources) {
+            const pairs = this.matchActualsToSlots(task.actualResources, task.capacityResources, landscape);
+            pairs.forEach((resKey, idx) => {
+              const tr = task.capacityResources![idx];
+              tr.scheduledResource = resKey;
+              const res = landscape.resources?.getEntity(resKey);
+              if (res) {
+                const assignment = new CTPAssignment(startW, endW, tr.qty ?? 1);
+                assignment.name = task.key;
+                assignment.type = CTPAssignmentConstants.PROCESS;
+                res.assignments?.add(assignment);
+                res.recompute = true;
+              }
+            });
+          }
+        }
+      } else if (task.dispatched) {
+        task.commitmentLevel = 'dispatched';
+      } else if (task.pinned) {
+        task.commitmentLevel = 'pinned';
+      } else if (task.state === CTPTaskStateConstants.SCHEDULED) {
+        task.commitmentLevel = 'planned';
+      } else {
+        task.commitmentLevel = 'unscheduled';
+      }
+
+      // Enforce pinning for layers 1-4
+      if (task.commitmentLevel === 'running' || task.commitmentLevel === 'on_hold' || task.commitmentLevel === 'dispatched') {
+        // If we have an actualStart, anchor the scheduled position to reality
+        if (task.actualStart) {
+          const startW = CTPDateTime.fromDateTime(task.actualStart);
+          const endW = task.actualEnd ? CTPDateTime.fromDateTime(task.actualEnd)
+            : startW + (task.effectiveRemainingDuration());
+          if (!task.scheduled) {
+            task.scheduled = new CTPInterval(startW, endW, 1);
+          } else {
+            task.scheduled.startW = startW;
+            task.scheduled.endW = endW;
+          }
+          task.state = CTPTaskStateConstants.SCHEDULED;
+          task.pinned = true;
+          // Pair actual resources to capacity slots and consume capacity
+          if (task.actualResources.length && task.capacityResources) {
+            const pairs = this.matchActualsToSlots(task.actualResources, task.capacityResources, landscape);
+            pairs.forEach((resKey, idx) => {
+              const tr = task.capacityResources![idx];
+              tr.scheduledResource = resKey;
+              const res = landscape.resources?.getEntity(resKey);
+              if (res) {
+                const assignment = new CTPAssignment(startW, endW, tr.qty ?? 1);
+                assignment.name = task.key;
+                assignment.type = CTPAssignmentConstants.PROCESS;
+                res.assignments?.add(assignment);
+                res.recompute = true;
+              }
+            });
+          }
+        } else if (task.state === CTPTaskStateConstants.SCHEDULED) {
+          // Already scheduled from a previous solve — pin in place
+          task.pinned = true;
+        }
+        // If not scheduled and no actuals, let the solver place it first
+      }
+    });
+  }
+
+  /**
+   * Pair actual resources to capacity slots 1:1.
+   * Returns a Map<slotIndex, actualResourceKey>.
+   * Match strategy per slot:
+   *   1. Exact key match (slot.resource === actual key)
+   *   2. Type match (slot.resource is a type key, actual resource's type matches)
+   * Each actual and each slot can only pair once.
+   */
+  private matchActualsToSlots(
+    actualResources: string[],
+    capacityResources: { resource: string | undefined; isPrimary: boolean }[],
+    landscape: SchedulingLandscape,
+  ): Map<number, string> {
+    const result = new Map<number, string>();
+    const claimed = new Set<string>(); // actual keys already paired
+
+    // Pass 1: exact key matches (highest confidence)
+    capacityResources.forEach((slot, idx) => {
+      if (!slot.resource) return;
+      const exact = actualResources.find(r => !claimed.has(r) && r === slot.resource);
+      if (exact) {
+        result.set(idx, exact);
+        claimed.add(exact);
+      }
+    });
+
+    // Pass 2: type matches for remaining unmatched slots
+    capacityResources.forEach((slot, idx) => {
+      if (result.has(idx) || !slot.resource) return;
+      // If slot.resource resolves to a real resource, it wasn't matched in pass 1 — skip
+      const slotRes = landscape.resources?.getEntity(slot.resource);
+      if (slotRes) return;
+      // slot.resource is a type/pool key — find an unclaimed actual whose type matches
+      const typeMatch = actualResources.find(r => {
+        if (claimed.has(r)) return false;
+        const res = landscape.resources?.getEntity(r);
+        return res && res.type === slot.resource;
+      });
+      if (typeMatch) {
+        result.set(idx, typeMatch);
+        claimed.add(typeMatch);
+      }
+    });
+
+    return result;
+  }
+
+  private computeCapacityWaterfall(landscape: SchedulingLandscape): any[] {
+    const resourceTasks = new Map<string, Map<string, { tasks: number; seconds: number }>>();
+
+    landscape.tasks.forEach(task => {
+      if (task.type === CTPTaskTypeConstants.SET_UP || task.type === CTPTaskTypeConstants.TEAR_DOWN) return;
+
+      let resourceKey: string | null = null;
+      if (task.actualResources.length) {
+        resourceKey = task.actualResources[0];
+      } else if (task.state === CTPTaskStateConstants.SCHEDULED) {
+        task.capacityResources?.forEach(tr => {
+          if (tr.isPrimary && tr.scheduledResource) resourceKey = tr.scheduledResource;
+        });
+      }
+      if (!resourceKey && task.commitmentLevel === 'unscheduled') {
+        task.capacityResources?.forEach(tr => {
+          if (!resourceKey && tr.isPrimary && tr.preferences?.length > 0) {
+            resourceKey = tr.preferences[0].resourceKey;
+          }
+        });
+      }
+      if (!resourceKey) return;
+
+      if (!resourceTasks.has(resourceKey)) resourceTasks.set(resourceKey, new Map());
+      const levels = resourceTasks.get(resourceKey)!;
+      const level = task.commitmentLevel;
+      if (!levels.has(level)) levels.set(level, { tasks: 0, seconds: 0 });
+      const entry = levels.get(level)!;
+      entry.tasks += 1;
+
+      if (level === 'running' || level === 'on_hold') {
+        entry.seconds += task.effectiveRemainingDuration();
+      } else {
+        entry.seconds += task.duration?.duration() ?? 0;
+      }
+    });
+
+    const levelOrder = ['completed', 'running', 'on_hold', 'dispatched', 'pinned', 'planned', 'unscheduled'];
+    const waterfall: any[] = [];
+
+    for (const [resourceKey, levels] of resourceTasks) {
+      const resource = landscape.resources?.getEntity(resourceKey);
+      if (!resource) continue;
+
+      // Use actual shift availability, not raw horizon
+      let totalAvailSec = 0;
+      if (resource.original) {
+        let ptr: any = resource.original.head;
+        while (ptr) { totalAvailSec += (ptr.data.endW - ptr.data.startW); ptr = ptr.next; }
+      }
+      const totalAvailableHours = totalAvailSec / 3600;
+
+      const layers: any[] = [];
+      let cumulative = 0;
+      let deadCapacityHours = 0;
+
+      for (const level of levelOrder) {
+        const e = levels.get(level);
+        if (!e) { layers.push({ level, tasks: 0, hours: 0, cumulative: Math.round(cumulative * 10) / 10 }); continue; }
+        const hours = e.seconds / 3600;
+        cumulative += hours;
+        if (level === 'on_hold') deadCapacityHours += hours;
+        layers.push({ level, tasks: e.tasks, hours: Math.round(hours * 10) / 10, cumulative: Math.round(cumulative * 10) / 10 });
+      }
+
+      waterfall.push({
+        resourceKey,
+        resourceName: resource.name || resourceKey,
+        totalAvailableHours: Math.round(totalAvailableHours * 10) / 10,
+        layers,
+        remainingCapacity: Math.round((totalAvailableHours - cumulative) * 10) / 10,
+        utilizationPercent: totalAvailableHours > 0 ? Math.round((cumulative / totalAvailableHours) * 1000) / 10 : 0,
+        deadCapacityHours: Math.round(deadCapacityHours * 10) / 10,
+      });
+    }
+
+    waterfall.sort((a, b) => b.utilizationPercent - a.utilizationPercent);
+    return waterfall;
+  }
+
   private formatWhereToResponse(result: WhereToResult, reason?: string): WhereToResponseDto {
     const response: WhereToResponseDto = {
       taskKey: result.taskKey,
@@ -2315,13 +2666,31 @@ export class CTPService {
       if (p.key && p.name) processNameMap.set(p.key, p.name);
     }
 
+    // Build chain completion map: chainKey → true if ALL tasks in chain are completed
+    const chainAllCompleted = new Map<string, boolean>();
+    landscape.tasks.forEach(task => {
+      const chainKey = task.linkId?.name;
+      if (!chainKey) return;
+      const prev = chainAllCompleted.get(chainKey);
+      const taskCompleted = task.wipstate === CTPWipStateConstants.COMPLETED;
+      chainAllCompleted.set(chainKey, prev === undefined ? taskCompleted : (prev && taskCompleted));
+    });
+
+    // Post-solve: promote unscheduled → planned for tasks the solver scheduled
+    landscape.tasks.forEach(task => {
+      if (task.commitmentLevel === 'unscheduled' && task.state === CTPTaskStateConstants.SCHEDULED) {
+        task.commitmentLevel = 'planned';
+      }
+    });
+
     landscape.tasks.forEach((task) => {
       const isScheduled = task.state === CTPTaskStateConstants.SCHEDULED;
       if (isScheduled) scheduledCount++;
       if (task.pinned) pinnedCount++;
       if (!task.includeInSolve && !task.pinned) excludedCount++;
 
-      if (isScheduled && task.scheduled) {
+      if (isScheduled && task.scheduled && task.scheduled.startW >= landscape.horizon.startW
+          && task.wipstate !== CTPWipStateConstants.COMPLETED) {
         if (task.scheduled.startW < minStartW) minStartW = task.scheduled.startW;
         if (task.scheduled.endW > maxEndW) maxEndW = task.scheduled.endW;
       }
@@ -2392,10 +2761,10 @@ export class CTPService {
         state: task.state,
         included: includedKeys.has(task.key),
         pinned: task.pinned,
-        scheduledStart: task.scheduled
+        scheduledStart: task.scheduled && task.scheduled.startW >= landscape.horizon.startW
           ? CTPDateTime.toDateTime(task.scheduled.startW).toISO()
           : null,
-        scheduledEnd: task.scheduled
+        scheduledEnd: task.scheduled && task.scheduled.startW >= landscape.horizon.startW
           ? CTPDateTime.toDateTime(task.scheduled.endW).toISO()
           : null,
         durationSeconds: task.scheduled ? task.scheduled.duration() : (task.duration?.duration() ?? null),
@@ -2421,6 +2790,18 @@ export class CTPService {
         originalPriority: task.originalPriority,
         windowStart: task.window ? CTPDateTime.toDateTime(task.window.startW).toISO() : null,
         windowEnd: task.window ? CTPDateTime.toDateTime(task.window.endW).toISO() : null,
+        commitmentLevel: task.commitmentLevel,
+        dispatched: task.dispatched || false,
+        dispatchedAt: task.dispatchedAt || null,
+        materialsPulled: task.materialsPulled || false,
+        percentComplete: task.percentComplete || 0,
+        remainingDuration: (task.commitmentLevel === 'running' || task.commitmentLevel === 'on_hold')
+          ? task.effectiveRemainingDuration() : null,
+        actualStart: task.actualStart || null,
+        actualEnd: task.actualEnd || null,
+        actualResources: task.actualResources,
+        holdReason: task.commitmentLevel === 'on_hold' ? (task.holdReason || null) : null,
+        estimatedResumeTime: task.commitmentLevel === 'on_hold' ? (task.estimatedResumeTime || null) : null,
       };
 
       // Per-task cost breakdown (resource + material)
@@ -2474,10 +2855,22 @@ export class CTPService {
         taskResult.compatibleResources = compatibleResources;
       }
 
+      // Completed tasks: visible if chain has pending work, hidden if entire chain done or standalone
+      if (task.wipstate === CTPWipStateConstants.COMPLETED) {
+        const chainKey = task.linkId?.name;
+        taskResult.visible = chainKey ? !(chainAllCompleted.get(chainKey)) : false;
+      } else {
+        taskResult.visible = true;
+      }
+
       tasks.push(taskResult);
     });
 
-    // Resource utilization
+    // Resource utilization — exclude completed task assignments
+    const completedTaskKeys = new Set<string>();
+    landscape.tasks.forEach(t => {
+      if (t.wipstate === CTPWipStateConstants.COMPLETED) completedTaskKeys.add(t.key);
+    });
     const resourceConfigs = this.configService.getResources();
     const resourceConfigMap = new Map(resourceConfigs.map((r) => [r.key, r]));
     const resourceUtilization: any[] = [];
@@ -2490,7 +2883,10 @@ export class CTPService {
       let totalAssigned = 0;
       if (resource.assignments) {
         let node = resource.assignments.head;
-        while (node) { totalAssigned += node.data.duration(); node = node.next; }
+        while (node) {
+          if (!node.data.name || !completedTaskKeys.has(node.data.name)) totalAssigned += node.data.duration();
+          node = node.next;
+        }
       }
 
       // Extract interval linked list → array of { start, end, durationSec }
@@ -2640,9 +3036,10 @@ export class CTPService {
     const productData = this.configService.getProducts();
     const products = productData.map((p) => ({ key: p.key, name: p.name }));
 
-    // Feasibility: count only PROCESS tasks (exclude SETUP/TEARDOWN)
+    // Feasibility: count only PROCESS tasks (exclude SETUP/TEARDOWN and COMPLETED)
     const processTasks = tasks.filter(
-      (t) => t.type === CTPTaskTypeConstants.PROCESS || !t.type,
+      (t) => (t.type === CTPTaskTypeConstants.PROCESS || !t.type)
+        && t.commitmentLevel !== 'completed',
     );
     const scheduledProcessTasks = processTasks.filter((t) => t.feasible);
     const setupTaskCount = tasks.length - processTasks.length;
@@ -2753,6 +3150,9 @@ export class CTPService {
       result.criticalPath = criticalPathResult;
     }
 
+    // Capacity waterfall (commitment stack layers per resource)
+    (result as any).capacityWaterfall = this.computeCapacityWaterfall(landscape);
+
     // Cost summary (aggregate from per-task costs)
     const tasksWithCost = tasks.filter((t: any) => t.cost?.total > 0);
     if (tasksWithCost.length > 0) {
@@ -2827,5 +3227,136 @@ export class CTPService {
       conflictType: report.conflictType,
       conflictTypeReason: report.conflictTypeReason,
     };
+  }
+
+  // ═══════════════════════════════════════
+  // Admin — Tenant Management
+  // ═══════════════════════════════════════
+
+  private tenantsDir(): string {
+    return path.join(this.configService.getConfigRoot(), 'tenants');
+  }
+
+  listTenants(): { tenants: { tenantId: string; name: string; vertical: string }[] } {
+    const dir = this.tenantsDir();
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const tenants: { tenantId: string; name: string; vertical: string; clonedFrom: string | null }[] = [];
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const tenantJson = path.join(dir, entry.name, 'tenant.json');
+      if (!fs.existsSync(tenantJson)) continue;
+      try {
+        const data = JSON.parse(fs.readFileSync(tenantJson, 'utf-8'));
+        tenants.push({
+          tenantId: data.tenantId || entry.name,
+          name: data.name || entry.name,
+          vertical: data.vertical || '',
+          clonedFrom: data.clonedFrom || null,
+        });
+      } catch {
+        tenants.push({ tenantId: entry.name, name: entry.name, vertical: '', clonedFrom: null });
+      }
+    }
+    return { tenants };
+  }
+
+  cloneTenant(sourceTenant: string, targetTenant: string, displayName?: string): { status: string; tenant: string; source: string } {
+    // Validate target name
+    if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(targetTenant) || targetTenant.length < 3) {
+      throw new HttpException(
+        { error: { code: 'INVALID_TENANT_NAME', message: 'Tenant name must be lowercase alphanumeric with hyphens, min 3 chars.', category: 'validation' } },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const dir = this.tenantsDir();
+    const sourceDir = path.join(dir, sourceTenant);
+    const targetDir = path.join(dir, targetTenant);
+
+    if (!fs.existsSync(sourceDir)) {
+      throw new HttpException(
+        { error: { code: 'SOURCE_NOT_FOUND', message: `Source tenant '${sourceTenant}' not found.`, category: 'config' } },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    if (fs.existsSync(targetDir)) {
+      throw new HttpException(
+        { error: { code: 'TENANT_EXISTS', message: `Tenant '${targetTenant}' already exists.`, category: 'config' } },
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    // Recursive copy
+    fs.cpSync(sourceDir, targetDir, { recursive: true });
+
+    // Patch tenant.json
+    const tenantJsonPath = path.join(targetDir, 'tenant.json');
+    if (fs.existsSync(tenantJsonPath)) {
+      const data = JSON.parse(fs.readFileSync(tenantJsonPath, 'utf-8'));
+      data.tenantId = targetTenant;
+      data.name = displayName || targetTenant.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      data.clonedFrom = sourceTenant;
+      data.updatedAt = new Date().toISOString();
+      fs.writeFileSync(tenantJsonPath, JSON.stringify(data, null, 2), 'utf-8');
+    }
+
+    return { status: 'ok', tenant: targetTenant, source: sourceTenant };
+  }
+
+  // Protected tenants that shipped with the repo
+  private static readonly PROTECTED_TENANTS = new Set([
+    'demo-manufacturing', 'stafford-engineering', 'acme-outpatient',
+  ]);
+
+  deleteTenant(tenantId: string): { status: string; deleted: string } {
+    if (CTPService.PROTECTED_TENANTS.has(tenantId)) {
+      throw new HttpException(
+        { error: { code: 'DELETE_PROTECTED', message: `Tenant '${tenantId}' is a source tenant and cannot be deleted.`, category: 'admin' } },
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const tenantDir = path.join(this.tenantsDir(), tenantId);
+    if (!fs.existsSync(tenantDir)) {
+      throw new HttpException(
+        { error: { code: 'SOURCE_NOT_FOUND', message: `Tenant '${tenantId}' not found.`, category: 'config' } },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    fs.rmSync(tenantDir, { recursive: true, force: true });
+    return { status: 'ok', deleted: tenantId };
+  }
+
+  resetTenant(tenantId: string): { status: string; tenant: string; source: string } {
+    if (CTPService.PROTECTED_TENANTS.has(tenantId)) {
+      throw new HttpException(
+        { error: { code: 'DELETE_PROTECTED', message: `Tenant '${tenantId}' is a source tenant and cannot be reset.`, category: 'admin' } },
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const tenantDir = path.join(this.tenantsDir(), tenantId);
+    const tenantJsonPath = path.join(tenantDir, 'tenant.json');
+    if (!fs.existsSync(tenantJsonPath)) {
+      throw new HttpException(
+        { error: { code: 'SOURCE_NOT_FOUND', message: `Tenant '${tenantId}' not found.`, category: 'config' } },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const data = JSON.parse(fs.readFileSync(tenantJsonPath, 'utf-8'));
+    const sourceTenant = data.clonedFrom;
+    if (!sourceTenant) {
+      throw new HttpException(
+        { error: { code: 'NOT_A_CLONE', message: `Tenant '${tenantId}' is not a clone and cannot be reset.`, category: 'admin' } },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const displayName = data.name;
+    // Delete and re-clone
+    fs.rmSync(tenantDir, { recursive: true, force: true });
+    return this.cloneTenant(sourceTenant, tenantId, displayName);
   }
 }

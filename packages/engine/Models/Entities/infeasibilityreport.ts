@@ -4,6 +4,11 @@ export interface BlockingTaskDetail {
   chainKey: string | null;
   startW: number;
   endW: number;
+  commitmentLevel?: string;
+  dispatched?: boolean;
+  materialsPulled?: boolean;
+  holdReason?: string | null;
+  percentComplete?: number;
 }
 
 export interface ResourceAvailabilityDetail {

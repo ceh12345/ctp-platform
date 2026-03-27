@@ -348,6 +348,36 @@ export class StateHydratorService {
         task.inputMaterials = matInputs;
       }
 
+      // Commitment stack fields from config (for testing without WIP sync)
+      if (item.dispatched) {
+        task.dispatched = true;
+        task.dispatchedAt = (item as any).dispatchedAt || null;
+        task.materialsPulled = (item as any).materialsPulled ?? true;
+        // Don't pin here — applyCommitmentStack handles pinning after first solve
+      }
+      if ((item as any).wipState === 'IN_PROCESS') {
+        task.wipstate = 1; // CTPWipStateConstants.IN_PROCESS
+        task.actualStart = (item as any).actualStart || null;
+        task.actualResources = (item as any).actualResources ?? [];
+        task.percentComplete = (item as any).percentComplete ?? 0;
+        task.remainingDuration = (item as any).remainingDuration ?? null;
+      }
+      if ((item as any).wipState === 'ON_HOLD') {
+        task.wipstate = 3; // CTPWipStateConstants.ON_HOLD
+        task.holdReason = (item as any).holdReason || null;
+        task.estimatedResumeTime = (item as any).estimatedResumeTime || null;
+        task.actualStart = (item as any).actualStart || null;
+        task.actualResources = (item as any).actualResources ?? [];
+        task.percentComplete = (item as any).percentComplete ?? 0;
+      }
+      if ((item as any).wipState === 'COMPLETED') {
+        task.wipstate = 5; // CTPWipStateConstants.COMPLETED
+        task.actualStart = (item as any).actualStart || null;
+        task.actualEnd = (item as any).actualEnd || null;
+        task.actualResources = (item as any).actualResources ?? [];
+        task.percentComplete = 100;
+      }
+
       // Typed attributes
       const taskAttrs = this.normalizeTypedAttributes(item.typedAttributes);
       if (taskAttrs) {

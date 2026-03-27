@@ -1,5 +1,5 @@
 import { SchedulingLandscape } from '../Models/Entities/landscape';
-import { CTPTaskStateConstants, CTPTaskTypeConstants } from '../Models/Core/constants';
+import { CTPTaskStateConstants, CTPTaskTypeConstants, CTPWipStateConstants } from '../Models/Core/constants';
 import { CTPDateTime } from '../Models/Core/date';
 import { CTPTaskResource } from '../Models/Entities/task';
 
@@ -76,6 +76,7 @@ export class DisjunctiveGraph {
     // ─── 1. Create nodes for all scheduled tasks ───
     landscape.tasks.forEach(task => {
       if (task.state !== CTPTaskStateConstants.SCHEDULED || !task.scheduled) return;
+      if (task.wipstate === CTPWipStateConstants.COMPLETED) return;
 
       let primaryKey = '';
       task.capacityResources?.forEach((tr: CTPTaskResource) => {

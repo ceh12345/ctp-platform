@@ -4,9 +4,7 @@
 
 | Sprint | Name | Notes |
 |--------|------|-------|
-| Sprint | Name | Notes |
-|--------|------|-------|
-_No sprints currently in progress._
+| Engine — Commitment Stack | 6-layer scheduling commitment model | Running, On Hold, Dispatched, Pinned, Planned, Unscheduled. New fields: `commitmentLevel`, `dispatched`, `percentComplete`, actuals (actualStart/End/Resource, holdReason, estimatedResumeTime). Solver respects layers 1-4 as fixed. Capacity waterfall in solve response. Infeasibility report shows committed breakdown by layer. UI indicators + progression buttons. Spec complete. |
 
 ## Done
 
@@ -78,13 +76,14 @@ _No sprints currently in progress._
 
 | Sprint | Name | Notes |
 |--------|------|-------|
-| Engine — Attribute-Based Resource Matching | Hard-filter preferences by attribute requirements | `requiredAttributes` on task slots, `AttributeMatcher` engine, rejection logging, bottleneck integration. Acme healthcare proof case. Makes AI recommendations correct (won't suggest non-ASME welders). CC-ready prompt exists. |
-| UI — Action Queue | Batch command builder | Stage multiple actions (unschedule, redirect, reprioritize, solve) and execute atomically via `POST /ctp/execute`. Presets/macros for common scenarios (machine breakdown, rush order). Spec complete. |
-| Solver Phase B — Metaheuristic Improvement | Tabu search + ILS on disjunctive graph | Critical-block neighborhood moves on Phase A graph. Powers Thorough (5-30s) and Best Quality (30s-5m) strategy tiers. Designed Phase B-ready in Phase A. Language TBD (TypeScript or C#). |
+| Engine — Attribute-Based Resource Matching | Hard-filter preferences by attribute requirements | `requiredAttributes` on task slots, `AttributeMatcher` engine, rejection logging, bottleneck integration. Acme healthcare proof case. Makes AI recommendations correct. CC-ready prompt exists. |
+| Data Integration — Phase 1 Inbound | Published schema + sync endpoint + CSV upload | `POST /v1/state/sync`, column mapper with saved profiles, import wizard, downloadable templates. Spec complete. |
+| Data Integration — Phase 2 WIP Sync | Actuals + resource status | `POST /v1/state/wip-sync`, `PATCH /state/tasks/:key/wip`. Populates commitment stack fields from external systems. Spec complete. |
+| UI — Action Queue | Batch command builder | Stage multiple actions and execute atomically via `POST /ctp/execute`. Presets/macros for common scenarios. Spec complete. |
+| UI Sprint 24 — Gantt Resource Filtering | Filter Gantt rows by WHERE selection | Lift hierarchy selection state to ScheduleTab, pass to GanttChart, hide non-matching resource rows. |
+| Solver Phase B — Metaheuristic Improvement | Tabu search + ILS on disjunctive graph | Critical-block neighborhood moves on Phase A graph. Powers Thorough (5-30s) and Best Quality (30s-5m) strategy tiers. Language TBD (TypeScript or C#). |
 | UI Sprint 14 | Error Display & API Error Handling | Surface engine errors in UI instead of generic 500 |
 | UI Sprint 13 | Resource Explorer | Calendar/Agenda sub-views under Schedule tab |
-| WhereTo on task detail | Button on detail panel | Trigger WhereTo for setup/teardown/unscheduled tasks |
-| UI Sprint 24 — Gantt Resource Filtering | Filter Gantt rows by WHERE selection | Lift hierarchy selection state to ScheduleTab, pass to GanttChart, hide non-matching resource rows. Declutters Gantt to the area the planner is working on. |
 
 ## Backlog
 
@@ -173,8 +172,13 @@ ENGINE SPRINTS (CURRENT + PLANNED)
 ✓ Cost Scoring Model (5 rules: ResourceCost, ChangeoverCost, Overtime, Lateness, Material)
 ✓ Schedule Configurations (named profiles, duplicate-only, compare view)
 ✓ AI Sprint 3 Recommendations (diagnose + apply sequencer + compound recs + token optimization)
+✓ UI Sprint 23 Unified Filter Bar (4-row: Status/When/Work/Where, hierarchy browser, attribute search)
+🔧 Commitment Stack (6 layers: Running, On Hold, Dispatched, Pinned, Planned, Unscheduled)
+   └──→ capacity waterfall, infeasibility layer breakdown, percentComplete, progression buttons
 📋 Attribute-Based Resource Matching (CC-ready, Acme proof case)
    └──→ feeds into Bottleneck Display + AI explanation
+📋 Data Integration Phase 1 (sync endpoint + CSV upload + column mapper + templates)
+   └──→ Data Integration Phase 2 (WIP sync — populates commitment stack fields)
 📋 UI Action Queue (batch command builder, presets/macros)
    └──→ reuses apply-recommendation command sequencer
 📋 Scoring Dialog Nav (left-side click-to-scroll + pinned Add Rule)
@@ -228,6 +232,10 @@ INFRA TRACK
   scoring-dialog-nav-spec.md            ← Scoring rules left-side nav + pinned Add Rule button + grouped display
   metaheuristic-scheduling-overview.docx ← 8-page overview document (executive summary, Phase A/B, cross-domain)
   stafford-demo-script.md               ← Demo script with critical path narration (5-Axis Mill bottleneck)
+  commitment-stack-spec.md              ← 6-layer commitment model (Running, On Hold, Dispatched, Pinned, Planned, Unscheduled)
+  data-integration-design.md            ← Phase 1 (inbound sync + CSV) + Phase 2 (WIP sync), combined
+  task-filter-hierarchy-attribute-spec.md ← Resource hierarchy browser + attribute search filter
+  unified-task-filter-bar-spec.md       ← Four-row filter bar (Status, When, Work, Where)
   ui-19-versioning.md                    ← App versioning (footer, logo hover, /version endpoint)
 
   UI Sprints:
@@ -284,4 +292,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 23, 2026 (UI Sprint 23 complete — no active sprint)*
+*Last updated: Mar 24, 2026 (Commitment Stack active — Attribute Matching + Data Integration + Action Queue + Phase B in Up Next)*

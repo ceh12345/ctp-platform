@@ -1,0 +1,46 @@
+[
+  {
+    "name": "makespan",
+    "displayName": "Makespan",
+    "description": "Total time from first task start to last task end",
+    "computationType": "built-in",
+    "sourceEntity": "schedule",
+    "objective": "minimize",
+    "unit": "hours",
+    "format": "0.1f",
+    "visualizationType": "gauge",
+    "category": "efficiency",
+    "sequence": 1
+  },
+  {
+    "name": "onTimeDelivery",
+    "displayName": "On-Time Delivery %",
+    "description": "Percentage of tasks completed within their window",
+    "computationType": "built-in",
+    "sourceEntity": "task",
+    "aggregation": "ratio",
+    "objective": "maximize",
+    "targetValue": 95,
+    "warningThreshold": 90,
+    "criticalThreshold": 80,
+    "unit": "%",
+    "format": "0.1f",
+    "visualizationType": "gauge",
+    "category": "delivery",
+    "sequence": 2
+  },
+  {
+    "name": "resourceUtilization",
+    "displayName": "Resource Utilization %",
+    "description": "Percentage of available time used by scheduled tasks",
+    "computationType": "built-in",
+    "sourceEntity": "resource",
+    "aggregation": "avg",
+    "objective": "maximize",
+    "unit": "%",
+    "format": "0.1f",
+    "visualizationType": "bar",
+    "category": "efficiency",
+    "sequence": 3
+  }
+]

@@ -228,7 +228,7 @@ describe('Manufacturing Regression', () => {
     console.log(`\n=== MANUFACTURING: status=${result.status} scheduled=${result.summary.scheduledTasks}/${result.summary.includedTasks} ===`);
 
     expect(result.status).toBe('ok');
-    expect(result.summary.includedTasks).toBe(29);
+    expect(result.summary.includedTasks).toBe(28);
     expect(result.summary.scheduledTasks).toBeGreaterThan(0);
 
     // Check no unexpected errors

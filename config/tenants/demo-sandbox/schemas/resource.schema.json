@@ -1,0 +1,52 @@
+{
+  "entityType": "resource",
+  "version": 1,
+  "attributes": [
+    {
+      "name": "machineType",
+      "displayName": "Machine Type",
+      "dataType": "enum",
+      "required": true,
+      "validation": {
+        "allowedValues": ["CNC", "Assembly", "QC"]
+      },
+      "category": "equipment",
+      "sequence": 1,
+      "searchable": true,
+      "sortable": true,
+      "useInScheduling": true,
+      "useInScoring": false
+    },
+    {
+      "name": "maxSpeed",
+      "displayName": "Max Speed",
+      "dataType": "number",
+      "required": false,
+      "defaultValue": 0,
+      "validation": {
+        "min": 0
+      },
+      "category": "performance",
+      "sequence": 2,
+      "searchable": false,
+      "sortable": true,
+      "useInScheduling": false,
+      "useInScoring": false
+    },
+    {
+      "name": "certifications",
+      "displayName": "Certifications",
+      "dataType": "list",
+      "required": false,
+      "validation": {
+        "listItemType": "string"
+      },
+      "category": "compliance",
+      "sequence": 3,
+      "searchable": true,
+      "sortable": false,
+      "useInScheduling": false,
+      "useInScoring": false
+    }
+  ]
+}

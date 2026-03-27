@@ -220,6 +220,28 @@ export class CTPTask extends CTPKeyEntity implements ITask {
   public orderPriority: number = 0;   // from order priority
   public latenessPenaltyPerDay: number = 0;  // dollar cost per day late, from order
 
+  // ─── Commitment Stack Fields ───
+  public commitmentLevel: 'completed' | 'running' | 'on_hold' | 'dispatched' | 'pinned' | 'planned' | 'unscheduled' = 'unscheduled';
+  public dispatched: boolean = false;
+  public dispatchedAt: string | null = null;
+  public materialsPulled: boolean = false;
+  public percentComplete: number = 0;
+  public remainingDuration: number | null = null;
+  public actualStart: string | null = null;
+  public actualEnd: string | null = null;
+  public actualResources: string[] = [];
+  public holdReason: string | null = null;
+  public estimatedResumeTime: string | null = null;
+
+  public effectiveRemainingDuration(): number {
+    if (this.remainingDuration != null) return this.remainingDuration;
+    const totalDuration = this.duration?.duration() ?? 0;
+    if (this.percentComplete > 0) {
+      return Math.max(0, totalDuration * (1 - this.percentComplete / 100));
+    }
+    return totalDuration;
+  }
+
   public resetScore() {
     this.score = Number.MAX_VALUE;
     this.feasible = null;
@@ -307,6 +329,19 @@ export class CTPTask extends CTPKeyEntity implements ITask {
     this.manualPriority = 0;
     this.priority = 100;
     this.originalPriority = 100;
+
+    // Commitment stack
+    this.commitmentLevel = 'unscheduled';
+    this.dispatched = false;
+    this.dispatchedAt = null;
+    this.materialsPulled = false;
+    this.percentComplete = 0;
+    this.remainingDuration = null;
+    this.actualStart = null;
+    this.actualEnd = null;
+    this.actualResources = [];
+    this.holdReason = null;
+    this.estimatedResumeTime = null;
   }
 }
 

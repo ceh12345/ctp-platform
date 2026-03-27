@@ -835,7 +835,7 @@ export abstract class CTPBaseScheduler {
               availMinutes -= (oE - oS) / 60;
               if (a.name && !blockingTasks.find(bt => bt.taskKey === a.name)) {
                 const bt = this.landscape.tasks?.getEntity(a.name);
-                blockingTasks.push({ taskKey: a.name, taskName: bt?.name || a.name, chainKey: bt?.linkId?.name || null, startW: a.startW, endW: a.endW });
+                blockingTasks.push({ taskKey: a.name, taskName: bt?.name || a.name, chainKey: bt?.linkId?.name || null, startW: a.startW, endW: a.endW, commitmentLevel: bt?.commitmentLevel, dispatched: bt?.dispatched, materialsPulled: bt?.materialsPulled, holdReason: bt?.holdReason, percentComplete: bt?.percentComplete });
               }
             }
             assNode = assNode.next;
@@ -949,6 +949,12 @@ export abstract class CTPBaseScheduler {
         );
 
         if (bestCombo) {
+          // Mark pinned tasks as processed — commitChain skips them to preserve
+          // their positions and resource assignments from applyCommitmentStack
+          chainTasks.forEach(t => {
+            if (t.pinned && t.state === CTPTaskStateConstants.SCHEDULED) t.processed = true;
+          });
+
           // evaluateChain already called assignStartTimes and validated
           const results = chainEngine.commitChain(bestCombo, schedEngine, this.landscape, direction);
 
@@ -957,6 +963,7 @@ export abstract class CTPBaseScheduler {
             task.processed = true;
             this.solverSequence += 1;
             task.solverSequence = this.solverSequence;
+
             this.scheduleStateChanges(task, best);
             this.scheduleContexts.updateRecompute(best.best);
 

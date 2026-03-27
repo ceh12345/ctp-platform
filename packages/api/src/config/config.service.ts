@@ -133,6 +133,10 @@ export class ConfigService {
     this.store.reload();
   }
 
+  getConfigRoot(): string {
+    return this.configRootPath;
+  }
+
   switchTenant(tenantId: string): void {
     if (tenantId !== this.currentTenantId) {
       this.store = new FileConfigStore(this.configRootPath, tenantId);

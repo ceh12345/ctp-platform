@@ -47,7 +47,7 @@ describe('CTPService', () => {
     const result = ctpService.solve();
     expect(result.status).toBe('ok');
     // 25 data tasks submitted; scheduler may add state-change tasks to landscape
-    expect(result.summary.includedTasks).toBe(29);
+    expect(result.summary.includedTasks).toBe(28);
     expect(result.summary.totalTasks).toBeGreaterThanOrEqual(29);
     expect(result.summary.scheduledTasks).toBeGreaterThan(0);
     expect(result.tasks.length).toBe(result.summary.totalTasks);
@@ -56,21 +56,21 @@ describe('CTPService', () => {
   // ── Solve specific tasks by key ──────────────────────────────────
 
   it('solve specific tasks by key', () => {
-    const result = ctpService.solve({ taskKeys: ['T-1001-H-MACHINE', 'T-1001-ASSEMBLE'] });
+    const result = ctpService.solve({ taskKeys: ['T-1002-B-MACHINE', 'T-1001-ASSEMBLE'] });
     // includedTasks counts all PROCESS tasks in landscape (summary-level)
     // The per-task `included` flag shows which were actually submitted
-    expect(result.summary.includedTasks).toBe(29);
+    expect(result.summary.includedTasks).toBe(28);
 
     const submittedTasks = result.tasks.filter((t) => t.included);
     // With auto-detected hasChains, the engine adds chain predecessors
     // (T-1001-DEBURR is auto-added as predecessor of T-1001-ASSEMBLE)
     expect(submittedTasks.length).toBeGreaterThanOrEqual(2);
 
-    const machineTask = result.tasks.find((t) => t.key === 'T-1001-H-MACHINE');
+    const machineTask = result.tasks.find((t) => t.key === 'T-1002-B-MACHINE');
     expect(machineTask).toBeDefined();
     expect(machineTask!.included).toBe(true);
 
-    const bracketTask = result.tasks.find((t) => t.key === 'T-1002-B-MACHINE');
+    const bracketTask = result.tasks.find((t) => t.key === 'T-1003-QC');
     expect(bracketTask).toBeDefined();
     expect(bracketTask!.included).toBe(false);
     expect(bracketTask!.feasible).toBe(false);
@@ -147,7 +147,7 @@ describe('CTPService', () => {
 
   it('typed attributes preserved in results', () => {
     const result = ctpService.solve();
-    const task = result.tasks.find((t) => t.key === 'T-1001-H-MACHINE');
+    const task = result.tasks.find((t) => t.key === 'T-1002-B-MACHINE');
     expect(task).toBeDefined();
     expect(task!.typedAttributes.length).toBeGreaterThan(0);
 
@@ -181,8 +181,9 @@ describe('CTPService', () => {
   it('empty taskKeys returns empty solve', () => {
     const result = ctpService.solve({ taskKeys: [] });
     // includedTasks counts all PROCESS tasks in landscape (summary-level)
-    expect(result.summary.includedTasks).toBe(29);
-    expect(result.summary.scheduledTasks).toBe(0);
+    expect(result.summary.includedTasks).toBe(28);
+    // Commitment stack pins running task as scheduled; completed excluded from feasibility count
+    expect(result.summary.scheduledTasks).toBe(1);
     // No tasks submitted → all skipped
     const submittedTasks = result.tasks.filter((t) => t.included);
     expect(submittedTasks.length).toBe(0);

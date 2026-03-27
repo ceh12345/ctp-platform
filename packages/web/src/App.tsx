@@ -2922,6 +2922,58 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
         </div>
       )}
 
+      {/* Commitment Level */}
+      {task.commitmentLevel && task.commitmentLevel !== 'planned' && task.commitmentLevel !== 'unscheduled' && (
+        <>
+          <SectionLabel label="Commitment" />
+          <DetailRow label="Level" value={(() => {
+            const cfg: Record<string, { icon: string; color: string; label: string }> = {
+              completed: { icon: '\u2714', color: '#16a34a', label: 'Completed' },
+              running: { icon: '\u25CF', color: '#ef4444', label: 'Running' },
+              on_hold: { icon: '\u26A0', color: '#f59e0b', label: 'On Hold' },
+              dispatched: { icon: '\u25C6', color: '#f97316', label: 'Dispatched' },
+              pinned: { icon: '\uD83D\uDCCC', color: '#3b82f6', label: 'Pinned' },
+            };
+            const c = cfg[task.commitmentLevel] || { icon: '', color: C.text, label: task.commitmentLevel };
+            return <span style={{ color: c.color, fontWeight: 600 }}>{c.icon} {c.label}</span>;
+          })()} />
+          {task.commitmentLevel === 'running' && task.percentComplete > 0 && (
+            <>
+              <DetailRow label="Progress" value={`${task.percentComplete}%`} color="#ef4444" />
+              <div style={{ margin: '4px 0 8px', height: 6, background: C.surface2, borderRadius: 3 }}>
+                <div style={{ width: `${task.percentComplete}%`, height: '100%', borderRadius: 3, background: '#ef4444', transition: 'width 0.3s' }} />
+              </div>
+            </>
+          )}
+          {task.commitmentLevel === 'running' && task.actualStart && (
+            <DetailRow label="Started" value={fmtDate(task.actualStart)} />
+          )}
+          {task.actualResource && (
+            <DetailRow label="Actual Resource" value={task.actualResource} />
+          )}
+          {task.commitmentLevel === 'on_hold' && (
+            <div style={{
+              padding: '6px 10px', borderRadius: 6, marginTop: 4, marginBottom: 8,
+              background: '#f59e0b15', border: '1px solid #f59e0b30',
+              fontSize: 11, color: '#f59e0b',
+            }}>
+              {'\u26A0'} On Hold{task.holdReason ? ` — ${task.holdReason}` : ''}
+              {task.estimatedResumeTime && <div style={{ marginTop: 2, fontSize: 10, color: C.textMuted }}>Est. resume: {fmtDate(task.estimatedResumeTime)}</div>}
+            </div>
+          )}
+          {task.commitmentLevel === 'dispatched' && (
+            <div style={{
+              padding: '6px 10px', borderRadius: 6, marginTop: 4, marginBottom: 8,
+              background: '#f9731615', border: '1px solid #f9731630',
+              fontSize: 11, color: '#f97316',
+            }}>
+              {'\u25C6'} Dispatched{task.materialsPulled ? ' — materials pulled' : ''}
+              {task.dispatchedAt && <div style={{ marginTop: 2, fontSize: 10, color: C.textMuted }}>Dispatched: {fmtDate(task.dispatchedAt)}</div>}
+            </div>
+          )}
+        </>
+      )}
+
       {/* Schedule Flexibility (slack) */}
       {task.feasible && task.slack !== undefined && task.slack !== null && (
         <>
@@ -4269,6 +4321,9 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                           ...(isCritical && { borderTop: '2px solid #f97316', boxShadow: '0 0 6px #f9731640' }),
                           ...(isPinned && !isCritical && { boxShadow: `0 0 0 2px ${C.accent}` }),
                           ...(isExcluded && { filter: 'grayscale(1)' }),
+                          ...(t.commitmentLevel === 'running' && !isCritical ? { borderLeft: '4px solid #ef4444' } : {}),
+                          ...(t.commitmentLevel === 'on_hold' ? { borderLeft: '4px solid #f59e0b' } : {}),
+                          ...(t.commitmentLevel === 'dispatched' && !isCritical ? { borderLeft: '4px solid #f97316' } : {}),
                           ...(actionLoading === t.key && { animation: 'pulse 1s ease-in-out infinite' }),
                           ...(flashAnim === 'schedule' || flashAnim === 'retry-success'
                             ? { boxShadow: `0 0 8px 2px ${C.green}`, transform: 'scaleY(1.1)' }
@@ -4279,6 +4334,18 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                           <div style={{
                             position: 'absolute', inset: 0, borderRadius: 'inherit',
                             background: `repeating-linear-gradient(-45deg, transparent, transparent 4px, ${C.red}22 4px, ${C.red}22 8px)`,
+                          }} />
+                        )}
+                        {t.commitmentLevel === 'on_hold' && (
+                          <div style={{
+                            position: 'absolute', inset: 0, borderRadius: 'inherit',
+                            background: `repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(245,158,11,0.2) 4px, rgba(245,158,11,0.2) 8px)`,
+                          }} />
+                        )}
+                        {t.commitmentLevel === 'running' && t.percentComplete > 0 && (
+                          <div style={{
+                            position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 'inherit',
+                            width: `${t.percentComplete}%`, background: 'rgba(255,255,255,0.2)',
                           }} />
                         )}
                         {isPinned && <span style={{ position: 'absolute', top: -6, right: -4, fontSize: 9, zIndex: 2 }}>📌</span>}
@@ -4739,6 +4806,14 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
               Slack: {hovered.slack < 60 ? `${Math.round(hovered.slack)}s` : hovered.slack < 3600 ? `${Math.floor(hovered.slack / 60)}m` : `${Math.floor(hovered.slack / 3600)}h ${Math.floor((hovered.slack % 3600) / 60)}m`}
             </div>
           )}
+          {hovered.commitmentLevel && hovered.commitmentLevel !== 'planned' && hovered.commitmentLevel !== 'unscheduled' && (
+            <div style={{ fontSize: 10, fontWeight: 600, marginTop: 2, color:
+              hovered.commitmentLevel === 'completed' ? '#16a34a' : hovered.commitmentLevel === 'running' ? '#ef4444' : hovered.commitmentLevel === 'on_hold' ? '#f59e0b' : hovered.commitmentLevel === 'dispatched' ? '#f97316' : C.accent }}>
+              {{ completed: '\u2714 Completed', running: '\u25CF Running', on_hold: '\u26A0 On Hold', dispatched: '\u25C6 Dispatched', pinned: '\uD83D\uDCCC Pinned' }[hovered.commitmentLevel as string] || ''}
+              {hovered.commitmentLevel === 'running' && hovered.percentComplete > 0 ? ` (${hovered.percentComplete}%)` : ''}
+              {hovered.commitmentLevel === 'on_hold' && hovered.holdReason ? ` — ${hovered.holdReason}` : ''}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -5158,6 +5233,10 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
 
 function deriveTaskStatus(tk: any, taskPins?: Record<string, boolean>, taskExcludes?: Record<string, boolean>,
   taskUnschedules?: Set<string>, orderModes?: Record<string, string>): string {
+  // Commitment-level statuses take priority
+  if (tk.commitmentLevel === 'running') return 'running';
+  if (tk.commitmentLevel === 'on_hold') return 'on_hold';
+  if (tk.commitmentLevel === 'dispatched') return 'dispatched';
   const isExcluded = taskExcludes?.[tk.key] || false;
   const orderMode = orderModes?.[tk.orderRef] || 'INCLUDE';
   if (isExcluded || orderMode === 'EXCLUDE') return 'excluded';
@@ -5177,6 +5256,9 @@ function deriveTaskStatusExtended(tk: any): string {
 }
 
 const TASK_STATUS_CONFIG: Record<string, { label: string; color: string; icon?: string }> = {
+  running:     { label: 'Running',     color: '#ef4444', icon: '\u25CF' },
+  on_hold:     { label: 'On Hold',     color: '#f59e0b', icon: '\u26A0' },
+  dispatched:  { label: 'Dispatched',  color: '#f97316', icon: '\u25C6' },
   scheduled:   { label: 'Scheduled',   color: C.green },
   unscheduled: { label: 'Unscheduled', color: C.yellow },
   pinned:      { label: 'Pinned',      color: C.yellow, icon: '📌' },
@@ -5315,6 +5397,7 @@ function TaskBulkActions({ filteredTasks, taskPins, taskExcludes, orderModes,
   const excludedCount = actionable.filter(t => taskExcludes[t.key]).length;
   const scheduledKeys = scheduled.map(t => t.key);
   const actionableKeys = actionable.map(t => t.key);
+
 
   if (filteredTasks.length <= 1) return null;
 
@@ -5633,6 +5716,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
       _type,
       _processCategory,
       _slackSort: tk.isOnCriticalPath ? -1 : (tk.slack ?? Infinity),
+      _commitSort: { running: 0, on_hold: 1, dispatched: 2, pinned: 3, planned: 4, unscheduled: 5 }[tk.commitmentLevel as string] ?? 5,
     };
   }), [caseTasks, taskPins, taskExcludes, taskUnschedules, orderModes, products, priorityOverrides]);
 
@@ -5772,6 +5856,9 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
     return { ...base, onChange: filter.setColumnFilter };
   };
 
+  const runningCount = typeFiltered.filter(tk => tk._status === 'running').length;
+  const onHoldCount = typeFiltered.filter(tk => tk._status === 'on_hold').length;
+  const dispatchedCount = typeFiltered.filter(tk => tk._status === 'dispatched').length;
   const scheduledCount = typeFiltered.filter(tk => tk._status === 'scheduled').length;
   const unscheduledCount = typeFiltered.filter(tk => tk._status === 'unscheduled').length;
   const pinnedCount = typeFiltered.filter(tk => tk._status === 'pinned').length;
@@ -5781,6 +5868,9 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
 
   const statusOptions = [
     { value: 'all', label: 'All', count: typeFiltered.length },
+    { value: 'running', label: '\u25CF Running', color: '#ef4444', count: runningCount },
+    { value: 'on_hold', label: '\u26A0 On Hold', color: '#f59e0b', count: onHoldCount },
+    { value: 'dispatched', label: '\u25C6 Dispatched', color: '#f97316', count: dispatchedCount },
     { value: 'scheduled', label: t('scheduledStatus', 'Scheduled'), color: C.green, count: scheduledCount },
     { value: 'unscheduled', label: t('unscheduledStatus', 'Unscheduled'), color: C.yellow, count: unscheduledCount },
     { value: 'pinned', label: t('pinnedStatus', 'Pinned'), color: C.yellow, count: pinnedCount },
@@ -6129,6 +6219,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                 filterProps={colFilter('_processCategory')} />
               {showAt(experienceLevel, 'intermediate') && <SortHeader label={t('score', 'Score')} k="score" current={sortKey} dir={sortDir} onSort={toggle} />}
               {showAt(experienceLevel, 'intermediate') && <SortHeader label="Slack" k="_slackSort" current={sortKey} dir={sortDir} onSort={toggle} />}
+              {showAt(experienceLevel, 'intermediate') && <SortHeader label="Commit" k="_commitSort" current={sortKey} dir={sortDir} onSort={toggle} />}
               <SortHeader label="Status" k="_status" current={sortKey} dir={sortDir} onSort={toggle} />
               {hasActions && <th style={{
                 padding: '10px 12px', textAlign: 'center', fontSize: 12, fontWeight: 600,
@@ -6206,6 +6297,23 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                           {tk.slack < 60 ? `${Math.round(tk.slack)}s` : tk.slack < 3600 ? `${Math.floor(tk.slack / 60)}m` : `${Math.floor(tk.slack / 3600)}h ${Math.floor((tk.slack % 3600) / 60)}m`}
                         </span>
                     }
+                  </td>}
+                  {showAt(experienceLevel, 'intermediate') && <td style={{ ...cellStyle, textAlign: 'center' }}>
+                    {(() => {
+                      const cfg: Record<string, { icon: string; color: string; label: string }> = {
+                        completed:   { icon: '\u2714', color: '#16a34a', label: 'Done' },
+                        running:     { icon: '\u25CF', color: '#ef4444', label: 'Running' },
+                        on_hold:     { icon: '\u26A0', color: '#f59e0b', label: 'On Hold' },
+                        dispatched:  { icon: '\u25C6', color: '#f97316', label: 'Dispatched' },
+                        pinned:      { icon: '\uD83D\uDCCC', color: '#3b82f6', label: 'Pinned' },
+                        planned:     { icon: '\u2713', color: '#22c55e', label: 'Planned' },
+                        unscheduled: { icon: '\u25CB', color: '#9ca3af', label: 'Unsched' },
+                      };
+                      const c = cfg[tk.commitmentLevel as string] || cfg.unscheduled;
+                      return <span style={{ color: c.color, fontSize: 11, fontWeight: 600 }} title={c.label}>
+                        {c.icon} {tk.percentComplete > 0 && tk.commitmentLevel === 'running' ? `${tk.percentComplete}%` : c.label}
+                      </span>;
+                    })()}
                   </td>}
                   <td style={cellStyle}>
                     {taskStatusBadge(tk._status)}
@@ -7782,10 +7890,151 @@ function SolverSection({ stats, solveResult, configName }: { stats?: any; solveR
 
 // ── Settings Content (left-nav layout) ───────────────────────────────────
 
-const SETTINGS_SECTIONS: { key: string; label: string; icon: string; minLevel: ExperienceLevel }[] = [
+function AdminCloneTenant() {
+  const [tenants, setTenants] = useState<{ tenantId: string; name: string; vertical: string }[]>([]);
+  const [source, setSource] = useState('');
+  const [targetName, setTargetName] = useState('');
+  const target = targetName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const [status, setStatus] = useState<{ type: 'ok' | 'error'; msg: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const loadTenants = useCallback(async () => {
+    try {
+      const res = await api('/ctp/admin/tenants');
+      setTenants(res.tenants || []);
+      if (!source && res.tenants?.length > 0) setSource(res.tenants[0].tenantId);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { loadTenants(); }, []);
+
+  const handleClone = async () => {
+    if (!source || !target) return;
+    setLoading(true);
+    setStatus(null);
+    try {
+      await api('/ctp/admin/clone-tenant', {
+        method: 'POST',
+        body: JSON.stringify({ sourceTenant: source, targetTenant: target, displayName: targetName.trim() || undefined }),
+      });
+      setStatus({ type: 'ok', msg: `Cloned '${source}' to '${target}'` });
+      setTargetName('');
+      loadTenants();
+    } catch (err: any) {
+      setStatus({ type: 'error', msg: err.message || 'Clone failed' });
+    }
+    setLoading(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm(`Delete tenant '${id}'? This cannot be undone.`)) return;
+    try {
+      await api(`/ctp/admin/tenant/${id}`, { method: 'DELETE' });
+      setStatus({ type: 'ok', msg: `Deleted '${id}'` });
+      loadTenants();
+    } catch (err: any) {
+      setStatus({ type: 'error', msg: err.message || 'Delete failed' });
+    }
+  };
+
+  const handleReset = async (id: string) => {
+    if (!confirm(`Reset tenant '${id}' to its source? All changes will be lost.`)) return;
+    try {
+      await api(`/ctp/admin/tenant/${id}/reset`, { method: 'POST' });
+      setStatus({ type: 'ok', msg: `Reset '${id}' to source` });
+      loadTenants();
+    } catch (err: any) {
+      setStatus({ type: 'error', msg: err.message || 'Reset failed' });
+    }
+  };
+
+  const PROTECTED = new Set(['demo-manufacturing', 'stafford-engineering', 'acme-outpatient']);
+
+  return (
+    <div>
+      <SectionLabel label="Clone Tenant" />
+      <p style={{ fontSize: 12, color: C.textMuted, margin: '0 0 16px' }}>
+        Copy a tenant configuration to create a sandbox for testing.
+      </p>
+
+      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', marginBottom: 12 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, color: C.textDim, marginBottom: 4, fontWeight: 600 }}>Source</div>
+          <select value={source} onChange={e => setSource(e.target.value)} style={{
+            width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${C.border}`,
+            background: C.surface, color: C.text, fontSize: 13, fontFamily: FONT,
+          }}>
+            {tenants.map(t => <option key={t.tenantId} value={t.tenantId}>{t.name}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, color: C.textDim, marginBottom: 4, fontWeight: 600 }}>New Tenant Name</div>
+          <input value={targetName} onChange={e => setTargetName(e.target.value)}
+            placeholder="e.g. Stafford Sandbox" style={{
+            width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${C.border}`,
+            background: C.surface, color: C.text, fontSize: 13, fontFamily: FONT, boxSizing: 'border-box',
+          }} />
+          {target && <div style={{ fontSize: 10, color: C.textDim, marginTop: 3, fontFamily: 'monospace' }}>Key: {target}</div>}
+        </div>
+        <button onClick={handleClone} disabled={loading || !source || !target || target.length < 3} style={{
+          padding: '8px 18px', borderRadius: 6, border: 'none', cursor: 'pointer',
+          background: C.accent, color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: FONT,
+          opacity: loading || !source || !target || target.length < 3 ? 0.4 : 1,
+          whiteSpace: 'nowrap',
+        }}>
+          Clone
+        </button>
+      </div>
+
+      {status && (
+        <div style={{
+          padding: '8px 12px', borderRadius: 6, fontSize: 12, marginBottom: 12,
+          background: status.type === 'ok' ? '#16a34a22' : '#ef444422',
+          color: status.type === 'ok' ? '#16a34a' : '#ef4444',
+          border: `1px solid ${status.type === 'ok' ? '#16a34a44' : '#ef444444'}`,
+        }}>
+          {status.msg}
+        </div>
+      )}
+
+      <SectionLabel label="Tenants" />
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <thead>
+          <tr>
+            <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: `1px solid ${C.border}`, color: C.textDim, fontWeight: 600 }}>Tenant</th>
+            <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: `1px solid ${C.border}`, color: C.textDim, fontWeight: 600 }}>Name</th>
+            <th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: `1px solid ${C.border}`, color: C.textDim, fontWeight: 600 }}>Source</th>
+            <th style={{ textAlign: 'center', padding: '6px 8px', borderBottom: `1px solid ${C.border}`, color: C.textDim, fontWeight: 600, width: 160 }}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tenants.map(t => (
+            <tr key={t.tenantId}>
+              <td style={{ padding: '6px 8px', borderBottom: `1px solid ${C.border}`, color: C.text, fontFamily: 'monospace', fontSize: 11 }}>{t.tenantId}</td>
+              <td style={{ padding: '6px 8px', borderBottom: `1px solid ${C.border}`, color: C.textMuted }}>{t.name}</td>
+              <td style={{ padding: '6px 8px', borderBottom: `1px solid ${C.border}`, color: C.textDim, fontFamily: 'monospace', fontSize: 10 }}>{(t as any).clonedFrom || '\u2014'}</td>
+              <td style={{ padding: '6px 8px', borderBottom: `1px solid ${C.border}`, textAlign: 'center' }}>
+                <a href={`?tenant=${t.tenantId}`} style={{ color: C.accent, fontSize: 11, marginRight: 10, textDecoration: 'none' }}>Switch</a>
+                {(t as any).clonedFrom && (
+                  <span onClick={() => handleReset(t.tenantId)} style={{ color: '#f59e0b', fontSize: 11, cursor: 'pointer', marginRight: 10 }}>Reset</span>
+                )}
+                {!PROTECTED.has(t.tenantId) && (
+                  <span onClick={() => handleDelete(t.tenantId)} style={{ color: C.red, fontSize: 11, cursor: 'pointer' }}>Delete</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const SETTINGS_SECTIONS: { key: string; label: string; icon: string; minLevel: ExperienceLevel; group?: string }[] = [
   { key: 'general',  label: 'General',       icon: 'G', minLevel: 'novice' },
   { key: 'scoring',  label: 'Scoring Rules', icon: 'S', minLevel: 'intermediate' },
   { key: 'solver',   label: 'Solver',        icon: 'D', minLevel: 'expert' },
+  { key: 'admin',    label: 'Admin',         icon: 'A', minLevel: 'novice', group: 'Admin' },
 ];
 
 function SettingsContent({ experienceLevel, onExperienceChange, stats, solveResult, scoringRules, onScoringRulesChange, scoringSource, configName }: {
@@ -7812,8 +8061,13 @@ function SettingsContent({ experienceLevel, onExperienceChange, stats, solveResu
     <div style={{ display: 'flex', fontFamily: FONT, minHeight: 400 }}>
       {/* Left nav */}
       <div style={{ width: 170, borderRight: `1px solid ${C.border}`, flexShrink: 0, paddingTop: 4 }}>
-        {visibleSections.map(section => (
+        {visibleSections.map((section, i) => (
           <div key={section.key}>
+            {section.group && (i === 0 || visibleSections[i - 1].group !== section.group) && (
+              <div style={{ fontSize: 10, fontWeight: 700, color: C.textDim, padding: '12px 14px 4px', textTransform: 'uppercase', letterSpacing: 1, borderTop: i > 0 ? `1px solid ${C.border}` : 'none', marginTop: i > 0 ? 4 : 0 }}>
+                {section.group}
+              </div>
+            )}
             <div
               onClick={() => setActiveSection(section.key)}
               style={{
@@ -7874,6 +8128,10 @@ function SettingsContent({ experienceLevel, onExperienceChange, stats, solveResu
 
         {activeSection === 'solver' && (
           <SolverSection stats={stats} solveResult={solveResult} configName={configName} />
+        )}
+
+        {activeSection === 'admin' && (
+          <AdminCloneTenant />
         )}
       </div>
     </div>

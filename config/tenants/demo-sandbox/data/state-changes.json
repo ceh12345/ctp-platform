@@ -1,0 +1,18 @@
+[
+  {
+    "resourceType": "CNC",
+    "type": "PROCESS CHANGE",
+    "fromState": "Widget-A",
+    "toState": "Widget-B",
+    "duration": 1800,
+    "penalty": 0
+  },
+  {
+    "resourceType": "CNC",
+    "type": "PROCESS CHANGE",
+    "fromState": "DEFAULT CHANGE",
+    "toState": "DEFAULT CHANGE",
+    "duration": 900,
+    "penalty": 0
+  }
+]

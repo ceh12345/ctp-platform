@@ -1,0 +1,33 @@
+{
+  "taskColors": {
+    "byNamePattern": {
+      "Machine": "#3b82f6",
+      "Deburr": "#60a5fa",
+      "Assemble": "#8b5cf6",
+      "QC": "#06b6d4",
+      "Pack": "#22c55e"
+    },
+    "processChange": "#eab308",
+    "setup": "#eab308",
+    "teardown": "#f97316",
+    "default": "#3b82f6"
+  },
+  "resourceColors": {
+    "available": "#22c55e",
+    "unavailable": "#ef4444",
+    "assigned": "#3b82f6",
+    "changeover": "#eab308",
+    "maintenance": "#ef4444"
+  },
+  "statusColors": {
+    "on-track": "#22c55e",
+    "at-risk": "#eab308",
+    "late": "#ef4444",
+    "covered": "#22c55e",
+    "shortage": "#ef4444",
+    "scheduled": "#22c55e",
+    "infeasible": "#ef4444",
+    "blocked": "#ef4444",
+    "unscheduled": "#475569"
+  }
+}

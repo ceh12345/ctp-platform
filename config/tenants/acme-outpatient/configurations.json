@@ -1,0 +1,74 @@
+[
+  {
+    "key": "default",
+    "name": "Standard",
+    "description": "Default configuration (from scoring.json)",
+    "owner": "tenant",
+    "isDefault": true,
+    "updatedAt": "2026-03-21T17:45:18.864Z",
+    "scoring": [
+      {
+        "ruleName": "EarliestStartTimeScoringRule",
+        "weight": 0.5,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Schedule Quality"
+      },
+      {
+        "ruleName": "WhiteSpaceScoringRule",
+        "weight": 0.3,
+        "objective": 1,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Resource Efficiency"
+      },
+      {
+        "ruleName": "ChangeoverScoringRule",
+        "weight": 0.2,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Resource Efficiency"
+      }
+    ],
+    "strategy": "Chain",
+    "tier": "quick"
+  },
+  {
+    "key": "standard-copy",
+    "name": "Standard (Copy)",
+    "description": "Default configuration (from scoring.json)",
+    "owner": "tenant",
+    "isDefault": false,
+    "updatedAt": "2026-03-21T17:45:18.864Z",
+    "scoring": [
+      {
+        "ruleName": "EarliestStartTimeScoringRule",
+        "weight": 0.5,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Schedule Quality"
+      },
+      {
+        "ruleName": "WhiteSpaceScoringRule",
+        "weight": 0.3,
+        "objective": 1,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Resource Efficiency"
+      },
+      {
+        "ruleName": "ChangeoverScoringRule",
+        "weight": 0.2,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Resource Efficiency"
+      }
+    ],
+    "strategy": "Chain",
+    "tier": "quick"
+  }
+]

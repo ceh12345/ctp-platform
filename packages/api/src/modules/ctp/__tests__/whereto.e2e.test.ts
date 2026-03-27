@@ -48,11 +48,11 @@ describe('WhereTo API', () => {
       ctpService.solve();
 
       // Unschedule a task so it has open options
-      ctpService.unscheduleTask('T-1001-H-MACHINE');
+      ctpService.unscheduleTask('T-1002-B-MACHINE');
 
-      const result = ctpService.whereTo('T-1001-H-MACHINE');
+      const result = ctpService.whereTo('T-1002-B-MACHINE');
 
-      expect(result.taskKey).toBe('T-1001-H-MACHINE');
+      expect(result.taskKey).toBe('T-1002-B-MACHINE');
       expect(result.options).toBeDefined();
       expect(Array.isArray(result.options)).toBe(true);
       expect(result.options.length).toBeGreaterThan(0);
@@ -71,16 +71,16 @@ describe('WhereTo API', () => {
 
     it('should filter by onlyResources', () => {
       ctpService.solve();
-      ctpService.unscheduleTask('T-1001-H-MACHINE');
+      ctpService.unscheduleTask('T-1002-B-MACHINE');
 
       // First call without filter to see what resources are available
-      const allResult = ctpService.whereTo('T-1001-H-MACHINE');
+      const allResult = ctpService.whereTo('T-1002-B-MACHINE');
       if (allResult.options.length === 0) return; // Skip if no options
 
       // Get a resource key from the options
       const firstResourceKey = allResult.options[0].resources[0].resourceKey;
 
-      const result = ctpService.whereTo('T-1001-H-MACHINE', {
+      const result = ctpService.whereTo('T-1002-B-MACHINE', {
         constraints: { onlyResources: [firstResourceKey] },
       });
 
@@ -92,9 +92,9 @@ describe('WhereTo API', () => {
 
     it('should respect maxResults', () => {
       ctpService.solve();
-      ctpService.unscheduleTask('T-1001-H-MACHINE');
+      ctpService.unscheduleTask('T-1002-B-MACHINE');
 
-      const result = ctpService.whereTo('T-1001-H-MACHINE', {
+      const result = ctpService.whereTo('T-1002-B-MACHINE', {
         constraints: { maxResults: 2 },
       });
 
@@ -103,9 +103,9 @@ describe('WhereTo API', () => {
 
     it('should return options sorted by score with sequential ranks', () => {
       ctpService.solve();
-      ctpService.unscheduleTask('T-1001-H-MACHINE');
+      ctpService.unscheduleTask('T-1002-B-MACHINE');
 
-      const result = ctpService.whereTo('T-1001-H-MACHINE');
+      const result = ctpService.whereTo('T-1002-B-MACHINE');
 
       for (let i = 0; i < result.options.length; i++) {
         expect(result.options[i].rank).toBe(i + 1);
@@ -117,9 +117,9 @@ describe('WhereTo API', () => {
 
     it('should return ISO date strings', () => {
       ctpService.solve();
-      ctpService.unscheduleTask('T-1001-H-MACHINE');
+      ctpService.unscheduleTask('T-1002-B-MACHINE');
 
-      const result = ctpService.whereTo('T-1001-H-MACHINE');
+      const result = ctpService.whereTo('T-1002-B-MACHINE');
 
       if (result.options.length > 0) {
         const opt = result.options[0];
@@ -133,10 +133,10 @@ describe('WhereTo API', () => {
 
     it('should be idempotent (same results on repeat)', () => {
       ctpService.solve();
-      ctpService.unscheduleTask('T-1001-H-MACHINE');
+      ctpService.unscheduleTask('T-1002-B-MACHINE');
 
-      const result1 = ctpService.whereTo('T-1001-H-MACHINE');
-      const result2 = ctpService.whereTo('T-1001-H-MACHINE');
+      const result1 = ctpService.whereTo('T-1002-B-MACHINE');
+      const result2 = ctpService.whereTo('T-1002-B-MACHINE');
 
       expect(result1.options.length).toBe(result2.options.length);
       for (let i = 0; i < result1.options.length; i++) {
@@ -159,9 +159,9 @@ describe('WhereTo API', () => {
 
     it('should return success:false for invalid contextHash', () => {
       ctpService.solve();
-      ctpService.unscheduleTask('T-1001-H-MACHINE');
+      ctpService.unscheduleTask('T-1002-B-MACHINE');
 
-      const result = ctpService.moveTo('T-1001-H-MACHINE', {
+      const result = ctpService.moveTo('T-1002-B-MACHINE', {
         contextHash: 'INVALID-HASH',
         startTime: '2025-02-17T08:00:00',
       });
@@ -173,10 +173,10 @@ describe('WhereTo API', () => {
 
     it('should move task to a valid option', () => {
       ctpService.solve();
-      ctpService.unscheduleTask('T-1001-H-MACHINE');
+      ctpService.unscheduleTask('T-1002-B-MACHINE');
 
       // Get options
-      const whereToResult = ctpService.whereTo('T-1001-H-MACHINE');
+      const whereToResult = ctpService.whereTo('T-1002-B-MACHINE');
 
       if (whereToResult.options.length === 0) {
         console.log('No options available — skipping move-to test');
@@ -186,13 +186,13 @@ describe('WhereTo API', () => {
       const bestOption = whereToResult.options[0];
 
       // Move to best option
-      const moveResult = ctpService.moveTo('T-1001-H-MACHINE', {
+      const moveResult = ctpService.moveTo('T-1002-B-MACHINE', {
         contextHash: bestOption.contextHash,
         startTime: bestOption.start,
       });
 
       expect(moveResult.success).toBe(true);
-      expect(moveResult.taskKey).toBe('T-1001-H-MACHINE');
+      expect(moveResult.taskKey).toBe('T-1002-B-MACHINE');
       expect(moveResult.assignment).toBeDefined();
       expect(moveResult.assignment!.resources.length).toBeGreaterThan(0);
       expect(moveResult.assignment!.start).toBeTruthy();

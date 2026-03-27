@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Param, Query } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, Param, Query } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -286,5 +286,87 @@ export class CTPController {
   @ApiResponse({ status: 409, description: 'Landscape changed — re-diagnose required' })
   applyRecommendation(@Body() body: ApplyRecommendationRequestDto) {
     return this.ctpService.applyRecommendation(body);
+  }
+
+  // ─── Commitment Stack Transitions ───
+
+  @Post('tasks/dispatch')
+  @ApiOperation({ summary: 'Mark tasks as dispatched (materials pulled, operator assigned)' })
+  @ApiResponse({ status: 200, description: 'Tasks dispatched' })
+  dispatch(@Body() body: { taskKeys: string[]; actualResources?: string[] }) {
+    return this.ctpService.dispatchTasks(body.taskKeys, body.actualResources);
+  }
+
+  @Post('tasks/start')
+  @ApiOperation({ summary: 'Mark a task as running (in process)' })
+  @ApiResponse({ status: 200, description: 'Task started' })
+  startTask(@Body() body: { taskKey: string; actualStart?: string; actualResources?: string[] }) {
+    return this.ctpService.startTask(body.taskKey, body.actualStart, body.actualResources);
+  }
+
+  @Post('tasks/hold')
+  @ApiOperation({ summary: 'Put a running task on hold' })
+  @ApiResponse({ status: 200, description: 'Task on hold' })
+  holdTask(@Body() body: { taskKey: string; holdReason: string; estimatedResumeTime?: string }) {
+    return this.ctpService.holdTask(body.taskKey, body.holdReason, body.estimatedResumeTime);
+  }
+
+  @Post('tasks/resume')
+  @ApiOperation({ summary: 'Resume a held task' })
+  @ApiResponse({ status: 200, description: 'Task resumed' })
+  resumeTask(@Body() body: { taskKey: string }) {
+    return this.ctpService.resumeTask(body.taskKey);
+  }
+
+  @Post('tasks/complete')
+  @ApiOperation({ summary: 'Mark a task as completed' })
+  @ApiResponse({ status: 200, description: 'Task completed' })
+  completeTask(@Body() body: { taskKey: string; actualEnd?: string }) {
+    return this.ctpService.completeTask(body.taskKey, body.actualEnd);
+  }
+
+  @Patch('tasks/:taskKey/progress')
+  @ApiOperation({ summary: 'Update percent complete and/or remaining duration' })
+  @ApiResponse({ status: 200, description: 'Progress updated' })
+  updateProgress(@Param('taskKey') taskKey: string, @Body() body: { percentComplete?: number; remainingDuration?: number }) {
+    return this.ctpService.updateProgress(taskKey, body);
+  }
+
+  // ─── Admin: Tenant Management ───
+
+  @Get('admin/tenants')
+  @ApiOperation({ summary: 'List all available tenants' })
+  @ApiResponse({ status: 200, description: 'Tenant list' })
+  listTenants() {
+    return this.ctpService.listTenants();
+  }
+
+  @Post('admin/clone-tenant')
+  @ApiOperation({ summary: 'Clone a tenant configuration' })
+  @ApiResponse({ status: 201, description: 'Tenant cloned' })
+  @ApiResponse({ status: 400, description: 'Invalid tenant name' })
+  @ApiResponse({ status: 404, description: 'Source tenant not found' })
+  @ApiResponse({ status: 409, description: 'Target tenant already exists' })
+  cloneTenant(@Body() body: { sourceTenant: string; targetTenant: string; displayName?: string }) {
+    return this.ctpService.cloneTenant(body.sourceTenant, body.targetTenant, body.displayName);
+  }
+
+  @Delete('admin/tenant/:tenantId')
+  @ApiOperation({ summary: 'Delete a cloned tenant' })
+  @ApiResponse({ status: 200, description: 'Tenant deleted' })
+  @ApiResponse({ status: 403, description: 'Cannot delete source tenant' })
+  @ApiResponse({ status: 404, description: 'Tenant not found' })
+  deleteTenant(@Param('tenantId') tenantId: string) {
+    return this.ctpService.deleteTenant(tenantId);
+  }
+
+  @Post('admin/tenant/:tenantId/reset')
+  @ApiOperation({ summary: 'Reset a cloned tenant to its source state' })
+  @ApiResponse({ status: 200, description: 'Tenant reset' })
+  @ApiResponse({ status: 400, description: 'Not a clone' })
+  @ApiResponse({ status: 403, description: 'Cannot reset source tenant' })
+  @ApiResponse({ status: 404, description: 'Tenant not found' })
+  resetTenant(@Param('tenantId') tenantId: string) {
+    return this.ctpService.resetTenant(tenantId);
   }
 }
