@@ -2072,7 +2072,7 @@ interface SolveSnapshot {
 // ═══════════════════════════════════════════════════════════════
 
 type SolveAction =
-  | 'schedule' | 'infeasible' | 'bump' | 'bump-remove'
+  | 'anchor' | 'schedule' | 'infeasible' | 'bump' | 'bump-remove'
   | 'retry' | 'retry-success' | 'retry-fail' | 'skip'
   | 'chain-start' | 'chain-end';
 
@@ -2118,8 +2118,20 @@ function fmtReplayTime(iso: string | null): string {
   });
 }
 
+const ANCHOR_LABELS: Record<string, string> = {
+  completed: '✓ Anchor (completed)',
+  running: '● Anchor (running)',
+  on_hold: '⚠ Anchor (on hold)',
+  dispatched: '◆ Anchor (dispatched)',
+  pinned: '📌 Anchor (pinned)',
+};
+
 function describeStep(step: SolveStep): string {
   switch (step.action) {
+    case 'anchor': {
+      const label = ANCHOR_LABELS[step.reason || ''] || 'Anchor';
+      return `${label}: ${step.taskKey} → ${step.resourceName || '?'} ${fmtReplayTime(step.startTime)}–${fmtReplayTime(step.endTime)}`;
+    }
     case 'chain-start':
       return `Evaluating chain: ${step.chainKey}`;
     case 'schedule':
@@ -2150,6 +2162,7 @@ function advanceToStep(targetStep: number, steps: SolveStep[]): Set<string> {
   for (let i = 0; i < targetStep; i++) {
     const step = steps[i];
     switch (step.action) {
+      case 'anchor':
       case 'schedule':
       case 'retry-success':
         visible.add(step.taskKey);
@@ -2164,6 +2177,7 @@ function advanceToStep(targetStep: number, steps: SolveStep[]): Set<string> {
 
 function stepColor(action: SolveAction): string {
   switch (action) {
+    case 'anchor': return C.accent;
     case 'schedule': case 'retry-success': return C.green;
     case 'infeasible': case 'retry-fail': return C.red;
     case 'bump': case 'bump-remove': return C.orange;
@@ -2176,6 +2190,7 @@ function stepColor(action: SolveAction): string {
 
 function stepIcon(action: SolveAction): string {
   switch (action) {
+    case 'anchor': return '⚓';
     case 'schedule': return '✓';
     case 'infeasible': return '✗';
     case 'bump': case 'bump-remove': return '⟳';
@@ -5775,13 +5790,12 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
     let filtered = typeFiltered;
     if (hierarchyResources.size > 0) {
       filtered = filtered.filter(tk => {
+        // Scheduled tasks: filter by actual assigned resources
         if (tk.feasible && tk.assignedResources?.length) {
           return tk.assignedResources.some((ar: any) => hierarchyResources.has(ar.resourceKey));
         }
-        if (tk.compatibleResources?.length) {
-          return tk.compatibleResources.some((cr: any) => hierarchyResources.has(cr.resourceKey));
-        }
-        return false;
+        // Unscheduled tasks: filter by preference/compatible resources
+        return tk.compatibleResources?.some((cr: any) => hierarchyResources.has(cr.resourceKey)) ?? false;
       });
     }
     if (attrFilters.length > 0) {

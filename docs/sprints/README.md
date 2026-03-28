@@ -4,7 +4,7 @@
 
 | Sprint | Name | Notes |
 |--------|------|-------|
-| Engine — Commitment Stack | 6-layer scheduling commitment model | Running, On Hold, Dispatched, Pinned, Planned, Unscheduled. New fields: `commitmentLevel`, `dispatched`, `percentComplete`, actuals (actualStart/End/Resource, holdReason, estimatedResumeTime). Solver respects layers 1-4 as fixed. Capacity waterfall in solve response. Infeasibility report shows committed breakdown by layer. UI indicators + progression buttons. Spec complete. |
+| (none) | — | — |
 
 ## Done
 
@@ -61,6 +61,8 @@
 | Sprint 22 — Schedule Configurations | Named saveable config bundles (scoring + strategy + tier); CRUD backend + UI manager tab + toolbar config switcher dropdown; compare view with color-coded diffs; Settings Panel integration (modified tracking, Save/Save As/Reset); `configurationKey` on solve request; Stafford 3 configs seed data; Duplicate-only creation (no Add) | 2026-03-21 |
 | AI Sprint 3 — Recommendation Engine | `POST /ctp/diagnose` (root cause classification, ranked recs with tradeoffs); `POST /ctp/apply-recommendation` (command sequencer with staleness check + rollback); compound recs (window+redirect, bump+move, redirect-others); AI `diagnose_tasks` tool; token optimization — UI executes fixes via action buttons (55% token reduction) | 2026-03-23 |
 | UI Sprint 23 — Unified Filter Bar | 4-row labeled filter bar (Status/When/Work/Where); ResourceHierarchyBrowser (Work Center → Type → Resource tree with checkboxes + utilization bars); AttributeSearch with autocomplete; Rush status chip; active filter summary with Clear all; resource attributes in solve response | 2026-03-23 |
+| Engine — Commitment Stack | 6-layer commitment model (Running, On Hold, Dispatched, Pinned, Planned, Unscheduled); new task fields; solver respects layers 1-4 as fixed | 2026-03-27 |
+| Solver 9 — Two-Pass Solve | Pass 1 anchors committed tasks (completed/running/on_hold/dispatched/pinned) at positions before solver Pass 2+3; clean API/engine split (classify in ctp.service, anchor in basescheduler); resource hierarchy filter fix (assigned vs compatible); Gantt replay anchor steps | 2026-03-27 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -173,8 +175,8 @@ ENGINE SPRINTS (CURRENT + PLANNED)
 ✓ Schedule Configurations (named profiles, duplicate-only, compare view)
 ✓ AI Sprint 3 Recommendations (diagnose + apply sequencer + compound recs + token optimization)
 ✓ UI Sprint 23 Unified Filter Bar (4-row: Status/When/Work/Where, hierarchy browser, attribute search)
-🔧 Commitment Stack (6 layers: Running, On Hold, Dispatched, Pinned, Planned, Unscheduled)
-   └──→ capacity waterfall, infeasibility layer breakdown, percentComplete, progression buttons
+✓ Commitment Stack (6 layers: Running, On Hold, Dispatched, Pinned, Planned, Unscheduled)
+✓ Solver 9 — Two-Pass Solve (anchor committed tasks before solver; hierarchy filter fix)
 📋 Attribute-Based Resource Matching (CC-ready, Acme proof case)
    └──→ feeds into Bottleneck Display + AI explanation
 📋 Data Integration Phase 1 (sync endpoint + CSV upload + column mapper + templates)
@@ -233,6 +235,7 @@ INFRA TRACK
   metaheuristic-scheduling-overview.docx ← 8-page overview document (executive summary, Phase A/B, cross-domain)
   stafford-demo-script.md               ← Demo script with critical path narration (5-Axis Mill bottleneck)
   commitment-stack-spec.md              ← 6-layer commitment model (Running, On Hold, Dispatched, Pinned, Planned, Unscheduled)
+  solver-9-two-pass-solve-spec.md       ← Two-pass solve: anchor committed tasks (Pass 1) before solver (Pass 2+3)
   data-integration-design.md            ← Phase 1 (inbound sync + CSV) + Phase 2 (WIP sync), combined
   task-filter-hierarchy-attribute-spec.md ← Resource hierarchy browser + attribute search filter
   unified-task-filter-bar-spec.md       ← Four-row filter bar (Status, When, Work, Where)
@@ -292,4 +295,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 24, 2026 (Commitment Stack active — Attribute Matching + Data Integration + Action Queue + Phase B in Up Next)*
+*Last updated: Mar 27, 2026 (Commitment Stack + Two-Pass Solve done — Attribute Matching + Data Integration + Action Queue + Phase B in Up Next)*

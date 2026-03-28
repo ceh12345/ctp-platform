@@ -1,4 +1,5 @@
 export type SolveAction =
+  | 'anchor'
   | 'schedule'
   | 'infeasible'
   | 'bump'

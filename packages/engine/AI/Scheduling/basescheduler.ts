@@ -4,7 +4,8 @@ import {
 } from "../../Engines/combinationengine";
 import { ScheduleEngine } from "../../Engines/scheduleengine";
 import { StateChangeEngine } from "../../Engines/statechangeerengine";
-import { CTPAssignmentConstants, CTPScheduleDirectionConstants, CTPTaskStateConstants, CTPTaskTypeConstants } from "../../Models/Core/constants";
+import { CTPAssignmentConstants, CTPScheduleDirectionConstants, CTPTaskStateConstants, CTPTaskTypeConstants, CTPWipStateConstants } from "../../Models/Core/constants";
+import { CTPAssignment, CTPInterval } from "../../Models/Core/window";
 import { CTPDateTime } from "../../Models/Core/date";
 import { List } from "../../Models/Core/list";
 import { CTPAppSettings } from "../../Models/Entities/appsettings";
@@ -646,10 +647,13 @@ export abstract class CTPBaseScheduler {
 
     this.startScheduling();
 
-    // PASS 1: Manual — schedule planner-prioritized tasks first
+    // PASS 1: Commitment Anchoring — place committed tasks at their positions
+    this.anchorCommittedTasks();
+
+    // PASS 2: Manual — schedule planner-prioritized tasks first
     this.scheduleManualPass(tasks);
 
-    // PASS 2: Solver — everything else, using the selected neighborhood strategy
+    // PASS 3: Solver — everything else, using the selected neighborhood strategy
     const strategy = this.resolveStrategy(this.settings?.solverStrategy);
     if (this.settings?.hasChains && strategy.chainCompatible) {
       // Chain-aware: ChainContextEngine + bump-and-retry
@@ -719,10 +723,184 @@ export abstract class CTPBaseScheduler {
     return result;
   }
 
+  // ── Pass 1: Commitment Anchoring ──────────────────────────────────
+
   /**
-   * Pass 1: Schedule tasks with manualPriority > 0 in the planner's exact order.
+   * Anchor committed tasks (layers 1-4) at their positions before the solver runs.
+   * Order: completed → running → on_hold → dispatched → pinned.
+   * Within each level, earliest start first.
+   * Completed tasks get a scheduled position (for chain propagation) but no capacity assignment.
+   * All others get pinned, assigned to resources, and capacity consumed.
+   */
+  protected anchorCommittedTasks(): void {
+    // Phase A: Completed tasks — position only, no capacity
+    const completed: CTPTask[] = [];
+    // Phase B: Active committed tasks — position + capacity
+    const committed: { level: number; task: CTPTask }[] = [];
+
+    this.landscape.tasks.forEach(task => {
+      if (task.wipstate === CTPWipStateConstants.COMPLETED) {
+        completed.push(task);
+      } else {
+        switch (task.commitmentLevel) {
+          case 'running':    committed.push({ level: 1, task }); break;
+          case 'on_hold':    committed.push({ level: 2, task }); break;
+          case 'dispatched': committed.push({ level: 3, task }); break;
+          case 'pinned':     committed.push({ level: 4, task }); break;
+          default: break; // planned + unscheduled handled by solver
+        }
+      }
+    });
+
+    // Phase A: Anchor completed tasks (position only for chain propagation)
+    completed.sort((a, b) => {
+      const aStart = a.actualStart ? CTPDateTime.fromDateTime(a.actualStart) : (a.scheduled?.startW ?? 0);
+      const bStart = b.actualStart ? CTPDateTime.fromDateTime(b.actualStart) : (b.scheduled?.startW ?? 0);
+      return aStart - bStart;
+    });
+
+    for (const task of completed) {
+      if (task.actualStart && task.actualEnd) {
+        const startW = CTPDateTime.fromDateTime(task.actualStart);
+        const endW = CTPDateTime.fromDateTime(task.actualEnd);
+        if (!task.scheduled) task.scheduled = new CTPInterval();
+        task.scheduled.startW = startW;
+        task.scheduled.endW = endW;
+      } else if (task.actualStart) {
+        const startW = CTPDateTime.fromDateTime(task.actualStart);
+        const endW = startW + (task.duration?.duration() ?? 0);
+        if (!task.scheduled) task.scheduled = new CTPInterval();
+        task.scheduled.startW = startW;
+        task.scheduled.endW = endW;
+      }
+      // If no actuals at all, leave existing scheduled position (if any)
+
+      task.state = CTPTaskStateConstants.SCHEDULED;
+      task.pinned = true;
+      task.processed = true;
+
+      // No resource assignments — capacity is freed
+      const priRes = task.actualResources?.[0] ?? null;
+      this.recordStep('anchor', task, task.linkId?.name ?? null,
+        priRes, priRes, task.scheduled?.startW, task.scheduled?.endW, null, 'completed');
+    }
+
+    // Phase B: Anchor active committed tasks (position + capacity)
+    committed.sort((a, b) => {
+      if (a.level !== b.level) return a.level - b.level;
+      const aStart = this.getAnchorStart(a.task);
+      const bStart = this.getAnchorStart(b.task);
+      return aStart - bStart;
+    });
+
+    for (const { task } of committed) {
+      this.anchorTask(task);
+    }
+  }
+
+  private getAnchorStart(task: CTPTask): number {
+    if (task.actualStart) return CTPDateTime.fromDateTime(task.actualStart);
+    if (task.scheduled) return task.scheduled.startW;
+    return task.window?.startW ?? 0;
+  }
+
+  private anchorTask(task: CTPTask): void {
+    let startW: number;
+    let endW: number;
+
+    if (task.commitmentLevel === 'running' || task.commitmentLevel === 'on_hold') {
+      // Running/On Hold: compute position from actualStart + remaining duration
+      startW = task.actualStart
+        ? CTPDateTime.fromDateTime(task.actualStart)
+        : (task.scheduled?.startW ?? task.window?.startW ?? 0);
+      endW = startW + task.effectiveRemainingDuration();
+
+      // Set the scheduled interval
+      if (!task.scheduled) task.scheduled = new CTPInterval();
+      task.scheduled.startW = startW;
+      task.scheduled.endW = endW;
+    } else {
+      // Dispatched/Pinned: already have scheduled position + scheduledResource
+      // from the prior solve that the planner locked. Just confirm and lock.
+      if (!task.scheduled) return; // defensive — shouldn't happen
+      startW = task.scheduled.startW;
+      endW = task.scheduled.endW;
+    }
+
+    // Mark as scheduled, pinned, processed
+    task.state = CTPTaskStateConstants.SCHEDULED;
+    task.pinned = true;
+    task.processed = true;
+
+    // Create resource assignments to consume capacity
+    let primaryResourceKey: string | null = null;
+
+    if (task.commitmentLevel === 'running' || task.commitmentLevel === 'on_hold') {
+      // Running/On Hold: resolve resource from actualResources → scheduledResource → preference
+      const actualResources = task.actualResources ?? [];
+      task.capacityResources?.forEach((tr, index) => {
+        let resourceKey: string | null = null;
+
+        if (index < actualResources.length) {
+          resourceKey = actualResources[index];
+        } else if (actualResources.length > 0) {
+          for (const ar of actualResources) {
+            const matchesPref = tr.preferences?.some((p: any) => p.resourceKey === ar);
+            if (matchesPref) { resourceKey = ar; break; }
+          }
+        }
+        if (!resourceKey) resourceKey = tr.scheduledResource ?? null;
+        if (!resourceKey && tr.preferences?.length > 0) {
+          resourceKey = tr.preferences[0].resourceKey;
+        }
+        if (!resourceKey) return;
+
+        tr.scheduledResource = resourceKey;
+        if (tr.isPrimary) primaryResourceKey = resourceKey;
+
+        const resource = this.landscape.resources?.getEntity(resourceKey);
+        if (resource) {
+          const assignment = new CTPAssignment(startW, endW, tr.qty ?? 1);
+          assignment.name = task.key;
+          assignment.type = task.commitmentLevel === 'on_hold'
+            ? CTPAssignmentConstants.ONHOLD
+            : CTPAssignmentConstants.PROCESS;
+          resource.assignments?.add(assignment);
+          resource.recompute = true;
+        }
+      });
+    } else {
+      // Dispatched/Pinned: scheduledResource already set on each slot — just stamp assignments
+      task.capacityResources?.forEach((tr) => {
+        const resourceKey = tr.scheduledResource;
+        if (!resourceKey) return;
+        if (tr.isPrimary) primaryResourceKey = resourceKey;
+
+        const resource = this.landscape.resources?.getEntity(resourceKey);
+        if (resource) {
+          const assignment = new CTPAssignment(startW, endW, tr.qty ?? 1);
+          assignment.name = task.key;
+          assignment.type = CTPAssignmentConstants.PROCESS;
+          resource.assignments?.add(assignment);
+          resource.recompute = true;
+        }
+      });
+    }
+
+    // Record replay step
+    const resName = primaryResourceKey
+      ? (this.landscape.resources?.getEntity(primaryResourceKey)?.name ?? primaryResourceKey)
+      : null;
+    this.recordStep('anchor', task, task.linkId?.name ?? null,
+      primaryResourceKey, resName, startW, endW, null, task.commitmentLevel);
+  }
+
+  // ── Pass 2: Manual Priority ─────────────────────────────────────
+
+  /**
+   * Schedule tasks with manualPriority > 0 in the planner's exact order.
    * Auto-includes chain predecessors so chains remain valid.
-   * Uses the same scheduling pipeline as Pass 2.
+   * Uses the same scheduling pipeline as Pass 3.
    */
   protected scheduleManualPass(tasks: List<CTPTask>): void {
     // Collect manual tasks

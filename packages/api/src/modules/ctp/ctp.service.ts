@@ -322,9 +322,9 @@ export class CTPService {
 
     let engineSolveResult: EngineSolveResult | undefined;
     try {
-      if (taskList.length > 0) {
-        engineSolveResult = scheduler.schedule(taskList);
-      }
+      // Always run the scheduler — Pass 1 (anchor committed tasks) must execute
+      // even when the task list is empty so committed capacity is consumed.
+      engineSolveResult = scheduler.schedule(taskList);
     } finally {
       // Always clean up temp pins from protectOthers
       landscape.tasks.forEach(task => {
@@ -2386,46 +2386,19 @@ export class CTPService {
   // Commitment Stack
   // ═══════════════════════════════════════
 
+  /**
+   * Derive commitmentLevel on every task from wipState + dispatched + pinned.
+   * Classification only — no placement, no pinning, no resource assignments.
+   * Physical anchoring is handled by basescheduler.anchorCommittedTasks().
+   */
   private applyCommitmentStack(landscape: SchedulingLandscape): void {
     landscape.tasks.forEach(task => {
-      // Derive commitment level
       if (task.wipstate === CTPWipStateConstants.IN_PROCESS) {
         task.commitmentLevel = 'running';
       } else if (task.wipstate === CTPWipStateConstants.ON_HOLD) {
         task.commitmentLevel = 'on_hold';
       } else if (task.wipstate === CTPWipStateConstants.COMPLETED) {
         task.commitmentLevel = 'completed';
-        task.pinned = true;
-        // Keep in landscape so chain successors can reference the completed position
-        // If we have actuals, update the scheduled window to match reality
-        if (task.actualStart) {
-          const startW = CTPDateTime.fromDateTime(task.actualStart);
-          const endW = task.actualEnd ? CTPDateTime.fromDateTime(task.actualEnd)
-            : startW + (task.duration?.duration() ?? 0);
-          if (!task.scheduled) {
-            task.scheduled = new CTPInterval(startW, endW, 1);
-          } else {
-            task.scheduled.startW = startW;
-            task.scheduled.endW = endW;
-          }
-          task.state = CTPTaskStateConstants.SCHEDULED;
-          // Pair actual resources to capacity slots and consume capacity
-          if (task.actualResources.length && task.capacityResources) {
-            const pairs = this.matchActualsToSlots(task.actualResources, task.capacityResources, landscape);
-            pairs.forEach((resKey, idx) => {
-              const tr = task.capacityResources![idx];
-              tr.scheduledResource = resKey;
-              const res = landscape.resources?.getEntity(resKey);
-              if (res) {
-                const assignment = new CTPAssignment(startW, endW, tr.qty ?? 1);
-                assignment.name = task.key;
-                assignment.type = CTPAssignmentConstants.PROCESS;
-                res.assignments?.add(assignment);
-                res.recompute = true;
-              }
-            });
-          }
-        }
       } else if (task.dispatched) {
         task.commitmentLevel = 'dispatched';
       } else if (task.pinned) {
@@ -2434,44 +2407,6 @@ export class CTPService {
         task.commitmentLevel = 'planned';
       } else {
         task.commitmentLevel = 'unscheduled';
-      }
-
-      // Enforce pinning for layers 1-4
-      if (task.commitmentLevel === 'running' || task.commitmentLevel === 'on_hold' || task.commitmentLevel === 'dispatched') {
-        // If we have an actualStart, anchor the scheduled position to reality
-        if (task.actualStart) {
-          const startW = CTPDateTime.fromDateTime(task.actualStart);
-          const endW = task.actualEnd ? CTPDateTime.fromDateTime(task.actualEnd)
-            : startW + (task.effectiveRemainingDuration());
-          if (!task.scheduled) {
-            task.scheduled = new CTPInterval(startW, endW, 1);
-          } else {
-            task.scheduled.startW = startW;
-            task.scheduled.endW = endW;
-          }
-          task.state = CTPTaskStateConstants.SCHEDULED;
-          task.pinned = true;
-          // Pair actual resources to capacity slots and consume capacity
-          if (task.actualResources.length && task.capacityResources) {
-            const pairs = this.matchActualsToSlots(task.actualResources, task.capacityResources, landscape);
-            pairs.forEach((resKey, idx) => {
-              const tr = task.capacityResources![idx];
-              tr.scheduledResource = resKey;
-              const res = landscape.resources?.getEntity(resKey);
-              if (res) {
-                const assignment = new CTPAssignment(startW, endW, tr.qty ?? 1);
-                assignment.name = task.key;
-                assignment.type = CTPAssignmentConstants.PROCESS;
-                res.assignments?.add(assignment);
-                res.recompute = true;
-              }
-            });
-          }
-        } else if (task.state === CTPTaskStateConstants.SCHEDULED) {
-          // Already scheduled from a previous solve — pin in place
-          task.pinned = true;
-        }
-        // If not scheduled and no actuals, let the solver place it first
       }
     });
   }
@@ -2832,27 +2767,27 @@ export class CTPService {
         }
       }
 
+      // Compatible resources — always included (needed for hierarchy filter on unscheduled tasks)
+      const compatibleResources: any[] = [];
+      task.capacityResources?.forEach((entry) => {
+        entry.preferences.forEach((pref) => {
+          if (!compatibleResources.find(c => c.resourceKey === pref.resourceKey)) {
+            const resEntity = landscape.resources.getEntity(pref.resourceKey);
+            compatibleResources.push({
+              resourceKey: pref.resourceKey,
+              resourceName: resEntity?.name ?? null,
+              mode: pref.mode,
+              rank: pref.rank,
+              speedFactor: pref.speedFactor,
+            });
+          }
+        });
+      });
+      taskResult.compatibleResources = compatibleResources;
+
       // Add detail fields for intermediate+
       if (detailLevel !== 'novice') {
         taskResult.blendedScore = task.score !== Number.MAX_VALUE ? task.score : null;
-
-        // Compatible resources — full preference list for each capacity slot
-        const compatibleResources: any[] = [];
-        task.capacityResources?.forEach((entry) => {
-          entry.preferences.forEach((pref) => {
-            if (!compatibleResources.find(c => c.resourceKey === pref.resourceKey)) {
-              const resEntity = landscape.resources.getEntity(pref.resourceKey);
-              compatibleResources.push({
-                resourceKey: pref.resourceKey,
-                resourceName: resEntity?.name ?? null,
-                mode: pref.mode,
-                rank: pref.rank,
-                speedFactor: pref.speedFactor,
-              });
-            }
-          });
-        });
-        taskResult.compatibleResources = compatibleResources;
       }
 
       // Completed tasks: visible if chain has pending work, hidden if entire chain done or standalone
