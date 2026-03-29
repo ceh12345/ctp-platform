@@ -4,7 +4,7 @@
 
 | Sprint | Name | Notes |
 |--------|------|-------|
-| (none) | — | — |
+| [Resource Downtime](resource-downtime-spec.md) | Mark resources down/up, Gantt blocked regions, downtime list panel | In progress |
 
 ## Done
 
