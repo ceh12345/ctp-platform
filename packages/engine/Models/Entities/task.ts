@@ -232,6 +232,7 @@ export class CTPTask extends CTPKeyEntity implements ITask {
   public actualResources: string[] = [];
   public holdReason: string | null = null;
   public estimatedResumeTime: string | null = null;
+  public holdStart: string | null = null;
 
   public effectiveRemainingDuration(): number {
     if (this.remainingDuration != null) return this.remainingDuration;

@@ -63,6 +63,7 @@
 | UI Sprint 23 — Unified Filter Bar | 4-row labeled filter bar (Status/When/Work/Where); ResourceHierarchyBrowser (Work Center → Type → Resource tree with checkboxes + utilization bars); AttributeSearch with autocomplete; Rush status chip; active filter summary with Clear all; resource attributes in solve response | 2026-03-23 |
 | Engine — Commitment Stack | 6-layer commitment model (Running, On Hold, Dispatched, Pinned, Planned, Unscheduled); new task fields; solver respects layers 1-4 as fixed | 2026-03-27 |
 | Solver 9 — Two-Pass Solve | Pass 1 anchors committed tasks (completed/running/on_hold/dispatched/pinned) at positions before solver Pass 2+3; clean API/engine split (classify in ctp.service, anchor in basescheduler); resource hierarchy filter fix (assigned vs compatible); Gantt replay anchor steps | 2026-03-27 |
+| UI — Commitment State Machine | Merged status badge (8 levels with icons/colors); `deriveTaskStatus` with local override awareness; `canTransition` guards with toast messages; contextual toolbar (level-count approach, zero-count buttons hidden); Gantt context menu per commitment level; revert-dispatch endpoint; bulk count fix; Extend Window dialog (+1h/+4h/+1d/+2d/+1w presets, queue-aware); Hold dialog (reason + held-since + estimated resume presets, queue-aware); `holdStart` audit field on task model | 2026-03-29 |
 
 ### Phase 3 Session Fixes (Mar 6)
 

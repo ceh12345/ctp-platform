@@ -45,6 +45,7 @@ import {
   DiagnoseRequestDto, DiagnoseResponse, TaskDiagnosis, RootCause,
   Recommendation, RecommendationCommand, BlockingTaskSummary,
   ApplyRecommendationRequestDto, ApplyRecommendationResponse,
+  ExecuteCommandsRequestDto,
 } from './dto/diagnose.dto';
 import { ScheduleConfigurationService } from '../../config/schedule-configuration.service';
 import { WhereToRequestDto, WhereToResponseDto, MoveToRequestDto, MoveToResponseDto } from './dto/whereto.dto';
@@ -604,6 +605,9 @@ export class CTPService {
 
   getState(detailLevel: string = 'novice'): CTPSolveResult {
     const landscape = this.ensureLandscape();
+
+    // Re-derive commitment levels so state reflects current flags
+    this.applyCommitmentStack(landscape);
 
     const stats = new SolveStatistics('none');
     stats.totalTimeMs = 0;
@@ -2120,6 +2124,36 @@ export class CTPService {
             actionsApplied.push({ type: cmd.type, result: 'ok', detail: `scope=${cmd.scope || 'full'}` });
             break;
           }
+
+          case 'dispatch':
+            this.dispatchTasks([cmd.taskKey!]);
+            actionsApplied.push({ type: cmd.type, taskKey: cmd.taskKey, result: 'ok' });
+            break;
+
+          case 'start':
+            this.startTask(cmd.taskKey!, cmd.startTime);
+            actionsApplied.push({ type: cmd.type, taskKey: cmd.taskKey, result: 'ok' });
+            break;
+
+          case 'hold':
+            this.holdTask(cmd.taskKey!, 'Queued hold', undefined);
+            actionsApplied.push({ type: cmd.type, taskKey: cmd.taskKey, result: 'ok' });
+            break;
+
+          case 'resume':
+            this.resumeTask(cmd.taskKey!);
+            actionsApplied.push({ type: cmd.type, taskKey: cmd.taskKey, result: 'ok' });
+            break;
+
+          case 'complete':
+            this.completeTask(cmd.taskKey!);
+            actionsApplied.push({ type: cmd.type, taskKey: cmd.taskKey, result: 'ok' });
+            break;
+
+          case 'revert_dispatch':
+            this.revertDispatch([cmd.taskKey!]);
+            actionsApplied.push({ type: cmd.type, taskKey: cmd.taskKey, result: 'ok' });
+            break;
         }
       }
     } catch (err: any) {
@@ -2136,6 +2170,22 @@ export class CTPService {
     // 5. Return refreshed state
     const newState = this.getState(request.detailLevel ?? 'novice');
     return { success: true, actionsApplied, newState };
+  }
+
+  // ═══════════════════════════════════════
+  // Endpoint 18: Execute Command Sequence
+  // ═══════════════════════════════════════
+
+  executeCommands(request: ExecuteCommandsRequestDto): ApplyRecommendationResponse {
+    this.ensureLandscape();
+
+    // Reuse the apply sequencer — auto-populate landscapeHash to skip staleness check
+    return this.applyRecommendation({
+      recommendationId: request.name || 'manual',
+      commands: request.commands,
+      landscapeHash: this.computeLandscapeHash(),
+      detailLevel: request.detailLevel,
+    });
   }
 
   // ═══════════════════════════════════════
@@ -2187,13 +2237,14 @@ export class CTPService {
     return { status: 'ok', taskKey, commitmentLevel: 'running', actualStart: task.actualStart };
   }
 
-  holdTask(taskKey: string, holdReason: string, estimatedResumeTime?: string): any {
+  holdTask(taskKey: string, holdReason: string, estimatedResumeTime?: string, holdStart?: string): any {
     const landscape = this.ensureLandscape();
     const task = landscape.tasks.getEntity(taskKey);
     if (!task) throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
     task.wipstate = CTPWipStateConstants.ON_HOLD;
     task.holdReason = holdReason;
     task.estimatedResumeTime = estimatedResumeTime || null;
+    task.holdStart = holdStart || new Date().toISOString();
     task.pinned = true;
     task.commitmentLevel = 'on_hold';
     return { status: 'ok', taskKey, commitmentLevel: 'on_hold', holdReason };
@@ -2219,6 +2270,26 @@ export class CTPService {
     task.percentComplete = 100;
     task.includeInSolve = false;
     return { status: 'ok', taskKey, actualEnd: task.actualEnd };
+  }
+
+  revertDispatch(taskKeys: string[]): any {
+    const landscape = this.ensureLandscape();
+    const results: any[] = [];
+    for (const key of taskKeys) {
+      const task = landscape.tasks.getEntity(key);
+      if (!task) { results.push({ taskKey: key, result: 'not_found' }); continue; }
+      if (!task.dispatched) {
+        results.push({ taskKey: key, result: 'skipped', detail: 'Task is not dispatched' });
+        continue;
+      }
+      task.dispatched = false;
+      task.dispatchedAt = null;
+      task.materialsPulled = false;
+      // Keep pinned — reverts to pinned, not planned
+      task.pinned = true;
+      results.push({ taskKey: key, result: 'ok' });
+    }
+    return { status: 'ok', results };
   }
 
   updateProgress(taskKey: string, body: { percentComplete?: number; remainingDuration?: number }): any {

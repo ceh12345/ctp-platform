@@ -19,7 +19,7 @@ import {
   SetTaskPriorityDto,
 } from './dto/solve-request.dto';
 import { CTPQueryDto } from './dto/ctp-query.dto';
-import { DiagnoseRequestDto, ApplyRecommendationRequestDto } from './dto/diagnose.dto';
+import { DiagnoseRequestDto, ApplyRecommendationRequestDto, ExecuteCommandsRequestDto } from './dto/diagnose.dto';
 import { CTPSolveResultDto } from './dto/solve-result.dto';
 import {
   WhereToRequestDto,
@@ -288,6 +288,19 @@ export class CTPController {
     return this.ctpService.applyRecommendation(body);
   }
 
+  // ─── Endpoint 18: Execute Command Sequence ───
+
+  @Post('execute')
+  @ApiOperation({
+    summary: 'Execute a command sequence against the live landscape',
+    description: 'Runs an ordered list of commands atomically. Rolls back on failure. Returns updated state and ripple effects. Same sequencer as apply-recommendation but without staleness check.',
+  })
+  @ApiBody({ type: ExecuteCommandsRequestDto })
+  @ApiResponse({ status: 200, description: 'Commands executed' })
+  execute(@Body() body: ExecuteCommandsRequestDto) {
+    return this.ctpService.executeCommands(body);
+  }
+
   // ─── Commitment Stack Transitions ───
 
   @Post('tasks/dispatch')
@@ -307,8 +320,8 @@ export class CTPController {
   @Post('tasks/hold')
   @ApiOperation({ summary: 'Put a running task on hold' })
   @ApiResponse({ status: 200, description: 'Task on hold' })
-  holdTask(@Body() body: { taskKey: string; holdReason: string; estimatedResumeTime?: string }) {
-    return this.ctpService.holdTask(body.taskKey, body.holdReason, body.estimatedResumeTime);
+  holdTask(@Body() body: { taskKey: string; holdReason: string; estimatedResumeTime?: string; holdStart?: string }) {
+    return this.ctpService.holdTask(body.taskKey, body.holdReason, body.estimatedResumeTime, body.holdStart);
   }
 
   @Post('tasks/resume')
@@ -323,6 +336,13 @@ export class CTPController {
   @ApiResponse({ status: 200, description: 'Task completed' })
   completeTask(@Body() body: { taskKey: string; actualEnd?: string }) {
     return this.ctpService.completeTask(body.taskKey, body.actualEnd);
+  }
+
+  @Post('tasks/revert-dispatch')
+  @ApiOperation({ summary: 'Revert dispatched task(s) back to pinned state' })
+  @ApiResponse({ status: 200, description: 'Tasks reverted to pinned' })
+  revertDispatch(@Body() body: { taskKeys: string[] }) {
+    return this.ctpService.revertDispatch(body.taskKeys);
   }
 
   @Patch('tasks/:taskKey/progress')

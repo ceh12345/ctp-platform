@@ -63,7 +63,8 @@ export interface TradeoffSummary {
 export interface RecommendationCommand {
   type: 'move_to' | 'set_window' | 'unschedule' | 'solve'
       | 'set_priority' | 'set_resource_preference'
-      | 'set_order_mode' | 'pin';
+      | 'set_order_mode' | 'pin'
+      | 'dispatch' | 'start' | 'hold' | 'resume' | 'complete' | 'revert_dispatch';
   scope?: 'targeted' | 'full';
   expandChains?: boolean;
   taskKey?: string;
@@ -124,6 +125,22 @@ export class ApplyRecommendationRequestDto {
   landscapeHash!: string;
 
   @ApiPropertyOptional({ description: 'Detail level for returned state' })
+  @IsOptional()
+  @IsString()
+  detailLevel?: string;
+}
+
+export class ExecuteCommandsRequestDto {
+  @ApiProperty({ description: 'Ordered list of commands to execute', type: 'array' })
+  @IsArray()
+  commands!: RecommendationCommand[];
+
+  @ApiPropertyOptional({ description: 'Optional name for logging/audit' })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiPropertyOptional({ description: 'Detail level for returned state', enum: ['novice', 'intermediate', 'expert'] })
   @IsOptional()
   @IsString()
   detailLevel?: string;

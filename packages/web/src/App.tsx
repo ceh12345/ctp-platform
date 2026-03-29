@@ -2204,6 +2204,137 @@ function stepIcon(action: SolveAction): string {
   }
 }
 
+function toLocalDatetimeInput(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function HoldDialog({ taskName, onApply, onCancel }: {
+  taskName: string;
+  onApply: (args: { holdReason: string; holdStart: string; estimatedResumeTime?: string }) => void;
+  onCancel: () => void;
+}) {
+  const [reason, setReason] = useState('');
+  const [heldSince, setHeldSince] = useState(() => toLocalDatetimeInput(new Date().toISOString()));
+  const [estimatedResume, setEstimatedResume] = useState('');
+
+  const applyPreset = (offsetSeconds: number) => {
+    const base = heldSince ? new Date(heldSince) : new Date();
+    setEstimatedResume(toLocalDatetimeInput(new Date(base.getTime() + offsetSeconds * 1000).toISOString()));
+  };
+
+  const inputStyle: CSSProperties = {
+    fontSize: 12, padding: '6px 8px', borderRadius: 6,
+    background: C.surface2, border: `1px solid ${C.border}`, color: C.text,
+  };
+  const presetBtnStyle: CSSProperties = {
+    fontSize: 11, padding: '6px 10px', borderRadius: 6,
+    background: C.surface2, border: `1px solid ${C.border}`, color: C.text, cursor: 'pointer',
+  };
+  const labelStyle: CSSProperties = { fontSize: 11, color: C.textDim, display: 'block', marginBottom: 4 };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`,
+        borderRadius: 12, padding: 20, maxWidth: 340, width: '90%', fontFamily: FONT }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 4 }}>Put task on hold</div>
+        <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 16 }}>{taskName}</div>
+
+        <label style={labelStyle}>Reason (optional)</label>
+        <input value={reason} onChange={e => setReason(e.target.value)}
+          placeholder="e.g. Machine breakdown"
+          style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', marginBottom: 12 }} />
+
+        <label style={labelStyle}>Held since</label>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+          <input type="datetime-local" value={heldSince} onChange={e => setHeldSince(e.target.value)}
+            style={{ ...inputStyle, flex: 1 }} />
+          <button onClick={() => setHeldSince(toLocalDatetimeInput(new Date().toISOString()))} style={presetBtnStyle}>
+            Now
+          </button>
+        </div>
+
+        <label style={labelStyle}>Estimated resume (optional)</label>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+          <input type="datetime-local" value={estimatedResume} onChange={e => setEstimatedResume(e.target.value)}
+            style={{ ...inputStyle, flex: 1 }} />
+          <button onClick={() => applyPreset(7200)} style={presetBtnStyle}>+2h</button>
+          <button onClick={() => applyPreset(14400)} style={presetBtnStyle}>+4h</button>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={onCancel} style={{ fontSize: 12, padding: '6px 16px', borderRadius: 8,
+            background: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted, cursor: 'pointer' }}>
+            Cancel
+          </button>
+          <button onClick={() => onApply({
+            holdReason: reason,
+            holdStart: heldSince ? new Date(heldSince).toISOString() : new Date().toISOString(),
+            estimatedResumeTime: estimatedResume ? new Date(estimatedResume).toISOString() : undefined,
+          })} style={{ fontSize: 12, padding: '6px 16px', borderRadius: 8,
+            background: C.accent, border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>
+            ⏸ Hold
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExtendWindowDialog({ taskCount, onApply, onCancel }: {
+  taskCount: number;
+  onApply: (seconds: number) => void;
+  onCancel: () => void;
+}) {
+  const presets = [
+    { label: '+1h', seconds: 3600 },
+    { label: '+4h', seconds: 14400 },
+    { label: '+1 day', seconds: 86400 },
+    { label: '+2 days', seconds: 172800 },
+    { label: '+1 week', seconds: 604800 },
+  ];
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
+    }}>
+      <div style={{
+        background: C.surface, border: `1px solid ${C.border}`,
+        borderRadius: 12, padding: 20, maxWidth: 320, width: '90%',
+      }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 12 }}>
+          Extend window end
+        </div>
+        <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 16 }}>
+          Applying to {taskCount} task{taskCount !== 1 ? 's' : ''}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+          {presets.map(p => (
+            <button key={p.label} onClick={() => onApply(p.seconds)} style={{
+              fontSize: 12, padding: '6px 14px', borderRadius: 8,
+              background: C.surface2, border: `1px solid ${C.border}`,
+              color: C.text, cursor: 'pointer',
+            }}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button onClick={onCancel} style={{
+            fontSize: 12, padding: '6px 16px', borderRadius: 8,
+            background: 'transparent', border: `1px solid ${C.border}`,
+            color: C.textMuted, cursor: 'pointer',
+          }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SolveResultsDialog({ result, previousSnapshot, experienceLevel, onClose, onTaskClick, onViewProblems }: {
   result: any;
   previousSnapshot: SolveSnapshot | null;
@@ -2629,7 +2760,7 @@ function ResourceBottleneckDetailRow({ resource }: { resource: any }) {
 }
 
 function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceClick,
-  taskPins, taskExcludes, taskUnschedules, orderModes,
+  taskPins, taskExcludes, taskUnschedules: _taskUnschedules, orderModes: _orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask, onCancelUnschedule: _onCancelUnschedule,
   onApiUnschedule, onApiPin,
   resourceModeOverrides, onResourceModeChange, experienceLevel = 'novice',
@@ -2700,7 +2831,7 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
     <SlidePanel open={true} onClose={onClose} title={`${t('task', 'Task')} Detail`}>
       {/* Header badges */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
-        {taskStatusBadge(deriveTaskStatus(task, taskPins, taskExcludes, taskUnschedules, orderModes))}
+        {taskStatusBadge(task)}
         {task.orderRef && (onNavigateToOrders
           ? <span onClick={() => { onNavigateToOrders(task.orderRef); onClose(); }}
               style={{ color: C.accent, cursor: 'pointer', textDecoration: 'underline', fontSize: 13, fontWeight: 600 }}
@@ -3818,7 +3949,7 @@ function ReplayStepLog({ replay, onJumpToStep }: {
 function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourceClick,
   taskPins, taskExcludes, taskUnschedules, orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask,
-  onApiUnschedule, onApiPin, onApiBulkUnschedule, actionLoading,
+  onApiUnschedule, onApiPin, onApiBulkUnschedule: _onApiBulkUnschedule, actionLoading,
   onResourceFilter, resourceFilter,
   onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
   whereToCurrentAssignment, whereToSource, onMoveTo, onCancelWhereTo,
@@ -3826,7 +3957,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   onSetResourcePrefForTask, onViewAgenda, onAskAI,
   replay, onReplayStep, onReplayJumpStart, onReplayJumpEnd,
   onReplayTogglePlay, onReplaySpeedChange, onReplayExit, onReplayJumpToStep,
-  ctpGhostBars }: {
+  ctpGhostBars, onToolbarAction }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   onViewAgenda?: (r: any) => void;
@@ -3862,6 +3993,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   onReplayExit?: () => void;
   onReplayJumpToStep?: (step: number) => void;
   ctpGhostBars?: any[] | null;
+  onToolbarAction?: (action: string, taskKeys: string[], event?: any) => void;
 }) {
   // Suppress Gantt ghost bars/overlays when WhereTo triggered from task detail panel
   const showGanttWhereTo = whereToSource !== 'panel';
@@ -4637,100 +4769,113 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                 ✨ Ask AI
               </button>
             )}
-            {onWhereTo && (() => {
-              const isProcessTask = contextMenu.task.type === 'PROCESS';
-              const isLockedOrder = orderModes?.[contextMenu.task.orderRef] === 'LOCKED';
-              const isExcl = taskExcludes?.[contextMenu.task.key];
-              const canWT = isProcessTask && !isLockedOrder && !isExcl;
-              return (
-                <button onClick={() => { if (canWT) { onWhereTo(contextMenu.task.key); setContextMenu(null); } }}
-                  disabled={!canWT}
-                  style={{
-                    width: '100%', padding: '7px 10px', background: 'none', border: 'none',
-                    color: canWT ? C.text : C.textDim, fontSize: 12,
-                    cursor: canWT ? 'pointer' : 'default', textAlign: 'left', fontFamily: FONT,
-                    borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
-                    opacity: canWT ? 1 : 0.5,
-                  }}
-                  onMouseEnter={e => { if (canWT) e.currentTarget.style.background = C.bg; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
-                  🗺️ Where Can This Go?
-                </button>
-              );
-            })()}
-            {onSetResourcePrefForTask && (
-              <button onClick={() => {
-                onSetResourcePrefForTask(contextMenu.task.key);
-                setContextMenu(null);
-              }} style={{
+            {/* Contextual commitment actions */}
+            {(() => {
+              const task = contextMenu.task;
+              const level = task._status || task.commitmentLevel || deriveDisplayLevel(task);
+              const menuBtnStyle = {
                 width: '100%', padding: '7px 10px', background: 'none', border: 'none',
-                color: C.text, fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
+                color: C.text, fontSize: 12, cursor: 'pointer', textAlign: 'left' as const, fontFamily: FONT,
                 borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
-              }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
-                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-                🔀 Set Resource Preference
-              </button>
-            )}
-            {onApiPin && contextMenu.task.feasible && (
-              <button onClick={async () => {
-                const isPinned = contextMenu.task.pinned || false;
-                setContextMenu(null);
-                await onApiPin(contextMenu.task.key, !isPinned);
-              }} style={{
-                width: '100%', padding: '7px 10px', background: 'none', border: 'none',
-                color: contextMenu.task.pinned ? C.yellow : C.text,
-                fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
-                borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
-              }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
-                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-                📌 {contextMenu.task.pinned ? 'Unpin' : 'Pin'}
-              </button>
-            )}
-            {onExcludeTask && (
-              <button onClick={() => {
-                const isExcluded = taskExcludes?.[contextMenu.task.key] || false;
-                onExcludeTask(contextMenu.task.key, !isExcluded);
-                setContextMenu(null);
-              }} style={{
-                width: '100%', padding: '7px 10px', background: 'none', border: 'none',
-                color: taskExcludes?.[contextMenu.task.key] ? C.textDim : C.text,
-                fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
-                borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
-              }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
-                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-                ⏸ {taskExcludes?.[contextMenu.task.key] ? 'Re-include' : 'Exclude'}
-              </button>
-            )}
-            {onApiUnschedule && contextMenu.task.feasible && (
-              <button onClick={async () => {
-                setContextMenu(null);
-                await onApiUnschedule(contextMenu.task.key);
-              }} style={{
-                width: '100%', padding: '7px 10px', background: 'none', border: 'none',
-                color: C.red, fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
-                borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
-              }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
-                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-                ✕ Unschedule Task
-              </button>
-            )}
-            {onApiBulkUnschedule && contextMenu.task.feasible && contextMenu.task.orderRef && (() => {
-              const orderTasks = tasks.filter((t: any) => t.orderRef === contextMenu.task.orderRef && t.feasible && t.scheduledStart);
-              if (orderTasks.length < 2) return null;
-              return (
-                <button onClick={async () => {
-                  const keys = orderTasks.map((t: any) => t.key);
-                  setContextMenu(null);
-                  await onApiBulkUnschedule(keys);
-                }} style={{
-                  width: '100%', padding: '7px 10px', background: 'none', border: 'none',
-                  color: C.red, fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
-                  borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
-                }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
-                   onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-                  ✕ Unschedule Order ({orderTasks.length})
-                </button>
-              );
+              };
+              const hoverIn = (e: React.MouseEvent) => (e.currentTarget as HTMLElement).style.background = C.bg;
+              const hoverOut = (e: React.MouseEvent) => (e.currentTarget as HTMLElement).style.background = 'none';
+              const items: React.ReactNode[] = [];
+
+              // WhereTo for planned/unscheduled
+              if ((level === 'planned' || level === 'unscheduled') && onWhereTo) {
+                items.push(
+                  <button key="whereto" onClick={() => { onWhereTo(task.key); setContextMenu(null); }}
+                    style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+                    🗺️ Where Can This Go?
+                  </button>
+                );
+              }
+
+              // Resource Pref for planned
+              if (level === 'planned' && onSetResourcePrefForTask) {
+                items.push(
+                  <button key="respref" onClick={() => { onSetResourcePrefForTask(task.key); setContextMenu(null); }}
+                    style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+                    🔀 Set Resource Preference
+                  </button>
+                );
+              }
+
+              // Separator before commitment actions
+              if (items.length > 0) {
+                items.push(<div key="sep1" style={{ height: 1, background: C.border, margin: '2px 0' }} />);
+              }
+
+              // Commitment actions by level
+              switch (level) {
+                case 'planned':
+                  if (onApiPin) items.push(
+                    <button key="pin" onClick={async () => { setContextMenu(null); await onApiPin(task.key, true); }}
+                      style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>📌 Pin</button>
+                  );
+                  if (onApiUnschedule) items.push(
+                    <button key="unsched" onClick={async () => { setContextMenu(null); await onApiUnschedule(task.key); }}
+                      style={{ ...menuBtnStyle, color: C.red }} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>↩ Unschedule</button>
+                  );
+                  if (onExcludeTask) items.push(
+                    <button key="exclude" onClick={() => { onExcludeTask(task.key, true); setContextMenu(null); }}
+                      style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>✕ Exclude</button>
+                  );
+                  break;
+                case 'pinned':
+                  if (onApiPin) items.push(
+                    <button key="unpin" onClick={async () => { setContextMenu(null); await onApiPin(task.key, false); }}
+                      style={{ ...menuBtnStyle, color: C.yellow }} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>📌 Unpin</button>
+                  );
+                  if (onToolbarAction) items.push(
+                    <button key="dispatch" onClick={() => { setContextMenu(null); onToolbarAction('dispatch', [task.key]); }}
+                      style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>🚀 Dispatch</button>
+                  );
+                  break;
+                case 'dispatched':
+                  if (onToolbarAction) {
+                    items.push(
+                      <button key="start" onClick={() => { setContextMenu(null); onToolbarAction('start', [task.key]); }}
+                        style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>▶ Start</button>
+                    );
+                    items.push(
+                      <button key="hold" onClick={() => { setContextMenu(null); onToolbarAction('hold', [task.key]); }}
+                        style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>⏸ Hold</button>
+                    );
+                    items.push(
+                      <button key="revert" onClick={() => { setContextMenu(null); onToolbarAction('revert', [task.key]); }}
+                        style={{ ...menuBtnStyle, color: C.yellow }} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>↩ Revert to Pinned</button>
+                    );
+                  }
+                  break;
+                case 'running':
+                  if (onToolbarAction) {
+                    items.push(
+                      <button key="hold" onClick={() => { setContextMenu(null); onToolbarAction('hold', [task.key]); }}
+                        style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>⏸ Hold</button>
+                    );
+                    items.push(
+                      <button key="complete" onClick={() => { setContextMenu(null); onToolbarAction('complete', [task.key]); }}
+                        style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>✓ Complete</button>
+                    );
+                  }
+                  break;
+                case 'on_hold':
+                  if (onToolbarAction) items.push(
+                    <button key="resume" onClick={() => { setContextMenu(null); onToolbarAction('resume', [task.key]); }}
+                      style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>▶ Resume</button>
+                  );
+                  break;
+                case 'excluded':
+                  if (onExcludeTask) items.push(
+                    <button key="include" onClick={() => { onExcludeTask(task.key, false); setContextMenu(null); }}
+                      style={{ ...menuBtnStyle, color: C.green }} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>✓ Re-include</button>
+                  );
+                  break;
+              }
+
+              return items;
             })()}
           </div>
         </>
@@ -5248,17 +5393,19 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
 
 function deriveTaskStatus(tk: any, taskPins?: Record<string, boolean>, taskExcludes?: Record<string, boolean>,
   taskUnschedules?: Set<string>, orderModes?: Record<string, string>): string {
-  // Commitment-level statuses take priority
+  // Commitment-level statuses from API
+  if (tk.commitmentLevel === 'completed') return 'completed';
   if (tk.commitmentLevel === 'running') return 'running';
   if (tk.commitmentLevel === 'on_hold') return 'on_hold';
   if (tk.commitmentLevel === 'dispatched') return 'dispatched';
+  // Local overrides (client-side pending actions)
   const isExcluded = taskExcludes?.[tk.key] || false;
   const orderMode = orderModes?.[tk.orderRef] || 'INCLUDE';
   if (isExcluded || orderMode === 'EXCLUDE') return 'excluded';
   const isPinned = taskPins?.[tk.key] || false;
   if (isPinned || orderMode === 'LOCKED') return 'pinned';
   if (taskUnschedules?.has?.(tk.key)) return 'unscheduled';
-  if (tk.feasible && tk.scheduledStart) return 'scheduled';
+  if (tk.feasible && tk.scheduledStart) return 'planned';
   if (tk.errors?.length > 0) return 'infeasible';
   return 'unscheduled';
 }
@@ -5270,21 +5417,146 @@ function deriveTaskStatusExtended(tk: any): string {
   return tk._status;
 }
 
-const TASK_STATUS_CONFIG: Record<string, { label: string; color: string; icon?: string }> = {
-  running:     { label: 'Running',     color: '#ef4444', icon: '\u25CF' },
-  on_hold:     { label: 'On Hold',     color: '#f59e0b', icon: '\u26A0' },
-  dispatched:  { label: 'Dispatched',  color: '#f97316', icon: '\u25C6' },
-  scheduled:   { label: 'Scheduled',   color: C.green },
-  unscheduled: { label: 'Unscheduled', color: C.yellow },
-  pinned:      { label: 'Pinned',      color: C.yellow, icon: '📌' },
-  infeasible:  { label: 'Infeasible',  color: C.red },
-  excluded:    { label: 'Excluded',    color: C.textDim, icon: '⏸' },
+const TASK_STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+  completed:   { label: 'Done',        color: '#06b6d4', icon: '✔' },
+  running:     { label: 'Running',     color: '#ef4444', icon: '●' },
+  on_hold:     { label: 'On Hold',     color: '#f59e0b', icon: '⚠' },
+  dispatched:  { label: 'Dispatched',  color: '#f97316', icon: '◆' },
+  pinned:      { label: 'Pinned',      color: '#3b82f6', icon: '📌' },
+  planned:     { label: 'Planned',     color: '#22c55e', icon: '✓' },
+  infeasible:  { label: 'Infeasible',  color: '#ef4444', icon: '✕' },
+  excluded:    { label: 'Excluded',    color: '#475569', icon: '—' },
+  unscheduled: { label: 'Unsched',     color: '#9ca3af', icon: '○' },
 };
 
-function taskStatusBadge(status: string) {
-  const c = TASK_STATUS_CONFIG[status] || TASK_STATUS_CONFIG.scheduled;
-  const label = t(status + 'Status', c.label);
-  return <Badge label={`${c.icon ? c.icon + ' ' : ''}${label}`} color={c.color} />;
+function deriveDisplayLevel(task: any): string {
+  if (task.commitmentLevel) return task.commitmentLevel;
+  if (task.excluded || task._status === 'excluded') return 'excluded';
+  if (!task.feasible && task.errors?.length > 0) return 'infeasible';
+  if (task.dispatched) return 'dispatched';
+  if (task.pinned) return 'pinned';
+  if (task.feasible && task.scheduledStart) return 'planned';
+  return 'unscheduled';
+}
+
+function taskStatusBadge(tk: any) {
+  // Prefer _status (set by deriveTaskStatus, accounts for local overrides like taskUnschedules/taskPins/taskExcludes)
+  const level = tk._status || tk.commitmentLevel || deriveDisplayLevel(tk);
+  const c = TASK_STATUS_CONFIG[level] || TASK_STATUS_CONFIG.unscheduled;
+  const label = t(level + 'Status', c.label);
+  return <Badge label={`${c.icon} ${label}`} color={c.color} />;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COMMITMENT STATE MACHINE
+   ═══════════════════════════════════════════════════════════════ */
+
+// State machine: unscheduled→planned→pinned→dispatched→running→completed (on_hold branch)
+
+function canTransition(task: any, action: string): { allowed: boolean; reason?: string } {
+  const level = task._status || task.commitmentLevel || deriveDisplayLevel(task);
+
+  switch (action) {
+    case 'unschedule':
+      if (level === 'running') return { allowed: false, reason: 'Cannot unschedule a running task' };
+      if (level === 'on_hold') return { allowed: false, reason: 'Cannot unschedule a task on hold' };
+      if (level === 'dispatched') return { allowed: false, reason: 'Revert to pinned first — materials have been pulled' };
+      if (level === 'pinned') return { allowed: false, reason: 'Unpin first, then unschedule' };
+      if (level === 'completed') return { allowed: false, reason: 'Cannot unschedule a completed task' };
+      return { allowed: true };
+    case 'pin':
+      if (level !== 'planned') return { allowed: false, reason: 'Only planned tasks can be pinned' };
+      return { allowed: true };
+    case 'unpin':
+      if (level !== 'pinned') return { allowed: false, reason: 'Task is not pinned' };
+      return { allowed: true };
+    case 'dispatch':
+      if (level !== 'pinned') return { allowed: false, reason: 'Pin the task first, then dispatch' };
+      return { allowed: true };
+    case 'revert':
+      if (level !== 'dispatched') return { allowed: false, reason: 'Only dispatched tasks can be reverted' };
+      return { allowed: true };
+    case 'start':
+      if (level !== 'dispatched') return { allowed: false, reason: 'Dispatch the task first, then start' };
+      return { allowed: true };
+    case 'hold':
+      if (level !== 'running' && level !== 'dispatched') return { allowed: false, reason: 'Only running or dispatched tasks can be put on hold' };
+      return { allowed: true };
+    case 'resume':
+      if (level !== 'on_hold') return { allowed: false, reason: 'Task is not on hold' };
+      return { allowed: true };
+    case 'complete':
+      if (level !== 'running') return { allowed: false, reason: 'Only running tasks can be completed' };
+      return { allowed: true };
+    default:
+      return { allowed: true };
+  }
+}
+
+interface ToolbarAction {
+  key: string;
+  label: string;
+  icon: string;
+  count?: number;
+}
+
+const ACTION_CONFIG: Record<string, ToolbarAction> = {
+  schedule:   { key: 'schedule', label: 'Schedule', icon: '▶' },
+  unschedule: { key: 'unschedule', label: 'Unschedule', icon: '↩' },
+  pin:        { key: 'pin', label: 'Pin', icon: '📌' },
+  unpin:      { key: 'unpin', label: 'Unpin', icon: '📌' },
+  dispatch:   { key: 'dispatch', label: 'Dispatch', icon: '🚀' },
+  revert:     { key: 'revert', label: 'Revert', icon: '↩' },
+  start:      { key: 'start', label: 'Start', icon: '▶' },
+  hold:       { key: 'hold', label: 'Hold', icon: '⏸' },
+  resume:     { key: 'resume', label: 'Resume', icon: '▶' },
+  complete:   { key: 'complete', label: 'Complete', icon: '✓' },
+  exclude:    { key: 'exclude', label: 'Exclude', icon: '✕' },
+  include:    { key: 'include', label: 'Include', icon: '✓' },
+  whereto:    { key: 'whereto', label: 'WhereTo', icon: '🔍' },
+  resourcePref: { key: 'resourcePref', label: 'Resource Pref', icon: '🔀' },
+  rush:       { key: 'rush', label: 'Rush', icon: '⚡' },
+  extend_window: { key: 'extend_window', label: 'Extend Window', icon: '⟫' },
+};
+
+function getToolbarActions(selectedTasks: any[]): ToolbarAction[] {
+  if (selectedTasks.length === 0) return [];
+
+  // Count tasks at each level
+  const levelCounts: Record<string, number> = {};
+  for (const t of selectedTasks) {
+    const l = t._status || t.commitmentLevel || deriveDisplayLevel(t);
+    levelCounts[l] = (levelCounts[l] || 0) + 1;
+  }
+
+  const actions: ToolbarAction[] = [];
+  const add = (key: string, count: number) => {
+    if (count > 0) actions.push({ ...ACTION_CONFIG[key], count });
+  };
+
+  // WhereTo — single selection, planned or unscheduled
+  if (selectedTasks.length === 1 && ((levelCounts.planned || 0) + (levelCounts.unscheduled || 0) > 0)) {
+    actions.push({ ...ACTION_CONFIG.whereto });
+  }
+
+  // Each button maps to specific source levels
+  add('schedule',   (levelCounts.unscheduled || 0) + (levelCounts.infeasible || 0));
+  add('pin',        levelCounts.planned || 0);
+  add('unpin',      levelCounts.pinned || 0);
+  add('unschedule', levelCounts.planned || 0);
+  add('exclude',    (levelCounts.planned || 0) + (levelCounts.unscheduled || 0) + (levelCounts.infeasible || 0));
+  add('include',    levelCounts.excluded || 0);
+  add('resourcePref', levelCounts.planned || 0);
+  add('rush',       (levelCounts.planned || 0) + (levelCounts.unscheduled || 0) + (levelCounts.infeasible || 0));
+  add('dispatch',   levelCounts.pinned || 0);
+  add('start',      levelCounts.dispatched || 0);
+  add('hold',       (levelCounts.running || 0) + (levelCounts.dispatched || 0));
+  add('resume',     levelCounts.on_hold || 0);
+  add('revert',     levelCounts.dispatched || 0);
+  add('complete',   levelCounts.running || 0);
+  add('extend_window', (levelCounts.planned || 0) + (levelCounts.unscheduled || 0) + (levelCounts.infeasible || 0));
+
+  return actions;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -5394,7 +5666,7 @@ function TaskRowActions({ task, taskPins, taskExcludes, taskUnschedules, orderMo
   );
 }
 
-function TaskBulkActions({ filteredTasks, taskPins, taskExcludes, orderModes,
+function TaskBulkActions({ filteredTasks, taskPins: _taskPins, taskExcludes: _taskExcludes, orderModes,
   onPinAll, onUnpinAll, onExcludeAll, onIncludeAll, onUnscheduleAll }: {
   filteredTasks: any[];
   taskPins: Record<string, boolean>; taskExcludes: Record<string, boolean>;
@@ -5407,10 +5679,11 @@ function TaskBulkActions({ filteredTasks, taskPins, taskExcludes, orderModes,
     const orderMode = orderModes[t.orderRef] || 'INCLUDE';
     return orderMode !== 'LOCKED';
   });
-  const scheduled = actionable.filter(t => t.feasible && t.scheduledStart);
-  const pinnedCount = actionable.filter(t => taskPins[t.key] || t.pinned).length;
-  const excludedCount = actionable.filter(t => taskExcludes[t.key]).length;
-  const scheduledKeys = scheduled.map(t => t.key);
+  // Use _status (commitment-aware) to determine what can be unscheduled/pinned
+  const planned = actionable.filter(t => t._status === 'planned');
+  const pinnedTasks = actionable.filter(t => t._status === 'pinned');
+  const excludedCount = actionable.filter(t => t._status === 'excluded').length;
+  const plannedKeys = planned.map(t => t.key);
   const actionableKeys = actionable.map(t => t.key);
 
 
@@ -5425,17 +5698,17 @@ function TaskBulkActions({ filteredTasks, taskPins, taskExcludes, orderModes,
       <span style={{ fontWeight: 700, fontSize: 11, color: C.textDim, marginRight: 4 }}>
         Bulk ({filteredTasks.length} shown):
       </span>
-      {scheduled.length > 0 && (
-        <BulkBtn icon="✕" label={`Unschedule ${scheduled.length}`} color={C.red}
-          onClick={() => onUnscheduleAll(scheduledKeys)} />
+      {planned.length > 0 && (
+        <BulkBtn icon="✕" label={`Unschedule ${planned.length}`} color={C.red}
+          onClick={() => onUnscheduleAll(plannedKeys)} />
       )}
-      {scheduled.length > 0 && pinnedCount < scheduled.length && (
-        <BulkBtn icon="📌" label={`Pin ${scheduled.length - pinnedCount}`} color={C.yellow}
-          onClick={() => onPinAll(scheduledKeys)} />
+      {planned.length > 0 && (
+        <BulkBtn icon="📌" label={`Pin ${planned.length}`} color={C.yellow}
+          onClick={() => onPinAll(plannedKeys)} />
       )}
-      {pinnedCount > 0 && (
-        <BulkBtn icon="📌" label={`Unpin ${pinnedCount}`} color={C.textDim}
-          onClick={() => onUnpinAll(scheduledKeys)} />
+      {pinnedTasks.length > 0 && (
+        <BulkBtn icon="📌" label={`Unpin ${pinnedTasks.length}`} color={C.textDim}
+          onClick={() => onUnpinAll(pinnedTasks.map(t => t.key))} />
       )}
       {excludedCount < actionable.length && (
         <BulkBtn icon="⏸" label={`Exclude ${actionable.length - excludedCount}`} color={C.textDim}
@@ -5660,7 +5933,8 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected,
   onSetResourcePreference, resourcePreferenceOverrides,
   priorityOverrides, onSetPriority: _onSetPriority, onRushSelected,
-  onApiSchedule, actionLoading, resourceUtilization }: {
+  onApiSchedule, actionLoading, resourceUtilization, isQueuing = false,
+  onToolbarAction }: {
   tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
   orderModes?: Record<string, string>;
@@ -5687,18 +5961,20 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   selectedTasks?: Set<string>;
   onToggleSelect?: (key: string) => void;
   onSetSelectedTasks?: (s: Set<string>) => void;
-  onScheduleSelected?: (keys: string[]) => void;
-  onUnscheduleSelected?: (keys: string[]) => void;
-  onPinSelected?: (keys: string[]) => void;
-  onUnpinSelected?: (keys: string[]) => void;
+  onScheduleSelected?: (keys: string[], e?: any) => void;
+  onUnscheduleSelected?: (keys: string[], e?: any) => void;
+  onPinSelected?: (keys: string[], e?: any) => void;
+  onUnpinSelected?: (keys: string[], e?: any) => void;
   onExcludeSelected?: (keys: string[]) => void;
   onIncludeSelected?: (keys: string[]) => void;
   onSetResourcePreference?: () => void;
   resourcePreferenceOverrides?: Record<string, Record<string, string>>;
   priorityOverrides?: Record<string, number>;
   onSetPriority?: (key: string, priority: number) => void;
-  onRushSelected?: (keys: string[]) => void;
+  onRushSelected?: (keys: string[], e?: any) => void;
+  onToolbarAction?: (action: string, taskKeys: string[], event?: any) => void;
   resourceUtilization?: any[];
+  isQueuing?: boolean;
 }) {
   const { sortKey, sortDir, toggle, sorted } = useSort('key');
   const [activeTypeChips, setActiveTypeChips] = useState<Set<string>>(new Set(['PROCESS']));
@@ -5870,10 +6146,11 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
     return { ...base, onChange: filter.setColumnFilter };
   };
 
+  const completedCount = typeFiltered.filter(tk => tk._status === 'completed').length;
   const runningCount = typeFiltered.filter(tk => tk._status === 'running').length;
   const onHoldCount = typeFiltered.filter(tk => tk._status === 'on_hold').length;
   const dispatchedCount = typeFiltered.filter(tk => tk._status === 'dispatched').length;
-  const scheduledCount = typeFiltered.filter(tk => tk._status === 'scheduled').length;
+  const plannedCount = typeFiltered.filter(tk => tk._status === 'planned' || tk._status === 'scheduled').length;
   const unscheduledCount = typeFiltered.filter(tk => tk._status === 'unscheduled').length;
   const pinnedCount = typeFiltered.filter(tk => tk._status === 'pinned').length;
   const infeasibleCount = typeFiltered.filter(tk => tk._status === 'infeasible').length;
@@ -5882,15 +6159,16 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
 
   const statusOptions = [
     { value: 'all', label: 'All', count: typeFiltered.length },
-    { value: 'running', label: '\u25CF Running', color: '#ef4444', count: runningCount },
-    { value: 'on_hold', label: '\u26A0 On Hold', color: '#f59e0b', count: onHoldCount },
-    { value: 'dispatched', label: '\u25C6 Dispatched', color: '#f97316', count: dispatchedCount },
-    { value: 'scheduled', label: t('scheduledStatus', 'Scheduled'), color: C.green, count: scheduledCount },
-    { value: 'unscheduled', label: t('unscheduledStatus', 'Unscheduled'), color: C.yellow, count: unscheduledCount },
-    { value: 'pinned', label: t('pinnedStatus', 'Pinned'), color: C.yellow, count: pinnedCount },
-    { value: 'infeasible', label: t('infeasibleStatus', 'Infeasible'), color: C.red, count: infeasibleCount },
-    { value: 'excluded', label: t('excludedStatus', 'Excluded'), color: C.textDim, count: excludedCount },
-    { value: 'rush', label: '\uD83D\uDD25 Rush', color: '#f97316', count: rushCount },
+    { value: 'completed', label: '✔ Done', color: '#06b6d4', count: completedCount },
+    { value: 'running', label: '● Running', color: '#ef4444', count: runningCount },
+    { value: 'on_hold', label: '⚠ On Hold', color: '#f59e0b', count: onHoldCount },
+    { value: 'dispatched', label: '◆ Dispatched', color: '#f97316', count: dispatchedCount },
+    { value: 'pinned', label: '📌 Pinned', color: '#3b82f6', count: pinnedCount },
+    { value: 'planned', label: '✓ Planned', color: '#22c55e', count: plannedCount },
+    { value: 'unscheduled', label: '○ Unsched', color: '#9ca3af', count: unscheduledCount },
+    { value: 'infeasible', label: '✕ Infeasible', color: '#ef4444', count: infeasibleCount },
+    { value: 'excluded', label: '— Excluded', color: '#475569', count: excludedCount },
+    { value: 'rush', label: '🔥 Rush', color: '#f97316', count: rushCount },
   ].filter(opt => opt.value === 'all' || opt.count > 0);
 
   const hasActions = !!(onPinTask || onExcludeTask || onUnscheduleTask);
@@ -6108,21 +6386,45 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
       )}
       {selectedTasks && selectedTasks.size > 0 ? (() => {
         const selArr = Array.from(selectedTasks);
-        const selObjs = selArr.map(k => tasks.find((tt: any) => tt.key === k)).filter(Boolean);
-        const scheduledSel = selObjs.filter((tt: any) => tt.feasible && tt.scheduledStart && !taskUnschedules?.has(tt.key));
-        const unscheduledSel = selObjs.filter((tt: any) => !tt.feasible || !tt.scheduledStart || taskExcludes?.[tt.key]);
-        const pinnedSel = selObjs.filter((tt: any) => taskPins?.[tt.key] || tt.pinned);
-        const unpinnedScheduled = scheduledSel.filter((tt: any) => !taskPins?.[tt.key] && !tt.pinned);
-        const excludedSel = selObjs.filter((tt: any) => taskExcludes?.[tt.key]);
-        const nonExcluded = selObjs.filter((tt: any) => !taskExcludes?.[tt.key]);
-        const pendingUnsched = selArr.filter(k => taskUnschedules?.has(k));
+        const selObjs = selArr.map(k => enriched.find((tt: any) => tt.key === k)).filter(Boolean);
+        const toolbarActions = getToolbarActions(selObjs);
         const btnStyle: CSSProperties = {
           padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
           fontFamily: FONT, border: `1px solid ${C.border}`, background: C.surface2, color: C.text,
         };
+
+        const handleAction = (action: string, e: React.MouseEvent) => {
+          // Filter to only tasks where this action is valid
+          const eligible = selObjs.filter(t => canTransition(t, action).allowed);
+          const keys = eligible.map(t => t.key);
+          if (keys.length === 0) return;
+          switch (action) {
+            case 'schedule':
+              onScheduleSelected?.(keys, e); break;
+            case 'unschedule':
+              onUnscheduleSelected?.(keys, e); break;
+            case 'pin':
+              onPinSelected?.(keys, e); break;
+            case 'unpin':
+              onUnpinSelected?.(keys, e); break;
+            case 'exclude':
+              onExcludeSelected?.(keys); break;
+            case 'include':
+              onIncludeSelected?.(keys); break;
+            case 'whereto':
+              onWhereTo?.(keys[0], 'table'); break;
+            case 'resourcePref':
+              onSetResourcePreference?.(); break;
+            case 'rush':
+              onRushSelected?.(keys, e); break;
+            default:
+              onToolbarAction?.(action, keys, e); break;
+          }
+        };
+
         return (
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+            display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
             background: `${C.accent}0a`, borderRadius: 8, marginBottom: 8,
             border: `1px solid ${C.accent}33`, fontFamily: FONT,
           }}>
@@ -6130,56 +6432,22 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
               {selectedTasks.size} selected
             </span>
             <div style={{ width: 1, height: 16, background: C.border }} />
-            {unscheduledSel.length > 0 && onScheduleSelected && (
-              <button style={{ ...btnStyle, color: C.green }} onClick={() => onScheduleSelected(unscheduledSel.map((tt: any) => tt.key))}>
-                {'\u25B6'} Schedule {unscheduledSel.length}
+
+            {toolbarActions.map(action => (
+              <button
+                key={action.key}
+                onClick={(e) => handleAction(action.key, e)}
+                style={{
+                  ...btnStyle,
+                  outline: isQueuing ? `2px dashed ${C.accent}` : 'none',
+                }}
+                title={action.label}
+              >
+                {action.icon} {action.label}{action.count != null && action.count < selectedTasks.size ? ` ${action.count}` : ''}
+                {isQueuing && <span style={{ fontSize: 9, marginLeft: 3, color: C.accent }}>+Q</span>}
               </button>
-            )}
-            {scheduledSel.length > 0 && onUnscheduleSelected && (
-              <button style={{ ...btnStyle, color: C.red }} onClick={() => onUnscheduleSelected(scheduledSel.map((tt: any) => tt.key))}>
-                {'\u2715'} Unschedule {scheduledSel.length}
-              </button>
-            )}
-            {pendingUnsched.length > 0 && onScheduleSelected && (
-              <button style={{ ...btnStyle, color: C.yellow }} onClick={() => onScheduleSelected(pendingUnsched)}>
-                {'\u21A9'} Cancel Unschedule {pendingUnsched.length}
-              </button>
-            )}
-            {unpinnedScheduled.length > 0 && onPinSelected && (
-              <button style={{ ...btnStyle, color: C.accent }} onClick={() => onPinSelected(unpinnedScheduled.map((tt: any) => tt.key))}>
-                {'\uD83D\uDCCC'} Pin {unpinnedScheduled.length}
-              </button>
-            )}
-            {pinnedSel.length > 0 && onUnpinSelected && (
-              <button style={{ ...btnStyle, color: C.yellow }} onClick={() => onUnpinSelected(pinnedSel.map((tt: any) => tt.key))}>
-                {'\uD83D\uDCCC'} Unpin {pinnedSel.length}
-              </button>
-            )}
-            {nonExcluded.length > 0 && onExcludeSelected && (
-              <button style={{ ...btnStyle, color: C.textDim }} onClick={() => onExcludeSelected(nonExcluded.map((tt: any) => tt.key))}>
-                {'\u23F8'} Exclude {nonExcluded.length}
-              </button>
-            )}
-            {excludedSel.length > 0 && onIncludeSelected && (
-              <button style={{ ...btnStyle, color: C.green }} onClick={() => onIncludeSelected(excludedSel.map((tt: any) => tt.key))}>
-                {'\u25B6'} Include {excludedSel.length}
-              </button>
-            )}
-            {selArr.length === 1 && onWhereTo && (
-              <button style={{ ...btnStyle, color: C.accent }} onClick={() => onWhereTo(selArr[0], 'table')}>
-                {'\uD83D\uDDFA'} Where To
-              </button>
-            )}
-            {onSetResourcePreference && (
-              <button style={{ ...btnStyle, color: C.purple }} onClick={() => onSetResourcePreference()}>
-                {'\uD83D\uDD00'} Set Resource Pref
-              </button>
-            )}
-            {onRushSelected && (
-              <button style={{ ...btnStyle, color: C.red }} onClick={() => onRushSelected(selArr.map((t: any) => t.key))}>
-                {'\u26A1'} Rush {selArr.length}
-              </button>
-            )}
+            ))}
+
             <div style={{ flex: 1 }} />
             <button onClick={() => onSetSelectedTasks?.(new Set())}
               style={{ background: 'none', border: 'none', color: C.textMuted, fontSize: 11, cursor: 'pointer', fontFamily: FONT }}>
@@ -6233,7 +6501,6 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                 filterProps={colFilter('_processCategory')} />
               {showAt(experienceLevel, 'intermediate') && <SortHeader label={t('score', 'Score')} k="score" current={sortKey} dir={sortDir} onSort={toggle} />}
               {showAt(experienceLevel, 'intermediate') && <SortHeader label="Slack" k="_slackSort" current={sortKey} dir={sortDir} onSort={toggle} />}
-              {showAt(experienceLevel, 'intermediate') && <SortHeader label="Commit" k="_commitSort" current={sortKey} dir={sortDir} onSort={toggle} />}
               <SortHeader label="Status" k="_status" current={sortKey} dir={sortDir} onSort={toggle} />
               {hasActions && <th style={{
                 padding: '10px 12px', textAlign: 'center', fontSize: 12, fontWeight: 600,
@@ -6312,25 +6579,8 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                         </span>
                     }
                   </td>}
-                  {showAt(experienceLevel, 'intermediate') && <td style={{ ...cellStyle, textAlign: 'center' }}>
-                    {(() => {
-                      const cfg: Record<string, { icon: string; color: string; label: string }> = {
-                        completed:   { icon: '\u2714', color: '#16a34a', label: 'Done' },
-                        running:     { icon: '\u25CF', color: '#ef4444', label: 'Running' },
-                        on_hold:     { icon: '\u26A0', color: '#f59e0b', label: 'On Hold' },
-                        dispatched:  { icon: '\u25C6', color: '#f97316', label: 'Dispatched' },
-                        pinned:      { icon: '\uD83D\uDCCC', color: '#3b82f6', label: 'Pinned' },
-                        planned:     { icon: '\u2713', color: '#22c55e', label: 'Planned' },
-                        unscheduled: { icon: '\u25CB', color: '#9ca3af', label: 'Unsched' },
-                      };
-                      const c = cfg[tk.commitmentLevel as string] || cfg.unscheduled;
-                      return <span style={{ color: c.color, fontSize: 11, fontWeight: 600 }} title={c.label}>
-                        {c.icon} {tk.percentComplete > 0 && tk.commitmentLevel === 'running' ? `${tk.percentComplete}%` : c.label}
-                      </span>;
-                    })()}
-                  </td>}
                   <td style={cellStyle}>
-                    {taskStatusBadge(tk._status)}
+                    {taskStatusBadge(tk)}
                     {taskUnschedules?.has(tk.key) && (
                       <span style={{ fontSize: 10, color: C.red, fontWeight: 600, marginLeft: 4 }}>{'\u2192'} UNSCHED</span>
                     )}
@@ -7192,7 +7442,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   zoomLevel, setZoomLevel, scrollOffset, setScrollOffset, onViewAgenda, onAskAI,
   replay, onReplayStep, onReplayJumpStart, onReplayJumpEnd,
   onReplayTogglePlay, onReplaySpeedChange, onReplayExit, onReplayJumpToStep,
-  ctpGhostBars }: {
+  ctpGhostBars, isQueuing = false,
+  onToolbarAction }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   onViewAgenda?: (r: any) => void;
@@ -7223,10 +7474,10 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   selectedTasks?: Set<string>;
   onToggleSelect?: (key: string) => void;
   onSetSelectedTasks?: (s: Set<string>) => void;
-  onScheduleSelected?: (keys: string[]) => void;
-  onUnscheduleSelected?: (keys: string[]) => void;
-  onPinSelected?: (keys: string[]) => void;
-  onUnpinSelected?: (keys: string[]) => void;
+  onScheduleSelected?: (keys: string[], e?: any) => void;
+  onUnscheduleSelected?: (keys: string[], e?: any) => void;
+  onPinSelected?: (keys: string[], e?: any) => void;
+  onUnpinSelected?: (keys: string[], e?: any) => void;
   onExcludeSelected?: (keys: string[]) => void;
   onIncludeSelected?: (keys: string[]) => void;
   onSetResourcePreference?: () => void;
@@ -7249,6 +7500,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   onReplayExit?: () => void;
   onReplayJumpToStep?: (step: number) => void;
   ctpGhostBars?: any[] | null;
+  isQueuing?: boolean;
+  onToolbarAction?: (action: string, taskKeys: string[], event?: any) => void;
 }) {
   const tabNames = [`Gantt by ${t('resource', 'Resource')}`, `Gantt by ${t('order', 'Order')}`, t('tasks', 'Task List')];
   const [subIdx, setSubIdx] = useState(0);
@@ -7283,7 +7536,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             onReplayJumpStart={onReplayJumpStart} onReplayJumpEnd={onReplayJumpEnd}
             onReplayTogglePlay={onReplayTogglePlay} onReplaySpeedChange={onReplaySpeedChange}
             onReplayExit={onReplayExit} onReplayJumpToStep={onReplayJumpToStep}
-            ctpGhostBars={ctpGhostBars} />
+            ctpGhostBars={ctpGhostBars} onToolbarAction={onToolbarAction} />
           <UnscheduledPanel tasks={tasks} colors={colors}
             taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             onTaskClick={onTaskClick} onWhereTo={onWhereTo}
@@ -7329,7 +7582,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             onSetResourcePreference={onSetResourcePreference} resourcePreferenceOverrides={resourcePreferenceOverrides}
             priorityOverrides={priorityOverrides} onSetPriority={onSetPriority} onRushSelected={onRushSelected}
             onApiSchedule={onApiSchedule} actionLoading={actionLoading}
-            resourceUtilization={resources} />
+            resourceUtilization={resources} isQueuing={isQueuing}
+            onToolbarAction={onToolbarAction} />
         </Card>
       )}
     </div>
@@ -10983,6 +11237,32 @@ export default function App() {
   const [activeConfig, setActiveConfig] = useState<any>(null);
   const [configDropdownOpen, setConfigDropdownOpen] = useState(false);
 
+  // ─── Action Queue State ───
+  interface QueuedAction {
+    id: string;
+    label: string;
+    command: any; // RecommendationCommand
+  }
+  const [actionQueue, setActionQueue] = useState<QueuedAction[]>([]);
+  const [queueMode, setQueueMode] = useState(false);
+  const [queueExecuting, setQueueExecuting] = useState(false);
+  const [queueResult, setQueueResult] = useState<any>(null);
+  const [showExecuteConfirm, setShowExecuteConfirm] = useState(false);
+  const [shiftHeld, setShiftHeld] = useState(false);
+  const [extendWindowTaskKeys, setExtendWindowTaskKeys] = useState<string[]>([]);
+  const [showExtendWindowDialog, setShowExtendWindowDialog] = useState(false);
+  const [holdDialogTask, setHoldDialogTask] = useState<{ key: string; name: string } | null>(null);
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => { if (e.key === 'Shift') setShiftHeld(true); };
+    const up = (e: KeyboardEvent) => { if (e.key === 'Shift') setShiftHeld(false); };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
+  }, []);
+
+  const isQueuing = queueMode || shiftHeld;
+
   const handleScoringRulesChange = useCallback((rules: ScoringRuleOverride[]) => {
     setScoringOverrides(rules.length === 0 ? null : rules);
     if (rules.length > 0) setSolveStale(true);
@@ -11152,6 +11432,75 @@ export default function App() {
       setError(e.message || 'Failed to load data');
     }
   }, [experienceLevel]);
+
+  // ─── Action Queue Helpers ───
+  const addToQueue = useCallback((label: string, command: any) => {
+    setActionQueue(prev => [
+      ...prev,
+      { id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, label, command },
+    ]);
+    showToast(`Queued: ${label}`, 'info');
+  }, [showToast]);
+
+  const removeFromQueue = useCallback((id: string) => {
+    setActionQueue(prev => prev.filter(a => a.id !== id));
+  }, []);
+
+  const clearQueue = useCallback(() => {
+    setActionQueue([]);
+    setQueueResult(null);
+  }, []);
+
+  const reorderQueue = useCallback((fromIndex: number, direction: 'up' | 'down') => {
+    setActionQueue(prev => {
+      const toIndex = direction === 'up' ? fromIndex - 1 : fromIndex + 1;
+      if (toIndex < 0 || toIndex >= prev.length) return prev;
+      const updated = [...prev];
+      const [moved] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, moved);
+      return updated;
+    });
+  }, []);
+
+  const executeQueue = useCallback(async () => {
+    if (actionQueue.length === 0) return;
+    setQueueExecuting(true);
+    setQueueResult(null);
+    setShowExecuteConfirm(false);
+
+    try {
+      const commands = actionQueue.map(a => a.command);
+      const result = await api('/ctp/execute', {
+        method: 'POST',
+        body: JSON.stringify({
+          commands,
+          name: `queue-${actionQueue.length}-actions`,
+          detailLevel: experienceLevel,
+        }),
+      });
+
+      setQueueResult(result);
+
+      if (result.success) {
+        // Refresh schedule state from the returned newState
+        if (result.newState?.tasks) {
+          setSolveResult(result.newState);
+        } else {
+          const updated = await api('/ctp/state?detailLevel=' + experienceLevel);
+          setSolveResult(updated);
+        }
+        // Clear queue on success after brief delay
+        setTimeout(() => {
+          setActionQueue([]);
+          setQueueResult(null);
+        }, 3000);
+      }
+    } catch (err: any) {
+      setQueueResult({ success: false, reason: err.message });
+    } finally {
+      setQueueExecuting(false);
+    }
+  }, [actionQueue, experienceLevel]);
 
   const handleSolveConfirm = useCallback(async () => {
     if (!scoringValid) {
@@ -11919,7 +12268,16 @@ export default function App() {
     }
   }, [showToast]);
 
-  const handleApiBulkUnschedule = useCallback(async (keys: string[]) => {
+  const handleApiBulkUnschedule = useCallback(async (keys: string[], event?: React.MouseEvent) => {
+    if (queueMode || event?.shiftKey) {
+      const tasks_ = solveResult?.tasks || [];
+      for (const key of keys) {
+        const t = tasks_.find((tt: any) => tt.key === key);
+        addToQueue(`Unschedule ${t?.name || key}`, { type: 'unschedule', taskKey: key });
+      }
+      setSelectedTasks(new Set());
+      return;
+    }
     setActionLoading('__bulk__');
     let successCount = 0;
     try {
@@ -11944,9 +12302,18 @@ export default function App() {
     } finally {
       setActionLoading(null);
     }
-  }, [showToast]);
+  }, [showToast, queueMode, addToQueue, solveResult]);
 
-  const handleApiBulkPin = useCallback(async (keys: string[], pinned: boolean) => {
+  const handleApiBulkPin = useCallback(async (keys: string[], pinned: boolean, event?: React.MouseEvent) => {
+    if (queueMode || event?.shiftKey) {
+      const tasks_ = solveResult?.tasks || [];
+      for (const key of keys) {
+        const t = tasks_.find((tt: any) => tt.key === key);
+        addToQueue(`${pinned ? 'Pin' : 'Unpin'} ${t?.name || key}`, { type: 'pin', taskKey: key, pinned });
+      }
+      setSelectedTasks(new Set());
+      return;
+    }
     setActionLoading('__bulk__');
     try {
       for (const key of keys) {
@@ -11971,9 +12338,14 @@ export default function App() {
     } finally {
       setActionLoading(null);
     }
-  }, [showToast]);
+  }, [showToast, queueMode, addToQueue, solveResult]);
 
-  const handleBulkSchedule = useCallback(async (keys: string[]) => {
+  const handleBulkSchedule = useCallback(async (keys: string[], event?: React.MouseEvent) => {
+    if (queueMode || event?.shiftKey) {
+      addToQueue(`Solve targeted (${keys.length} tasks)`, { type: 'solve', taskKeys: keys, scope: 'targeted', expandChains: true });
+      setSelectedTasks(new Set());
+      return;
+    }
     setActionLoading('__bulk__');
     let successCount = 0;
     try {
@@ -11999,7 +12371,197 @@ export default function App() {
     } finally {
       setActionLoading(null);
     }
-  }, [showToast]);
+  }, [showToast, queueMode, addToQueue]);
+
+  const handleHold = useCallback(async (taskKey: string, args: { holdReason: string; holdStart: string; estimatedResumeTime?: string }, event?: React.MouseEvent) => {
+    const tasks_ = solveResult?.tasks || [];
+    const shouldQueue = queueMode || event?.shiftKey;
+    setHoldDialogTask(null);
+
+    if (shouldQueue) {
+      const task = tasks_.find((t: any) => t.key === taskKey);
+      addToQueue(`Hold: ${task?.name || taskKey}`, {
+        type: 'hold', taskKey,
+        holdReason: args.holdReason || undefined,
+        estimatedResumeTime: args.estimatedResumeTime,
+      });
+      return;
+    }
+
+    setActionLoading(taskKey);
+    try {
+      await api('/ctp/tasks/hold', {
+        method: 'POST',
+        body: JSON.stringify({
+          taskKey,
+          holdReason: args.holdReason || 'On hold',
+          estimatedResumeTime: args.estimatedResumeTime,
+          holdStart: args.holdStart,
+        }),
+      });
+      const updated = await api('/ctp/state');
+      if (updated.tasks) setSolveResult(updated);
+      showToast('Task put on hold');
+    } catch (err: any) {
+      showToast(err.message || 'Hold failed', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  }, [solveResult, queueMode, addToQueue, showToast]);
+
+  const handleExtendWindow = useCallback(async (taskKeys: string[], extensionSeconds: number, event?: React.MouseEvent) => {
+    const tasks_ = solveResult?.tasks || [];
+    const shouldQueue = queueMode || event?.shiftKey;
+
+    if (shouldQueue) {
+      for (const key of taskKeys) {
+        const task = tasks_.find((t: any) => t.key === key);
+        if (!task) continue;
+        const currentEnd = task.windowEnd || task.scheduledEnd;
+        if (!currentEnd) continue;
+        const newEnd = new Date(new Date(currentEnd).getTime() + extensionSeconds * 1000).toISOString();
+        const label = extensionSeconds >= 86400
+          ? `+${Math.round(extensionSeconds / 86400)}d`
+          : `+${Math.round(extensionSeconds / 3600)}h`;
+        addToQueue(`Extend window ${label}: ${task.name || key}`, { type: 'set_window', taskKey: key, windowEnd: newEnd });
+      }
+      setShowExtendWindowDialog(false);
+      return;
+    }
+
+    setShowExtendWindowDialog(false);
+    setActionLoading('__bulk__');
+    try {
+      for (const key of taskKeys) {
+        const task = tasks_.find((t: any) => t.key === key);
+        if (!task) continue;
+        const currentEnd = task.windowEnd || task.scheduledEnd;
+        if (!currentEnd) continue;
+        const newEnd = new Date(new Date(currentEnd).getTime() + extensionSeconds * 1000).toISOString();
+        await api(`/ctp/tasks/${key}/window`, {
+          method: 'PATCH',
+          body: JSON.stringify({ windowEnd: newEnd }),
+        });
+      }
+      const updated = await api('/ctp/state');
+      if (updated.tasks) setSolveResult(updated);
+      setSelectedTasks(new Set());
+      showToast(`Window extended for ${taskKeys.length} task(s)`);
+    } catch (err: any) {
+      showToast(err.message || 'Extend window failed', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  }, [solveResult, queueMode, addToQueue, showToast]);
+
+  const handleToolbarAction = useCallback(async (action: string, taskKeys: string[], event?: any) => {
+    const tasks_ = solveResult?.tasks || [];
+
+    // Hold — show dialog to capture reason + times
+    if (action === 'hold') {
+      const task = tasks_.find((t: any) => t.key === taskKeys[0]);
+      setHoldDialogTask({ key: taskKeys[0], name: task?.name || taskKeys[0] });
+      return;
+    }
+
+    // Extend window — show dialog to pick duration
+    if (action === 'extend_window') {
+      const eligible = taskKeys.filter(k => {
+        const task = tasks_.find((t: any) => t.key === k);
+        return task && (task.windowEnd || task.scheduledEnd);
+      });
+      if (eligible.length === 0) return;
+      setExtendWindowTaskKeys(eligible);
+      setShowExtendWindowDialog(true);
+      return;
+    }
+
+    const shouldQueue = queueMode || event?.shiftKey;
+
+    // Map toolbar action to command type
+    const commandType: Record<string, string> = {
+      dispatch: 'dispatch', revert: 'revert_dispatch',
+      start: 'start', hold: 'hold', resume: 'resume', complete: 'complete',
+    };
+    const cmdType = commandType[action];
+    if (!cmdType) return;
+
+    // Filter to only valid tasks — silently skip invalid ones
+    const validKeys = taskKeys.filter(k => {
+      const task = tasks_.find((t: any) => t.key === k);
+      return task && canTransition(task, action).allowed;
+    });
+    if (validKeys.length === 0) return;
+    taskKeys = validKeys;
+
+    // Revert: warn if materials pulled
+    if (action === 'revert' && !shouldQueue) {
+      const pulled = taskKeys.filter(k => {
+        const t = tasks_.find((tt: any) => tt.key === k);
+        return t?.dispatched && t?.materialsPulled;
+      });
+      if (pulled.length > 0) {
+        const confirmed = confirm(
+          `${pulled.length} task(s) have materials pulled. Reverting will mark materials as wasted. Continue?`
+        );
+        if (!confirmed) return;
+      }
+    }
+
+    if (shouldQueue) {
+      const labels: Record<string, string> = {
+        dispatch: 'Dispatch', revert: 'Revert dispatch',
+        start: 'Start', hold: 'Hold', resume: 'Resume', complete: 'Complete',
+      };
+      for (const key of taskKeys) {
+        const t = tasks_.find((tt: any) => tt.key === key);
+        addToQueue(`${labels[action] || action} ${t?.name || key}`, { type: cmdType, taskKey: key });
+      }
+      setSelectedTasks(new Set());
+      return;
+    }
+
+    // Revert uses dedicated endpoint
+    if (action === 'revert') {
+      setActionLoading('__bulk__');
+      try {
+        await api('/ctp/tasks/revert-dispatch', {
+          method: 'POST',
+          body: JSON.stringify({ taskKeys }),
+        });
+        const updated = await api('/ctp/state');
+        if (updated.tasks) setSolveResult(updated);
+        setSelectedTasks(new Set());
+        showToast(`${taskKeys.length} task(s) reverted to pinned`);
+      } catch (err: any) {
+        showToast(err.message || 'Revert failed', 'error');
+      } finally {
+        setActionLoading(null);
+      }
+      return;
+    }
+
+    // Other commitment actions use /ctp/execute
+    setActionLoading('__bulk__');
+    try {
+      const commands = taskKeys.map(key => ({ type: cmdType, taskKey: key }));
+      await api('/ctp/execute', {
+        method: 'POST',
+        body: JSON.stringify({ commands, name: `${action} ${taskKeys.length} task(s)` }),
+      });
+      const updated = await api('/ctp/state');
+      if (updated.tasks) setSolveResult(updated);
+      setSelectedTasks(new Set());
+      const labels: Record<string, string> = {
+        dispatch: 'dispatched', start: 'started', hold: 'put on hold', resume: 'resumed', complete: 'completed',
+      };
+      showToast(`${taskKeys.length} task(s) ${labels[action] || action}`);
+    } catch (err: any) {
+      showToast(err.message || `${action} failed`, 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  }, [showToast, queueMode, addToQueue, solveResult]);
 
   // Escape key to cancel WhereTo
   useEffect(() => {
@@ -12340,12 +12902,36 @@ export default function App() {
               </div>
           )}
           <button
+            onClick={() => setQueueMode(m => !m)}
+            style={{
+              fontSize: 11, padding: '5px 10px', borderRadius: 6,
+              background: queueMode ? C.accent + '20' : 'transparent',
+              border: `1px solid ${queueMode ? C.accent : C.border}`,
+              color: queueMode ? C.accent : C.textMuted,
+              cursor: 'pointer', fontWeight: queueMode ? 700 : 400,
+              fontFamily: FONT,
+            }}
+            title="Toggle queue mode — actions are staged instead of executed immediately"
+          >
+            {queueMode ? '\uD83D\uDCCB Queuing' : 'Queue'}
+            {actionQueue.length > 0 && <span style={{ marginLeft: 4, fontSize: 10, color: C.accent }}>({actionQueue.length})</span>}
+          </button>
+          <button
             onClick={(e) => {
+              if (queueMode) {
+                const selKeys = Array.from(selectedTasks);
+                if (selKeys.length > 0) {
+                  addToQueue(`Solve targeted (${selKeys.length} tasks)`, { type: 'solve', taskKeys: selKeys, scope: 'targeted', expandChains: true });
+                } else {
+                  addToQueue('Solve all', { type: 'solve', scope: 'full' });
+                }
+                return;
+              }
               if (e.shiftKey) { handleSolveConfirm(); }
               else { setShowSolvePreview(true); }
             }}
             disabled={solving || !scoringValid}
-            title={!scoringValid ? `Scoring rules must sum to 100% (currently ${scoringWeightPct}%)` : 'Click to preview, Shift+Click to solve immediately'}
+            title={!scoringValid ? `Scoring rules must sum to 100% (currently ${scoringWeightPct}%)` : queueMode ? 'Click to queue a solve action' : 'Click to preview, Shift+Click to solve immediately'}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '7px 16px', borderRadius: 8, border: 'none',
@@ -12671,10 +13257,10 @@ export default function App() {
               });
             }}
             onSetSelectedTasks={setSelectedTasks}
-            onScheduleSelected={(keys) => { handleBulkSchedule(keys); }}
-            onUnscheduleSelected={(keys) => { handleApiBulkUnschedule(keys); }}
-            onPinSelected={(keys) => { handleApiBulkPin(keys, true); }}
-            onUnpinSelected={(keys) => { handleApiBulkPin(keys, false); }}
+            onScheduleSelected={(keys: string[], e?: any) => { handleBulkSchedule(keys, e); }}
+            onUnscheduleSelected={(keys: string[], e?: any) => { handleApiBulkUnschedule(keys, e); }}
+            onPinSelected={(keys: string[], e?: any) => { handleApiBulkPin(keys, true, e); }}
+            onUnpinSelected={(keys: string[], e?: any) => { handleApiBulkPin(keys, false, e); }}
             onExcludeSelected={(keys) => {
               setTaskExcludes(prev => { const next = { ...prev }; keys.forEach(k => { next[k] = true; }); return next; });
               setSelectedTasks(new Set());
@@ -12696,7 +13282,15 @@ export default function App() {
               setPriorityOverrides(prev => ({ ...prev, [key]: pri }));
               setSolveStale(true);
             }}
-            onRushSelected={(keys) => {
+            onRushSelected={(keys: string[], e?: any) => {
+              if (queueMode || e?.shiftKey) {
+                for (const key of keys) {
+                  const t = (solveResult?.tasks || []).find((tt: any) => tt.key === key);
+                  addToQueue(`Rush ${t?.name || key}`, { type: 'set_priority', taskKey: key, priority: 1 });
+                }
+                setSelectedTasks(new Set());
+                return;
+              }
               setPriorityOverrides(prev => {
                 const next = { ...prev };
                 keys.forEach(k => { next[k] = 1; });
@@ -12714,11 +13308,18 @@ export default function App() {
             onReplayJumpStart={handleReplayJumpStart} onReplayJumpEnd={handleReplayJumpEnd}
             onReplayTogglePlay={handleReplayTogglePlay} onReplaySpeedChange={handleReplaySpeedChange}
             onReplayExit={handleReplayExit} onReplayJumpToStep={handleReplayJumpToStep}
-            ctpGhostBars={ctpGhostBars} />
+            ctpGhostBars={ctpGhostBars} isQueuing={isQueuing}
+            onToolbarAction={handleToolbarAction} />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} tasks={tasks}
           orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}
-          onOrderModeChange={(key, mode) => { setOrderModes(prev => ({ ...prev, [key]: mode })); setSolveStale(true); }}
+          onOrderModeChange={(key: string, mode: string) => {
+            if (queueMode) {
+              addToQueue(`Set order ${key} → ${mode}`, { type: 'set_order_mode', orderKey: key, mode });
+              return;
+            }
+            setOrderModes(prev => ({ ...prev, [key]: mode })); setSolveStale(true);
+          }}
           caseFilter={ordersCaseFilter} onClearCaseFilter={() => setOrdersCaseFilter(null)} />}
         {activeTab === 'Conflicts' && <ConflictsTab tasks={tasks} resources={resources} materials={materials}
           onTaskClick={handleTaskClickByKey} />}
@@ -13194,6 +13795,142 @@ export default function App() {
                   )}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action Queue Panel */}
+      {(actionQueue.length > 0 || queueResult) && (
+        <div style={{
+          position: 'fixed', bottom: versionInfo ? 28 : 4, left: 0, right: 0,
+          background: C.surface, borderTop: `2px solid ${C.accent}`,
+          padding: '8px 16px', zIndex: 100,
+          boxShadow: '0 -4px 12px rgba(0,0,0,0.3)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: C.accent, fontFamily: FONT }}>
+              ACTION QUEUE ({actionQueue.length} step{actionQueue.length !== 1 ? 's' : ''})
+            </span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={clearQueue} disabled={queueExecuting}
+                style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, background: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted, cursor: 'pointer', fontFamily: FONT }}>
+                Clear All
+              </button>
+              <button onClick={() => setShowExecuteConfirm(true)} disabled={queueExecuting || actionQueue.length === 0}
+                style={{
+                  fontSize: 11, padding: '3px 14px', borderRadius: 6, fontWeight: 700, fontFamily: FONT,
+                  background: queueExecuting ? C.surface2 : C.accent, border: 'none',
+                  color: queueExecuting ? C.textMuted : '#fff', cursor: queueExecuting ? 'default' : 'pointer',
+                }}>
+                {queueExecuting ? 'Executing...' : `Execute All (${actionQueue.length})`}
+              </button>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {actionQueue.map((action, index) => (
+              <div key={action.id} style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '3px 8px', borderRadius: 6, background: C.surface2, border: `1px solid ${C.border}`,
+                fontSize: 11, color: C.text, fontFamily: FONT,
+              }}>
+                {index > 0 && (
+                  <button onClick={() => reorderQueue(index, 'up')} disabled={queueExecuting}
+                    style={{ background: 'none', border: 'none', color: C.textDim, cursor: 'pointer', padding: '0 1px', fontSize: 10 }}>
+                    {'\u25B2'}
+                  </button>
+                )}
+                {index < actionQueue.length - 1 && (
+                  <button onClick={() => reorderQueue(index, 'down')} disabled={queueExecuting}
+                    style={{ background: 'none', border: 'none', color: C.textDim, cursor: 'pointer', padding: '0 1px', fontSize: 10 }}>
+                    {'\u25BC'}
+                  </button>
+                )}
+                <span style={{ color: C.textDim, fontWeight: 600 }}>{index + 1}.</span>
+                <span>{action.label}</span>
+                <button onClick={() => removeFromQueue(action.id)} disabled={queueExecuting}
+                  style={{ background: 'none', border: 'none', color: C.textDim, cursor: 'pointer', padding: '0 2px', fontSize: 11 }}>
+                  {'\u2715'}
+                </button>
+              </div>
+            ))}
+          </div>
+          {queueResult && (
+            <div style={{
+              marginTop: 6, padding: '4px 8px', borderRadius: 6, fontSize: 11, fontFamily: FONT,
+              background: queueResult.success ? C.greenDim : C.redDim,
+              color: queueResult.success ? C.green : C.red,
+            }}>
+              {queueResult.success
+                ? `Done — ${queueResult.actionsApplied?.length || 0} actions applied. ${queueResult.rippleEffects?.length || 0} tasks affected.`
+                : `Failed${queueResult.rolledBack ? ' (rolled back)' : ''}: ${queueResult.reason || 'Execution failed'}`
+              }
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Hold Dialog */}
+      {holdDialogTask && (
+        <HoldDialog
+          taskName={holdDialogTask.name}
+          onApply={(args) => handleHold(holdDialogTask.key, args)}
+          onCancel={() => setHoldDialogTask(null)}
+        />
+      )}
+
+      {/* Extend Window Dialog */}
+      {showExtendWindowDialog && (
+        <ExtendWindowDialog
+          taskCount={extendWindowTaskKeys.length}
+          onApply={(seconds) => handleExtendWindow(extendWindowTaskKeys, seconds)}
+          onCancel={() => setShowExtendWindowDialog(false)}
+        />
+      )}
+
+      {/* Execute Confirmation Dialog */}
+      {showExecuteConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
+        }}>
+          <div style={{
+            background: C.surface, border: `1px solid ${C.border}`,
+            borderRadius: 12, padding: 20, maxWidth: 420, width: '90%', fontFamily: FONT,
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 12 }}>
+              Execute {actionQueue.length} Action{actionQueue.length !== 1 ? 's' : ''}?
+            </div>
+            <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 12 }}>
+              This will execute all queued actions atomically. If any action fails, all changes will be rolled back.
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              {actionQueue.map((action, i) => (
+                <div key={action.id} style={{
+                  fontSize: 11, color: C.text, padding: '3px 0',
+                  borderBottom: i < actionQueue.length - 1 ? `1px solid ${C.border}` : 'none',
+                }}>
+                  <span style={{ color: C.textDim, marginRight: 6 }}>{i + 1}.</span>
+                  {action.label}
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 11, color: C.textDim, marginBottom: 16 }}>
+              Summary: {(() => {
+                const counts: Record<string, number> = {};
+                actionQueue.forEach(a => { counts[a.command.type] = (counts[a.command.type] || 0) + 1; });
+                return Object.entries(counts).map(([type, count]) => `${count} ${type}${count > 1 ? 's' : ''}`).join(', ');
+              })()}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={() => setShowExecuteConfirm(false)}
+                style={{ fontSize: 12, padding: '6px 16px', borderRadius: 8, background: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted, cursor: 'pointer', fontFamily: FONT }}>
+                Cancel
+              </button>
+              <button onClick={executeQueue}
+                style={{ fontSize: 12, padding: '6px 16px', borderRadius: 8, fontWeight: 700, background: C.accent, border: 'none', color: '#fff', cursor: 'pointer', fontFamily: FONT }}>
+                Execute {actionQueue.length} Action{actionQueue.length !== 1 ? 's' : ''}
+              </button>
             </div>
           </div>
         </div>
