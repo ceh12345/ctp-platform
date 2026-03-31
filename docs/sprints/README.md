@@ -4,7 +4,7 @@
 
 | Sprint | Name | Notes |
 |--------|------|-------|
-| — | — | No active sprint |
+| [Rolling Horizon](rolling-horizon-spec.md) | NOW-relative horizon config, task bucketing, past due extension, deferred tasks, UI indicators | In progress |
 
 ## Done
 
