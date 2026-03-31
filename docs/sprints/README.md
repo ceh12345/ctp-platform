@@ -2,9 +2,7 @@
 
 ## Active
 
-| Sprint | Name | Notes |
-|--------|------|-------|
-| [Rolling Horizon](rolling-horizon-spec.md) | NOW-relative horizon config, task bucketing, past due extension, deferred tasks, UI indicators | In progress |
+_None_
 
 ## Done
 
@@ -65,6 +63,7 @@
 | Solver 9 — Two-Pass Solve | Pass 1 anchors committed tasks (completed/running/on_hold/dispatched/pinned) at positions before solver Pass 2+3; clean API/engine split (classify in ctp.service, anchor in basescheduler); resource hierarchy filter fix (assigned vs compatible); Gantt replay anchor steps | 2026-03-27 |
 | UI — Commitment State Machine | Merged status badge (8 levels with icons/colors); `deriveTaskStatus` with local override awareness; `canTransition` guards with toast messages; contextual toolbar (level-count approach, zero-count buttons hidden); Gantt context menu per commitment level; revert-dispatch endpoint; bulk count fix; Extend Window dialog (+1h/+4h/+1d/+2d/+1w presets, queue-aware); Hold dialog (reason + held-since + estimated resume presets, queue-aware); `holdStart` audit field on task model | 2026-03-29 |
 | Resource Downtime | MAINTENANCE assignments (add/end/list/all); amber Gantt stripes; indefinite sentinel; agenda split around downtimes; Downtime History in detail + agenda panels; netAvailable subtracts MAINTENANCE; preserveLandscape solve design (unschedule planned before solver, recompute=true); bulk actions for unscheduled/infeasible (Schedule, Resource Pref, Extend Window, Rush); WhereTo + Resource Pref in context menu for infeasible | 2026-03-30 |
+| [Rolling Horizon](rolling-horizon-spec.md) | New horizon.json format (`start`/`maxDays`/`pastDueExtensionDays`); `resolveHorizonStart` (NOW/NOW±Nd/fixed ISO); task bucketing (past_due/active/near_horizon/beyond); past due window extension; past due ref = horizonStart (works for fixed + rolling); per-task isPastDue/pastDueDays/horizonBucket fields; UI "Nd late" + "Deferred" badges; Past Due + Deferred filter chips; remove CTPRollingHorizon; migrate all 6 tenant horizon.json files | 2026-03-31 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
