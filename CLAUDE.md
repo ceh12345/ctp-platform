@@ -1,5 +1,45 @@
 # CTP Platform — Claude Code Notes
 
+## Quick Start
+
+### Build
+```bash
+# Engine first (always clean-build to avoid stale .js artifacts)
+rm -rf packages/engine/dist && npm run build --workspace=@ctp/engine
+
+# API
+npm run build --workspace=@ctp/api
+```
+
+### Test
+```bash
+npx vitest run
+```
+
+### Start Dev Servers
+```bash
+# API (port 3000) — must build first; run from packages/api (config paths are relative to cwd)
+(cd packages/api && node dist/src/main.js >> /tmp/api.log 2>&1) &
+
+# Web UI (port 3001)
+npm run dev --workspace=@ctp/web
+
+# Interactive mode (in your own terminal, with hot reload):
+npm run start:dev --workspace=@ctp/api
+```
+
+Open http://localhost:3001/?tenant=acme-outpatient in browser.
+
+### Stop Dev Servers
+- **In terminal**: Ctrl+C
+- **From Claude Code bash** (taskkill needs cmd.exe wrapper on MSYS2):
+  ```bash
+  # Find server PIDs (exclude Claude Code host PID)
+  netstat -ano | grep ":3000 " | grep LISTEN   # API PID
+  netstat -ano | grep ":3001 " | grep LISTEN   # Web PID
+  cmd //c "taskkill /F /PID <pid>"              # kill specific process
+  ```
+
 ## Backup to USB Stick (D: drive)
 Run `backup.bat` from the project root. It does two things:
 1. Mirrors the project to `D:\ctp-platform` (excludes node_modules, .git, dist, *.log)

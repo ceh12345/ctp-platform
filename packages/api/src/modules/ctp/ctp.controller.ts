@@ -352,6 +352,45 @@ export class CTPController {
     return this.ctpService.updateProgress(taskKey, body);
   }
 
+  // ─── Resource Downtime Management ───
+
+  @Get('resources/downtimes')
+  @ApiOperation({ summary: 'Get all active and upcoming downtimes across all resources' })
+  @ApiResponse({ status: 200, description: 'All resource downtimes' })
+  getAllDowntimes() {
+    return this.ctpService.getAllResourceDowntimes();
+  }
+
+  @Get('resources/:resourceKey/downtimes')
+  @ApiOperation({ summary: 'Get active and upcoming downtimes for a specific resource' })
+  @ApiParam({ name: 'resourceKey' })
+  @ApiResponse({ status: 200, description: 'Resource downtimes' })
+  getDowntimes(@Param('resourceKey') resourceKey: string) {
+    return this.ctpService.getResourceDowntimes(resourceKey);
+  }
+
+  @Post('resources/:resourceKey/downtime')
+  @ApiOperation({ summary: 'Mark a resource as down for a time period' })
+  @ApiParam({ name: 'resourceKey', description: 'Resource to mark down' })
+  @ApiResponse({ status: 200, description: 'Resource marked down, affected tasks listed' })
+  addDowntime(
+    @Param('resourceKey') resourceKey: string,
+    @Body() body: { startTime?: string; endTime?: string; reason?: string },
+  ) {
+    return this.ctpService.addResourceDowntime(resourceKey, body);
+  }
+
+  @Post('resources/:resourceKey/uptime')
+  @ApiOperation({ summary: 'Bring a resource back up — trim or remove the active downtime' })
+  @ApiParam({ name: 'resourceKey', description: 'Resource to bring back up' })
+  @ApiResponse({ status: 200, description: 'Downtime trimmed or removed' })
+  endDowntime(
+    @Param('resourceKey') resourceKey: string,
+    @Body() body: { actualUpTime?: string },
+  ) {
+    return this.ctpService.endResourceDowntime(resourceKey, body);
+  }
+
   // ─── Admin: Tenant Management ───
 
   @Get('admin/tenants')

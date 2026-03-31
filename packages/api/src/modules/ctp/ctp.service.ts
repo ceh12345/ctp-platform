@@ -30,6 +30,7 @@ import {
   CTPStartTime,
   CTPSolveResult as EngineSolveResult,
   CTPInterval,
+  CTPAssignments,
   CTPResourcePreference,
   CTPAssignment,
   CTPAssignmentConstants,
@@ -164,6 +165,19 @@ export class CTPService {
 
     // Apply commitment stack — derive levels, enforce pinning for layers 1-4
     this.applyCommitmentStack(landscape);
+
+    // Unschedule all planned (uncommitted) tasks — put them back in the pool.
+    // This runs on every solve so the solver always re-places planned work
+    // around committed tasks, downtimes, and any other resource state changes.
+    // unscheduleTask() is a no-op for committed (pinned) tasks, so they are safe.
+    // Generated SETUP/TEARDOWN tasks are also planned, so their assignments
+    // are cleared here too — no orphaned changeover blocks remain.
+    landscape.tasks?.forEach(task => {
+      if (task.commitmentLevel === 'planned') {
+        landscape.unscheduleTask(task.key, true);
+        task.commitmentLevel = 'unscheduled';
+      }
+    });
 
     // Resolve configuration for strategy if configurationKey provided
     const configForStrategy = request?.configurationKey
@@ -2154,6 +2168,20 @@ export class CTPService {
             this.revertDispatch([cmd.taskKey!]);
             actionsApplied.push({ type: cmd.type, taskKey: cmd.taskKey, result: 'ok' });
             break;
+
+          case 'resource_downtime':
+            this.addResourceDowntime(cmd.resourceKey!, {
+              startTime: cmd.startTime,
+              endTime: cmd.windowEnd ?? undefined,
+              reason: cmd.strategy,
+            });
+            actionsApplied.push({ type: cmd.type, result: 'ok' });
+            break;
+
+          case 'resource_uptime':
+            this.endResourceDowntime(cmd.resourceKey!, {});
+            actionsApplied.push({ type: cmd.type, result: 'ok' });
+            break;
         }
       }
     } catch (err: any) {
@@ -2290,6 +2318,226 @@ export class CTPService {
       results.push({ taskKey: key, result: 'ok' });
     }
     return { status: 'ok', results };
+  }
+
+  // ═══════════════════════════════════════
+  // Resource Downtime Management
+  // ═══════════════════════════════════════
+
+  addResourceDowntime(resourceKey: string, body: { startTime?: string; endTime?: string; reason?: string }): any {
+    const landscape = this.ensureLandscape();
+    const resource = landscape.resources?.getEntity(resourceKey);
+    if (!resource) throw new HttpException('Resource not found', HttpStatus.NOT_FOUND);
+
+    const startW = body.startTime
+      ? CTPDateTime.fromDateTime(body.startTime)
+      : CTPDateTime.fromDateTime(DateTime.now().toISO()!);
+    const INDEFINITE = 9_007_199_254_740_991; // Number.MAX_SAFE_INTEGER — sentinel for open-ended downtime
+    const endW = body.endTime
+      ? CTPDateTime.fromDateTime(body.endTime)
+      : INDEFINITE;
+
+    const assignment = new CTPInterval();
+    assignment.startW = startW;
+    assignment.endW = endW;
+    assignment.name = body.reason || 'Downtime';
+    assignment.type = CTPAssignmentConstants.MAINTENANCE;
+
+    if (!resource.assignments) resource.assignments = new CTPAssignments();
+    resource.assignments.add(assignment);
+
+    // resource.available.staticAssignments IS resource.assignments (same reference via setLists).
+    // Setting recompute=true tells the engine to call computeAvailable before scheduling,
+    // which subtracts all assignments (including this MAINTENANCE one) from original availability.
+    resource.recompute = true;
+
+    // Find tasks affected by this downtime
+    const affectedTasks: any[] = [];
+    landscape.tasks.forEach(task => {
+      if (task.state !== CTPTaskStateConstants.SCHEDULED) return;
+      if (task.type === CTPTaskTypeConstants.SET_UP || task.type === CTPTaskTypeConstants.TEAR_DOWN) return;
+      task.capacityResources?.forEach(tr => {
+        if (tr.scheduledResource === resourceKey && task.scheduled) {
+          const taskStart = task.scheduled.startW;
+          const taskEnd = task.scheduled.endW;
+          if (taskStart < endW && taskEnd > startW) {
+            affectedTasks.push({
+              taskKey: task.key,
+              taskName: task.name,
+              orderKey: task.linkId?.name ?? null,
+              commitmentLevel: task.commitmentLevel,
+              scheduledStart: CTPDateTime.toDateTime(taskStart).toISO(),
+              scheduledEnd: CTPDateTime.toDateTime(taskEnd).toISO(),
+            });
+          }
+        }
+      });
+    });
+
+    // Auto-hold running tasks
+    affectedTasks.forEach(at => {
+      if (at.commitmentLevel === 'running') {
+        this.holdTask(at.taskKey, `Resource down: ${body.reason || 'Downtime'}`, body.endTime || undefined);
+      }
+    });
+
+    return {
+      status: 'ok',
+      resourceKey,
+      downtime: {
+        startTime: CTPDateTime.toDateTime(startW).toISO(),
+        endTime: body.endTime ? CTPDateTime.toDateTime(endW).toISO() : null,
+        indefinite: !body.endTime,
+        reason: body.reason || 'Downtime',
+      },
+      affectedTasks,
+      affectedCount: affectedTasks.length,
+    };
+  }
+
+  endResourceDowntime(resourceKey: string, body: { actualUpTime?: string }): any {
+    const landscape = this.ensureLandscape();
+    const resource = landscape.resources?.getEntity(resourceKey);
+    if (!resource) throw new HttpException('Resource not found', HttpStatus.NOT_FOUND);
+
+    const upTimeW = body.actualUpTime
+      ? CTPDateTime.fromDateTime(body.actualUpTime)
+      : CTPDateTime.fromDateTime(DateTime.now().toISO()!);
+
+    let trimmed = false;
+    let removed = false;
+    let freedHours = 0;
+
+    if (resource.assignments) {
+      let node = resource.assignments.head;
+      while (node) {
+        const next = node.next;
+        const a = node.data;
+        if (a.type === CTPAssignmentConstants.MAINTENANCE && a.endW > upTimeW) {
+          if (a.startW >= upTimeW) {
+            // Downtime hasn't started yet — remove entirely
+            // resource.available.staticAssignments IS resource.assignments, so deleteNode covers both
+            freedHours += Math.round((a.endW - a.startW) / 3600 * 10) / 10;
+            resource.assignments.deleteNode(node);
+            removed = true;
+          } else if (!body.actualUpTime && upTimeW >= landscape.horizon.endW) {
+            // Default bring-up (now) is past horizon end — trimming would still
+            // block the full planning horizon, so remove entirely to restore availability
+            const capEndW = Math.min(a.endW >= 9_007_199_254_740_991 ? landscape.horizon.endW : a.endW, landscape.horizon.endW);
+            freedHours += Math.round(Math.max(0, capEndW - a.startW) / 3600 * 10) / 10;
+            resource.assignments.deleteNode(node);
+            removed = true;
+          } else {
+            // Downtime is active and upTime is within horizon — trim to end at up time
+            // a.endW mutation propagates to staticAssignments since it's the same object reference
+            const originalEndW = a.endW;
+            a.endW = upTimeW;
+            freedHours += Math.round((originalEndW - upTimeW) / 3600 * 10) / 10;
+            trimmed = true;
+          }
+        }
+        node = next;
+      }
+    }
+
+    resource.recompute = true;
+    return {
+      status: 'ok',
+      resourceKey,
+      upTime: CTPDateTime.toDateTime(upTimeW).toISO(),
+      trimmed,
+      removed,
+      freedCapacityHours: Math.round(freedHours * 10) / 10,
+    };
+  }
+
+  getResourceDowntimes(resourceKey: string): any {
+    const landscape = this.ensureLandscape();
+    const resource = landscape.resources?.getEntity(resourceKey);
+    if (!resource) throw new HttpException('Resource not found', HttpStatus.NOT_FOUND);
+
+    const nowW = CTPDateTime.fromDateTime(DateTime.now().toISO()!);
+    const downtimes: any[] = [];
+
+    if (resource.assignments) {
+      let node = resource.assignments.head;
+      while (node) {
+        const a = node.data;
+        const isIndefinite = a.endW >= 9_007_199_254_740_991;
+        const effectiveEndW = isIndefinite ? landscape.horizon.endW : a.endW;
+        // Include: within horizon, currently active, or upcoming (endW > nowW)
+        const inHorizon = effectiveEndW > landscape.horizon.startW && a.startW < landscape.horizon.endW;
+        const currentlyActive = a.startW <= nowW && effectiveEndW > nowW;
+        const upcoming = a.endW > nowW;
+        if (a.type === CTPAssignmentConstants.MAINTENANCE && (inHorizon || currentlyActive || upcoming)) {
+          const status = (a.startW <= nowW && effectiveEndW > nowW) ? 'active'
+                       : a.startW > nowW ? 'upcoming' : 'ended';
+          downtimes.push({
+            startTime: CTPDateTime.toDateTime(a.startW).toISO(),
+            endTime: isIndefinite ? null : CTPDateTime.toDateTime(a.endW).toISO(),
+            indefinite: isIndefinite,
+            reason: a.name || 'Downtime',
+            status,
+            durationHours: Math.round((a.endW - a.startW) / 3600 * 10) / 10,
+          });
+        }
+        node = node.next;
+      }
+    }
+
+    downtimes.sort((a, b) => {
+      if (a.status === 'active' && b.status !== 'active') return -1;
+      if (a.status !== 'active' && b.status === 'active') return 1;
+      return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+    });
+
+    return {
+      resourceKey,
+      resourceName: resource.name || resourceKey,
+      downtimes,
+      isCurrentlyDown: downtimes.some(d => d.status === 'active'),
+    };
+  }
+
+  getAllResourceDowntimes(): any {
+    const landscape = this.ensureLandscape();
+    const nowW = CTPDateTime.fromDateTime(DateTime.now().toISO()!);
+    const results: any[] = [];
+
+    landscape.resources?.forEach(resource => {
+      if (!resource.assignments) return;
+      let node = resource.assignments.head;
+      while (node) {
+        const a = node.data;
+        const isIndefinite = a.endW >= 9_007_199_254_740_991;
+        const effectiveEndW = isIndefinite ? landscape.horizon.endW : a.endW;
+        const inHorizon = effectiveEndW > landscape.horizon.startW && a.startW < landscape.horizon.endW;
+        const currentlyActive = a.startW <= nowW && effectiveEndW > nowW;
+        const upcoming = a.endW > nowW;
+        if (a.type === CTPAssignmentConstants.MAINTENANCE && (inHorizon || currentlyActive || upcoming)) {
+          const status = (a.startW <= nowW && effectiveEndW > nowW) ? 'active'
+                       : a.startW > nowW ? 'upcoming' : 'ended';
+          results.push({
+            resourceKey: resource.key,
+            resourceName: resource.name || resource.key,
+            startTime: CTPDateTime.toDateTime(a.startW).toISO(),
+            endTime: isIndefinite ? null : CTPDateTime.toDateTime(a.endW).toISO(),
+            indefinite: isIndefinite,
+            reason: a.name || 'Downtime',
+            status,
+          });
+        }
+        node = node.next;
+      }
+    });
+
+    results.sort((a, b) => {
+      if (a.status === 'active' && b.status !== 'active') return -1;
+      if (a.status !== 'active' && b.status === 'active') return 1;
+      return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+    });
+
+    return { downtimes: results, activeCount: results.filter(d => d.status === 'active').length };
   }
 
   updateProgress(taskKey: string, body: { percentComplete?: number; remainingDuration?: number }): any {
@@ -2915,10 +3163,27 @@ export class CTPService {
       const availability = extractIntervals(resource.original);
       const assignments = extractIntervals(resource.available.staticAssignments);
 
-      // Compute netAvailable = availability minus assignments (engine's staticAvailable can be stale)
+      // Compute netAvailable = availability minus task assignments minus MAINTENANCE downtimes
+      // Collect MAINTENANCE intervals as ms ranges for subtraction
+      const maintenanceRanges: { s: number; e: number }[] = [];
+      if (resource.assignments) {
+        let mNode = resource.assignments.head;
+        while (mNode) {
+          if (mNode.data.type === CTPAssignmentConstants.MAINTENANCE) {
+            const endW = mNode.data.endW >= 9_007_199_254_740_991 ? landscape.horizon.endW : mNode.data.endW;
+            maintenanceRanges.push({
+              s: CTPDateTime.toDateTime(mNode.data.startW).toMillis(),
+              e: CTPDateTime.toDateTime(endW).toMillis(),
+            });
+          }
+          mNode = mNode.next;
+        }
+      }
+
       const netAvailable: IvOut[] = [];
       for (const orig of availability) {
         let slices = [{ s: new Date(orig.start).getTime(), e: new Date(orig.end).getTime() }];
+        // Subtract task assignments
         for (const asgn of assignments) {
           const as = new Date(asgn.start).getTime();
           const ae = new Date(asgn.end).getTime();
@@ -2927,6 +3192,16 @@ export class CTPService {
             if (ae <= sl.s || as >= sl.e) { next.push(sl); continue; } // no overlap
             if (as > sl.s) next.push({ s: sl.s, e: as }); // left remainder
             if (ae < sl.e) next.push({ s: ae, e: sl.e }); // right remainder
+          }
+          slices = next;
+        }
+        // Subtract MAINTENANCE downtimes
+        for (const mt of maintenanceRanges) {
+          const next: { s: number; e: number }[] = [];
+          for (const sl of slices) {
+            if (mt.e <= sl.s || mt.s >= sl.e) { next.push(sl); continue; }
+            if (mt.s > sl.s) next.push({ s: sl.s, e: mt.s });
+            if (mt.e < sl.e) next.push({ s: mt.e, e: sl.e });
           }
           slices = next;
         }
@@ -2939,6 +3214,31 @@ export class CTPService {
               durationSec: durSec,
             });
           }
+        }
+      }
+
+      // Collect all MAINTENANCE downtimes within the planning horizon for Gantt visualization
+      const nowW = CTPDateTime.fromDateTime(DateTime.now().toISO()!);
+      const resourceDowntimes: any[] = [];
+      if (resource.assignments) {
+        let dtNode = resource.assignments.head;
+        while (dtNode) {
+          const a = dtNode.data;
+          const isIndefiniteDt = a.endW >= 9_007_199_254_740_991;
+          const effectiveEndW = isIndefiniteDt ? landscape.horizon.endW : a.endW;
+          const inHorizon = effectiveEndW > landscape.horizon.startW && a.startW < landscape.horizon.endW;
+          const currentlyActive = a.startW <= nowW && effectiveEndW > nowW;
+          if (a.type === CTPAssignmentConstants.MAINTENANCE && (inHorizon || currentlyActive)) {
+            resourceDowntimes.push({
+              startTime: CTPDateTime.toDateTime(a.startW).toISO(),
+              endTime: isIndefiniteDt ? null : CTPDateTime.toDateTime(a.endW).toISO(),
+              indefinite: isIndefiniteDt,
+              reason: a.name || 'Downtime',
+              status: (a.startW <= nowW && effectiveEndW > nowW) ? 'active'
+                    : a.startW > nowW ? 'upcoming' : 'ended',
+            });
+          }
+          dtNode = dtNode.next;
         }
       }
 
@@ -2965,6 +3265,8 @@ export class CTPService {
         availability,
         assignments,
         netAvailable,
+        downtimes: resourceDowntimes,
+        isCurrentlyDown: resourceDowntimes.some(d => d.status === 'active'),
       });
     });
 

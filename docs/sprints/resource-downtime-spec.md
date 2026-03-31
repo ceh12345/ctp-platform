@@ -612,6 +612,180 @@ One click, atomic execution, full machine breakdown protocol.
 
 ---
 
+## Part 6: Resource Agenda — Downtime Display
+
+The resource agenda panel shows assignments by day. Downtime assignments appear alongside task assignments, styled differently. A multi-day downtime appears on each day it spans, clipped to the day boundaries.
+
+### Include downtimes in the agenda response
+
+The agenda endpoint (or the data the agenda panel reads) already shows task assignments per day. Add maintenance assignments to the same list:
+
+```typescript
+// In the agenda builder (wherever daily assignments are assembled):
+// After adding task assignments, add downtime assignments
+
+let node = resource.assignments?.head;
+while (node) {
+  const assignment = node.data;
+  if (assignment.type === CTPAssignmentConstants.MAINTENANCE) {
+    // Clip to this day's boundaries
+    const clippedStart = Math.max(assignment.startW, dayStartW);
+    const clippedEnd = Math.min(assignment.endW, dayEndW);
+
+    if (clippedStart < clippedEnd) {
+      agendaItems.push({
+        type: 'downtime',
+        startTime: CTPDateTime.toDateTime(clippedStart).toISO(),
+        endTime: assignment.endW >= landscape.horizon.endW
+          ? null  // indefinite — show no end time
+          : CTPDateTime.toDateTime(clippedEnd).toISO(),
+        durationSeconds: clippedEnd - clippedStart,
+        reason: assignment.name || 'Downtime',
+        indefinite: assignment.endW >= landscape.horizon.endW,
+        spansMultipleDays: (assignment.endW - assignment.startW) > 86400,
+        isFullDay: clippedStart <= dayStartW && clippedEnd >= dayEndW,
+      });
+    }
+  }
+  node = node.next;
+}
+```
+
+### Agenda rendering
+
+Downtime entries render with red/amber styling, distinct from task assignments:
+
+```
+── Monday Feb 11 ──────────────────────────
+  07:00 - 11:00  ✓ T-1001-H-MACHINE (completed)
+  11:00 - 13:00  ● T-1001-H-DEBURR (running 40%)
+  13:00 - 17:00  ⚠ DOWN: Spindle bearing replacement
+
+── Tuesday Feb 12 ─────────────────────────
+  07:00 - 17:00  ⚠ DOWN: Spindle bearing replacement (all day)
+
+── Wednesday Feb 13 ────────────────────────
+  07:00 - 17:00  ⚠ DOWN: Spindle bearing replacement
+  17:00 →        Available
+```
+
+```typescript
+// In the agenda item renderer:
+if (item.type === 'downtime') {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8,
+      padding: '4px 8px', borderRadius: 6,
+      background: 'rgba(239,68,68,0.1)',
+      borderLeft: '3px solid #ef4444',
+      fontSize: 11, color: '#ef4444',
+    }}>
+      <span style={{ fontWeight: 600 }}>⚠ DOWN</span>
+      <span style={{ color: C.text }}>{item.reason}</span>
+      <span style={{ marginLeft: 'auto', color: C.textDim }}>
+        {item.isFullDay
+          ? '(all day)'
+          : item.indefinite
+            ? `${fmtTime(item.startTime)} → indefinite`
+            : `${fmtTime(item.startTime)} – ${fmtTime(item.endTime)}`
+        }
+      </span>
+    </div>
+  );
+}
+```
+
+Clicking a downtime entry in the agenda opens the downtime editor panel for that resource.
+
+---
+
+## Part 7: Data Model — Downtimes Are Assignments, Not Stored Separately
+
+Downtimes are derived from MAINTENANCE assignments on the resource — there is no separate downtime table, JSON file, or data store.
+
+### Single source of truth
+
+```
+Planner marks down → creates MAINTENANCE assignment on resource.assignments
+Solve response     → scans resource.assignments for MAINTENANCE, outputs downtimes[]
+Agenda panel       → reads downtimes from solve response
+Gantt              → reads downtimes from solve response
+Bring up           → trims/removes the MAINTENANCE assignment
+```
+
+The assignment IS the downtime. No duplication.
+
+### Persistence caveat
+
+Downtimes live in the in-memory landscape. They survive across solves (via `preserveLandscape`) but NOT across:
+- Server restarts
+- Config reloads (`preserveLandscape: false`)
+- Tenant switches
+
+This is correct for now. When Data Integration Phase 2 is built, downtime events would be persisted in the database and re-applied on sync. For the current architecture, in-memory is the right place.
+
+### Solve response inclusion
+
+In `extractResults()`, when building `resourceUtilization`, derive downtimes from the resource's assignments:
+
+```typescript
+// Inside the resource utilization loop:
+const downtimes: any[] = [];
+const nowW = CTPDateTime.fromDateTime(DateTime.now().toISO()!);
+
+if (resource.assignments) {
+  let node = resource.assignments.head;
+  while (node) {
+    const a = node.data;
+    if (a.type === CTPAssignmentConstants.MAINTENANCE) {
+      const isIndefinite = a.endW >= landscape.horizon.endW;
+      downtimes.push({
+        startTime: CTPDateTime.toDateTime(a.startW).toISO(),
+        endTime: isIndefinite ? null : CTPDateTime.toDateTime(a.endW).toISO(),
+        indefinite: isIndefinite,
+        reason: a.name || 'Downtime',
+        durationHours: Math.round((a.endW - a.startW) / 3600 * 10) / 10,
+      });
+    }
+    node = node.next;
+  }
+}
+
+const isCurrentlyDown = downtimes.some(d => {
+  const startW = CTPDateTime.fromDateTime(d.startTime);
+  const endW = d.endTime ? CTPDateTime.fromDateTime(d.endTime) : landscape.horizon.endW;
+  return startW <= nowW && endW > nowW;
+});
+
+// Add to the resource entry:
+resourceUtilization.push({
+  // ... existing fields ...
+  downtimes,
+  isCurrentlyDown,
+});
+```
+
+---
+
+## Part 8: Tasks Stay Until Next Solve
+
+Marking a resource down does NOT auto-unschedule or auto-move any tasks. Tasks remain at their scheduled positions. The Gantt shows tasks sitting inside the downtime region — this is the visual conflict the planner needs to see and resolve.
+
+On the next solve:
+- **Planned tasks** on the downed resource get redirected to alternatives (if available) or become infeasible
+- **Pinned tasks** on the downed resource become infeasible (pinned to unavailable capacity)
+- **Dispatched tasks** on the downed resource stay in place but are flagged as conflicting
+- **Running tasks** were already auto-held in Part 4
+
+The planner sees the conflict and decides when to act:
+- Re-solve immediately to redirect planned work
+- Manually redirect dispatched/pinned tasks using existing tools (revert, unpin, redirect)
+- Wait for the resource to come back up and re-solve then
+
+No cascading side effects from marking a resource down. Just the fact (downtime created) and the visibility (tasks overlapping it).
+
+---
+
 ## Verification
 
 ### Backend
@@ -627,6 +801,7 @@ One click, atomic execution, full machine breakdown protocol.
 - [ ] `GET /resources/downtimes` returns all across all resources
 - [ ] `GET /resources/downtimes` route registered before `GET /resources/:key/downtimes`
 - [ ] `extractResults` includes `downtimes` array and `isCurrentlyDown` on each resource
+- [ ] Downtimes derived from MAINTENANCE assignments — no separate storage
 
 ### Gantt visualization
 - [ ] Downtime shows as striped red region on resource row
@@ -634,15 +809,31 @@ One click, atomic execution, full machine breakdown protocol.
 - [ ] Clicking downtime region opens the editor (`openDowntimeEditor` → `setDowntimeResource`)
 - [ ] Resource label shows ⚠ when `isCurrentlyDown` is true
 - [ ] Downtime region renders behind task bars (z-index=1, task bars higher)
+- [ ] Tasks scheduled during downtime still visible (not auto-removed)
+
+### Resource agenda
+- [ ] Downtime entries appear alongside task assignments in daily view
+- [ ] Multi-day downtime appears on each day, clipped to day boundaries
+- [ ] Full-day downtime shows "(all day)"
+- [ ] Indefinite downtime shows "→ indefinite"
+- [ ] Downtime entries styled with red/amber (distinct from task entries)
+- [ ] Clicking a downtime entry opens the downtime editor
 
 ### Downtime editor
 - [ ] Panel opens from right-click resource context menu
 - [ ] Shows active downtimes with bring-up actions
 - [ ] "Bring Up Now" calls uptime with no body, refreshes state
 - [ ] "Bring Up At..." reveals datetime-local input, calls uptime with `actualUpTime`
-- [ ] "Mark Down" shows `affectedTasks` from response before user sees confirmation
+- [ ] "Mark Down" shows `affectedTasks` from response
 - [ ] Running task warning shown when `commitmentLevel === 'running'` in affected tasks
 - [ ] Affected task count accurate
+
+### Tasks stay until solve
+- [ ] Marking resource down does NOT unschedule any tasks
+- [ ] Tasks remain visible on Gantt inside the downtime region
+- [ ] On re-solve: planned tasks redirect or become infeasible
+- [ ] On re-solve: pinned tasks on downed resource become infeasible
+- [ ] Dispatched tasks stay but are flagged as conflicting
 
 ### Commitment interaction
 - [ ] Running task on downed resource → auto ON_HOLD via `holdTask()`
@@ -654,6 +845,11 @@ One click, atomic execution, full machine breakdown protocol.
 - [ ] Both handled in command sequencer
 - [ ] Machine breakdown macro: downtime + exclude + prefer + solve as atomic batch
 
+### Persistence
+- [ ] Downtimes survive across solves with `preserveLandscape: true`
+- [ ] Downtimes cleared on config reload (`preserveLandscape: false`)
+- [ ] No separate downtime storage — derived from assignments only
+
 ---
 
-*Build order: Part 1 backend endpoints (~30 min), Part 2 Gantt visualization (~25 min), Part 3 downtime editor panel (~35 min), Part 4 commitment interaction (~10 min, already in Part 1), Part 5 queue integration (~20 min). Total: ~2 hours.*
+*Build order: Part 1 backend endpoints (~30 min), Part 2 Gantt visualization (~25 min), Part 3 downtime editor panel (~35 min), Part 4 commitment interaction (~10 min, already in Part 1), Part 5 queue integration (~20 min), Part 6 agenda display (~20 min), Part 7 solve response inclusion (~15 min), Part 8 is behavioral — no code, just verification. Total: ~2.5 hours.*

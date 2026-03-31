@@ -3361,9 +3361,10 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   );
 }
 
-function ResourceDetailPanel({ resource, tasks, colors, onClose, onTaskClick }: {
+function ResourceDetailPanel({ resource, tasks, colors, onClose, onTaskClick, onOpenDowntimeEditor }: {
   resource: any; tasks: any[]; colors: any;
   onClose: () => void; onTaskClick: (t: any) => void;
+  onOpenDowntimeEditor?: (resourceKey: string) => void;
 }) {
   const resTasks = tasks
     .filter((t: any) => t.assignedResources?.some((r: any) => r.resourceKey === resource.resourceKey))
@@ -3414,6 +3415,60 @@ function ResourceDetailPanel({ resource, tasks, colors, onClose, onTaskClick }: 
         </>
       )}
 
+      {/* Downtime History */}
+      {(resource.downtimes?.length > 0 || onOpenDowntimeEditor) && (
+        <>
+          <SectionLabel label={`Downtime${resource.downtimes?.length ? ` (${resource.downtimes.length})` : ''}`} />
+          {(resource.downtimes || []).map((dt: any, i: number) => {
+            const isActive = dt.status === 'active';
+            const isEnded = dt.status === 'ended';
+            const fmtDtTime = (iso: string) => new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            return (
+              <div
+                key={`dth-${i}`}
+                onClick={() => onOpenDowntimeEditor?.(resource.resourceKey)}
+                style={{
+                  padding: '8px 12px', marginBottom: 4, borderRadius: 8,
+                  background: isActive ? 'rgba(234,179,8,0.1)' : C.surface,
+                  border: `1px solid ${isActive ? '#eab308' : C.border}`,
+                  borderLeft: `3px solid ${isActive ? '#eab308' : isEnded ? C.green : C.accent}`,
+                  cursor: onOpenDowntimeEditor ? 'pointer' : 'default',
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={e => { if (onOpenDowntimeEditor) e.currentTarget.style.background = isActive ? 'rgba(234,179,8,0.15)' : C.surface2; }}
+                onMouseLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(234,179,8,0.1)' : C.surface; }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <span style={{ fontSize: 12, color: isEnded ? C.green : '#eab308' }}>{isEnded ? '✓' : '⚠'}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{dt.reason || 'Downtime'}</span>
+                </div>
+                <div style={{ fontSize: 11, color: C.textDim, paddingLeft: 18 }}>
+                  {fmtDtTime(dt.startTime)} – {dt.indefinite ? '???' : dt.endTime ? fmtDtTime(dt.endTime) : '???'}
+                  {isActive && <span style={{ color: '#eab308', fontWeight: 600, marginLeft: 6 }}>(active)</span>}
+                </div>
+              </div>
+            );
+          })}
+          {resource.downtimes?.length === 0 && (
+            <div style={{ color: C.textDim, fontSize: 12, padding: '4px 0 8px' }}>No downtimes recorded</div>
+          )}
+          {onOpenDowntimeEditor && (
+            <button
+              onClick={() => onOpenDowntimeEditor(resource.resourceKey)}
+              style={{
+                background: 'none', border: `1px dashed ${C.border}`, borderRadius: 6,
+                color: C.accent, fontSize: 12, fontFamily: FONT, padding: '6px 12px',
+                cursor: 'pointer', width: '100%', marginTop: 4, marginBottom: 8,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}
+            >
+              + Schedule Downtime
+            </button>
+          )}
+        </>
+      )}
+
       {/* Task Agenda */}
       <SectionLabel label={`${t('task', 'Task')} Agenda (${resTasks.length})`} />
       {resTasks.length === 0 && (
@@ -3460,7 +3515,7 @@ function ResourceDetailPanel({ resource, tasks, colors, onClose, onTaskClick }: 
    ═══════════════════════════════════════════════════════════════ */
 
 interface AgendaItem {
-  type: 'assignment' | 'available' | 'off-shift';
+  type: 'assignment' | 'available' | 'off-shift' | 'downtime';
   startTime: string;   // ISO datetime
   endTime: string;     // ISO datetime
   durationMinutes: number;
@@ -3470,6 +3525,9 @@ interface AgendaItem {
   priority?: number;
   processCategory?: string;
   task?: any;          // full task object for click handler
+  reason?: string;           // downtime reason
+  indefinite?: boolean;      // downtime has no end
+  isFullDay?: boolean;       // downtime covers the entire day
 }
 
 function buildAgendaItems(
@@ -3558,13 +3616,91 @@ function buildAgendaItems(
     items.push({ type: 'off-shift', startTime: toISO(dayStartMs), endTime: toISO(dayEndMs), durationMinutes: toMin(dayEndMs - dayStartMs) });
   }
 
+  // Inject downtime items — split/remove available blocks that overlap
+  const downtimeRanges: { startMs: number; endMs: number; reason: string; indefinite: boolean }[] = [];
+  for (const dt of (resource.downtimes || [])) {
+    const dtStartMs = new Date(dt.startTime).getTime();
+    const dtEndMs = dt.endTime ? new Date(dt.endTime).getTime() : dayEndMs;
+    if (dtStartMs >= dayEndMs || dtEndMs <= dayStartMs) continue;
+    downtimeRanges.push({
+      startMs: Math.max(dtStartMs, dayStartMs),
+      endMs: Math.min(dtEndMs, dayEndMs),
+      reason: dt.reason || 'Downtime',
+      indefinite: !!dt.indefinite,
+    });
+  }
+
+  if (downtimeRanges.length > 0) {
+    // Split available blocks around downtime ranges
+    const revised: AgendaItem[] = [];
+    for (const item of items) {
+      if (item.type !== 'available') { revised.push(item); continue; }
+      const iStart = new Date(item.startTime).getTime();
+      const iEnd = new Date(item.endTime).getTime();
+      // Check if any downtime overlaps this available block
+      let cursor = iStart;
+      const overlapping = downtimeRanges
+        .filter(d => d.startMs < iEnd && d.endMs > iStart)
+        .sort((a, b) => a.startMs - b.startMs);
+      if (overlapping.length === 0) { revised.push(item); continue; }
+      for (const d of overlapping) {
+        // Available slice before this downtime
+        const sliceEnd = Math.min(d.startMs, iEnd);
+        if (sliceEnd > cursor) {
+          const dur = toMin(sliceEnd - cursor);
+          if (dur > 0) revised.push({ ...item, startTime: toISO(cursor), endTime: toISO(sliceEnd), durationMinutes: dur });
+        }
+        cursor = Math.max(cursor, d.endMs);
+      }
+      // Available slice after last downtime
+      if (cursor < iEnd) {
+        const dur = toMin(iEnd - cursor);
+        if (dur > 0) revised.push({ ...item, startTime: toISO(cursor), endTime: toISO(iEnd), durationMinutes: dur });
+      }
+    }
+    // Add downtime items — split around assignments so downtime shows before AND after tasks
+    const assignmentBlocks = revised
+      .filter(it => it.type === 'assignment')
+      .map(it => ({ startMs: new Date(it.startTime).getTime(), endMs: new Date(it.endTime).getTime() }))
+      .sort((a, b) => a.startMs - b.startMs);
+    for (const d of downtimeRanges) {
+      let cursor = d.startMs;
+      for (const ab of assignmentBlocks) {
+        if (ab.endMs <= cursor || ab.startMs >= d.endMs) continue;
+        // Downtime slice before this assignment
+        const sliceEnd = Math.min(ab.startMs, d.endMs);
+        if (sliceEnd > cursor) {
+          const dur = toMin(sliceEnd - cursor);
+          if (dur > 0) revised.push({
+            type: 'downtime', startTime: toISO(cursor), endTime: toISO(sliceEnd), durationMinutes: dur,
+            reason: d.reason, indefinite: d.indefinite && sliceEnd >= d.endMs,
+            isFullDay: cursor <= dayStartMs && sliceEnd >= dayEndMs,
+          });
+        }
+        cursor = Math.max(cursor, ab.endMs);
+      }
+      // Downtime slice after last assignment (or the whole thing if no assignments overlap)
+      if (cursor < d.endMs) {
+        const dur = toMin(d.endMs - cursor);
+        if (dur > 0) revised.push({
+          type: 'downtime', startTime: toISO(cursor), endTime: toISO(d.endMs), durationMinutes: dur,
+          reason: d.reason, indefinite: d.indefinite,
+          isFullDay: cursor <= dayStartMs && d.endMs >= dayEndMs,
+        });
+      }
+    }
+    revised.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    return revised;
+  }
+
   return items;
 }
 
-function ResourceAgendaPanel({ resource, tasks, colors, horizonStart, horizonEnd, onClose, onTaskClick }: {
+function ResourceAgendaPanel({ resource, tasks, colors, horizonStart, horizonEnd, onClose, onTaskClick, onOpenDowntimeEditor }: {
   resource: any; tasks: any[]; colors: any;
   horizonStart?: string; horizonEnd?: string;
   onClose: () => void; onTaskClick: (t: any) => void;
+  onOpenDowntimeEditor?: (resourceKey: string) => void;
 }) {
   // Build list of days in horizon that have availability or assignments for this resource
   // Day boundaries are in the tenant timezone so "Monday Feb 16" means local midnight-to-midnight
@@ -3614,7 +3750,13 @@ function ResourceAgendaPanel({ resource, tasks, colors, horizonStart, horizonEnd
         new Date(t.scheduledEnd).getTime() > dayStartMs
       );
 
-      if (hasAvail || hasAssign) {
+      const hasDowntime = (resource.downtimes || []).some((dt: any) => {
+        const dtStart = new Date(dt.startTime).getTime();
+        const dtEnd = dt.endTime ? new Date(dt.endTime).getTime() : hEndMs;
+        return dtStart < dayEndMs && dtEnd > dayStartMs;
+      });
+
+      if (hasAvail || hasAssign || hasDowntime) {
         result.push({ label: dayLabel, startMs: dayStartMs, endMs: dayEndMs });
       }
 
@@ -3744,6 +3886,27 @@ function ResourceAgendaPanel({ resource, tasks, colors, horizonStart, horizonEnd
             </div>
           );
         }
+        if (item.type === 'downtime') {
+          return (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 12px', marginBottom: 4, borderRadius: 8,
+              background: 'rgba(234,179,8,0.1)',
+              borderLeft: '3px solid #eab308',
+            }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#eab308' }}>⚠ DOWN</span>
+              <span style={{ fontSize: 12, color: C.text }}>{item.reason}</span>
+              <span style={{ marginLeft: 'auto', fontSize: 11, color: C.textDim }}>
+                {item.isFullDay
+                  ? '(all day)'
+                  : item.indefinite
+                    ? `${fmtTime(item.startTime)} → indefinite`
+                    : `${fmtTime(item.startTime)}–${fmtTime(item.endTime)}`
+                }
+              </span>
+            </div>
+          );
+        }
         // off-shift
         return (
           <div key={i} style={{
@@ -3760,6 +3923,74 @@ function ResourceAgendaPanel({ resource, tasks, colors, horizonStart, horizonEnd
           </div>
         );
       })}
+
+      {/* ── Downtime History ── */}
+      {(resource.downtimes?.length > 0 || onOpenDowntimeEditor) && (
+        <div style={{ marginTop: 16, borderTop: `1px solid ${C.border}`, paddingTop: 8 }}>
+          <div style={{
+            fontSize: 11, fontWeight: 700, color: C.textDim, textTransform: 'uppercase',
+            letterSpacing: '0.08em', padding: '4px 0 8px',
+          }}>
+            Downtime History
+          </div>
+          {(resource.downtimes || []).length === 0 && (
+            <div style={{ fontSize: 12, color: C.textDim, padding: '4px 0 8px' }}>No downtimes recorded</div>
+          )}
+          {(resource.downtimes || []).map((dt: any, i: number) => {
+            const isActive = dt.status === 'active';
+            const isEnded = dt.status === 'ended';
+            const fmtDtDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            const fmtDtTime = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+            const durH = dt.durationHours != null ? `${Math.round(dt.durationHours * 10) / 10}h` : null;
+            return (
+              <div
+                key={`dth-${i}`}
+                onClick={() => onOpenDowntimeEditor?.(resource.resourceKey)}
+                style={{
+                  padding: '8px 12px', marginBottom: 4, borderRadius: 8,
+                  background: isActive ? 'rgba(234,179,8,0.1)' : C.surface,
+                  border: `1px solid ${isActive ? '#eab308' : C.border}`,
+                  borderLeft: `3px solid ${isActive ? '#eab308' : isEnded ? C.green : C.accent}`,
+                  cursor: onOpenDowntimeEditor ? 'pointer' : 'default',
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={e => { if (onOpenDowntimeEditor) e.currentTarget.style.background = isActive ? 'rgba(234,179,8,0.15)' : C.surface2; }}
+                onMouseLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(234,179,8,0.1)' : C.surface; }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <span style={{ fontSize: 12, color: isEnded ? C.green : '#eab308' }}>
+                    {isEnded ? '✓' : '⚠'}
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{dt.reason || 'Downtime'}</span>
+                  {durH && !dt.indefinite && (
+                    <span style={{ fontSize: 11, color: C.textDim, marginLeft: 'auto' }}>({durH})</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 11, color: C.textDim, paddingLeft: 18 }}>
+                  {fmtDtDate(dt.startTime)} {fmtDtTime(dt.startTime)}
+                  {' – '}
+                  {dt.indefinite ? '???' : dt.endTime ? `${fmtDtTime(dt.endTime)}` : '???'}
+                  {isActive && <span style={{ color: '#eab308', fontWeight: 600, marginLeft: 6 }}>(active)</span>}
+                </div>
+              </div>
+            );
+          })}
+          {onOpenDowntimeEditor && (
+            <button
+              onClick={() => onOpenDowntimeEditor(resource.resourceKey)}
+              style={{
+                background: 'none', border: `1px dashed ${C.border}`, borderRadius: 6,
+                color: C.accent, fontSize: 12, fontFamily: FONT, padding: '6px 12px',
+                cursor: 'pointer', width: '100%', marginTop: 4,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}
+            >
+              + Schedule Downtime
+            </button>
+          )}
+        </div>
+      )}
     </SlidePanel>
   );
 }
@@ -3943,6 +4174,444 @@ function ReplayStepLog({ replay, onJumpToStep }: {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   DATE TIME PICKER
+   ═══════════════════════════════════════════════════════════════ */
+
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS_LONG  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAY_LABELS   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+/**
+ * DateTimePicker
+ * value / onChange: ISO 8601 strings (e.g. "2026-03-29T14:30:00.000Z").
+ * Emits ISO on every change so callers can send directly to the API.
+ * Quick buttons: Now, +1h, +2h, +4h, End of Shift (17:00 same day).
+ */
+function DateTimePicker({ value, onChange, disabled, placeholder }: {
+  value: string;           // ISO string — "" when unset
+  onChange: (iso: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}) {
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  // Parse ISO → local Date (or null)
+  const parse = (v: string): Date | null => {
+    if (!v) return null;
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  // Build ISO from local date + hour + minute
+  const toISO = (d: Date, h: number, m: number): string => {
+    const local = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0, 0);
+    return local.toISOString();
+  };
+
+  const nowD = new Date();
+  const initial = parse(value);
+
+  const [open,      setOpen]      = useState(false);
+  const [viewYear,  setViewYear]  = useState(initial?.getFullYear()  ?? nowD.getFullYear());
+  const [viewMonth, setViewMonth] = useState(initial?.getMonth()     ?? nowD.getMonth());
+  const [hour,      setHour]      = useState(initial?.getHours()     ?? nowD.getHours());
+  const [minute,    setMinute]    = useState(initial?.getMinutes()   ?? nowD.getMinutes());
+  const [selDate,   setSelDate]   = useState<Date | null>(initial);
+
+  // Sync internal state when value changes from outside
+  useEffect(() => {
+    const d = parse(value);
+    if (d) {
+      setSelDate(d);
+      setViewYear(d.getFullYear()); setViewMonth(d.getMonth());
+      setHour(d.getHours());        setMinute(d.getMinutes());
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  const popupRef   = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!popupRef.current?.contains(e.target as Node) && !triggerRef.current?.contains(e.target as Node))
+        setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  const emit = (d: Date, h: number, m: number) => onChange(toISO(d, h, m));
+
+  const pickDay = (day: number) => {
+    const d = new Date(viewYear, viewMonth, day);
+    setSelDate(d);
+    emit(d, hour, minute);
+    setOpen(false);
+  };
+
+  const pickTime = (h: number, m: number) => {
+    setHour(h); setMinute(m);
+    if (selDate) emit(selDate, h, m);
+  };
+
+  const pickNow = () => {
+    const n = new Date();
+    setHour(n.getHours()); setMinute(n.getMinutes());
+    setSelDate(n); setViewYear(n.getFullYear()); setViewMonth(n.getMonth());
+    onChange(n.toISOString());
+    setOpen(false);
+  };
+
+  const pickOffset = (offsetHours: number) => {
+    const base = selDate ? new Date(selDate.getFullYear(), selDate.getMonth(), selDate.getDate(), hour, minute) : new Date();
+    const target = new Date(base.getTime() + offsetHours * 3_600_000);
+    setHour(target.getHours()); setMinute(target.getMinutes());
+    setSelDate(target); setViewYear(target.getFullYear()); setViewMonth(target.getMonth());
+    onChange(target.toISOString());
+    setOpen(false);
+  };
+
+  const pickEndOfShift = () => {
+    const base = selDate ?? new Date();
+    const eos = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 17, 0, 0);
+    setHour(17); setMinute(0); setSelDate(eos);
+    onChange(eos.toISOString());
+    setOpen(false);
+  };
+
+  // Calendar grid
+  const firstDow  = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMon = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells: (number | null)[] = [
+    ...Array(firstDow).fill(null),
+    ...Array.from({ length: daysInMon }, (_, i) => i + 1),
+  ];
+  while (cells.length % 7) cells.push(null);
+
+  const tod = new Date();
+  const isToday = (d: number) => tod.getFullYear() === viewYear && tod.getMonth() === viewMonth && tod.getDate() === d;
+  const isSel   = (d: number) => selDate?.getFullYear() === viewYear && selDate?.getMonth() === viewMonth && selDate?.getDate() === d;
+
+  const displayText = (() => {
+    const d = parse(value);
+    if (!d) return placeholder ?? 'Select date & time…';
+    return `${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}  ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  })();
+
+  const navBtn: React.CSSProperties = {
+    background: 'none', border: 'none', color: C.text, cursor: 'pointer',
+    fontSize: 13, padding: '3px 8px', borderRadius: 4,
+  };
+  const quickBtn: React.CSSProperties = {
+    background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4,
+    color: C.textDim, fontSize: 10, padding: '3px 7px', cursor: 'pointer', fontFamily: FONT,
+  };
+  const timeSelect: React.CSSProperties = {
+    background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4,
+    color: C.text, fontSize: 12, padding: '4px 6px', fontFamily: FONT, flex: 1,
+  };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {/* Trigger button */}
+      <button
+        ref={triggerRef}
+        disabled={disabled}
+        onClick={() => !disabled && setOpen(o => !o)}
+        style={{
+          width: '100%', padding: '7px 10px', textAlign: 'left', fontSize: 12, fontFamily: FONT,
+          background: C.surface, border: `1px solid ${open ? C.accent : C.border}`, borderRadius: 6,
+          color: value ? C.text : C.textDim, cursor: disabled ? 'default' : 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          opacity: disabled ? 0.5 : 1, transition: 'border-color 0.15s',
+        }}
+      >
+        <span>{displayText}</span>
+        <span style={{ color: C.textDim, fontSize: 11 }}>📅</span>
+      </button>
+
+      {/* Popup */}
+      {open && (
+        <div
+          ref={popupRef}
+          style={{
+            position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 1010,
+            background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 10,
+            padding: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+          }}
+        >
+          {/* Quick presets row */}
+          <div style={{ display: 'flex', gap: 4, marginBottom: 10, flexWrap: 'wrap' }}>
+            <button style={{ ...quickBtn, background: C.accent, color: '#fff', borderColor: C.accent, fontWeight: 600 }} onClick={pickNow}>Now</button>
+            <button style={quickBtn} onClick={() => pickOffset(1)}>+1h</button>
+            <button style={quickBtn} onClick={() => pickOffset(2)}>+2h</button>
+            <button style={quickBtn} onClick={() => pickOffset(4)}>+4h</button>
+            <button style={quickBtn} onClick={pickEndOfShift}>End of shift</button>
+          </div>
+
+          {/* Month / year nav */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <button style={navBtn} onClick={() => { if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y-1); } else setViewMonth(m => m-1); }}>◀</button>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{MONTHS_LONG[viewMonth]} {viewYear}</span>
+            <button style={navBtn} onClick={() => { if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y+1); } else setViewMonth(m => m+1); }}>▶</button>
+          </div>
+
+          {/* Day-of-week headers */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 2 }}>
+            {DAY_LABELS.map(dl => (
+              <div key={dl} style={{ textAlign: 'center', fontSize: 10, color: C.textDim, fontWeight: 700, padding: '2px 0' }}>{dl}</div>
+            ))}
+          </div>
+
+          {/* Day cells */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1 }}>
+            {cells.map((day, idx) => {
+              if (!day) return <div key={idx} />;
+              const sel = isSel(day), tdy = isToday(day);
+              return (
+                <button key={idx} onClick={() => pickDay(day)} style={{
+                  padding: '5px 0', border: 'none', borderRadius: 5, fontFamily: FONT, cursor: 'pointer',
+                  background: sel ? C.accent : tdy ? `${C.accent}28` : 'none',
+                  color: sel ? '#fff' : tdy ? C.accent : C.text,
+                  fontSize: 12, fontWeight: sel || tdy ? 700 : 400, textAlign: 'center',
+                }}>
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Time selectors */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderTop: `1px solid ${C.border}`, paddingTop: 8, marginTop: 8 }}>
+            <span style={{ fontSize: 11, color: C.textDim, minWidth: 28 }}>Time</span>
+            <select value={hour} onChange={e => pickTime(Number(e.target.value), minute)} style={timeSelect}>
+              {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{pad(i)}</option>)}
+            </select>
+            <span style={{ color: C.textDim, fontWeight: 700, fontSize: 14 }}>:</span>
+            <select value={minute} onChange={e => pickTime(hour, Number(e.target.value))} style={timeSelect}>
+              {Array.from({ length: 60 }, (_, i) => <option key={i} value={i}>{pad(i)}</option>)}
+            </select>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DOWNTIME EDITOR PANEL
+   ═══════════════════════════════════════════════════════════════ */
+
+function DowntimeEditorPanel({ resourceKey, resources, onClose, onStale, onToast, isQueuing, onQueue }: {
+  resourceKey: string;
+  resources: any[];
+  onClose: () => void;
+  onStale: () => void;
+  onToast: (msg: string) => void;
+  isQueuing?: boolean;
+  onQueue?: (label: string, command: any) => void;
+}) {
+  const resource = resources.find((r: any) => r.resourceKey === resourceKey);
+  const resourceName = resource?.resourceName || resourceKey;
+
+  const [downtimeData, setDowntimeData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [formReason, setFormReason] = useState('');
+  const [formFrom, setFormFrom] = useState(() => new Date().toISOString());
+  const [formUntil, setFormUntil] = useState('');
+  const [indefinite, setIndefinite] = useState(false);
+  const [affectedPreview, setAffectedPreview] = useState<any[] | null>(null);
+  const [showBringUpAt, setShowBringUpAt] = useState<string | null>(null);
+  const [bringUpAtTime, setBringUpAtTime] = useState(() => new Date().toISOString());
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadDowntimes = useCallback(() => {
+    setLoading(true);
+    api(`/ctp/resources/${resourceKey}/downtimes`)
+      .then(d => { setDowntimeData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [resourceKey]);
+
+  useEffect(() => { loadDowntimes(); }, [loadDowntimes]);
+
+  const handleBringUpNow = async (dtIndex: number, e?: React.MouseEvent) => {
+    void dtIndex;
+    if ((isQueuing || e?.shiftKey) && onQueue) {
+      onQueue(`▶ ${resourceName} back up`, { type: 'resource_uptime', resourceKey });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api(`/ctp/resources/${resourceKey}/uptime`, { method: 'POST', body: JSON.stringify({}) });
+      onToast(`${resourceName} is back online`);
+      onStale();
+      loadDowntimes();
+    } catch (e: any) {
+      onToast(`Error: ${(e as any).message}`);
+    } finally { setSubmitting(false); }
+  };
+
+  const handleBringUpAt = async () => {
+    if (!bringUpAtTime) return;
+    setSubmitting(true);
+    try {
+      await api(`/ctp/resources/${resourceKey}/uptime`, { method: 'POST', body: JSON.stringify({ actualUpTime: bringUpAtTime }) });
+      onToast(`${resourceName} brought up at ${new Date(bringUpAtTime).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`);
+      onStale();
+      loadDowntimes();
+      setShowBringUpAt(null);
+    } catch (e: any) {
+      onToast(`Error: ${e.message}`);
+    } finally { setSubmitting(false); }
+  };
+
+  const handleMarkDown = async (e?: React.MouseEvent) => {
+    const startTime = formFrom; // already ISO
+    const endTime = (!indefinite && formUntil) ? formUntil : undefined; // already ISO
+    const reason = formReason || 'Downtime';
+    if ((isQueuing || e?.shiftKey) && onQueue) {
+      onQueue(`⚠ ${resourceName} down: ${reason}`, { type: 'resource_downtime', resourceKey, startTime, endTime: endTime ?? null, strategy: reason });
+      setFormReason(''); setFormFrom(new Date().toISOString()); setFormUntil(''); setIndefinite(false);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const body: any = { reason, startTime };
+      if (endTime) body.endTime = endTime;
+      const result = await api(`/ctp/resources/${resourceKey}/downtime`, { method: 'POST', body: JSON.stringify(body) });
+      setAffectedPreview(result.affectedTasks || []);
+      onToast(`${resourceName} marked down${result.affectedCount > 0 ? ` — ${result.affectedCount} task(s) affected` : ''}`);
+      onStale();
+      loadDowntimes();
+      setFormReason(''); setFormFrom(new Date().toISOString()); setFormUntil(''); setIndefinite(false);
+    } catch (e: any) {
+      onToast(`Error: ${(e as any).message}`);
+    } finally { setSubmitting(false); }
+  };
+
+  const fmtDt = (iso: string) => new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  const panelStyle: React.CSSProperties = {
+    position: 'fixed', top: 0, right: 0, width: 400, height: '100vh',
+    background: C.surface2, borderLeft: `1px solid ${C.border}`, zIndex: 900,
+    display: 'flex', flexDirection: 'column', fontFamily: FONT,
+    boxShadow: '-8px 0 32px rgba(0,0,0,0.4)',
+  };
+  const sectionHdr: React.CSSProperties = {
+    fontSize: 11, fontWeight: 700, color: C.textDim, textTransform: 'uppercase', letterSpacing: '0.08em',
+    padding: '12px 16px 6px', borderTop: `1px solid ${C.border}`, marginTop: 4,
+  };
+  const inputStyle: React.CSSProperties = {
+    background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6,
+    color: C.text, fontSize: 12, padding: '6px 10px', fontFamily: FONT, width: '100%', boxSizing: 'border-box',
+  };
+  const btnBase: React.CSSProperties = {
+    border: 'none', borderRadius: 6, fontSize: 12, fontFamily: FONT, cursor: 'pointer', padding: '6px 12px',
+  };
+
+  return (
+    <div style={panelStyle}>
+      {/* Header */}
+      <div style={{ padding: '16px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Downtime: {resourceName}</div>
+          <div style={{ fontSize: 11, color: C.textDim, marginTop: 2 }}>{resourceKey}</div>
+        </div>
+        <button onClick={onClose} style={{ ...btnBase, background: C.surface, color: C.text, padding: '4px 10px' }}>✕</button>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        {/* Active Downtimes */}
+        <div style={sectionHdr}>Active & Upcoming Downtimes</div>
+        {loading ? (
+          <div style={{ padding: '12px 16px', color: C.textDim, fontSize: 12 }}>Loading…</div>
+        ) : !downtimeData?.downtimes?.length ? (
+          <div style={{ padding: '12px 16px', color: C.textDim, fontSize: 12 }}>No active or upcoming downtimes.</div>
+        ) : downtimeData.downtimes.map((dt: any, i: number) => (
+          <div key={i} style={{ padding: '10px 16px', borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <span style={{ color: '#ef4444', fontSize: 14, lineHeight: 1.4 }}>⚠</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{dt.reason}</div>
+                <div style={{ fontSize: 11, color: C.textDim, marginTop: 2 }}>
+                  Down since: {fmtDt(dt.startTime)}
+                  {dt.indefinite ? ' — indefinitely' : dt.endTime ? ` → ${fmtDt(dt.endTime)} (${dt.durationHours}h)` : ''}
+                </div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                  <button
+                    style={{ ...btnBase, background: '#22c55e', color: '#fff', fontSize: 11 }}
+                    disabled={submitting}
+                    onClick={(e) => handleBringUpNow(i, e)}
+                    title="Shift+click to queue"
+                  >▶ Bring Up Now</button>
+                  <button
+                    style={{ ...btnBase, background: C.surface, color: C.text, border: `1px solid ${C.border}`, fontSize: 11 }}
+                    onClick={() => setShowBringUpAt(showBringUpAt === `${i}` ? null : `${i}`)}
+                  >▶ Bring Up At…</button>
+                </div>
+                {showBringUpAt === `${i}` && (
+                  <div style={{ marginTop: 8, display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <DateTimePicker value={bringUpAtTime} onChange={setBringUpAtTime} />
+                    </div>
+                    <button style={{ ...btnBase, background: '#22c55e', color: '#fff', fontSize: 11 }} disabled={submitting} onClick={handleBringUpAt}>OK</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {/* Affected tasks from last Mark Down */}
+        {affectedPreview !== null && (
+          <>
+            <div style={sectionHdr}>Last Action — Affected Tasks ({affectedPreview.length})</div>
+            {affectedPreview.length === 0 ? (
+              <div style={{ padding: '8px 16px', fontSize: 12, color: C.textDim }}>No tasks were affected.</div>
+            ) : affectedPreview.map((at: any, i: number) => (
+              <div key={i} style={{ padding: '6px 16px', fontSize: 12, color: C.text }}>
+                {at.commitmentLevel === 'running' && <span style={{ color: '#ef4444', marginRight: 6 }}>⚠ ON HOLD</span>}
+                {at.taskName} <span style={{ color: C.textDim }}>({at.orderKey || '—'})</span>
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* Schedule Downtime form */}
+        <div style={sectionHdr}>Schedule Downtime</div>
+        <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 11, color: C.textDim, marginBottom: 4 }}>Reason</div>
+            <input style={inputStyle} placeholder="e.g. Spindle bearing replacement" value={formReason} onChange={e => setFormReason(e.target.value)} />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: C.textDim, marginBottom: 4 }}>From</div>
+            <DateTimePicker value={formFrom} onChange={setFormFrom} />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: C.textDim, marginBottom: 4 }}>Until</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <DateTimePicker value={formUntil} onChange={setFormUntil} disabled={indefinite} placeholder="Select end date & time…" />
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.textDim, cursor: 'pointer', userSelect: 'none' }}>
+                <input type="checkbox" checked={indefinite} onChange={e => setIndefinite(e.target.checked)} style={{ cursor: 'pointer', width: 14, height: 14 }} />
+                Down indefinitely (no end time)
+              </label>
+            </div>
+          </div>
+          <button
+            style={{ ...btnBase, background: '#ef4444', color: '#fff', fontWeight: 600, marginTop: 4 }}
+            disabled={submitting || !formFrom}
+            onClick={(e) => handleMarkDown(e)}
+            title="Shift+click to queue"
+          >⚠ Mark Down</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    GANTT CHART
    ═══════════════════════════════════════════════════════════════ */
 
@@ -3954,13 +4623,14 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
   whereToCurrentAssignment, whereToSource, onMoveTo, onCancelWhereTo,
   zoomLevel, setZoomLevel, scrollOffset, setScrollOffset,
-  onSetResourcePrefForTask, onViewAgenda, onAskAI,
+  onSetResourcePrefForTask, onViewAgenda, onOpenDowntimeEditor, onAskAI,
   replay, onReplayStep, onReplayJumpStart, onReplayJumpEnd,
   onReplayTogglePlay, onReplaySpeedChange, onReplayExit, onReplayJumpToStep,
   ctpGhostBars, onToolbarAction }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   onViewAgenda?: (r: any) => void;
+  onOpenDowntimeEditor?: (resourceKey: string) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
   orderModes?: Record<string, string>;
   onPinTask?: (key: string, pinned: boolean) => void;
@@ -4383,11 +5053,14 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                   <span
                     onClick={() => onResourceClick?.(res)}
                     onContextMenu={e => { e.preventDefault(); setResContextMenu({ resource: res, x: e.clientX, y: e.clientY }); }}
-                    style={{ cursor: onResourceClick ? 'pointer' : 'default', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    style={{ cursor: onResourceClick ? 'pointer' : 'default', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 3 }}
                     onMouseEnter={e => { if (onResourceClick) (e.currentTarget as HTMLElement).style.color = C.accent; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = ''; }}
                   >
                     {res.resourceName}
+                    {res.isCurrentlyDown && (
+                      <span style={{ color: '#eab308', fontSize: 11, flexShrink: 0 }} title="Resource is currently down">⚠</span>
+                    )}
                   </span>
                   {onResourceFilter && (
                     <span
@@ -4428,6 +5101,31 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                       width: 1, background: C.border, opacity: 0.5,
                     }} />
                   ))}
+                  {/* Downtime regions */}
+                  {(res.downtimes || []).map((dt: any, i: number) => {
+                    const leftRaw  = toPct(dt.startTime);
+                    const rightRaw = dt.endTime ? toPct(dt.endTime) : 100;
+                    // Clamp to visible range — a past-start downtime still covers the visible area
+                    const left = Math.max(0, leftRaw);
+                    const right = Math.min(100, rightRaw);
+                    const w = right - left;
+                    if (w <= 0) return null;
+                    return (
+                      <div
+                        key={`dt-${i}`}
+                        style={{
+                          position: 'absolute', left: `${left}%`, width: `${w}%`,
+                          top: 0, bottom: 0,
+                          background: 'repeating-linear-gradient(45deg, transparent, transparent 6px, rgba(234,179,8,0.15) 6px, rgba(234,179,8,0.15) 12px)',
+                          borderLeft: '3px solid #eab308',
+                          ...(dt.indefinite ? {} : { borderRight: '3px solid #eab308' }),
+                          cursor: 'pointer', zIndex: 1, pointerEvents: 'all',
+                        }}
+                        title={`⚠ ${dt.reason}\n${new Date(dt.startTime).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} → ${dt.indefinite ? 'indefinite' : new Date(dt.endTime).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
+                        onClick={() => onOpenDowntimeEditor?.(res.resourceKey)}
+                      />
+                    );
+                  })}
                   {/* Task bars */}
                   {rTasks.map((t: any) => {
                     const left = toPct(t.scheduledStart);
@@ -4782,8 +5480,8 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
               const hoverOut = (e: React.MouseEvent) => (e.currentTarget as HTMLElement).style.background = 'none';
               const items: React.ReactNode[] = [];
 
-              // WhereTo for planned/unscheduled
-              if ((level === 'planned' || level === 'unscheduled') && onWhereTo) {
+              // WhereTo for planned/unscheduled/infeasible
+              if ((level === 'planned' || level === 'unscheduled' || level === 'infeasible') && onWhereTo) {
                 items.push(
                   <button key="whereto" onClick={() => { onWhereTo(task.key); setContextMenu(null); }}
                     style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
@@ -4792,8 +5490,8 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                 );
               }
 
-              // Resource Pref for planned
-              if (level === 'planned' && onSetResourcePrefForTask) {
+              // Resource Pref for planned/unscheduled/infeasible
+              if ((level === 'planned' || level === 'unscheduled' || level === 'infeasible') && onSetResourcePrefForTask) {
                 items.push(
                   <button key="respref" onClick={() => { onSetResourcePrefForTask(task.key); setContextMenu(null); }}
                     style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
@@ -4924,6 +5622,16 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
               }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
                 ⊡ Filter Tasks
+              </button>
+            )}
+            {onOpenDowntimeEditor && (
+              <button onClick={() => { onOpenDowntimeEditor(resContextMenu.resource.resourceKey); setResContextMenu(null); }} style={{
+                width: '100%', padding: '7px 10px', background: 'none', border: 'none',
+                color: '#ef4444', fontSize: 12, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
+                borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8,
+              }} onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
+                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                ⚠ Manage Downtime
               </button>
             )}
           </div>
@@ -5534,8 +6242,8 @@ function getToolbarActions(selectedTasks: any[]): ToolbarAction[] {
     if (count > 0) actions.push({ ...ACTION_CONFIG[key], count });
   };
 
-  // WhereTo — single selection, planned or unscheduled
-  if (selectedTasks.length === 1 && ((levelCounts.planned || 0) + (levelCounts.unscheduled || 0) > 0)) {
+  // WhereTo — single selection, planned / unscheduled / infeasible
+  if (selectedTasks.length === 1 && ((levelCounts.planned || 0) + (levelCounts.unscheduled || 0) + (levelCounts.infeasible || 0) > 0)) {
     actions.push({ ...ACTION_CONFIG.whereto });
   }
 
@@ -5546,7 +6254,7 @@ function getToolbarActions(selectedTasks: any[]): ToolbarAction[] {
   add('unschedule', levelCounts.planned || 0);
   add('exclude',    (levelCounts.planned || 0) + (levelCounts.unscheduled || 0) + (levelCounts.infeasible || 0));
   add('include',    levelCounts.excluded || 0);
-  add('resourcePref', levelCounts.planned || 0);
+  add('resourcePref', (levelCounts.planned || 0) + (levelCounts.unscheduled || 0) + (levelCounts.infeasible || 0));
   add('rush',       (levelCounts.planned || 0) + (levelCounts.unscheduled || 0) + (levelCounts.infeasible || 0));
   add('dispatch',   levelCounts.pinned || 0);
   add('start',      levelCounts.dispatched || 0);
@@ -5667,13 +6375,18 @@ function TaskRowActions({ task, taskPins, taskExcludes, taskUnschedules, orderMo
 }
 
 function TaskBulkActions({ filteredTasks, taskPins: _taskPins, taskExcludes: _taskExcludes, orderModes,
-  onPinAll, onUnpinAll, onExcludeAll, onIncludeAll, onUnscheduleAll }: {
+  onPinAll, onUnpinAll, onExcludeAll, onIncludeAll, onUnscheduleAll,
+  onSolveAll, onRushAll, onResourcePrefAll, onExtendWindowAll }: {
   filteredTasks: any[];
   taskPins: Record<string, boolean>; taskExcludes: Record<string, boolean>;
   orderModes: Record<string, string>;
   onPinAll: (keys: string[]) => void; onUnpinAll: (keys: string[]) => void;
   onExcludeAll: (keys: string[]) => void; onIncludeAll: (keys: string[]) => void;
   onUnscheduleAll: (keys: string[]) => void;
+  onSolveAll?: (keys: string[]) => void;
+  onRushAll?: (keys: string[]) => void;
+  onResourcePrefAll?: (keys: string[]) => void;
+  onExtendWindowAll?: (keys: string[]) => void;
 }) {
   const actionable = filteredTasks.filter(t => {
     const orderMode = orderModes[t.orderRef] || 'INCLUDE';
@@ -5682,10 +6395,13 @@ function TaskBulkActions({ filteredTasks, taskPins: _taskPins, taskExcludes: _ta
   // Use _status (commitment-aware) to determine what can be unscheduled/pinned
   const planned = actionable.filter(t => t._status === 'planned');
   const pinnedTasks = actionable.filter(t => t._status === 'pinned');
+  const unscheduled = actionable.filter(t => t._status === 'unscheduled');
+  const infeasible = actionable.filter(t => t._status === 'infeasible');
   const excludedCount = actionable.filter(t => t._status === 'excluded').length;
   const plannedKeys = planned.map(t => t.key);
   const actionableKeys = actionable.map(t => t.key);
-
+  const needsSchedulingKeys = [...unscheduled, ...infeasible].map(t => t.key);
+  const rushableKeys = [...planned, ...unscheduled, ...infeasible].map(t => t.key);
 
   if (filteredTasks.length <= 1) return null;
 
@@ -5698,6 +6414,26 @@ function TaskBulkActions({ filteredTasks, taskPins: _taskPins, taskExcludes: _ta
       <span style={{ fontWeight: 700, fontSize: 11, color: C.textDim, marginRight: 4 }}>
         Bulk ({filteredTasks.length} shown):
       </span>
+
+      {/* Unscheduled / infeasible actions */}
+      {needsSchedulingKeys.length > 0 && onSolveAll && (
+        <BulkBtn icon="▶" label={`Schedule ${needsSchedulingKeys.length}`} color={C.green}
+          onClick={() => onSolveAll!(needsSchedulingKeys)} />
+      )}
+      {needsSchedulingKeys.length > 0 && onResourcePrefAll && (
+        <BulkBtn icon="🔀" label={`Resource Pref ${needsSchedulingKeys.length}`} color={C.accent}
+          onClick={() => onResourcePrefAll!(needsSchedulingKeys)} />
+      )}
+      {needsSchedulingKeys.length > 0 && onExtendWindowAll && (
+        <BulkBtn icon="⟫" label={`Extend Window ${needsSchedulingKeys.length}`} color={C.textMuted}
+          onClick={() => onExtendWindowAll!(needsSchedulingKeys)} />
+      )}
+      {rushableKeys.length > 0 && onRushAll && (
+        <BulkBtn icon="⚡" label={`Rush ${rushableKeys.length}`} color={C.yellow}
+          onClick={() => onRushAll!(rushableKeys)} />
+      )}
+
+      {/* Planned actions */}
       {planned.length > 0 && (
         <BulkBtn icon="✕" label={`Unschedule ${planned.length}`} color={C.red}
           onClick={() => onUnscheduleAll(plannedKeys)} />
@@ -6220,6 +6956,23 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
     }
   }, [onApiBulkUnschedule, onUnscheduleTask]);
 
+  const handleSolveAll = useCallback((keys: string[]) => {
+    onScheduleSelected?.(keys);
+  }, [onScheduleSelected]);
+
+  const handleRushAll = useCallback((keys: string[]) => {
+    onRushSelected?.(keys);
+  }, [onRushSelected]);
+
+  const handleResourcePrefAll = useCallback((keys: string[]) => {
+    onSetSelectedTasks?.(new Set(keys));
+    onSetResourcePreference?.();
+  }, [onSetSelectedTasks, onSetResourcePreference]);
+
+  const handleExtendWindowAll = useCallback((keys: string[]) => {
+    onToolbarAction?.('extend_window', keys);
+  }, [onToolbarAction]);
+
   let preRows = filter.filtered;
   if (resourceFilter) {
     preRows = preRows.filter((t: any) =>
@@ -6460,7 +7213,11 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
           taskPins={safePins} taskExcludes={safeExcludes} orderModes={safeOrderModes}
           onPinAll={handlePinAll} onUnpinAll={handleUnpinAll}
           onExcludeAll={handleExcludeAll} onIncludeAll={handleIncludeAll}
-          onUnscheduleAll={handleUnscheduleAll} />
+          onUnscheduleAll={handleUnscheduleAll}
+          onSolveAll={onScheduleSelected ? handleSolveAll : undefined}
+          onRushAll={onRushSelected ? handleRushAll : undefined}
+          onResourcePrefAll={onSetResourcePreference ? handleResourcePrefAll : undefined}
+          onExtendWindowAll={onToolbarAction ? handleExtendWindowAll : undefined} />
       )}
       <div style={{ overflowX: 'auto' }}>
         <table style={tableStyle}>
@@ -7439,7 +8196,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   onScheduleSelected, onUnscheduleSelected, onPinSelected, onUnpinSelected, onExcludeSelected, onIncludeSelected,
   onSetResourcePreference, onSetResourcePrefForTask, resourcePreferenceOverrides,
   priorityOverrides, onSetPriority, onRushSelected,
-  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset, onViewAgenda, onAskAI,
+  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset, onViewAgenda, onOpenDowntimeEditor, onAskAI,
   replay, onReplayStep, onReplayJumpStart, onReplayJumpEnd,
   onReplayTogglePlay, onReplaySpeedChange, onReplayExit, onReplayJumpToStep,
   ctpGhostBars, isQueuing = false,
@@ -7447,6 +8204,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   tasks: any[]; resources: any[]; products: any[]; colors: any;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   onViewAgenda?: (r: any) => void;
+  onOpenDowntimeEditor?: (resourceKey: string) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
   orderModes?: Record<string, string>;
   orders?: any[];
@@ -7531,7 +8289,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
             scrollOffset={scrollOffset} setScrollOffset={setScrollOffset}
             onSetResourcePrefForTask={onSetResourcePrefForTask}
-            onViewAgenda={onViewAgenda} onAskAI={onAskAI}
+            onViewAgenda={onViewAgenda} onOpenDowntimeEditor={onOpenDowntimeEditor} onAskAI={onAskAI}
             replay={replay} onReplayStep={onReplayStep}
             onReplayJumpStart={onReplayJumpStart} onReplayJumpEnd={onReplayJumpEnd}
             onReplayTogglePlay={onReplayTogglePlay} onReplaySpeedChange={onReplaySpeedChange}
@@ -11209,6 +11967,8 @@ export default function App() {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [selectedResource, setSelectedResource] = useState<any>(null);
   const [agendaResource, setAgendaResource] = useState<any>(null);
+  const [downtimeResource, setDowntimeResource] = useState<string | null>(null);
+  const openDowntimeEditor = useCallback((resourceKey: string) => { setDowntimeResource(resourceKey); }, []);
   const [colors, setColors] = useState<any>(null);
 
   // Solve preview & override state
@@ -11532,7 +12292,7 @@ export default function App() {
       setError(null);
 
       // Build request body with all overrides
-      const body: any = {};
+      const body: any = { preserveLandscape: true };
       const activeOrderModes = Object.fromEntries(
         Object.entries(orderModes).filter(([, v]) => v !== 'INCLUDE'),
       );
@@ -11677,6 +12437,7 @@ export default function App() {
     try {
       setError(null);
       const body: any = {
+        preserveLandscape: true,
         resourcePreferenceOverrides: newOverrides,
         strategy: solverStrategy,
         detailLevel: experienceLevel,
@@ -11977,6 +12738,7 @@ export default function App() {
     setSolving(true);
     try {
       const body: any = {
+        preserveLandscape: true,
         strategy: solverStrategy,
         detailLevel: experienceLevel,
         recordSolveSteps: true,
@@ -13303,6 +14065,7 @@ export default function App() {
             zoomLevel={ganttZoomLevel} setZoomLevel={setGanttZoomLevel}
             scrollOffset={ganttScrollOffset} setScrollOffset={setGanttScrollOffset}
             onViewAgenda={(r: any) => { setSelectedTask(null); setSelectedResource(null); setAgendaResource(r); }}
+            onOpenDowntimeEditor={openDowntimeEditor}
             onAskAI={handleAskAI}
             replay={replay} onReplayStep={handleReplayStep}
             onReplayJumpStart={handleReplayJumpStart} onReplayJumpEnd={handleReplayJumpEnd}
@@ -13555,6 +14318,7 @@ export default function App() {
           colors={colors}
           onClose={() => setSelectedResource(null)}
           onTaskClick={handleTaskClick}
+          onOpenDowntimeEditor={(rk: string) => { setSelectedResource(null); setDowntimeResource(rk); }}
         />
       )}
       {agendaResource && (
@@ -13566,6 +14330,23 @@ export default function App() {
           horizonEnd={summary?.horizonEnd}
           onClose={() => setAgendaResource(null)}
           onTaskClick={(t: any) => { setAgendaResource(null); handleTaskClick(t); }}
+          onOpenDowntimeEditor={(rk: string) => { setAgendaResource(null); setDowntimeResource(rk); }}
+        />
+      )}
+      {/* Downtime Editor Panel */}
+      {downtimeResource && (
+        <DowntimeEditorPanel
+          resourceKey={downtimeResource}
+          resources={resources}
+          onClose={() => setDowntimeResource(null)}
+          onStale={() => {
+            setSolveStale(true);
+            api(`/ctp/state?detailLevel=${experienceLevel}`)
+              .then(r => setSolveResult(r)).catch(() => {});
+          }}
+          onToast={(msg) => showToast(msg)}
+          isQueuing={isQueuing}
+          onQueue={addToQueue}
         />
       )}
 

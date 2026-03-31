@@ -64,7 +64,8 @@ export interface RecommendationCommand {
   type: 'move_to' | 'set_window' | 'unschedule' | 'solve'
       | 'set_priority' | 'set_resource_preference'
       | 'set_order_mode' | 'pin'
-      | 'dispatch' | 'start' | 'hold' | 'resume' | 'complete' | 'revert_dispatch';
+      | 'dispatch' | 'start' | 'hold' | 'resume' | 'complete' | 'revert_dispatch'
+      | 'resource_downtime' | 'resource_uptime';
   scope?: 'targeted' | 'full';
   expandChains?: boolean;
   taskKey?: string;
