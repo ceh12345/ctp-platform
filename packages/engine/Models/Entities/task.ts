@@ -234,6 +234,12 @@ export class CTPTask extends CTPKeyEntity implements ITask {
   public estimatedResumeTime: string | null = null;
   public holdStart: string | null = null;
 
+  // ─── Horizon Bucketing Fields ───
+  public isPastDue: boolean = false;
+  public pastDueDays: number = 0;
+  public originalWindowEnd: number = 0;
+  public horizonBucket: 'past_due' | 'active' | 'near_horizon' | 'beyond' | '' = '';
+
   public effectiveRemainingDuration(): number {
     if (this.remainingDuration != null) return this.remainingDuration;
     const totalDuration = this.duration?.duration() ?? 0;

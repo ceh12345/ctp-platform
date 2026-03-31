@@ -145,9 +145,24 @@ export class StateHydratorService {
       const now = DateTime.now();
       return new CTPHorizon(now, now.plus({ days: 14 }));
     }
-    const startDt = DateTime.fromISO(config.startDate);
-    const endDt = DateTime.fromISO(config.endDate);
+    const timezone = this.configService.getLocale()?.timezone || 'UTC';
+    const startDt = this.resolveHorizonStart(config.start || 'NOW', timezone);
+    const endDt = startDt.plus({ days: config.maxDays ?? 14 });
     return new CTPHorizon(startDt, endDt);
+  }
+
+  private resolveHorizonStart(value: string, timezone: string): DateTime {
+    const now = DateTime.now().setZone(timezone).startOf('day');
+    if (value === 'NOW') return now;
+    const offsetMatch = value.match(/^NOW([+-])(\d+)d$/i);
+    if (offsetMatch) {
+      const sign = offsetMatch[1] === '+' ? 1 : -1;
+      const days = parseInt(offsetMatch[2]) * sign;
+      return now.plus({ days });
+    }
+    const parsed = DateTime.fromISO(value, { zone: timezone });
+    if (parsed.isValid) return parsed.startOf('day');
+    return now;
   }
 
   private hydrateSettings(config: ISettingsConfig): CTPAppSettings {

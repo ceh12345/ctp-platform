@@ -1,4 +1,5 @@
 {
-  "startDate": "2026-03-16T12:00:00Z",
-  "endDate": "2026-03-29T04:00:00Z"
+  "start": "2026-03-16",
+  "maxDays": 13,
+  "pastDueExtensionDays": 5
 }

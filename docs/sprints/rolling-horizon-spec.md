@@ -9,15 +9,13 @@
 
 ## Horizon Configuration
 
-Add to the tenant's `appSettings.json` (or wherever horizon config lives):
+Update the tenant's `horizon.json` to the new format:
 
 ```json
 {
-  "horizon": {
-    "start": "NOW-2d",
-    "maxDays": 16,
-    "pastDueExtensionDays": 5
-  }
+  "start": "NOW-2d",
+  "maxDays": 16,
+  "pastDueExtensionDays": 5
 }
 ```
 
@@ -42,29 +40,19 @@ Add to the tenant's `appSettings.json` (or wherever horizon config lives):
 
 ```json
 // Stafford (job shop) — rolling, 2-week look-ahead, include 2 days past due
-{
-  "horizon": { "start": "NOW-2d", "maxDays": 16, "pastDueExtensionDays": 5 }
-}
+{ "start": "NOW-2d", "maxDays": 16, "pastDueExtensionDays": 5 }
 
 // Summit (pharma) — rolling, 30-day look-ahead, generous past due buffer
-{
-  "horizon": { "start": "NOW", "maxDays": 30, "pastDueExtensionDays": 10 }
-}
+{ "start": "NOW", "maxDays": 30, "pastDueExtensionDays": 10 }
 
 // Acme (healthcare) — rolling, weekly surgery schedule
-{
-  "horizon": { "start": "NOW", "maxDays": 7, "pastDueExtensionDays": 2 }
-}
+{ "start": "NOW", "maxDays": 7, "pastDueExtensionDays": 2 }
 
 // HRMD (sports) — rolling, season look-ahead
-{
-  "horizon": { "start": "NOW", "maxDays": 60, "pastDueExtensionDays": 7 }
-}
+{ "start": "NOW", "maxDays": 60, "pastDueExtensionDays": 7 }
 
 // Willoughby (demo) — fixed for demo consistency
-{
-  "horizon": { "start": "2026-02-10", "maxDays": 14, "pastDueExtensionDays": 5 }
-}
+{ "start": "2026-02-10", "maxDays": 14, "pastDueExtensionDays": 5 }
 ```
 
 ---
@@ -127,8 +115,10 @@ function bucketTask(task: CTPTask, horizonStartW: number, horizonEndW: number, n
   const windowStartW = task.window?.startW ?? 0;
   const windowEndW = task.window?.endW ?? 0;
 
-  // Past due: window end is before now
-  if (windowEndW < nowW) return 'past_due';
+  // Past due: window end is before the horizon start.
+  // Using horizonStart (not now) works for both rolling and fixed-date horizons:
+  // rolling → horizonStart ≈ now; fixed → horizonStart is the config date.
+  if (windowEndW < horizonStartW) return 'past_due';
 
   // Beyond horizon: window starts after horizon end
   if (windowStartW > horizonEndW) return 'beyond';
@@ -394,83 +384,52 @@ The `CTPRollingHorizon` class in `horizon.ts` is unused legacy code. Remove it. 
 
 Each tenant currently has a fixed `horizonStart` and `horizonEnd` (either in `appSettings.json` or hardcoded in the hydrator). Convert to the new format. Calculate `maxDays` from the existing date range.
 
-**Stafford Engineering:**
+**Stafford Engineering** (`config/tenants/stafford-engineering/horizon.json`):
 ```json
-{
-  "horizon": {
-    "start": "2026-03-17",
-    "maxDays": 14,
-    "pastDueExtensionDays": 5
-  }
-}
+{ "start": "2026-03-15", "maxDays": 13, "pastDueExtensionDays": 5 }
 ```
-Job shop with 15 orders, tight due dates. 14-day window covers the active work. 5-day extension gives past due orders a work week to fit in.
+Job shop with 15 orders, tight due dates. 13-day window covers the active work. 5-day extension gives past due orders a work week to fit in.
 
-**Willoughby Manufacturing (Demo):**
+**demo-manufacturing** (`config/tenants/demo-manufacturing/horizon.json`):
 ```json
-{
-  "horizon": {
-    "start": "2026-02-10",
-    "maxDays": 14,
-    "pastDueExtensionDays": 5
-  }
-}
+{ "start": "2026-02-10", "maxDays": 15, "pastDueExtensionDays": 5 }
 ```
-Demo dataset — fixed start for consistency. Same 14-day window. Switch to `"NOW"` when demoing rolling behavior.
+Demo dataset — fixed start for consistency. Switch to `"NOW"` when demoing rolling behavior.
 
-**Acme Outpatient Healthcare:**
+**Acme Outpatient Healthcare** (`config/tenants/acme-outpatient/horizon.json`):
 ```json
-{
-  "horizon": {
-    "start": "2026-03-17",
-    "maxDays": 7,
-    "pastDueExtensionDays": 2
-  }
-}
+{ "start": "2026-02-16", "maxDays": 15, "pastDueExtensionDays": 2 }
 ```
-Weekly surgery schedule. 7-day horizon. 2-day extension — past due surgeries need to be rescheduled quickly.
+2-day extension — past due surgeries need to be rescheduled quickly.
 
-**HRMD Sports:**
+**HRMD Sports** (`config/tenants/hrmd-rec-sports/horizon.json`):
 ```json
-{
-  "horizon": {
-    "start": "2026-03-17",
-    "maxDays": 30,
-    "pastDueExtensionDays": 7
-  }
-}
+{ "start": "2026-06-06", "maxDays": 8, "pastDueExtensionDays": 7 }
 ```
-Season schedule with 77 games across 58 resources. 30-day window covers the active season block. 7-day extension for rainout rescheduling.
+Season schedule. 7-day extension for rainout rescheduling.
 
-**Summit Pharma:**
+**Summit Pharma** (`config/tenants/summit-pharma/horizon.json`):
 ```json
-{
-  "horizon": {
-    "start": "2026-03-17",
-    "maxDays": 21,
-    "pastDueExtensionDays": 5
-  }
-}
+{ "start": "2026-03-16", "maxDays": 13, "pastDueExtensionDays": 5 }
 ```
-Batch pharmaceutical manufacturing. 21-day window covers batch cycles. 5-day extension for delayed batches.
+Batch pharmaceutical manufacturing. 13-day window covers batch cycles. 5-day extension for delayed batches.
 
 ### Where the config lives
 
-Add the `horizon` section to each tenant's `appSettings.json`. The hydrator reads it when building the landscape:
+Each tenant has a `horizon.json` file. The hydrator reads it when building the landscape. The content IS the config — no wrapper key:
 
 ```typescript
-// In the hydrator or config service:
-const horizonConfig = appSettings.horizon || null;
+// In the hydrator (hydrateHorizon):
+// horizonConfig = configService.getHorizon() — reads horizon.json directly
 
-// If no horizon config, fall back to existing fixed dates (backward compatible)
+// If no horizon.json, fall back to now + 14 days (backward compatible)
 if (!horizonConfig) {
-  // Use existing hardcoded horizonStart/horizonEnd
-  landscape.setHorizon(existingStart, existingEnd);
+  landscape.horizon.set(now, now.plus({ days: 14 }));
 } else {
   const timezone = locale?.timezone || 'UTC';
   const start = resolveHorizonStart(horizonConfig.start, timezone);
   const end = start.plus({ days: horizonConfig.maxDays });
-  landscape.setHorizon(start, end);
+  landscape.horizon.set(start, end);
 }
 ```
 
@@ -488,16 +447,17 @@ All five tenants start with fixed start dates (their current values). This prese
 
 ### Migration checklist
 
-- [ ] Remove `CTPRollingHorizon` class from `horizon.ts`
-- [ ] Add `horizon` section to Stafford `appSettings.json`
-- [ ] Add `horizon` section to Willoughby `appSettings.json`
-- [ ] Add `horizon` section to Acme `appSettings.json`
-- [ ] Add `horizon` section to HRMD `appSettings.json`
-- [ ] Add `horizon` section to Summit `appSettings.json`
-- [ ] Hydrator reads `horizon` config and resolves start/end
-- [ ] Fallback to existing fixed dates when no `horizon` config present
-- [ ] Verify all 5 tenants solve correctly after migration
-- [ ] `pastDueExtensionDays` enforced minimum of 1
+- [x] Remove `CTPRollingHorizon` class from `horizon.ts` (was unused legacy)
+- [x] Migrate Stafford `horizon.json` to new format
+- [x] Migrate demo-manufacturing `horizon.json` to new format
+- [x] Migrate demo-sandbox `horizon.json` to new format
+- [x] Migrate acme-outpatient `horizon.json` to new format
+- [x] Migrate hrmd-rec-sports `horizon.json` to new format
+- [x] Migrate summit-pharma `horizon.json` to new format
+- [x] Hydrator reads `horizon.json` and resolves start/end
+- [ ] Fallback to now + 14 days when no `horizon.json` present (backward compat)
+- [ ] Verify all 6 tenants solve correctly after migration
+- [x] `pastDueExtensionDays` enforced minimum of 1
 
 ---
 

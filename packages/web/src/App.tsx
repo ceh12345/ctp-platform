@@ -6113,8 +6113,10 @@ function deriveTaskStatus(tk: any, taskPins?: Record<string, boolean>, taskExclu
   const isPinned = taskPins?.[tk.key] || false;
   if (isPinned || orderMode === 'LOCKED') return 'pinned';
   if (taskUnschedules?.has?.(tk.key)) return 'unscheduled';
+  if (tk.horizonBucket === 'beyond') return 'deferred';
   if (tk.feasible && tk.scheduledStart) return 'planned';
   if (tk.errors?.length > 0) return 'infeasible';
+  if (tk.isPastDue) return 'past_due';
   return 'unscheduled';
 }
 
@@ -6133,6 +6135,8 @@ const TASK_STATUS_CONFIG: Record<string, { label: string; color: string; icon: s
   pinned:      { label: 'Pinned',      color: '#3b82f6', icon: '📌' },
   planned:     { label: 'Planned',     color: '#22c55e', icon: '✓' },
   infeasible:  { label: 'Infeasible',  color: '#ef4444', icon: '✕' },
+  past_due:    { label: 'Past Due',    color: '#f97316', icon: '⏰' },
+  deferred:    { label: 'Deferred',    color: '#6b7280', icon: '⟫' },
   excluded:    { label: 'Excluded',    color: '#475569', icon: '—' },
   unscheduled: { label: 'Unsched',     color: '#9ca3af', icon: '○' },
 };
@@ -6892,6 +6896,8 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   const infeasibleCount = typeFiltered.filter(tk => tk._status === 'infeasible').length;
   const excludedCount = typeFiltered.filter(tk => tk._status === 'excluded').length;
   const rushCount = typeFiltered.filter(tk => (tk.priority ?? 100) <= 10).length;
+  const pastDueCount = typeFiltered.filter(tk => tk._status === 'past_due').length;
+  const deferredCount = typeFiltered.filter(tk => tk._status === 'deferred').length;
 
   const statusOptions = [
     { value: 'all', label: 'All', count: typeFiltered.length },
@@ -6903,6 +6909,8 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
     { value: 'planned', label: '✓ Planned', color: '#22c55e', count: plannedCount },
     { value: 'unscheduled', label: '○ Unsched', color: '#9ca3af', count: unscheduledCount },
     { value: 'infeasible', label: '✕ Infeasible', color: '#ef4444', count: infeasibleCount },
+    { value: 'past_due', label: '⏰ Past Due', color: '#f97316', count: pastDueCount },
+    { value: 'deferred', label: '⟫ Deferred', color: '#6b7280', count: deferredCount },
     { value: 'excluded', label: '— Excluded', color: '#475569', count: excludedCount },
     { value: 'rush', label: '🔥 Rush', color: '#f97316', count: rushCount },
   ].filter(opt => opt.value === 'all' || opt.count > 0);
@@ -7294,7 +7302,19 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                     />
                   </td>}
                   <td style={cellStyle}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{tk.name}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {tk.name}
+                      {tk.isPastDue && tk.pastDueDays > 0 && (
+                        <span style={{ color: '#f97316', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                          {tk.pastDueDays}d late
+                        </span>
+                      )}
+                      {tk.horizonBucket === 'beyond' && (
+                        <span style={{ color: '#6b7280', fontSize: 10, fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                          Deferred
+                        </span>
+                      )}
+                    </div>
                     <div style={{ fontSize: 11, color: C.textDim }}>{tk.key}</div>
                   </td>
                   <td style={cellStyle}>

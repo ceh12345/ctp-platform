@@ -42,13 +42,3 @@ export class CTPHorizon extends CTPEntity implements IHorizonDTO {
   }
 }
 
-export class CTPRollingHorizon extends CTPHorizon {
-  public daysBefore: number = 0;
-  public daysAfter: number = 0;
-
-  constructor(st: DateTime, daysB: number, daysA: number) {
-    super(st.minus({ days: daysB }), st.plus({ days: daysA }));
-    this.daysBefore = daysB;
-    this.daysAfter = daysA;
-  }
-}

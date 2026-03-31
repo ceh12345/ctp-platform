@@ -166,6 +166,46 @@ export class CTPService {
     // Apply commitment stack — derive levels, enforce pinning for layers 1-4
     this.applyCommitmentStack(landscape);
 
+    // Resolve horizon — always fresh so rolling 'NOW' configs stay current
+    const horizonConfig = this.configService.getHorizon();
+    const timezone = this.configService.getLocale()?.timezone || 'UTC';
+    const horizonStart = this.resolveHorizonStart(horizonConfig?.start || 'NOW', timezone);
+    const maxDays = horizonConfig?.maxDays ?? 14;
+    const horizonEnd = horizonStart.plus({ days: maxDays });
+    landscape.horizon.set(horizonStart, horizonEnd);
+
+    // Bucket uncommitted tasks by horizon position.
+    // Use horizonStartW (not now) as the "past due" reference — a task is past due
+    // if its window expired before the planning horizon opens. This works correctly
+    // for both rolling ('NOW') and fixed-date horizons: for 'NOW' horizons,
+    // horizonStart ≈ today; for fixed-date horizons, horizonStart is the config date.
+    const horizonStartW = landscape.horizon.startW;
+    const pastDueExtensionDays = Math.max(1, horizonConfig?.pastDueExtensionDays ?? 5);
+    const extensionEndW = horizonStartW + (pastDueExtensionDays * 86400);
+    landscape.tasks?.forEach(task => {
+      if (['running', 'on_hold', 'dispatched', 'pinned', 'completed'].includes(task.commitmentLevel)) {
+        task.horizonBucket = 'active';
+        return;
+      }
+      const bucket = this.bucketTask(task, landscape.horizon.startW, landscape.horizon.endW, horizonStartW);
+      task.horizonBucket = bucket;
+      if (bucket === 'past_due') {
+        if (!task.originalWindowEnd) {
+          task.originalWindowEnd = task.window?.endW ?? 0;
+        }
+        if (task.window) {
+          task.window.endW = Math.max(task.window.endW, extensionEndW);
+        }
+        task.isPastDue = true;
+        task.pastDueDays = Math.ceil((horizonStartW - task.originalWindowEnd) / 86400);
+      } else if (bucket === 'beyond') {
+        task.includeInSolve = false;
+      } else {
+        task.isPastDue = false;
+        task.pastDueDays = 0;
+      }
+    });
+
     // Unschedule all planned (uncommitted) tasks — put them back in the pool.
     // This runs on every solve so the solver always re-places planned work
     // around committed tasks, downtimes, and any other resource state changes.
@@ -370,6 +410,17 @@ export class CTPService {
     const detailLevel = request?.detailLevel || 'novice';
     const result = this.extractResults(landscape, taskList, stats, detailLevel);
     result.scoring = { source: scoringSource, rules: scoringRules };
+
+    // Augment summary with horizon metadata
+    let pastDueTasks = 0;
+    let deferredTasks = 0;
+    landscape.tasks?.forEach((t: CTPTask) => {
+      if (t.isPastDue) pastDueTasks++;
+      if (t.horizonBucket === 'beyond') deferredTasks++;
+    });
+    (result.summary as any).pastDueTasks = pastDueTasks;
+    (result.summary as any).deferredTasks = deferredTasks;
+    (result.summary as any).horizonMode = (horizonConfig?.start || 'NOW').startsWith('NOW') ? 'rolling' : 'fixed';
     if (engineSolveResult) {
       result.solveResult = engineSolveResult;
       if (engineSolveResult.solveSteps?.length > 0) {
@@ -2705,6 +2756,34 @@ export class CTPService {
   // Commitment Stack
   // ═══════════════════════════════════════
 
+  private resolveHorizonStart(value: string, timezone: string): DateTime {
+    const now = DateTime.now().setZone(timezone).startOf('day');
+    if (value === 'NOW') return now;
+    const offsetMatch = value.match(/^NOW([+-])(\d+)d$/i);
+    if (offsetMatch) {
+      const sign = offsetMatch[1] === '+' ? 1 : -1;
+      const days = parseInt(offsetMatch[2]) * sign;
+      return now.plus({ days });
+    }
+    const parsed = DateTime.fromISO(value, { zone: timezone });
+    if (parsed.isValid) return parsed.startOf('day');
+    return now;
+  }
+
+  private bucketTask(
+    task: CTPTask,
+    horizonStartW: number,
+    horizonEndW: number,
+    pastDueRefW: number,  // reference point for "past due" — horizonStart for fixed, ≈now for rolling
+  ): 'past_due' | 'active' | 'near_horizon' | 'beyond' {
+    const windowStartW = task.window?.startW ?? 0;
+    const windowEndW = task.window?.endW ?? 0;
+    if (windowEndW < pastDueRefW) return 'past_due';
+    if (windowStartW > horizonEndW) return 'beyond';
+    if (windowStartW <= horizonEndW && windowEndW > horizonEndW) return 'near_horizon';
+    return 'active';
+  }
+
   /**
    * Derive commitmentLevel on every task from wipState + dispatched + pinned.
    * Classification only — no placement, no pinning, no resource assignments.
@@ -3056,6 +3135,10 @@ export class CTPService {
         actualResources: task.actualResources,
         holdReason: task.commitmentLevel === 'on_hold' ? (task.holdReason || null) : null,
         estimatedResumeTime: task.commitmentLevel === 'on_hold' ? (task.estimatedResumeTime || null) : null,
+        isPastDue: task.isPastDue || false,
+        pastDueDays: task.pastDueDays || 0,
+        originalWindowEnd: task.originalWindowEnd ? CTPDateTime.toDateTime(task.originalWindowEnd).toISO() : null,
+        horizonBucket: task.horizonBucket || '',
       };
 
       // Per-task cost breakdown (resource + material)

@@ -62,8 +62,9 @@ function writeSampleTenant(tenantDir: string): void {
 
   // Horizon
   const horizon: IHorizonConfig = {
-    startDate: '2026-02-10T00:00:00Z',
-    endDate: '2026-02-24T00:00:00Z',
+    start: '2026-02-10',
+    maxDays: 15,
+    pastDueExtensionDays: 5,
   };
   fs.writeFileSync(path.join(tenantDir, 'horizon.json'), JSON.stringify(horizon));
 
@@ -330,8 +331,8 @@ describe('FileConfigStore', () => {
   it('getHorizon() returns horizon config', () => {
     const horizon = store.getHorizon();
     expect(horizon).not.toBeNull();
-    expect(horizon!.startDate).toBe('2026-02-10T00:00:00Z');
-    expect(horizon!.endDate).toBe('2026-02-24T00:00:00Z');
+    expect(horizon!.start).toBe('2026-02-10');
+    expect(horizon!.maxDays).toBe(15);
   });
 
   it('getSettings() returns defaults when file missing', () => {

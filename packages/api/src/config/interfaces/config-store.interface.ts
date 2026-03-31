@@ -199,8 +199,9 @@ export interface ICadenceData {
 }
 
 export interface IHorizonConfig {
-  startDate: string;
-  endDate: string;
+  start: string;
+  maxDays: number;
+  pastDueExtensionDays: number;
 }
 
 // The main interface
