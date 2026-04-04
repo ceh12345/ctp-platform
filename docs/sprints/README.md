@@ -64,6 +64,7 @@ _None_
 | UI — Commitment State Machine | Merged status badge (8 levels with icons/colors); `deriveTaskStatus` with local override awareness; `canTransition` guards with toast messages; contextual toolbar (level-count approach, zero-count buttons hidden); Gantt context menu per commitment level; revert-dispatch endpoint; bulk count fix; Extend Window dialog (+1h/+4h/+1d/+2d/+1w presets, queue-aware); Hold dialog (reason + held-since + estimated resume presets, queue-aware); `holdStart` audit field on task model | 2026-03-29 |
 | Resource Downtime | MAINTENANCE assignments (add/end/list/all); amber Gantt stripes; indefinite sentinel; agenda split around downtimes; Downtime History in detail + agenda panels; netAvailable subtracts MAINTENANCE; preserveLandscape solve design (unschedule planned before solver, recompute=true); bulk actions for unscheduled/infeasible (Schedule, Resource Pref, Extend Window, Rush); WhereTo + Resource Pref in context menu for infeasible | 2026-03-30 |
 | [Rolling Horizon](rolling-horizon-spec.md) | New horizon.json format (`start`/`maxDays`/`pastDueExtensionDays`); `resolveHorizonStart` (NOW/NOW±Nd/fixed ISO); task bucketing (past_due/active/near_horizon/beyond); past due window extension; past due ref = horizonStart (works for fixed + rolling); per-task isPastDue/pastDueDays/horizonBucket fields; UI "Nd late" + "Deferred" badges; Past Due + Deferred filter chips; remove CTPRollingHorizon; migrate all 6 tenant horizon.json files | 2026-03-31 |
+| Optimization Session 1 — Mutable DisjunctiveGraph | `Engines/Optimization/` toolkit; `types.ts` (TabuConfig, TabuSearchResult, NeighborhoodMove, MoveEvaluation, CriticalBlock, SwapRecord, TranslationResult, TaskDiff); extended DisjunctiveGraph with adjacency arrays (disjPred/Succ, conjPred/Succ), isFrozen, changeoverBefore, processKey; Kahn's topo sort in recomputeCriticalPath; cycle-safe (criticalPath=null); swapOnResource + reverseSwap; recomputeChangeovers; hasCycle; clone; 43 tests | 2026-04-04 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -84,7 +85,7 @@ _None_
 | Data Integration — Phase 2 WIP Sync | Actuals + resource status | `POST /v1/state/wip-sync`, `PATCH /state/tasks/:key/wip`. Populates commitment stack fields from external systems. Spec complete. |
 | UI — Action Queue | Batch command builder | Stage multiple actions and execute atomically via `POST /ctp/execute`. Presets/macros for common scenarios. Spec complete. |
 | UI Sprint 24 — Gantt Resource Filtering | Filter Gantt rows by WHERE selection | Lift hierarchy selection state to ScheduleTab, pass to GanttChart, hide non-matching resource rows. |
-| Solver Phase B — Metaheuristic Improvement | Tabu search + ILS on disjunctive graph | Critical-block neighborhood moves on Phase A graph. Powers Thorough (5-30s) and Best Quality (30s-5m) strategy tiers. Language TBD (TypeScript or C#). |
+| Optimization Session 2 — Tabu Search | Tabu search pass on mutable DisjunctiveGraph | Critical-block neighborhood moves; tenure/stagnation/time-budget stopping; SwapRecord undo; TabuSearchResult. Depends on Session 1 (done). |
 | UI Sprint 14 | Error Display & API Error Handling | Surface engine errors in UI instead of generic 500 |
 | UI Sprint 13 | Resource Explorer | Calendar/Agenda sub-views under Schedule tab |
 
@@ -296,4 +297,4 @@ After each sprint:
 
 ---
 
-*Last updated: Mar 27, 2026 (Commitment Stack + Two-Pass Solve done — Attribute Matching + Data Integration + Action Queue + Phase B in Up Next)*
+*Last updated: Apr 4, 2026 (Optimization Session 1 done — mutable DisjunctiveGraph + 43 tests; Session 2 Tabu Search in Up Next)*
