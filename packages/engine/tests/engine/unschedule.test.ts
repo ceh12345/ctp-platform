@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { CTPScheduler } from '../../AI/Scheduling/defaultscheduler';
+import { CTPScheduler } from '../../AI/Schedulers/defaultscheduler';
 import {
   CTPTask,
   CTPTasks,

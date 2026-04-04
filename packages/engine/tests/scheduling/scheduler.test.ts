@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CTPScheduler } from '../../AI/Scheduling/defaultscheduler';
+import { CTPScheduler } from '../../AI/Schedulers/defaultscheduler';
 import { CTPTask, CTPTasks, CTPTaskResource, CTPTaskResourceList } from '../../Models/Entities/task';
 import { CTPResource, CTPResources, CTPResourcePreference } from '../../Models/Entities/resource';
 import { CTPHorizon } from '../../Models/Entities/horizon';

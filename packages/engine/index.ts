@@ -70,9 +70,9 @@ export * from './AI/Neighborhoods/duedateneighborhood';
 export * from './AI/Neighborhoods/shortestfirstneighborhood';
 export * from './AI/Neighborhoods/chainfirstfitneighborhood';
 
-// AI - Scheduling
-export * from './AI/Scheduling/basescheduler';
-export * from './AI/Scheduling/defaultscheduler';
+// AI - Schedulers
+export * from './AI/Schedulers/basescheduler';
+export * from './AI/Schedulers/defaultscheduler';
 
 // AI - Scoring
 export * from './AI/Scoring/changeoverscoring';

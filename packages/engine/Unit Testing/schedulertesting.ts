@@ -1,5 +1,5 @@
 import * as fs from "./buildlandscape";
-import { CTPScheduler } from "../AI/Scheduling/defaultscheduler";
+import { CTPScheduler } from "../AI/Schedulers/defaultscheduler";
 import { List } from "../Models/Core/list";
 import { CTPTask } from "../Models/Entities/task";
 import { CTPAppSettings } from "../Models/Entities/appsettings";
