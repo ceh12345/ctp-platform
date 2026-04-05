@@ -67,6 +67,7 @@ _None_
 | Optimization Session 1 — Mutable DisjunctiveGraph | `Engines/Optimization/` toolkit; `types.ts` (TabuConfig, TabuSearchResult, NeighborhoodMove, MoveEvaluation, CriticalBlock, SwapRecord, TranslationResult, TaskDiff); extended DisjunctiveGraph with adjacency arrays (disjPred/Succ, conjPred/Succ), isFrozen, changeoverBefore, processKey; Kahn's topo sort in recomputeCriticalPath; cycle-safe (criticalPath=null); swapOnResource + reverseSwap; recomputeChangeovers; hasCycle; clone; 43 tests | 2026-04-04 |
 | Optimization Session 2 — Tabu Search | `tabusearch.ts`: TabuList (reverse-move tabu, tenure pruning, backward-scan early exit); generateNeighborhood (Taillard N7: block_first/block_last/internal, frozen guard); evaluateMove (swap→changeover→cycle→critical path→reverse, graph fully restored); tabuSearch main loop (aspiration criterion, worsening moves, stagnation/time/iter stopping); 29 tests | 2026-04-04 |
 | Optimization Session 3 — Graph Translation | `graphtranslation.ts`: topologicalSort (Kahn's, head-pointer queue); findClosestStartTime (exact containment + closest edge); applyOptimizedGraph (unschedule→topo sort→reschedule at earliestStart, changeovers via scheduleStateChangeTask mirroring basescheduler setup/teardown); computeDiff (60s threshold, sorted by |delta|); 23 tests | 2026-04-04 |
+| Optimization Session 4 — Scheduler Integration | TabuSearchScheduler + ILSScheduler wired into full pipeline; `optimizationRan` field (muted no-improvement banner); `elapsedMs` in optimization result; `tier` in solve request body + result; stale closure fix (selectedTier deps); critical path label fix; Settings → Solver optimization grid; 28 integration tests + chain integrity; 846 total tests | 2026-04-04 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -87,7 +88,6 @@ _None_
 | Data Integration — Phase 2 WIP Sync | Actuals + resource status | `POST /v1/state/wip-sync`, `PATCH /state/tasks/:key/wip`. Populates commitment stack fields from external systems. Spec complete. |
 | UI — Action Queue | Batch command builder | Stage multiple actions and execute atomically via `POST /ctp/execute`. Presets/macros for common scenarios. Spec complete. |
 | UI Sprint 24 — Gantt Resource Filtering | Filter Gantt rows by WHERE selection | Lift hierarchy selection state to ScheduleTab, pass to GanttChart, hide non-matching resource rows. |
-| Optimization Session 4 — TabuSearchScheduler | Wire sessions 1–3 into a callable optimizer | Orchestrate: buildFromLandscape → tabuSearch → applyOptimizedGraph → return TranslationResult + TaskDiff[]. Depends on Sessions 1–3 (all done). |
 | UI Sprint 14 | Error Display & API Error Handling | Surface engine errors in UI instead of generic 500 |
 | UI Sprint 13 | Resource Explorer | Calendar/Agenda sub-views under Schedule tab |
 
@@ -300,4 +300,4 @@ After each sprint:
 
 ---
 
-*Last updated: Apr 4, 2026 (Optimization Sessions 1+2+3 done — DisjunctiveGraph + TabuSearch + GraphTranslation + 95 tests; Session 4 TabuSearchScheduler in Up Next)*
+*Last updated: Apr 4, 2026 (Optimization Sessions 1–4 done — DisjunctiveGraph + TabuSearch + GraphTranslation + Scheduler Integration; 846 tests; tier/elapsedMs/optimizationRan wired end-to-end)*

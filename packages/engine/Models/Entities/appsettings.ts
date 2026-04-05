@@ -15,6 +15,15 @@ export interface IAppSettings {
   debugLogging: boolean;
   recordSolveSteps: boolean;
   maxSolveSteps: number;
+  // Tabu search settings
+  tabuIterations?: number;
+  tabuStagnation?: number;
+  tabuTimeBudgetMs?: number;
+  freezeHorizon?: number;
+  // ILS settings
+  ilsPasses?: number;
+  ilsPerturbStrength?: number;
+  ilsTimeBudgetMs?: number;
 }
 
 export class CTPAppSettings implements IAppSettings {
@@ -33,6 +42,15 @@ export class CTPAppSettings implements IAppSettings {
   public debugLogging: boolean = false;
   public recordSolveSteps: boolean = false;
   public maxSolveSteps: number = 500;
+  // Tabu search settings (optional — defaults applied in buildTabuConfig)
+  public tabuIterations?: number;
+  public tabuStagnation?: number;
+  public tabuTimeBudgetMs?: number;
+  public freezeHorizon?: number;
+  // ILS settings (optional — defaults applied in ILSScheduler)
+  public ilsPasses?: number;
+  public ilsPerturbStrength?: number;
+  public ilsTimeBudgetMs?: number;
 }
 
 export interface ITimingSetting {

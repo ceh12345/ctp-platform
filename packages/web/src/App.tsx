@@ -2448,6 +2448,69 @@ function SolveResultsDialog({ result, previousSnapshot, experienceLevel, onClose
             )}
           </div>
 
+          {/* Optimization ran but no improvement found */}
+          {result.solveResult?.optimizationRan && !result.solveResult?.optimization && (() => {
+            const ran = result.solveResult!.optimizationRan!;
+            return (
+              <div style={{
+                padding: '8px 12px', borderRadius: 8, marginBottom: 12,
+                background: C.surface2, border: `1px solid ${C.border}`,
+                fontSize: 12, color: C.textMuted, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap',
+              }}>
+                <span style={{ fontWeight: 700 }}>⚡ Optimization ran — no improvement found</span>
+                <span>Iterations: <strong style={{ color: C.text }}>{ran.iterations.toLocaleString()}</strong></span>
+                {ran.movesEvaluated != null && (
+                  <span>Moves: <strong style={{ color: C.text }}>{ran.movesEvaluated.toLocaleString()}</strong></span>
+                )}
+                <span>Time: <strong style={{ color: C.text }}>{(ran.elapsedMs / 1000).toFixed(2)}s</strong></span>
+                <span style={{ color: C.textDim }}>{ran.convergenceReason}</span>
+              </div>
+            );
+          })()}
+
+          {/* Optimization results — shown when tabu search / ILS ran */}
+          {result.solveResult?.optimization && (() => {
+            const opt = result.solveResult!.optimization!;
+            const fmtSec = (s: number) => {
+              const h = Math.floor(s / 3600);
+              const m = Math.floor((s % 3600) / 60);
+              return h > 0 ? `${h}h ${m}m` : `${m}m`;
+            };
+            return (
+              <div style={{
+                padding: '8px 12px', borderRadius: 8, marginBottom: 12,
+                background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)',
+                fontSize: 12, color: C.textMuted, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap',
+              }}>
+                <span style={{ color: '#22c55e', fontWeight: 700 }}>⚡ Optimization</span>
+                {result.solveResult?.tier && (
+                  <span style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(34,197,94,0.15)', color: '#22c55e', fontWeight: 600, fontSize: 11 }}>
+                    {result.solveResult.tier}
+                  </span>
+                )}
+                <span>
+                  <strong style={{ color: '#22c55e' }}>-{opt.improvementPercent.toFixed(1)}%</strong>
+                  {' '}critical path
+                  {' '}({fmtSec(opt.originalMakespan)} → <strong style={{ color: C.text }}>{fmtSec(opt.optimizedMakespan)}</strong>)
+                </span>
+                <span>Iterations: <strong style={{ color: C.text }}>{opt.iterations.toLocaleString()}</strong></span>
+                {opt.movesEvaluated != null && (
+                  <span>Moves: <strong style={{ color: C.text }}>{opt.movesEvaluated.toLocaleString()}</strong></span>
+                )}
+                {opt.elapsedMs != null && (
+                  <span>Time: <strong style={{ color: C.text }}>{(opt.elapsedMs / 1000).toFixed(2)}s</strong></span>
+                )}
+                <span>Tasks moved: <strong style={{ color: C.text }}>{opt.tasksRescheduled}</strong></span>
+                {opt.passes && (
+                  <span>Passes: <strong style={{ color: C.text }}>{opt.passes.length}</strong></span>
+                )}
+                {opt.tasksFailed > 0 && (
+                  <span style={{ color: '#f59e0b' }}>⚠ {opt.tasksFailed} failed</span>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Scorecard — always visible */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
             {[
@@ -8872,6 +8935,7 @@ function SolverSection({ stats, solveResult, configName }: { stats?: any; solveR
       }}>
         {configName && <span>Config: <strong style={{ color: C.text }}>{configName}</strong></span>}
         <span>Strategy: <strong style={{ color: C.text }}>{stats.strategy || '-'}</strong></span>
+        {sr?.tier && <span>Tier: <strong style={{ color: C.text }}>{sr.tier}</strong></span>}
         <span>Time: <strong style={{ color: C.text }}>{(stats.totalTimeMs / 1000).toFixed(2)}s</strong></span>
         {sr?.contextsEvaluated != null && (
           <span>Contexts: <strong style={{ color: C.text }}>{sr.contextsEvaluated}</strong></span>
@@ -8880,6 +8944,40 @@ function SolverSection({ stats, solveResult, configName }: { stats?: any; solveR
           <span>Score: <strong style={{ color: C.text }}>{Math.round(stats.totalScore)}</strong></span>
         )}
       </div>
+
+      {sr?.optimization && (() => {
+        const opt = sr.optimization;
+        return (
+          <>
+            <SectionLabel label="Optimization" />
+            <div style={{
+              padding: '10px 14px', borderRadius: 8, marginBottom: 16,
+              background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)',
+              fontSize: 12, color: C.textMuted, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8,
+            }}>
+              {[
+                { label: 'Original Makespan', value: `${(opt.originalMakespan / 3600).toFixed(2)}h` },
+                { label: 'Optimized Makespan', value: `${(opt.optimizedMakespan / 3600).toFixed(2)}h` },
+                { label: 'Improvement', value: `${opt.improvementPercent.toFixed(1)}%` },
+                { label: 'Iterations', value: opt.iterations.toLocaleString() },
+                opt.movesEvaluated != null && { label: 'Moves Evaluated', value: opt.movesEvaluated.toLocaleString() },
+                opt.elapsedMs != null && { label: 'Opt Time', value: `${(opt.elapsedMs / 1000).toFixed(2)}s` },
+                { label: 'Tasks Rescheduled', value: String(opt.tasksRescheduled) },
+                { label: 'Convergence', value: opt.convergenceReason },
+                opt.passes && { label: 'ILS Passes', value: String(opt.passes.length) },
+              ].filter(Boolean).map((item: any) => (
+                <div key={item.label} style={{
+                  padding: '8px 12px', borderRadius: 6,
+                  background: C.bg, border: `1px solid ${C.border}`,
+                }}>
+                  <div style={{ color: '#22c55e', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{item.value}</div>
+                  <div style={{ color: C.textDim, fontSize: 10, marginTop: 2 }}>{item.label}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        );
+      })()}
 
       <SectionLabel label="Timing Breakdown" />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
@@ -12337,6 +12435,7 @@ export default function App() {
       if (Object.keys(windowOverrides).length > 0) body.windowOverrides = windowOverrides;
 
       body.strategy = solverStrategy;
+      body.tier = selectedTier;
       body.detailLevel = experienceLevel;
       if (activeConfigKey) body.configurationKey = activeConfigKey;
       if (scoringOverrides && scoringOverrides.length > 0) body.scoringOverrides = scoringOverrides;
@@ -12399,7 +12498,7 @@ export default function App() {
     } finally {
       setSolving(false);
     }
-  }, [orderModes, taskPins, taskExcludes, taskUnschedules, materialModeOverrides, resourceModeOverrides, resourcePreferenceOverrides, priorityOverrides, windowOverrides, solverStrategy, experienceLevel, solveResult, scoringOverrides]);
+  }, [orderModes, taskPins, taskExcludes, taskUnschedules, materialModeOverrides, resourceModeOverrides, resourcePreferenceOverrides, priorityOverrides, windowOverrides, solverStrategy, selectedTier, experienceLevel, solveResult, scoringOverrides]);
 
   const handleSolveCancel = useCallback(() => {
     setShowSolvePreview(false);

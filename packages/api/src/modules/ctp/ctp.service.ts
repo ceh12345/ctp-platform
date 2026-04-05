@@ -4,6 +4,8 @@ import * as path from 'path';
 import { DateTime } from 'luxon';
 import {
   CTPScheduler,
+  TabuSearchScheduler,
+  ILSScheduler,
   CTPScoring,
   CTPScoringConfiguration,
   CTPDateTime,
@@ -234,6 +236,8 @@ export class CTPService {
 
     // Map to engine strategy (handles custom strategy → engine handler mapping)
     const strategy = this.strategyConfigService.getEngineStrategy(requestedStrategy);
+    // Tier controls optimization depth: thorough→TabuSearch, best→ILS, else→constructive only
+    const tier = request?.tier || configForStrategy?.tier || 'balanced';
     const stats = new SolveStatistics(strategy);
 
     // ─── 1. Apply overrides in order ───
@@ -355,7 +359,7 @@ export class CTPService {
     }
 
     // ─── 4. Run solver ───
-    const scheduler = new CTPScheduler();
+    const scheduler = this.createScheduler(strategy, tier);
     scheduler.initLandscape(
       landscape.horizon,
       landscape.tasks,
@@ -422,6 +426,11 @@ export class CTPService {
     (result.summary as any).deferredTasks = deferredTasks;
     (result.summary as any).horizonMode = (horizonConfig?.start || 'NOW').startsWith('NOW') ? 'rolling' : 'fixed';
     if (engineSolveResult) {
+      engineSolveResult.tier = tier;
+      const optRan = (scheduler as any).getOptimizationRan?.();
+      if (optRan) engineSolveResult.optimizationRan = optRan;
+      const optResult = (scheduler as any).getOptimizationResult?.();
+      if (optResult) engineSolveResult.optimization = optResult;
       result.solveResult = engineSolveResult;
       if (engineSolveResult.solveSteps?.length > 0) {
         result.solveSteps = engineSolveResult.solveSteps;
@@ -1327,6 +1336,17 @@ export class CTPService {
     const sorted = new List<CTPTask>();
     for (const t of arr) sorted.add(t);
     return sorted;
+  }
+
+  private createScheduler(strategy: string, tier: string = 'balanced'): CTPScheduler {
+    switch (tier) {
+      case 'thorough':
+        return new TabuSearchScheduler();
+      case 'best':
+        return new ILSScheduler();
+      default:
+        return new CTPScheduler();
+    }
   }
 
   private buildTaskList(

@@ -5,9 +5,7 @@
     "wipState": "COMPLETED",
     "actualStart": "2026-02-10T07:00:00Z",
     "actualEnd": "2026-02-10T11:00:00Z",
-    "actualResources": [
-      "CNC-01"
-    ],
+    "actualResources": ["CNC-01"],
     "type": "PROCESS",
     "process": "cnc-machine",
     "windowStart": "2026-02-10T07:00:00Z",
@@ -68,9 +66,7 @@
     "name": "Deburr Housing (WO-1001)",
     "wipState": "IN_PROCESS",
     "actualStart": "2026-02-10T11:00:00Z",
-    "actualResources": [
-      "CNC-01"
-    ],
+    "actualResources": ["CNC-01"],
     "percentComplete": 40,
     "remainingDuration": 2160,
     "type": "PROCESS",
@@ -155,8 +151,7 @@
         "sequence": 1
       }
     ],
-    "sequence": 3,
-    "materialsPulled": true
+    "sequence": 3
   },
   {
     "key": "T-1001-QC",
@@ -231,13 +226,7 @@
         "sequence": 1
       }
     ],
-    "sequence": 1,
-    "wipState": "COMPLETED",
-    "actualStart": "2026-02-10T13:30:00Z",
-    "actualEnd": "2026-02-11T09:30:00Z",
-    "actualResources": [
-      "CNC-02"
-    ]
+    "sequence": 1
   },
   {
     "key": "T-1002-ASSEMBLE",
@@ -371,16 +360,7 @@
         "sequence": 1
       }
     ],
-    "sequence": 1,
-    "wipState": "ON_HOLD",
-    "actualStart": "2026-02-11T07:00:00Z",
-    "actualResources": [
-      "CNC-01"
-    ],
-    "percentComplete": 60,
-    "remainingDuration": 2880,
-    "holdReason": "Tool breakage \u2014 waiting for replacement end mill",
-    "estimatedResumeTime": "2026-02-11T14:00:00Z"
+    "sequence": 1
   },
   {
     "key": "T-1003-B-MACHINE",
@@ -428,13 +408,7 @@
         "sequence": 1
       }
     ],
-    "sequence": 1,
-    "wipState": "COMPLETED",
-    "actualStart": "2026-02-10T07:00:00Z",
-    "actualEnd": "2026-02-10T08:40:00Z",
-    "actualResources": [
-      "CNC-02"
-    ]
+    "sequence": 1
   },
   {
     "key": "T-1003-ASSEMBLE",
@@ -494,9 +468,7 @@
         "sequence": 1
       }
     ],
-    "sequence": 2,
-    "dispatched": true,
-    "materialsPulled": true
+    "sequence": 2
   },
   {
     "key": "T-1003-QC",
@@ -570,9 +542,7 @@
         "sequence": 1
       }
     ],
-    "sequence": 1,
-    "dispatched": true,
-    "materialsPulled": true
+    "sequence": 1
   },
   {
     "key": "T-1004-H-DEBURR",
@@ -732,13 +702,7 @@
         "sequence": 1
       }
     ],
-    "sequence": 1,
-    "wipState": "COMPLETED",
-    "actualStart": "2026-02-10T12:00:00Z",
-    "actualEnd": "2026-02-10T14:30:00Z",
-    "actualResources": [
-      "CNC-01"
-    ]
+    "sequence": 1
   },
   {
     "key": "T-1005-B-MACHINE",
@@ -786,13 +750,7 @@
         "sequence": 1
       }
     ],
-    "sequence": 1,
-    "wipState": "COMPLETED",
-    "actualStart": "2026-02-10T10:30:00Z",
-    "actualEnd": "2026-02-10T13:30:00Z",
-    "actualResources": [
-      "CNC-02"
-    ]
+    "sequence": 1
   },
   {
     "key": "T-1005-ASSEMBLE",
@@ -852,14 +810,7 @@
         "sequence": 1
       }
     ],
-    "sequence": 2,
-    "wipState": "IN_PROCESS",
-    "actualStart": "2026-02-11T07:00:00Z",
-    "actualResources": [
-      "ASM-01"
-    ],
-    "percentComplete": 50,
-    "remainingDuration": 4500
+    "sequence": 2
   },
   {
     "key": "T-1005-QC",

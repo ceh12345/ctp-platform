@@ -67,6 +67,15 @@ export class SolveRequestDto {
   strategy?: string;
 
   @ApiPropertyOptional({
+    description: 'Solver tier: quick, balanced, thorough, best',
+    enum: ['quick', 'balanced', 'thorough', 'best'],
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['quick', 'balanced', 'thorough', 'best'])
+  tier?: string;
+
+  @ApiPropertyOptional({
     description: 'Detail level for response',
     enum: ['novice', 'intermediate', 'expert', 'diagnostic'],
     default: 'novice',

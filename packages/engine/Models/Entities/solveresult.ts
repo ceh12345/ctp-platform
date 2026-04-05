@@ -1,9 +1,11 @@
 import { BumpEvent } from '../../Engines/chaincontextengine';
 import { SolutionState } from './solutionstate';
 import { SolveStep } from './solvestep';
+import { TaskDiff } from '../../Engines/Optimization/types';
 
 export interface ISolveResult {
   strategy: string;
+  tier: string;
   totalTasks: number;
   scheduled: number;
   notScheduled: number;
@@ -15,10 +17,25 @@ export interface ISolveResult {
   maxBumpsReached: boolean;
   finalState?: SolutionState;
   solveSteps: SolveStep[];
+  optimizationRan?: { iterations: number; movesEvaluated?: number; elapsedMs: number; convergenceReason: string };
+  optimization?: {
+    originalMakespan: number;
+    optimizedMakespan: number;
+    improvementPercent: number;
+    iterations: number;
+    movesEvaluated?: number;
+    elapsedMs?: number;
+    passes?: { pass: number; makespan: number; improvement: number; iterations: number }[];
+    convergenceReason: string;
+    tasksRescheduled: number;
+    tasksFailed: number;
+    diff: TaskDiff[];
+  };
 }
 
 export class CTPSolveResult implements ISolveResult {
   public strategy: string = "";
+  public tier: string = "";
   public totalTasks: number = 0;
   public scheduled: number = 0;
   public notScheduled: number = 0;
@@ -30,6 +47,8 @@ export class CTPSolveResult implements ISolveResult {
   public maxBumpsReached: boolean = false;
   public finalState?: SolutionState;
   public solveSteps: SolveStep[] = [];
+  public optimizationRan?: ISolveResult['optimizationRan'];
+  public optimization?: ISolveResult['optimization'];
 
   public debug(enabled: boolean = false): void {
     if (!enabled) return;

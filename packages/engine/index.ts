@@ -73,6 +73,8 @@ export * from './AI/Neighborhoods/chainfirstfitneighborhood';
 // AI - Schedulers
 export * from './AI/Schedulers/basescheduler';
 export * from './AI/Schedulers/defaultscheduler';
+export * from './AI/Schedulers/tabusearchscheduler';
+export * from './AI/Schedulers/ilsscheduler';
 
 // AI - Scoring
 export * from './AI/Scoring/changeoverscoring';
