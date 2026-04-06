@@ -8003,7 +8003,7 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
           <KPI icon="⏱" label={t('makespan', 'Makespan')} value={fmtDuration(summary.makespan)} color={C.text}
             sub={`${fmtDateShort(summary.horizonStart)} – ${fmtDateShort(summary.horizonEnd)}`} />
         )}
-        {showAt(experienceLevel, 'intermediate') && criticalPath && (
+        {criticalPath && (
           <KPI icon={'\uD83D\uDD17'} label="Critical Path"
             value={criticalPath.makespanFormatted}
             color={C.text}

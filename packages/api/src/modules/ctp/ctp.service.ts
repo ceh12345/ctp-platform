@@ -3506,9 +3506,8 @@ export class CTPService {
           }
         }
 
-        // Include critical path summary at intermediate+ detail level
-        if (detailLevel !== 'novice') {
-          criticalPathResult = {
+        // Always include — drives the KPI badge and optimizer banner at all detail levels
+        criticalPathResult = {
             taskKeys: graph.criticalPath.path.map(p => p.key),
             makespan: graph.criticalPath.makespan,
             makespanFormatted: graph.criticalPath.makespanFormatted,
@@ -3524,7 +3523,6 @@ export class CTPService {
               totalDuration: s.totalDuration,
             })),
           };
-        }
       }
     }
 

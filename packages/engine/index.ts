@@ -101,7 +101,11 @@ export * from './Engines/setengine';
 export * from './Engines/starttimeengine';
 export * from './Engines/statechangeerengine';
 export * from './Engines/chaincontextengine';
-export * from './Engines/disjunctivegraph';
+export * from './Engines/Optimization/disjunctivegraph';
+export * from './Engines/Optimization/types';
+export * from './Engines/Optimization/tabusearch';
+export * from './Engines/Optimization/graphtranslation';
+export * from './Engines/Optimization/perturbation';
 
 // Factories
 export * from './Factories/resourcefactory';
