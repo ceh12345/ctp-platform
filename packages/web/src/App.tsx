@@ -340,7 +340,6 @@ const ZOOM_LEVELS = [
   { label: 'Day', days: 1 },
   { label: '3 Day', days: 3 },
   { label: 'Week', days: 7 },
-  { label: '2 Week', days: 14 },
   { label: 'Fit', days: 0 },
 ];
 
@@ -4743,12 +4742,9 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   const effectiveSetZoom = setZoomLevel ?? setLocalZoom;
   const effectiveScroll = scrollOffset ?? localScroll;
   const effectiveSetScroll = setScrollOffset ?? setLocalScroll;
-  // Derive lastTimeRange from effective zoom so dropdown stays in sync after remount
   const isCustomZoom = parseCustomZoom(effectiveZoom) !== null;
-  const isTimeRangeZoom = TIME_RANGE_OPTIONS.some(t => t.label === effectiveZoom) || isCustomZoom;
-  const [lastTimeRange, setLastTimeRange] = useState(() =>
-    isCustomZoom ? 'Custom...' : (isTimeRangeZoom ? effectiveZoom : '3 hours')
-  );
+  const isTimeRangeZoom = TIME_RANGE_OPTIONS.some(t => t.label === effectiveZoom);
+  const [lastTimeRange, setLastTimeRange] = useState(() => isTimeRangeZoom ? effectiveZoom : '3 hours');
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customInput, setCustomInput] = useState(() => {
     const m = parseCustomZoom(effectiveZoom);
@@ -5019,12 +5015,9 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
         </span>
       </div>
 
-      {/* Zoom controls */}
+      {/* Zoom controls — [hours dropdown] | Day | 3 Day | Week | Custom | Fit */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 12 }}>
-        <select value={isCustomZoom ? 'Custom...' : lastTimeRange} onChange={e => {
-          if (e.target.value === 'Custom...') { setShowCustomInput(true); return; }
-          setLastTimeRange(e.target.value); effectiveSetZoom(e.target.value); effectiveSetScroll(0); setShowCustomInput(false);
-        }} style={{
+        <select value={lastTimeRange} onChange={e => { setLastTimeRange(e.target.value); effectiveSetZoom(e.target.value); effectiveSetScroll(0); setShowCustomInput(false); }} style={{
           padding: '5px 14px', paddingRight: 24, borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: FONT,
           border: 'none', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none',
           backgroundColor: isTimeRangeZoom ? '#3b82f6' : 'transparent',
@@ -5035,10 +5028,17 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
           {TIME_RANGE_OPTIONS.map(z => (
             <option key={z.label} value={z.label} style={{ background: '#1e293b', color: '#fff' }}>{z.label}</option>
           ))}
-          {isCustomZoom && <option value="Custom..." style={{ background: '#1e293b', color: '#fff' }}>{effectiveZoom}</option>}
-          <option value="Custom..." style={{ background: '#1e293b', color: '#94a3b8' }}>Custom...</option>
         </select>
-        {showCustomInput && (
+        {(['Day', '3 Day', 'Week'] as const).map(lbl => (
+            <button key={lbl} onClick={() => { effectiveSetZoom(lbl); effectiveSetScroll(0); setShowCustomInput(false); }} style={{
+              padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+              fontSize: 12, fontWeight: 600, fontFamily: FONT,
+              background: lbl === effectiveZoom ? '#3b82f6' : 'transparent',
+              color: lbl === effectiveZoom ? '#fff' : '#94a3b8',
+            }}>{lbl}</button>
+        ))}
+        {/* Custom zoom */}
+        {showCustomInput ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <input
               autoFocus
@@ -5063,16 +5063,20 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
             />
             <span style={{ fontSize: 11, color: C.textMuted }}>h</span>
           </div>
-        )}
-        {ZOOM_LEVELS.filter(z => !TIME_RANGE_OPTIONS.includes(z)).map(z => (
-          <button key={z.label} onClick={() => { effectiveSetZoom(z.label); effectiveSetScroll(0); }} style={{
+        ) : (
+          <button onClick={() => setShowCustomInput(true)} style={{
             padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-            fontSize: 12, fontWeight: 600,
-            background: z.label === effectiveZoom ? '#3b82f6' : 'transparent',
-            color: z.label === effectiveZoom ? '#fff' : '#94a3b8',
-            fontFamily: FONT,
-          }}>{z.label}</button>
-        ))}
+            fontSize: 12, fontWeight: 600, fontFamily: FONT,
+            background: isCustomZoom ? '#3b82f6' : 'transparent',
+            color: isCustomZoom ? '#fff' : '#94a3b8',
+          }}>{isCustomZoom ? effectiveZoom.replace('Custom (', '').replace(')', '') : 'Custom'}</button>
+        )}
+        <button onClick={() => { effectiveSetZoom('Fit'); effectiveSetScroll(0); setShowCustomInput(false); }} style={{
+          padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+          fontSize: 12, fontWeight: 600, fontFamily: FONT,
+          background: effectiveZoom === 'Fit' ? '#3b82f6' : 'transparent',
+          color: effectiveZoom === 'Fit' ? '#fff' : '#94a3b8',
+        }}>Fit</button>
         {zoomConfig && zoomConfig.days > 0 && (
           <div style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
             <button onClick={() => effectiveSetScroll(s => s - 1)} style={{
@@ -5822,10 +5826,8 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
   const [caseSearch, setCaseSearch] = useState('');
   const [sortBy, setSortBy] = useState<'start' | 'priority' | 'worstGap' | 'name'>('start');
   const isCustomZoom = parseCustomZoom(zoomLevel) !== null;
-  const isTimeRangeZoom = TIME_RANGE_OPTIONS.some(t => t.label === zoomLevel) || isCustomZoom;
-  const [lastTimeRange, setLastTimeRange] = useState(() =>
-    isCustomZoom ? 'Custom...' : (isTimeRangeZoom ? zoomLevel : '3 hours')
-  );
+  const isTimeRangeZoom = TIME_RANGE_OPTIONS.some(t => t.label === zoomLevel);
+  const [lastTimeRange, setLastTimeRange] = useState(() => isTimeRangeZoom ? zoomLevel : '3 hours');
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customInput, setCustomInput] = useState(() => {
     const m = parseCustomZoom(zoomLevel);
@@ -6000,12 +6002,9 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
         </span>
       </div>
 
-      {/* Zoom controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 12 }}>
-        <select value={isCustomZoom ? 'Custom...' : lastTimeRange} onChange={e => {
-          if (e.target.value === 'Custom...') { setShowCustomInput(true); return; }
-          setLastTimeRange(e.target.value); setZoomLevel(e.target.value); setScrollOffset(0); setShowCustomInput(false);
-        }} style={{
+      {/* Zoom controls — [hours dropdown] | Day | 3 Day | Week | Custom | Fit */}
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+        <select value={lastTimeRange} onChange={e => { setLastTimeRange(e.target.value); setZoomLevel(e.target.value); setScrollOffset(0); setShowCustomInput(false); }} style={{
           padding: '5px 14px', paddingRight: 24, borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: FONT,
           border: 'none', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none',
           backgroundColor: isTimeRangeZoom ? '#3b82f6' : 'transparent',
@@ -6016,10 +6015,17 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
           {TIME_RANGE_OPTIONS.map(z => (
             <option key={z.label} value={z.label} style={{ background: '#1e293b', color: '#fff' }}>{z.label}</option>
           ))}
-          {isCustomZoom && <option value="Custom..." style={{ background: '#1e293b', color: '#fff' }}>{zoomLevel}</option>}
-          <option value="Custom..." style={{ background: '#1e293b', color: '#94a3b8' }}>Custom...</option>
         </select>
-        {showCustomInput && (
+        {(['Day', '3 Day', 'Week'] as const).map(lbl => (
+          <button key={lbl} onClick={() => { setZoomLevel(lbl); setScrollOffset(0); setShowCustomInput(false); }} style={{
+            padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+            fontSize: 12, fontWeight: 600, fontFamily: FONT,
+            background: lbl === zoomLevel ? '#3b82f6' : 'transparent',
+            color: lbl === zoomLevel ? '#fff' : '#94a3b8',
+          }}>{lbl}</button>
+        ))}
+        {/* Custom zoom */}
+        {showCustomInput ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <input
               autoFocus
@@ -6044,16 +6050,20 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
             />
             <span style={{ fontSize: 11, color: C.textMuted }}>h</span>
           </div>
-        )}
-        {ZOOM_LEVELS.filter(z => !TIME_RANGE_OPTIONS.includes(z)).map(z => (
-          <button key={z.label} onClick={() => { setZoomLevel(z.label); setScrollOffset(0); }} style={{
+        ) : (
+          <button onClick={() => setShowCustomInput(true)} style={{
             padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-            fontSize: 12, fontWeight: 600,
-            background: z.label === zoomLevel ? '#3b82f6' : 'transparent',
-            color: z.label === zoomLevel ? '#fff' : '#94a3b8',
-            fontFamily: FONT,
-          }}>{z.label}</button>
-        ))}
+            fontSize: 12, fontWeight: 600, fontFamily: FONT,
+            background: isCustomZoom ? '#3b82f6' : 'transparent',
+            color: isCustomZoom ? '#fff' : '#94a3b8',
+          }}>{isCustomZoom ? zoomLevel.replace('Custom (', '').replace(')', '') : 'Custom'}</button>
+        )}
+        <button onClick={() => { setZoomLevel('Fit'); setScrollOffset(0); setShowCustomInput(false); }} style={{
+          padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+          fontSize: 12, fontWeight: 600, fontFamily: FONT,
+          background: zoomLevel === 'Fit' ? '#3b82f6' : 'transparent',
+          color: zoomLevel === 'Fit' ? '#fff' : '#94a3b8',
+        }}>Fit</button>
         {zoomConfig && zoomConfig.days > 0 && (
           <div style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
             <button onClick={() => setScrollOffset(s => s - 1)} style={navBtnStyle}>← {act('prev', 'Prev')}</button>
