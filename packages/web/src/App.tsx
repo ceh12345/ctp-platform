@@ -344,6 +344,12 @@ const ZOOM_LEVELS = [
   { label: 'Fit', days: 0 },
 ];
 
+/** Returns the hour count if label is a custom zoom ("Custom (Nh)"), null otherwise. */
+function parseCustomZoom(label: string): number | null {
+  const m = label.match(/^Custom \((\d+(?:\.\d+)?)h\)$/);
+  return m ? Number(m[1]) : null;
+}
+
 function deriveOrderStatus(order: any, tasks?: any[]): string {
   const raw = order.fillRate ?? 0;
   // fillRate is a ratio (0.0–N) where 1.0 = 100%. Values > 1 mean overfilled.
@@ -4738,8 +4744,16 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   const effectiveScroll = scrollOffset ?? localScroll;
   const effectiveSetScroll = setScrollOffset ?? setLocalScroll;
   // Derive lastTimeRange from effective zoom so dropdown stays in sync after remount
-  const isTimeRangeZoom = TIME_RANGE_OPTIONS.some(t => t.label === effectiveZoom);
-  const [lastTimeRange, setLastTimeRange] = useState(() => isTimeRangeZoom ? effectiveZoom : '3 hours');
+  const isCustomZoom = parseCustomZoom(effectiveZoom) !== null;
+  const isTimeRangeZoom = TIME_RANGE_OPTIONS.some(t => t.label === effectiveZoom) || isCustomZoom;
+  const [lastTimeRange, setLastTimeRange] = useState(() =>
+    isCustomZoom ? 'Custom...' : (isTimeRangeZoom ? effectiveZoom : '3 hours')
+  );
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customInput, setCustomInput] = useState(() => {
+    const m = parseCustomZoom(effectiveZoom);
+    return m !== null ? String(m) : (localStorage.getItem('gantt-custom-hours') ?? '40');
+  });
   const [hovered, setHovered] = useState<any>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [contextMenu, setContextMenu] = useState<{ task: any; x: number; y: number } | null>(null);
@@ -4790,7 +4804,10 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   const dataStart = Math.min(...taskStarts);
   const dataEnd = Math.max(...taskEnds);
 
-  const zoomConfig = ZOOM_LEVELS.find(z => z.label === effectiveZoom);
+  const _customH = parseCustomZoom(effectiveZoom);
+  const zoomConfig = _customH !== null
+    ? { label: effectiveZoom, days: _customH / 24 }
+    : ZOOM_LEVELS.find(z => z.label === effectiveZoom);
   let hStartMs: number, hEndMs: number;
 
   if (zoomConfig && zoomConfig.days > 0) {
@@ -5004,18 +5021,49 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
 
       {/* Zoom controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 12 }}>
-        <select value={lastTimeRange} onChange={e => { setLastTimeRange(e.target.value); effectiveSetZoom(e.target.value); effectiveSetScroll(0); }} style={{
+        <select value={isCustomZoom ? 'Custom...' : lastTimeRange} onChange={e => {
+          if (e.target.value === 'Custom...') { setShowCustomInput(true); return; }
+          setLastTimeRange(e.target.value); effectiveSetZoom(e.target.value); effectiveSetScroll(0); setShowCustomInput(false);
+        }} style={{
           padding: '5px 14px', paddingRight: 24, borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: FONT,
           border: 'none', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none',
-          backgroundColor: TIME_RANGE_OPTIONS.some(t => t.label === effectiveZoom) ? '#3b82f6' : 'transparent',
-          color: TIME_RANGE_OPTIONS.some(t => t.label === effectiveZoom) ? '#fff' : '#94a3b8',
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='${TIME_RANGE_OPTIONS.some(t => t.label === effectiveZoom) ? 'white' : '%2394a3b8'}'/%3E%3C/svg%3E")`,
+          backgroundColor: isTimeRangeZoom ? '#3b82f6' : 'transparent',
+          color: isTimeRangeZoom ? '#fff' : '#94a3b8',
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='${isTimeRangeZoom ? 'white' : '%2394a3b8'}'/%3E%3C/svg%3E")`,
           backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
         }}>
           {TIME_RANGE_OPTIONS.map(z => (
             <option key={z.label} value={z.label} style={{ background: '#1e293b', color: '#fff' }}>{z.label}</option>
           ))}
+          {isCustomZoom && <option value="Custom..." style={{ background: '#1e293b', color: '#fff' }}>{effectiveZoom}</option>}
+          <option value="Custom..." style={{ background: '#1e293b', color: '#94a3b8' }}>Custom...</option>
         </select>
+        {showCustomInput && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input
+              autoFocus
+              type="number" min={1} max={720}
+              value={customInput}
+              onChange={e => setCustomInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  const h = parseFloat(customInput);
+                  if (!isNaN(h) && h >= 1) { const lbl = `Custom (${h}h)`; effectiveSetZoom(lbl); effectiveSetScroll(0); localStorage.setItem('gantt-custom-hours', String(h)); }
+                  setShowCustomInput(false);
+                }
+                if (e.key === 'Escape') setShowCustomInput(false);
+              }}
+              onBlur={() => {
+                const h = parseFloat(customInput);
+                if (!isNaN(h) && h >= 1) { const lbl = `Custom (${h}h)`; effectiveSetZoom(lbl); effectiveSetScroll(0); localStorage.setItem('gantt-custom-hours', String(h)); }
+                setShowCustomInput(false);
+              }}
+              style={{ width: 56, padding: '5px 8px', borderRadius: 6, border: `1px solid ${C.accent}`, background: '#1e293b', color: '#fff', fontSize: 12, fontFamily: FONT, outline: 'none' }}
+              placeholder="hrs"
+            />
+            <span style={{ fontSize: 11, color: C.textMuted }}>h</span>
+          </div>
+        )}
         {ZOOM_LEVELS.filter(z => !TIME_RANGE_OPTIONS.includes(z)).map(z => (
           <button key={z.label} onClick={() => { effectiveSetZoom(z.label); effectiveSetScroll(0); }} style={{
             padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -5773,8 +5821,16 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [caseSearch, setCaseSearch] = useState('');
   const [sortBy, setSortBy] = useState<'start' | 'priority' | 'worstGap' | 'name'>('start');
-  const isTimeRangeZoom = TIME_RANGE_OPTIONS.some(t => t.label === zoomLevel);
-  const [lastTimeRange, setLastTimeRange] = useState(() => isTimeRangeZoom ? zoomLevel : '3 hours');
+  const isCustomZoom = parseCustomZoom(zoomLevel) !== null;
+  const isTimeRangeZoom = TIME_RANGE_OPTIONS.some(t => t.label === zoomLevel) || isCustomZoom;
+  const [lastTimeRange, setLastTimeRange] = useState(() =>
+    isCustomZoom ? 'Custom...' : (isTimeRangeZoom ? zoomLevel : '3 hours')
+  );
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customInput, setCustomInput] = useState(() => {
+    const m = parseCustomZoom(zoomLevel);
+    return m !== null ? String(m) : (localStorage.getItem('gantt-custom-hours') ?? '40');
+  });
   const showCriticalPath = false; // Critical path toggle is on the resource Gantt only
 
   // Filter scheduled tasks (same as GanttChart)
@@ -5809,7 +5865,10 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
   const dataStart = taskStarts.length > 0 ? Math.min(...taskStarts) : Date.now();
   const dataEnd = taskEnds.length > 0 ? Math.max(...taskEnds) : Date.now() + 86400000;
 
-  const zoomConfig = ZOOM_LEVELS.find(z => z.label === zoomLevel);
+  const _caseCustomH = parseCustomZoom(zoomLevel);
+  const zoomConfig = _caseCustomH !== null
+    ? { label: zoomLevel, days: _caseCustomH / 24 }
+    : ZOOM_LEVELS.find(z => z.label === zoomLevel);
   let hStartMs: number, hEndMs: number;
   if (zoomConfig && zoomConfig.days > 0) {
     const viewStart = new Date(dataStart);
@@ -5942,19 +6001,50 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
       </div>
 
       {/* Zoom controls */}
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-        <select value={lastTimeRange} onChange={e => { setLastTimeRange(e.target.value); setZoomLevel(e.target.value); setScrollOffset(0); }} style={{
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 12 }}>
+        <select value={isCustomZoom ? 'Custom...' : lastTimeRange} onChange={e => {
+          if (e.target.value === 'Custom...') { setShowCustomInput(true); return; }
+          setLastTimeRange(e.target.value); setZoomLevel(e.target.value); setScrollOffset(0); setShowCustomInput(false);
+        }} style={{
           padding: '5px 14px', paddingRight: 24, borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: FONT,
           border: 'none', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none',
-          backgroundColor: TIME_RANGE_OPTIONS.some(t => t.label === zoomLevel) ? '#3b82f6' : 'transparent',
-          color: TIME_RANGE_OPTIONS.some(t => t.label === zoomLevel) ? '#fff' : '#94a3b8',
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='${TIME_RANGE_OPTIONS.some(t => t.label === zoomLevel) ? 'white' : '%2394a3b8'}'/%3E%3C/svg%3E")`,
+          backgroundColor: isTimeRangeZoom ? '#3b82f6' : 'transparent',
+          color: isTimeRangeZoom ? '#fff' : '#94a3b8',
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='${isTimeRangeZoom ? 'white' : '%2394a3b8'}'/%3E%3C/svg%3E")`,
           backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
         }}>
           {TIME_RANGE_OPTIONS.map(z => (
             <option key={z.label} value={z.label} style={{ background: '#1e293b', color: '#fff' }}>{z.label}</option>
           ))}
+          {isCustomZoom && <option value="Custom..." style={{ background: '#1e293b', color: '#fff' }}>{zoomLevel}</option>}
+          <option value="Custom..." style={{ background: '#1e293b', color: '#94a3b8' }}>Custom...</option>
         </select>
+        {showCustomInput && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input
+              autoFocus
+              type="number" min={1} max={720}
+              value={customInput}
+              onChange={e => setCustomInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  const h = parseFloat(customInput);
+                  if (!isNaN(h) && h >= 1) { const lbl = `Custom (${h}h)`; setZoomLevel(lbl); setScrollOffset(0); localStorage.setItem('gantt-custom-hours', String(h)); }
+                  setShowCustomInput(false);
+                }
+                if (e.key === 'Escape') setShowCustomInput(false);
+              }}
+              onBlur={() => {
+                const h = parseFloat(customInput);
+                if (!isNaN(h) && h >= 1) { const lbl = `Custom (${h}h)`; setZoomLevel(lbl); setScrollOffset(0); localStorage.setItem('gantt-custom-hours', String(h)); }
+                setShowCustomInput(false);
+              }}
+              style={{ width: 56, padding: '5px 8px', borderRadius: 6, border: `1px solid ${C.accent}`, background: '#1e293b', color: '#fff', fontSize: 12, fontFamily: FONT, outline: 'none' }}
+              placeholder="hrs"
+            />
+            <span style={{ fontSize: 11, color: C.textMuted }}>h</span>
+          </div>
+        )}
         {ZOOM_LEVELS.filter(z => !TIME_RANGE_OPTIONS.includes(z)).map(z => (
           <button key={z.label} onClick={() => { setZoomLevel(z.label); setScrollOffset(0); }} style={{
             padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -12196,8 +12286,15 @@ export default function App() {
     const duration = severity === 'error' ? 8000 : severity === 'warning' ? 5000 : 3000;
     setTimeout(() => setToast(null), duration);
   }, []);
-  // Gantt zoom state — lifted to App so it persists across tab switches
-  const [ganttZoomLevel, setGanttZoomLevel] = useState('3 hours');
+  // Gantt zoom state — lifted to App so it persists across tab switches; persisted to localStorage
+  const [ganttZoomLevel, setGanttZoomLevel] = useState(() => localStorage.getItem('gantt-zoom') ?? '3 hours');
+  const setGanttZoomPersist = useCallback((v: string | ((p: string) => string)) => {
+    setGanttZoomLevel(prev => {
+      const next = typeof v === 'function' ? v(prev) : v;
+      localStorage.setItem('gantt-zoom', next);
+      return next;
+    });
+  }, []);
   const [ganttScrollOffset, setGanttScrollOffset] = useState(0);
   // WhereTo state
   const [whereToTaskKey, setWhereToTaskKey] = useState<string | null>(null);
@@ -12446,6 +12543,13 @@ export default function App() {
       });
       setSolveResult(result);
       setSolveStale(false);
+
+      // Auto-fit Gantt zoom to the schedule's critical path span
+      if (result.criticalPath?.makespan) {
+        const fitH = Math.ceil(result.criticalPath.makespan / 3600);
+        setGanttZoomPersist(`Custom (${fitH}h)`);
+        setGanttScrollOffset(0);
+      }
 
       // Snapshot current state as "previous" for next delta computation
       setPrevOrderModes({ ...orderModes });
@@ -14090,7 +14194,7 @@ export default function App() {
               setSolveStale(true);
             }}
             onWhereTo={handleWhereTo}
-            zoomLevel={ganttZoomLevel} setZoomLevel={setGanttZoomLevel}
+            zoomLevel={ganttZoomLevel} setZoomLevel={setGanttZoomPersist}
             scrollOffset={ganttScrollOffset} setScrollOffset={setGanttScrollOffset}
             onViewAgenda={(r: any) => { setSelectedTask(null); setSelectedResource(null); setAgendaResource(r); }} />
         )}
@@ -14181,7 +14285,7 @@ export default function App() {
               setSolveStale(true);
               showToast(`${keys.length} task(s) set to RUSH priority`);
             }}
-            zoomLevel={ganttZoomLevel} setZoomLevel={setGanttZoomLevel}
+            zoomLevel={ganttZoomLevel} setZoomLevel={setGanttZoomPersist}
             scrollOffset={ganttScrollOffset} setScrollOffset={setGanttScrollOffset}
             onViewAgenda={(r: any) => { setSelectedTask(null); setSelectedResource(null); setAgendaResource(r); }}
             onOpenDowntimeEditor={openDowntimeEditor}
