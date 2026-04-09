@@ -45,6 +45,13 @@ Run `backup.bat` from the project root. It does two things:
 1. Mirrors the project to `D:\ctp-platform` (excludes node_modules, .git, dist, *.log)
 2. Writes `GIT_COMMIT.txt` to the stick with the current commit hash, branch, date, and message
 
+## Sprint Docs — Always Track New Specs
+When committing any sprint work, always stage new files in `docs/sprints/`:
+```bash
+git add docs/sprints/
+```
+New spec files are untracked by default — this ensures they're never left out of the commit.
+
 ## Sprint Code Complete — Regression Tests
 After every sprint's code is complete, run the full regression test suite before committing:
 1. Clean-build the engine: `rm -rf packages/engine/dist && npm run build --workspace=@ctp/engine`
