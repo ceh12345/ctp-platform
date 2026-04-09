@@ -4,6 +4,19 @@
 
 _None_
 
+## Up Next
+
+| Sprint | Name | Notes |
+|--------|------|-------|
+| Engine — UOM Conversion Table | Unit of measure conversion system + data model foundations | Two-tier: global (HR→s, LB→kg, DZ→EA) + product-specific (1 EA of Product X = 2.5 kg). COUNT→EA and TIME→seconds on ingest; weight/length/volume store in source units, convert at runtime. New `Core/uom.ts`, 9th data file `uom-conversions.json`, landscape integration. Stafford ETL needs this for duration calc (Genius HR/UN formula) and future BOM rollups. CC-ready prompt exists. |
+| Data Adapter Layer | Pluggable data source abstraction | `IDataAdapter` interface (FileAdapter, RestAdapter, CsvUploadAdapter); `MappingEngine` applies tenant mapping profile to raw data; `SyncService` orchestrates fetch→transform→hydrate; adapter.json + mapping.json per tenant; scheduled + on-demand sync; API endpoints (sync, test connection, mapping preview). Refactors current file loading as FileAdapter. Stafford Genius REST API is first live connector. CC-ready prompt exists. |
+| Data Integration — Phase 2 WIP Sync | Actuals + resource status | `POST /v1/state/wip-sync`, `PATCH /state/tasks/:key/wip`. Populates commitment stack fields from external systems. Depends on Data Adapter Layer. |
+| Engine — Attribute-Based Resource Matching | Hard-filter preferences by attribute requirements | `requiredAttributes` on task slots, `AttributeMatcher` engine, rejection logging, bottleneck integration. Acme healthcare proof case. Makes AI recommendations correct. CC-ready prompt exists. |
+| UI — Action Queue | Batch command builder | Stage multiple actions and execute atomically via `POST /ctp/execute`. Presets/macros for common scenarios. Spec complete. |
+| UI Sprint 24 — Gantt Resource Filtering | Filter Gantt rows by WHERE selection | Lift hierarchy selection state to ScheduleTab, pass to GanttChart, hide non-matching resource rows. |
+| UI Sprint 14 | Error Display & API Error Handling | Surface engine errors in UI instead of generic 500 |
+| UI Sprint 13 | Resource Explorer | Calendar/Agenda sub-views under Schedule tab |
+
 ## Done
 
 | Item | Summary | Date |
@@ -80,18 +93,6 @@ _None_
 6. **Removed truncation** — `truncateContextStartTimes` was deleting start-time nodes needed by commitChain
 7. **Combo selection** — sorts by earliest assignedStart then score (Monday OR-02 beats Tuesday OR-01)
 
-## Up Next
-
-| Sprint | Name | Notes |
-|--------|------|-------|
-| Engine — Attribute-Based Resource Matching | Hard-filter preferences by attribute requirements | `requiredAttributes` on task slots, `AttributeMatcher` engine, rejection logging, bottleneck integration. Acme healthcare proof case. Makes AI recommendations correct. CC-ready prompt exists. |
-| Data Integration — Phase 1 Inbound | Published schema + sync endpoint + CSV upload | `POST /v1/state/sync`, column mapper with saved profiles, import wizard, downloadable templates. Spec complete. |
-| Data Integration — Phase 2 WIP Sync | Actuals + resource status | `POST /v1/state/wip-sync`, `PATCH /state/tasks/:key/wip`. Populates commitment stack fields from external systems. Spec complete. |
-| UI — Action Queue | Batch command builder | Stage multiple actions and execute atomically via `POST /ctp/execute`. Presets/macros for common scenarios. Spec complete. |
-| UI Sprint 24 — Gantt Resource Filtering | Filter Gantt rows by WHERE selection | Lift hierarchy selection state to ScheduleTab, pass to GanttChart, hide non-matching resource rows. |
-| UI Sprint 14 | Error Display & API Error Handling | Surface engine errors in UI instead of generic 500 |
-| UI Sprint 13 | Resource Explorer | Calendar/Agenda sub-views under Schedule tab |
-
 ## Backlog
 
 | Sprint | Name | Blocked By |
@@ -118,7 +119,7 @@ _None_
 | Willoughby Manufacturing | ~8 machines + stations | ~25 work orders | ~50 tasks | ✅ Active |
 | Acme Outpatient Healthcare | 2 ORs, 3 surgeons, 2 anesthesiologists, 3 nurses, 4 recovery bays | 13 cases | 39 tasks | ✅ Active (Phase 3) |
 | HRMD Sports | 58 resources (courts, fields, equipment) | 77 orders | 141 tasks | ✅ Active (cadence) |
-| Stafford Engineering | ~25 machines + operators | 15 orders | 100 tasks | ✅ Active (Greedy, job shop) |
+| Stafford Engineering | ~25 machines + operators | 15 orders | 100 tasks | ✅ Active (Greedy, job shop). ETL mapping spec v0.2 — Genius REST API field mapping, UOM + commitment + lagSeconds. Data Adapter Layer will pull live from Genius API. Kickoff pending. |
 | Summit Pharma | ~15 resources | 8 orders | ~30 tasks | ✅ Active |
 
 ## Parking Lot
@@ -184,7 +185,12 @@ ENGINE SPRINTS (CURRENT + PLANNED)
 ✓ Solver 9 — Two-Pass Solve (anchor committed tasks before solver; hierarchy filter fix)
 📋 Attribute-Based Resource Matching (CC-ready, Acme proof case)
    └──→ feeds into Bottleneck Display + AI explanation
-📋 Data Integration Phase 1 (sync endpoint + CSV upload + column mapper + templates)
+📋 Engine — UOM Conversion Table (CC-ready, Stafford ETL dependency)
+   └──→ feeds into Data Adapter Layer (duration + BOM conversions in MappingEngine)
+📋 Data Adapter Layer (IDataAdapter + MappingEngine + SyncService; CC-ready prompt exists)
+   ├──→ FileAdapter (refactor of current flat-file loading — zero behavioral change)
+   ├──→ RestAdapter (generic config-driven REST client; Genius API first connector)
+   ├──→ CsvUploadAdapter (future — import wizard)
    └──→ Data Integration Phase 2 (WIP sync — populates commitment stack fields)
 📋 UI Action Queue (batch command builder, presets/macros)
    └──→ reuses apply-recommendation command sequencer
@@ -226,6 +232,9 @@ INFRA TRACK
   optimization-session3-graphtranslation.md ← Session 3: graph-to-landscape translation (topologicalSort, findClosestStartTime, applyOptimizedGraph, computeDiff)
   cost-scoring-model-design.md           ← 5 cost rules design (ResourceCost, Changeover, Overtime, Lateness, Material)
   attribute-resource-matching-sprint.md  ← Attribute matching sprint prompt (CC-ready, Acme proof case)
+  sprint-uom-conversion-table.md        ← UOM conversion table + data model foundations (CC-ready, Stafford ETL)
+  sprint-data-adapter-layer.md          ← Pluggable data source abstraction (IDataAdapter, MappingEngine, SyncService; CC-ready)
+  stafford-ctp-etl-mapping.md           ← Stafford Genius ERP → CTP field mapping (kickoff doc)
   ai-recommendations-design.md           ← AI diagnose/apply pipeline, 8 action types, command sequencer
   ai-3-session1-diagnose-prompt.md       ← Session 1: diagnose endpoint, root cause, recommendation generators
   ai-3-session2-apply-prompt.md          ← Session 2: apply endpoint, command sequencer, rollback
@@ -242,7 +251,7 @@ INFRA TRACK
   stafford-demo-script.md               ← Demo script with critical path narration (5-Axis Mill bottleneck)
   commitment-stack-spec.md              ← 6-layer commitment model (Running, On Hold, Dispatched, Pinned, Planned, Unscheduled)
   solver-9-two-pass-solve-spec.md       ← Two-pass solve: anchor committed tasks (Pass 1) before solver (Pass 2+3)
-  data-integration-design.md            ← Phase 1 (inbound sync + CSV) + Phase 2 (WIP sync), combined
+  data-integration-design.md            ← Phase 1 (inbound sync + CSV) + Phase 2 (WIP sync) — superseded by sprint-data-adapter-layer.md
   task-filter-hierarchy-attribute-spec.md ← Resource hierarchy browser + attribute search filter
   unified-task-filter-bar-spec.md       ← Four-row filter bar (Status, When, Work, Where)
   ui-19-versioning.md                    ← App versioning (footer, logo hover, /version endpoint)
@@ -301,4 +310,4 @@ After each sprint:
 
 ---
 
-*Last updated: Apr 4, 2026 (Optimization Sessions 1–4 done — DisjunctiveGraph + TabuSearch + GraphTranslation + Scheduler Integration; 846 tests; tier/elapsedMs/optimizationRan wired end-to-end)*
+*Last updated: Apr 9, 2026 (Data Adapter Layer sprint added — replaces Data Integration Phase 1; IDataAdapter + MappingEngine + SyncService; Stafford Genius API first live connector)*
