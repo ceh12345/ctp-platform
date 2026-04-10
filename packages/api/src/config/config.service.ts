@@ -17,6 +17,7 @@ import {
   IMaterialData,
   ICadenceData,
   IScheduleConfiguration,
+  IUOMConversionsFileData,
 } from './interfaces/config-store.interface';
 import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
 import { FileConfigStore } from './file-config-store';
@@ -99,6 +100,10 @@ export class ConfigService {
 
   getCadences(): ICadenceData[] {
     return this.store.getCadences();
+  }
+
+  getUomConversions(): IUOMConversionsFileData | null {
+    return this.store.getUomConversions();
   }
 
   getCadence(key: string): ICadenceData | undefined {

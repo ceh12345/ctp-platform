@@ -10,6 +10,7 @@ _None_
 |--------|------|-------|
 | Engine — UOM Conversion Table | Unit of measure conversion system + data model foundations | Two-tier: global (HR→s, LB→kg, DZ→EA) + product-specific (1 EA of Product X = 2.5 kg). COUNT→EA and TIME→seconds on ingest; weight/length/volume store in source units, convert at runtime. New `Core/uom.ts`, 9th data file `uom-conversions.json`, landscape integration. Stafford ETL needs this for duration calc (Genius HR/UN formula) and future BOM rollups. CC-ready prompt exists. |
 | Data Adapter Layer | Pluggable data source abstraction | `IDataAdapter` interface (FileAdapter, RestAdapter, CsvUploadAdapter); `MappingEngine` applies tenant mapping profile to raw data; `SyncService` orchestrates fetch→transform→hydrate; adapter.json + mapping.json per tenant; scheduled + on-demand sync; API endpoints (sync, test connection, mapping preview). Refactors current file loading as FileAdapter. Stafford Genius REST API is first live connector. CC-ready prompt exists. |
+| Mock Genius Server | Test harness for the Data Adapter | Standalone Fastify HTTP server in `tools/mock-genius/` that mimics the 4 Genius API endpoints. Three modes: static fixtures (scenario directories), failure injection (500/timeout/malformed/auth/rate-limit via control endpoints), recording mode (proxy real Genius → capture to disk). 13 pre-built scenarios (stafford-clean, empty, bad-data-*, chain-cycle, large-dataset, paginated). Baked into a Docker image for CI (GitHub Actions sidecar). Adapter integration test suite runs against it. ~3-4h CC work (3 sessions). Depends on Data Adapter Layer. |
 | Data Integration — Phase 2 WIP Sync | Actuals + resource status | `POST /v1/state/wip-sync`, `PATCH /state/tasks/:key/wip`. Populates commitment stack fields from external systems. Depends on Data Adapter Layer. |
 | Engine — Attribute-Based Resource Matching | Hard-filter preferences by attribute requirements | `requiredAttributes` on task slots, `AttributeMatcher` engine, rejection logging, bottleneck integration. Acme healthcare proof case. Makes AI recommendations correct. CC-ready prompt exists. |
 | UI — Action Queue | Batch command builder | Stage multiple actions and execute atomically via `POST /ctp/execute`. Presets/macros for common scenarios. Spec complete. |
@@ -191,7 +192,9 @@ ENGINE SPRINTS (CURRENT + PLANNED)
    ├──→ FileAdapter (refactor of current flat-file loading — zero behavioral change)
    ├──→ RestAdapter (generic config-driven REST client; Genius API first connector)
    ├──→ CsvUploadAdapter (future — import wizard)
-   └──→ Data Integration Phase 2 (WIP sync — populates commitment stack fields)
+   ├──→ Data Integration Phase 2 (WIP sync — populates commitment stack fields)
+   └──→ Mock Genius Server (tools/mock-genius/; Fastify; 3 modes; 13 scenarios; Docker + CI)
+        └──→ Adapter integration test suite (RestAdapter against mock, 16 error scenarios)
 📋 UI Action Queue (batch command builder, presets/macros)
    └──→ reuses apply-recommendation command sequencer
 📋 Scoring Dialog Nav (left-side click-to-scroll + pinned Add Rule)
@@ -234,6 +237,7 @@ INFRA TRACK
   attribute-resource-matching-sprint.md  ← Attribute matching sprint prompt (CC-ready, Acme proof case)
   sprint-uom-conversion-table.md        ← UOM conversion table + data model foundations (CC-ready, Stafford ETL)
   sprint-data-adapter-layer.md          ← Pluggable data source abstraction (IDataAdapter, MappingEngine, SyncService; CC-ready)
+  sprint-mock-genius-server.md          ← Mock Genius API server (Fastify, 3 modes, 13 scenarios, Docker + CI integration)
   stafford-ctp-etl-mapping.md           ← Stafford Genius ERP → CTP field mapping (kickoff doc)
   ai-recommendations-design.md           ← AI diagnose/apply pipeline, 8 action types, command sequencer
   ai-3-session1-diagnose-prompt.md       ← Session 1: diagnose endpoint, root cause, recommendation generators
@@ -310,4 +314,4 @@ After each sprint:
 
 ---
 
-*Last updated: Apr 9, 2026 (Data Adapter Layer sprint added — replaces Data Integration Phase 1; IDataAdapter + MappingEngine + SyncService; Stafford Genius API first live connector)*
+*Last updated: Apr 10, 2026 (Mock Genius Server sprint added — test harness for Data Adapter; Fastify, 3 modes, 13 scenarios, Docker + CI)*

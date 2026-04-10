@@ -1,5 +1,6 @@
 // Models - Core
 export * from './Models/Core/constants';
+export * from './Models/Core/uom';
 export * from './Models/Core/date';
 export * from './Models/Core/entity';
 export * from './Models/Core/error';

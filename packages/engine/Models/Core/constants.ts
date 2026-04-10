@@ -1,4 +1,23 @@
 "strict";
+
+export class CTPUnitFamilyConstants {
+  public static TIME   = 'TIME';
+  public static WEIGHT = 'WEIGHT';
+  public static LENGTH = 'LENGTH';
+  public static VOLUME = 'VOLUME';
+  public static COUNT  = 'COUNT';
+  public static AREA   = 'AREA';
+}
+
+export class CTPBaseUnitConstants {
+  public static TIME   = 's';
+  public static WEIGHT = 'kg';
+  public static LENGTH = 'm';
+  public static VOLUME = 'L';
+  public static COUNT  = 'EA';
+  public static AREA   = 'm2';
+}
+
 export class CTPUpdateModeConstants {
   public static UNCHANGED = 1;
   public static ADD = 2;

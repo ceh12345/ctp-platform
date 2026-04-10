@@ -19,6 +19,7 @@ import {
   IProcessData,
   ICadenceData,
   IScheduleConfiguration,
+  IUOMConversionsFileData,
 } from './interfaces/config-store.interface';
 import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
 
@@ -275,6 +276,14 @@ export class FileConfigStore implements IConfigStore {
       this.readJsonFile<ICadenceData[]>(
         path.join(this.tenantDir, 'cadences.json'),
       ) ?? [],
+    );
+  }
+
+  getUomConversions(): IUOMConversionsFileData | null {
+    return this.getCached('uomConversions', () =>
+      this.readJsonFile<IUOMConversionsFileData>(
+        path.join(this.tenantDir, 'data', 'uom-conversions.json'),
+      ) ?? null,
     );
   }
 

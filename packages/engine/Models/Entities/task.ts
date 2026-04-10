@@ -114,7 +114,7 @@ export class CTPTaskMaterialInput implements ITaskMaterialInput {
     this.productKey = productKey ?? "";
     this.requiredQty = qty ?? 0;
     this.scrapRate = scrapRate ?? 0.0;
-    this.unitOfMeasure = uom ?? "pcs";
+    this.unitOfMeasure = uom ?? "EA";
     this.unitCost = 0;
   }
 

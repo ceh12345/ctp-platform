@@ -72,6 +72,17 @@ export class StateHydratorService {
     // Resolve cadence profiles per task
     this.hydrateCadences(landscape);
 
+    // Load tenant UOM overrides / product-specific conversions (optional file)
+    const uomData = this.configService.getUomConversions();
+    if (uomData) {
+      if (uomData.globalConversions?.length > 0) {
+        landscape.uomTable.fromGlobalArray(uomData.globalConversions);
+      }
+      if (uomData.productConversions?.length > 0) {
+        landscape.uomTable.fromProductArray(uomData.productConversions);
+      }
+    }
+
     return landscape;
   }
 

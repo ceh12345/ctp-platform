@@ -10,6 +10,7 @@ import { CTPProcess, CTPProcesses } from "./process";
 import { CTPStateChanges } from "./statechange";
 import { CTPBatchRules } from "./batchrule";
 import { CTPOrders } from "./order";
+import { CTPUOMConversionTable } from "../Core/uom";
 
 export interface ILandscape {
   horizon: CTPHorizon | null;
@@ -21,6 +22,7 @@ export interface ILandscape {
   stateTasks: CTPTasks | null;
   batchRules: CTPBatchRules | null;
   orders: CTPOrders | null;
+  uomTable: CTPUOMConversionTable | null;
 }
 
 export class SchedulingLandscape implements ILandscape {
@@ -32,6 +34,7 @@ export class SchedulingLandscape implements ILandscape {
   public stateTasks: CTPTasks;
   public batchRules: CTPBatchRules;
   public orders: CTPOrders;
+  public uomTable: CTPUOMConversionTable;
 
   public appSettings: CTPAppSettings | null = null;
 
@@ -356,6 +359,7 @@ export class SchedulingLandscape implements ILandscape {
     this.stateTasks = new CTPTasks();
     this.batchRules = new CTPBatchRules();
     this.orders = new CTPOrders();
+    this.uomTable = new CTPUOMConversionTable();
     if (s !== undefined && e !== undefined) this.setHorizon(s, e);
     if (a) this.setSettings(a);
     else this.appSettings = new CTPAppSettings();

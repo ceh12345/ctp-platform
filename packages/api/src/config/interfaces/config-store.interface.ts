@@ -198,6 +198,11 @@ export interface ICadenceData {
   intervalMinutes: number;
 }
 
+export interface IUOMConversionsFileData {
+  globalConversions: Array<{ unit: string; family: string; toBaseFactor: number }>;
+  productConversions: Array<{ productKey: string; fromUnit: string; toUnit: string; toUnitFamily: string; factor: number }>;
+}
+
 export interface IHorizonConfig {
   start: string;
   maxDays: number;
@@ -267,6 +272,7 @@ export interface IConfigStore {
   getMaterials(): IMaterialData[];
   getProcesses(): IProcessData[];
   getCadences(): ICadenceData[];
+  getUomConversions(): IUOMConversionsFileData | null;
 
   // Save entity data
   saveResources(resources: IResourceData[]): void;

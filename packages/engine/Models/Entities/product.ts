@@ -28,7 +28,7 @@ export class CTPBOMInput implements IBOMInput {
     this.productKey = productKey ?? "";
     this.qtyPer = qtyPer ?? 1.0;
     this.scrapRate = scrapRate ?? 0.0;
-    this.unitOfMeasure = uom ?? "pcs";
+    this.unitOfMeasure = uom ?? "EA";
   }
 
   // Gross qty needed to produce a given net output qty
@@ -74,7 +74,7 @@ export class CTPProduct extends CTPKeyEntity implements IProduct {
   constructor(t?: string, n?: string, k?: string, productType?: string, uom?: string) {
     super(t, n, k);
     this.productType = productType ?? CTPProductTypeConstants.FINISHED;
-    this.unitOfMeasure = uom ?? "pcs";
+    this.unitOfMeasure = uom ?? "EA";
     this.parentProductKey = null;
     this.bomInputs = new CTPBOMInputList();
     this.outputScrapRate = 0.0;
