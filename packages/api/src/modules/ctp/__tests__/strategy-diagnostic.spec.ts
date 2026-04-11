@@ -53,7 +53,7 @@ function solveManufacturing(strategy: INeighborhoodStrategy, opts?: { hasChains?
   const store = new FileConfigStore(CONFIG_ROOT, 'demo-manufacturing');
   const configService = new ConfigService(store);
   const hydrator = new StateHydratorService(configService);
-  const stateService = new StateService(hydrator, configService);
+  const stateService = new StateService(hydrator, configService, { sync: async () => ({}) } as any);
   stateService.syncFromConfig();
   const landscape = stateService.getLandscape()!;
 

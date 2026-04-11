@@ -20,6 +20,8 @@ import {
   ICadenceData,
   IScheduleConfiguration,
   IUOMConversionsFileData,
+  IAdapterConfig,
+  IMappingProfile,
 } from './interfaces/config-store.interface';
 import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
 
@@ -327,6 +329,24 @@ export class FileConfigStore implements IConfigStore {
     const filePath = path.join(this.tenantDir, 'configurations.json');
     this.writeJsonFile(filePath, configs);
     this.cache.delete('configurations');
+  }
+
+  // ── Integration ─────────────────────────────────────────────────────
+
+  getAdapterConfig(): IAdapterConfig | null {
+    return this.getCached('adapterConfig', () =>
+      this.readJsonFile<IAdapterConfig>(
+        path.join(this.tenantDir, 'integration', 'adapter.json'),
+      ),
+    );
+  }
+
+  getMappingProfile(): IMappingProfile | null {
+    return this.getCached('mappingProfile', () =>
+      this.readJsonFile<IMappingProfile>(
+        path.join(this.tenantDir, 'integration', 'mapping.json'),
+      ),
+    );
   }
 
   // ── Reload ──────────────────────────────────────────────────────────

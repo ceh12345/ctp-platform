@@ -31,7 +31,7 @@ function createServices(tenantId: string) {
   const store = new FileConfigStore(CONFIG_ROOT, tenantId);
   const configService = new ConfigService(store);
   const hydrator = new StateHydratorService(configService);
-  const stateService = new StateService(hydrator, configService);
+  const stateService = new StateService(hydrator, configService, { sync: async () => ({}) } as any);
   const strategyConfigService = new StrategyConfigService(configService);
   const logger = new LoggerService();
   const schedConfigService = new ScheduleConfigurationService(configService);

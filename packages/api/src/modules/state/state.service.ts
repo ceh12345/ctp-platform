@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { SchedulingLandscape } from '@ctp/engine';
 import { StateHydratorService } from './state-hydrator.service';
 import { ConfigService } from '../../config/config.service';
+import { SyncService } from '../integration/sync.service';
 
 @Injectable()
 export class StateService {
@@ -10,10 +11,21 @@ export class StateService {
   constructor(
     private readonly hydrator: StateHydratorService,
     private readonly configService: ConfigService,
+    private readonly syncService: SyncService,
   ) {}
 
   syncFromConfig() {
     this.configService.reloadConfig();
+    const tenantId = this.configService.getTenantId();
+    const landscape = this.hydrator.buildLandscape();
+    this.landscapes.set(tenantId, landscape);
+    return this.buildSummaryResponse(landscape);
+  }
+
+  // Applies a pre-fetched and mapped payload onto the landscape.
+  // Called by SyncService consumers (Phase 2+) after async adapter.fetchRawData().
+  // In Phase 1 the payload is identity-mapped so the hydrator still reads from ConfigService.
+  applyTransformed(_payload: unknown) {
     const tenantId = this.configService.getTenantId();
     const landscape = this.hydrator.buildLandscape();
     this.landscapes.set(tenantId, landscape);

@@ -18,6 +18,8 @@ import {
   ICadenceData,
   IScheduleConfiguration,
   IUOMConversionsFileData,
+  IAdapterConfig,
+  IMappingProfile,
 } from './interfaces/config-store.interface';
 import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
 import { FileConfigStore } from './file-config-store';
@@ -132,6 +134,14 @@ export class ConfigService {
 
   saveConfigurations(configs: IScheduleConfiguration[]): void {
     this.store.saveConfigurations(configs);
+  }
+
+  getAdapterConfig(): IAdapterConfig | null {
+    return this.store.getAdapterConfig?.() ?? null;
+  }
+
+  getMappingProfile(): IMappingProfile | null {
+    return this.store.getMappingProfile?.() ?? null;
   }
 
   reloadConfig(): void {

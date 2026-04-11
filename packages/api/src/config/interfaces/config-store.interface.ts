@@ -235,6 +235,28 @@ export interface IScheduleConfiguration {
   costVisibility?: { resource?: boolean; changeover?: boolean; overtime?: boolean; lateness?: boolean; material?: boolean };
 }
 
+// Adapter + mapping profile config shapes
+export interface IAdapterConfig {
+  adapterType: 'file' | string;
+  source?: string;
+  connection?: Record<string, any>;
+  endpoints?: Record<string, any>;
+  schedule?: Record<string, any>;
+  errorPolicy?: Record<string, any>;
+}
+
+export interface IMappingProfile {
+  version?: string;
+  tenantId?: string;
+  source?: string;
+  orders?: Record<string, any>;
+  tasks?: Record<string, any>;
+  resources?: Record<string, any>;
+  calendars?: Record<string, any>;
+  transforms?: Record<string, any>;
+  [key: string]: any;
+}
+
 export interface IConfigStore {
   // Tenant
   getTenant(): ITenantConfig | null;
@@ -293,6 +315,10 @@ export interface IConfigStore {
   // Configurations
   getConfigurations(): IScheduleConfiguration[];
   saveConfigurations(configs: IScheduleConfiguration[]): void;
+
+  // Integration
+  getAdapterConfig?(): IAdapterConfig | null;
+  getMappingProfile?(): IMappingProfile | null;
 
   // Reload from disk
   reload(): void;
