@@ -10,14 +10,16 @@ import {
 import { CTPService } from './ctp.service';
 import {
   SolveRequestDto,
-  UnscheduleTaskDto,
-  ScheduleTaskDto,
   PinTaskDto,
   UpdateResourceModeDto,
   UpdateMaterialModesDto,
   SetTaskWindowDto,
   SetTaskPriorityDto,
 } from './dto/solve-request.dto';
+import { ScheduleRequestDto } from './dto/schedule-request.dto';
+import { ScheduleResponseDto } from './dto/schedule-response.dto';
+import { UnscheduleRequestDto } from './dto/unschedule-request.dto';
+import { UnscheduleResponseDto } from './dto/unschedule-response.dto';
 import { CTPQueryDto } from './dto/ctp-query.dto';
 import { DiagnoseRequestDto, ApplyRecommendationRequestDto, ExecuteCommandsRequestDto } from './dto/diagnose.dto';
 import { CTPSolveResultDto } from './dto/solve-result.dto';
@@ -70,31 +72,26 @@ export class CTPController {
     return this.ctpService.solve(body);
   }
 
-  // ─── Endpoint 2: Unschedule Single Task ───
+  // ─── Endpoint 2: Unschedule Tasks (list) ───
 
-  @Post('tasks/:taskKey/unschedule')
-  @ApiOperation({ summary: 'Unschedule a single task without re-solving' })
-  @ApiParam({ name: 'taskKey', description: 'Task key to unschedule' })
-  @ApiBody({ type: UnscheduleTaskDto, required: false })
-  @ApiResponse({ status: 200, description: 'Task unscheduled successfully' })
-  @ApiResponse({ status: 400, description: 'Task is not scheduled' })
-  @ApiResponse({ status: 404, description: 'Task not found' })
-  @ApiResponse({ status: 409, description: 'Task is pinned' })
-  unscheduleTask(@Param('taskKey') taskKey: string, @Body() body?: UnscheduleTaskDto) {
-    return this.ctpService.unscheduleTask(taskKey, body?.resetScore ?? true);
+  @Post('tasks/unschedule')
+  @ApiOperation({ summary: 'Unschedule one or more tasks. Best-effort: committed or not-scheduled tasks are skipped, not rejected.' })
+  @ApiBody({ type: UnscheduleRequestDto })
+  @ApiResponse({ status: 200, description: 'Results per task plus summary with cascade counts', type: UnscheduleResponseDto })
+  @ApiResponse({ status: 400, description: 'Empty taskKeys array' })
+  unscheduleTasks(@Body() body: UnscheduleRequestDto) {
+    return this.ctpService.unschedule(body.taskKeys);
   }
 
-  // ─── Endpoint 3: Schedule Single Task ───
+  // ─── Endpoint 3: Schedule Tasks (list) ───
 
-  @Post('tasks/:taskKey/schedule')
-  @ApiOperation({ summary: 'Schedule a single task (find best slot)' })
-  @ApiParam({ name: 'taskKey', description: 'Task key to schedule' })
-  @ApiBody({ type: ScheduleTaskDto, required: false })
-  @ApiResponse({ status: 200, description: 'Task scheduled or errors returned' })
-  @ApiResponse({ status: 400, description: 'Task is already scheduled or pinned' })
-  @ApiResponse({ status: 404, description: 'Task not found' })
-  scheduleTask(@Param('taskKey') taskKey: string, @Body() body?: ScheduleTaskDto) {
-    return this.ctpService.scheduleTask(taskKey, body);
+  @Post('tasks/schedule')
+  @ApiOperation({ summary: 'Schedule one or more tasks using a single solver pass. Best-effort: already-scheduled or committed tasks are skipped.' })
+  @ApiBody({ type: ScheduleRequestDto })
+  @ApiResponse({ status: 200, description: 'Results per task plus summary', type: ScheduleResponseDto })
+  @ApiResponse({ status: 400, description: 'Empty taskKeys array or missing scoring config' })
+  scheduleTasks(@Body() body: ScheduleRequestDto) {
+    return this.ctpService.schedule(body.taskKeys);
   }
 
   // ─── Endpoint 4: Update Resource Mode ───

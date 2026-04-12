@@ -12230,6 +12230,7 @@ export default function App() {
   const [extendWindowTaskKeys, setExtendWindowTaskKeys] = useState<string[]>([]);
   const [showExtendWindowDialog, setShowExtendWindowDialog] = useState(false);
   const [holdDialogTask, setHoldDialogTask] = useState<{ key: string; name: string } | null>(null);
+  const [scheduleConfirm, setScheduleConfirm] = useState<{ keys: string[]; expandedKeys: string[]; event?: React.MouseEvent } | null>(null);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => { if (e.key === 'Shift') setShiftHeld(true); };
@@ -13190,16 +13191,12 @@ export default function App() {
   const handleApiUnschedule = useCallback(async (taskKey: string) => {
     setActionLoading(taskKey);
     try {
-      const res = await api(`/ctp/tasks/${encodeURIComponent(taskKey)}/unschedule`, {
+      await api('/ctp/tasks/unschedule', {
         method: 'POST',
-        body: JSON.stringify({ resetScore: true }),
+        body: JSON.stringify({ taskKeys: [taskKey] }),
       });
-      if (res.success) {
-        const updated = await api('/ctp/state');
-        applyStateRefresh(updated);
-      } else {
-        showToast(`Cannot unschedule: ${res.message || 'Unknown error'}`);
-      }
+      const updated = await api('/ctp/state');
+      applyStateRefresh(updated);
     } catch (err: any) {
       if (err instanceof ApiError && err.category === 'validation') {
         showToast(err.message, 'warning');
@@ -13239,18 +13236,23 @@ export default function App() {
   const handleApiSchedule = useCallback(async (taskKey: string) => {
     setActionLoading(taskKey);
     try {
-      const res = await api(`/ctp/tasks/${encodeURIComponent(taskKey)}/schedule`, {
+      const res = await api('/ctp/tasks/schedule', {
         method: 'POST',
+        body: JSON.stringify({ taskKeys: [taskKey] }),
       });
-      if (res.success) {
-        const updated = await api('/ctp/state');
-        applyStateRefresh(updated);
-        const resource = res.assignedResources?.[0]?.resourceKey;
-        const time = res.scheduledStart ? new Date(res.scheduledStart).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-        showToast(`✓ Task scheduled${resource ? ` on ${resource}` : ''}${time ? ` at ${time}` : ''}`);
-        setSolveStale(true);
+      const updated = await api('/ctp/state');
+      applyStateRefresh(updated);
+      setSolveStale(true);
+      const s = res.summary;
+      if (s?.scheduledCount > 0) {
+        if (s.expandedCount > 0) {
+          showToast(`Scheduled ${s.scheduledCount} tasks (${s.processCount} process + ${s.setupCount} setup + ${s.teardownCount} teardown)`);
+        } else {
+          showToast('Task scheduled');
+        }
       } else {
-        showToast(`Cannot schedule: ${res.errors?.[0]?.reason || res.message || 'No feasible slot'}`);
+        const skipped = res.results?.[0];
+        showToast(`Cannot schedule: ${skipped?.skipReason || 'No feasible slot'}`, 'warning');
       }
     } catch (err: any) {
       if (err instanceof ApiError && err.category === 'validation') {
@@ -13274,26 +13276,25 @@ export default function App() {
       return;
     }
     setActionLoading('__bulk__');
-    let successCount = 0;
     try {
-      for (const key of keys) {
-        try {
-          const res = await api(`/ctp/tasks/${encodeURIComponent(key)}/unschedule`, {
-            method: 'POST',
-            body: JSON.stringify({ resetScore: true }),
-          });
-          if (res.success) successCount++;
-        } catch { /* continue */ }
-      }
+      const res = await api('/ctp/tasks/unschedule', {
+        method: 'POST',
+        body: JSON.stringify({ taskKeys: keys }),
+      });
       const updated = await api('/ctp/state');
       if (updated.tasks) setSolveResult(updated);
       setSelectedTasks(new Set());
-      if (successCount < keys.length) {
-        showToast(`${successCount}/${keys.length} tasks unscheduled`);
+      const s = res.summary;
+      if (s) {
+        const cascadeNote = (s.cascadedSetupCount + s.cascadedTeardownCount) > 0
+          ? ` (${s.cascadedSetupCount} setup + ${s.cascadedTeardownCount} teardown cleared)`
+          : '';
+        const skipNote = s.skippedCount > 0 ? `, ${s.skippedCount} skipped` : '';
+        showToast(`${s.processCount} task${s.processCount !== 1 ? 's' : ''} unscheduled${cascadeNote}${skipNote}`);
       }
     } catch (err) {
       console.error('Bulk unschedule error:', err);
-      showToast('Bulk unschedule failed');
+      showToast('Bulk unschedule failed', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -13335,38 +13336,81 @@ export default function App() {
     }
   }, [showToast, queueMode, addToQueue, solveResult]);
 
+  // Client-side expansion preview — mirrors expandChainForSchedule in ctp.service.ts
+  const previewScheduleExpansion = useCallback((keys: string[]): string[] => {
+    const tasks_: any[] = solveResult?.tasks ?? [];
+    const taskMap = new Map<string, any>(tasks_.map((t: any) => [t.key, t]));
+    // Build reverse index: predKey → successor, per chain
+    const reverseIndex = new Map<string, any>();
+    for (const t of tasks_) {
+      if (t.predKey) reverseIndex.set(t.predKey, t);
+    }
+    const canSchedule = (t: any) => !t.pinned && t.commitmentLevel !== 'dispatched' && t.commitmentLevel !== 'running' && t.commitmentLevel !== 'completed' && t.commitmentLevel !== 'on_hold';
+    const accumulator = new Set<string>(keys);
+    for (const key of keys) {
+      const task = taskMap.get(key);
+      if (!task?.orderRef) continue;
+      // Backward walk
+      let cursor = task.predKey ? taskMap.get(task.predKey) : null;
+      while (cursor) {
+        if (!canSchedule(cursor) || accumulator.has(cursor.key)) break;
+        accumulator.add(cursor.key);
+        cursor = cursor.predKey ? taskMap.get(cursor.predKey) : null;
+      }
+      // Forward walk
+      let fwd = reverseIndex.get(task.key);
+      while (fwd) {
+        if (!canSchedule(fwd) || accumulator.has(fwd.key)) break;
+        accumulator.add(fwd.key);
+        fwd = reverseIndex.get(fwd.key);
+      }
+    }
+    const requestedSet = new Set(keys);
+    return Array.from(accumulator).filter(k => !requestedSet.has(k));
+  }, [solveResult]);
+
+  const commitSchedule = useCallback(async (keys: string[]) => {
+    setScheduleConfirm(null);
+    setActionLoading('__bulk__');
+    try {
+      const res = await api('/ctp/tasks/schedule', {
+        method: 'POST',
+        body: JSON.stringify({ taskKeys: keys }),
+      });
+      const updated = await api('/ctp/state');
+      if (updated.tasks) setSolveResult(updated);
+      setSelectedTasks(new Set());
+      const s = res.summary;
+      if (s) {
+        if (s.skippedCount > 0 && s.scheduledCount === 0) {
+          showToast(`Could not place ${s.skippedCount} task${s.skippedCount !== 1 ? 's' : ''}`, 'error');
+        } else if (s.expandedCount > 0) {
+          showToast(`Scheduled ${s.scheduledCount} tasks (${s.processCount} process + ${s.setupCount} setup + ${s.teardownCount} teardown)${s.skippedCount > 0 ? `, ${s.skippedCount} skipped` : ''}`);
+        } else if (s.scheduledCount > 0) {
+          showToast(`${s.scheduledCount} task${s.scheduledCount !== 1 ? 's' : ''} scheduled${s.skippedCount > 0 ? `, ${s.skippedCount} skipped` : ''}`);
+        }
+      }
+    } catch (err) {
+      console.error('Bulk schedule error:', err);
+      showToast('Bulk schedule failed', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  }, [showToast]);
+
   const handleBulkSchedule = useCallback(async (keys: string[], event?: React.MouseEvent) => {
     if (queueMode || event?.shiftKey) {
       addToQueue(`Solve targeted (${keys.length} tasks)`, { type: 'solve', taskKeys: keys, scope: 'targeted', expandChains: true });
       setSelectedTasks(new Set());
       return;
     }
-    setActionLoading('__bulk__');
-    let successCount = 0;
-    try {
-      for (const key of keys) {
-        try {
-          const res = await api(`/ctp/tasks/${encodeURIComponent(key)}/schedule`, {
-            method: 'POST',
-          });
-          if (res.success) successCount++;
-        } catch { /* continue */ }
-      }
-      const updated = await api('/ctp/state');
-      if (updated.tasks) setSolveResult(updated);
-      setSelectedTasks(new Set());
-      if (successCount < keys.length) {
-        showToast(`${successCount}/${keys.length} scheduled. ${keys.length - successCount} could not be placed.`);
-      } else if (keys.length > 1) {
-        showToast(`${successCount}/${keys.length} tasks scheduled`);
-      }
-    } catch (err) {
-      console.error('Bulk schedule error:', err);
-      showToast('Bulk schedule failed');
-    } finally {
-      setActionLoading(null);
+    const expandedKeys = previewScheduleExpansion(keys);
+    if (expandedKeys.length > 0) {
+      setScheduleConfirm({ keys, expandedKeys, event });
+    } else {
+      await commitSchedule(keys);
     }
-  }, [showToast, queueMode, addToQueue]);
+  }, [showToast, queueMode, addToQueue, previewScheduleExpansion, commitSchedule]);
 
   const handleHold = useCallback(async (taskKey: string, args: { holdReason: string; holdStart: string; estimatedResumeTime?: string }, event?: React.MouseEvent) => {
     const tasks_ = solveResult?.tasks || [];
@@ -14883,6 +14927,30 @@ export default function App() {
           )}
         </div>
       )}
+
+      {/* Schedule Expansion Confirmation Dialog */}
+      {scheduleConfirm && (() => {
+        const { keys, expandedKeys } = scheduleConfirm;
+        const total = keys.length + expandedKeys.length;
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: 24, maxWidth: 420, width: '90%' }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 8 }}>
+                Schedule {keys.length} task{keys.length !== 1 ? 's' : ''} and {expandedKeys.length} required setup/teardown task{expandedKeys.length !== 1 ? 's' : ''}?
+              </div>
+              <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 20 }}>
+                Related setup and teardown steps for the selected tasks will be included.
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button onClick={() => setScheduleConfirm(null)} style={{ padding: '6px 16px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.text, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+                <button onClick={() => commitSchedule(keys)} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: C.accent, color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                  Schedule {total}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Hold Dialog */}
       {holdDialogTask && (

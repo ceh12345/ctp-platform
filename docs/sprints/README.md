@@ -99,6 +99,7 @@ _None_
 
 | Sprint | Name | Blocked By |
 |--------|------|------------|
+| Engine — Partial-Chain Scheduler | "Planner controls scope" subclass of CTPBaseScheduler that only commits tasks in submittedKeys. Ship current sprint (auto-expand + full reporting). Future sprint: subclass overrides `scheduleChainPass` to skip commitChain for tasks outside submittedKeys; service-layer `schedule()` instantiates the new subclass; forward walk removed from `expandChainForSchedule` (engine now limits scope instead of service expanding it). Dialog, toast, API shape, and tests are unaffected. Also fix the deeper bug: `scheduleBulk` should collect results for all state-changed tasks post-solve, not just input-set tasks. | Chain expansion sprint (current) |
 | ~~UI Sprint 18~~ | ~~Solve Replay~~ | Done (2026-03-08) |
 | Solver Prompt 2 | Snapshot/Restore | May not be needed — Phase 3 replaced backtracking approach |
 | Solver Prompt 3 | Balanced Strategy (Bump Backtracking) | Evaluate if still needed post-Phase 3 |

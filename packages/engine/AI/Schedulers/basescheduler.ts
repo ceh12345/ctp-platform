@@ -78,6 +78,49 @@ export interface IScheduler {
   unschedule(tasks: List<CTPTask>): void;
 }
 
+// ─── Bulk operation result types ───────────────────────────────────────────
+
+export type SkipReason =
+  | 'committed'
+  | 'running'
+  | 'not_found'
+  | 'already_in_target_state'
+  | 'no_feasible_slot'
+  | 'unmet_predecessor'
+  | 'engine_error';
+
+export interface BulkTaskResult {
+  key: string;
+  success: boolean;
+  skipReason?: SkipReason;  // present when success === false
+}
+
+export interface BulkUnscheduleResult {
+  results: BulkTaskResult[];
+  summary: {
+    requestedCount: number;
+    unscheduledCount: number;
+    processCount: number;
+    cascadedSetupCount: number;
+    cascadedTeardownCount: number;
+    skippedCount: number;
+    affectedChains: string[];
+  };
+}
+
+export interface BulkScheduleResult {
+  results: BulkTaskResult[];
+  summary: {
+    requestedCount: number;
+    expandedCount: number;      // tasks added by chain expansion beyond the original request
+    scheduledCount: number;
+    processCount: number;       // of scheduledCount, PROCESS type
+    setupCount: number;         // of scheduledCount, SETUP type (typically added by expansion)
+    teardownCount: number;      // of scheduledCount, TEARDOWN type (typically added by expansion)
+    skippedCount: number;
+  };
+}
+
 export abstract class CTPBaseScheduler {
   protected landscape: SchedulingLandscape;
   protected scoring: CTPScoring | null;
@@ -408,6 +451,9 @@ export abstract class CTPBaseScheduler {
     if (!task.canMove())  return;
     task.errors = [];
 
+    // Removes Type 1 (dynamic) state changes only — resource+state scoped,
+    // recomputed per operation. Route-defined SETUP/TEARDOWN (Type 2) are
+    // chain members and are handled by the post-loop sweep in unschedule().
     this.unScheduleStateChanges(task);
     this.unScheduleATask(task);
     this.scheduleContexts.updateRecomputeByTask(task);
@@ -1376,17 +1422,200 @@ export abstract class CTPBaseScheduler {
     return result;
   }
 
+  /**
+   * Bulk unschedule entry point for the API layer.
+   * Best-effort: skips keys that are not found, pinned, or not scheduled.
+   * Runs the chain sweep once after the loop so orphaned route-defined
+   * SETUP/TEARDOWN tasks (Type 2) are removed atomically.
+   * Does NOT require scoring to be initialized.
+   */
+  public unscheduleBulk(taskKeys: string[]): BulkUnscheduleResult {
+    const results: BulkTaskResult[] = [];
+    const affectedChains = new Set<string>();
+
+    for (const key of taskKeys) {
+      const task = this.landscape.tasks?.getEntity(key);
+      if (!task) {
+        results.push({ key, success: false, skipReason: 'not_found' });
+        continue;
+      }
+      if (task.pinned) {
+        const skipReason: SkipReason =
+          task.wipstate === CTPWipStateConstants.IN_PROCESS ? 'running' : 'committed';
+        results.push({ key, success: false, skipReason });
+        continue;
+      }
+      if (task.state !== CTPTaskStateConstants.SCHEDULED) {
+        results.push({ key, success: false, skipReason: 'already_in_target_state' });
+        continue;
+      }
+      if (task.linkId?.name) affectedChains.add(task.linkId.name);
+      const ok = this.unscheduleTaskWithStateChanges(key, true);
+      results.push({ key, success: ok, skipReason: ok ? undefined : 'engine_error' });
+    }
+
+    // Post-loop chain sweep — removes Type 2 route-defined SETUP/TEARDOWN orphans
+    const cascadedKeys = affectedChains.size > 0
+      ? this.sweepChainOrphanedStateChangeTasks(affectedChains)
+      : [];
+
+    const cascadedSetupCount = cascadedKeys.filter(k => {
+      const t = this.landscape.tasks.getEntity(k);
+      return t?.type === CTPTaskTypeConstants.SET_UP;
+    }).length;
+    const cascadedTeardownCount = cascadedKeys.length - cascadedSetupCount;
+
+    const processCount = results.filter(r => r.success).length;
+    const skippedCount = results.filter(r => !r.success).length;
+
+    return {
+      results,
+      summary: {
+        requestedCount: taskKeys.length,
+        unscheduledCount: processCount + cascadedKeys.length,
+        processCount,
+        cascadedSetupCount,
+        cascadedTeardownCount,
+        skippedCount,
+        affectedChains: [...affectedChains],
+      },
+    };
+  }
+
+  /**
+   * Bulk schedule entry point for the API layer.
+   * Runs a single solver pass over all requested tasks — callers must have
+   * called initLandscape, initScoring, and initSettings before invoking.
+   * Best-effort: skips keys that are not found, pinned, or already scheduled.
+   */
+  public scheduleBulk(taskKeys: string[]): BulkScheduleResult {
+    const results: BulkTaskResult[] = [];
+    const taskList = new List<CTPTask>();
+
+    for (const key of taskKeys) {
+      const task = this.landscape.tasks?.getEntity(key);
+      if (!task) {
+        results.push({ key, success: false, skipReason: 'not_found' });
+        continue;
+      }
+      if (task.pinned) {
+        const skipReason: SkipReason =
+          task.wipstate === CTPWipStateConstants.IN_PROCESS ? 'running' : 'committed';
+        results.push({ key, success: false, skipReason });
+        continue;
+      }
+      if (task.state === CTPTaskStateConstants.SCHEDULED) {
+        results.push({ key, success: false, skipReason: 'already_in_target_state' });
+        continue;
+      }
+      taskList.add(task);
+    }
+
+    if (taskList.length > 0) {
+      this.schedule(taskList); // single solver pass over the full set
+    }
+
+    // Collect per-task results from the solver pass
+    taskList.forEach(task => {
+      const isScheduled = task.state === CTPTaskStateConstants.SCHEDULED;
+      const skipReason: SkipReason | undefined = isScheduled
+        ? undefined
+        : task.errors?.[0]?.reason?.toLowerCase().includes('predecessor')
+          ? 'unmet_predecessor'
+          : 'no_feasible_slot';
+      results.push({ key: task.key, success: isScheduled, skipReason });
+    });
+
+    const scheduledCount = results.filter(r => r.success).length;
+    const skippedCount = results.filter(r => !r.success).length;
+
+    let processCount = 0;
+    let setupCount = 0;
+    let teardownCount = 0;
+    for (const r of results) {
+      if (!r.success) continue;
+      const t = this.landscape.tasks.getEntity(r.key);
+      if (!t) continue;
+      if (t.type === CTPTaskTypeConstants.PROCESS) processCount++;
+      else if (t.type === CTPTaskTypeConstants.SET_UP) setupCount++;
+      else if (t.type === CTPTaskTypeConstants.TEAR_DOWN) teardownCount++;
+    }
+
+    return {
+      results,
+      summary: {
+        requestedCount: taskKeys.length,
+        expandedCount: 0, // populated by the service layer after expansion
+        scheduledCount,
+        processCount,
+        setupCount,
+        teardownCount,
+        skippedCount,
+      },
+    };
+  }
+
   public unschedule(tasks: List<CTPTask>) {
-    
+
     this.initUnScheduling(tasks);
     if (!this.assert()) return;
 
     this.startScheduling();
+
+    // Collect chains touched by this bulk unschedule so we can sweep
+    // orphaned route-defined SETUP/TEARDOWN tasks (Type 2) ONCE after
+    // the loop. Per-task sweeping would be wrong: a chain with shared
+    // setup across multiple process tasks needs to be evaluated only
+    // after all of that chain's removals in this batch are complete.
+    // Type 1 dynamic state changes are still handled per-task inside
+    // unscheduleTask via unScheduleStateChanges — that behavior is unchanged.
+    const affectedChains = new Set<string>();
+
     tasks.forEach((task) => {
+      if (task.linkId?.name) affectedChains.add(task.linkId.name);
       this.startTask(task);
       this.unscheduleTask(task);
       this.endTask(task);
     });
+
+    if (affectedChains.size > 0) {
+      this.sweepChainOrphanedStateChangeTasks(affectedChains);
+    }
+
     this.endScheduling();
+  }
+
+  /**
+   * Sweeps the given chains and unschedules any route-defined SETUP/TEARDOWN tasks
+   * whose chain has no remaining scheduled PROCESS tasks.
+   * Called once after the unschedule loop completes — never per-task.
+   * Returns the keys of tasks that were removed.
+   */
+  private sweepChainOrphanedStateChangeTasks(affectedChains: Set<string>): string[] {
+    const removed: string[] = [];
+
+    for (const chainName of affectedChains) {
+      const chainTasks = this.landscape.tasks.toArray()
+        .filter(t => t.linkId?.name === chainName);
+
+      const hasScheduledProcess = chainTasks.some(
+        t => t.type === CTPTaskTypeConstants.PROCESS &&
+             t.state === CTPTaskStateConstants.SCHEDULED
+      );
+
+      if (hasScheduledProcess) continue;
+
+      for (const task of chainTasks) {
+        const isRouteStateChange =
+          task.type === CTPTaskTypeConstants.SET_UP ||
+          task.type === CTPTaskTypeConstants.TEAR_DOWN;
+        if (isRouteStateChange && task.state === CTPTaskStateConstants.SCHEDULED && !task.pinned) {
+          this.landscape.unscheduleTask(task.key, true);
+          removed.push(task.key);
+        }
+      }
+    }
+
+    return removed;
   }
 }

@@ -48,7 +48,7 @@ describe('WhereTo API', () => {
       ctpService.solve();
 
       // Unschedule a task so it has open options
-      ctpService.unscheduleTask('T-1002-B-MACHINE');
+      ctpService.unschedule(['T-1002-B-MACHINE']);
 
       const result = ctpService.whereTo('T-1002-B-MACHINE');
 
@@ -71,7 +71,7 @@ describe('WhereTo API', () => {
 
     it('should filter by onlyResources', () => {
       ctpService.solve();
-      ctpService.unscheduleTask('T-1002-B-MACHINE');
+      ctpService.unschedule(['T-1002-B-MACHINE']);
 
       // First call without filter to see what resources are available
       const allResult = ctpService.whereTo('T-1002-B-MACHINE');
@@ -92,7 +92,7 @@ describe('WhereTo API', () => {
 
     it('should respect maxResults', () => {
       ctpService.solve();
-      ctpService.unscheduleTask('T-1002-B-MACHINE');
+      ctpService.unschedule(['T-1002-B-MACHINE']);
 
       const result = ctpService.whereTo('T-1002-B-MACHINE', {
         constraints: { maxResults: 2 },
@@ -103,7 +103,7 @@ describe('WhereTo API', () => {
 
     it('should return options sorted by score with sequential ranks', () => {
       ctpService.solve();
-      ctpService.unscheduleTask('T-1002-B-MACHINE');
+      ctpService.unschedule(['T-1002-B-MACHINE']);
 
       const result = ctpService.whereTo('T-1002-B-MACHINE');
 
@@ -117,7 +117,7 @@ describe('WhereTo API', () => {
 
     it('should return ISO date strings', () => {
       ctpService.solve();
-      ctpService.unscheduleTask('T-1002-B-MACHINE');
+      ctpService.unschedule(['T-1002-B-MACHINE']);
 
       const result = ctpService.whereTo('T-1002-B-MACHINE');
 
@@ -133,7 +133,7 @@ describe('WhereTo API', () => {
 
     it('should be idempotent (same results on repeat)', () => {
       ctpService.solve();
-      ctpService.unscheduleTask('T-1002-B-MACHINE');
+      ctpService.unschedule(['T-1002-B-MACHINE']);
 
       const result1 = ctpService.whereTo('T-1002-B-MACHINE');
       const result2 = ctpService.whereTo('T-1002-B-MACHINE');
@@ -159,7 +159,7 @@ describe('WhereTo API', () => {
 
     it('should return success:false for invalid contextHash', () => {
       ctpService.solve();
-      ctpService.unscheduleTask('T-1002-B-MACHINE');
+      ctpService.unschedule(['T-1002-B-MACHINE']);
 
       const result = ctpService.moveTo('T-1002-B-MACHINE', {
         contextHash: 'INVALID-HASH',
@@ -173,7 +173,7 @@ describe('WhereTo API', () => {
 
     it('should move task to a valid option', () => {
       ctpService.solve();
-      ctpService.unscheduleTask('T-1002-B-MACHINE');
+      ctpService.unschedule(['T-1002-B-MACHINE']);
 
       // Get options
       const whereToResult = ctpService.whereTo('T-1002-B-MACHINE');

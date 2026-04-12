@@ -37,6 +37,8 @@ import {
   CTPAssignment,
   CTPAssignmentConstants,
   DisjunctiveGraph,
+  BulkUnscheduleResult,
+  BulkScheduleResult,
 } from '@ctp/engine';
 import { ErrorCodes } from '../../common/error-codes';
 import { StateService } from '../state/state.service';
@@ -478,75 +480,35 @@ export class CTPService {
   }
 
   // ═══════════════════════════════════════
-  // Endpoint 2: Unschedule Single Task
+  // Endpoint 2: Unschedule Tasks (list)
   // ═══════════════════════════════════════
 
-  unscheduleTask(taskKey: string, resetScore: boolean = true): any {
+  unschedule(taskKeys: string[]): BulkUnscheduleResult {
     const landscape = this.ensureLandscape();
-    const task = landscape.tasks?.getEntity(taskKey);
-
-    if (!task) {
-      throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
-    }
-    if (task.pinned) {
-      throw new HttpException({ error: { code: ErrorCodes.TASK_IS_PINNED, message: `Task ${taskKey} is pinned and cannot be unscheduled`, category: 'validation' } }, HttpStatus.CONFLICT);
-    }
-    if (task.state !== CTPTaskStateConstants.SCHEDULED) {
-      throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_SCHEDULED, message: `Task ${taskKey} is not currently scheduled`, category: 'validation' } }, HttpStatus.BAD_REQUEST);
-    }
-
-    const previousStart = task.scheduled?.startW;
-    const previousEnd = task.scheduled?.endW;
-    const previousResources = task.capacityResources
-      ?.map(tr => tr.scheduledResource)
-      .filter(Boolean) as string[] || [];
-
-    // Use scheduler to also remove associated state change tasks (SETUP/TEARDOWN/changeover)
     const scheduler = new CTPScheduler();
     scheduler.initLandscape(
       landscape.horizon, landscape.tasks, landscape.resources,
       landscape.stateChanges, landscape.processes,
     );
-    const success = scheduler.unscheduleTaskWithStateChanges(taskKey, resetScore);
-
-    if (!success) {
-      throw new HttpException({ error: { code: ErrorCodes.ENGINE_EXCEPTION, message: `Failed to unschedule task ${taskKey}`, category: 'engine' } }, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-    return {
-      taskKey,
-      success: true,
-      previousSchedule: {
-        start: previousStart ? CTPDateTime.toDateTime(previousStart).toISO() : null,
-        end: previousEnd ? CTPDateTime.toDateTime(previousEnd).toISO() : null,
-        resources: previousResources,
-      },
-      affectedResources: this.getAffectedResourceUtils(landscape, previousResources),
-    };
+    return scheduler.unscheduleBulk(taskKeys);
   }
 
   // ═══════════════════════════════════════
-  // Endpoint 3: Schedule Single Task
+  // Endpoint 3: Schedule Tasks (list)
   // ═══════════════════════════════════════
 
-  scheduleTask(taskKey: string, request?: any): any {
+  schedule(taskKeys: string[]): BulkScheduleResult {
     const landscape = this.ensureLandscape();
-    const task = landscape.tasks?.getEntity(taskKey);
 
-    if (!task) {
-      throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
-    }
-    if (task.state === CTPTaskStateConstants.SCHEDULED) {
-      throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_SCHEDULED, message: `Task ${taskKey} is already scheduled. Unschedule first.`, category: 'validation' } }, HttpStatus.BAD_REQUEST);
-    }
-    if (task.pinned) {
-      throw new HttpException({ error: { code: ErrorCodes.TASK_IS_PINNED, message: `Task ${taskKey} is pinned`, category: 'validation' } }, HttpStatus.BAD_REQUEST);
-    }
+    // Ensure commitmentLevel is current before expansion — canExpand() depends on it.
+    // applyCommitmentStack is normally called by getState(), but schedule() may be called
+    // without a preceding state fetch (e.g., direct API call, queue executor).
+    this.applyCommitmentStack(landscape);
 
-    // Propagate constraints
+    const expansion = this.expandChainForSchedule(taskKeys, landscape);
+
     landscape.propagateConstraints();
 
-    // Build scoring
     const scoringConfig = this.configService.getScoring();
     if (!scoringConfig) {
       throw new HttpException({ error: { code: ErrorCodes.SCORING_CONFIG_MISSING, message: 'Scoring configuration not found.', category: 'config' } }, HttpStatus.BAD_REQUEST);
@@ -559,7 +521,6 @@ export class CTPService {
       scoring.addConfig(config);
     }
 
-    // Use existing scheduler to solve just this task
     const scheduler = new CTPScheduler();
     scheduler.initLandscape(
       landscape.horizon, landscape.tasks, landscape.resources,
@@ -568,24 +529,10 @@ export class CTPService {
     scheduler.initSettings(landscape.appSettings);
     scheduler.initScoring(scoring);
 
-    const taskList = new List<CTPTask>();
-    taskList.add(task);
-    scheduler.schedule(taskList);
-
-    const isScheduled = task.state === CTPTaskStateConstants.SCHEDULED;
-
-    return {
-      taskKey,
-      success: isScheduled,
-      scheduledStart: task.scheduled ? CTPDateTime.toDateTime(task.scheduled.startW).toISO() : null,
-      scheduledEnd: task.scheduled ? CTPDateTime.toDateTime(task.scheduled.endW).toISO() : null,
-      assignedResources: task.capacityResources?.map(tr => ({
-        resourceKey: tr.scheduledResource || tr.resource || '',
-        mode: tr.mode,
-      })) || [],
-      blendedScore: task.score !== Number.MAX_VALUE ? task.score : null,
-      errors: task.errors.map(e => ({ agent: e.agent, reason: e.reason })),
-    };
+    const result = scheduler.scheduleBulk(expansion.full);
+    result.summary.requestedCount = expansion.requested.length;
+    result.summary.expandedCount = expansion.expanded.length;
+    return result;
   }
 
   // ═══════════════════════════════════════
@@ -2164,7 +2111,7 @@ export class CTPService {
               actionsApplied.push({ type: cmd.type, taskKey: cmd.taskKey, result: 'skipped', detail: 'Setup/teardown managed automatically' });
               break;
             }
-            this.unscheduleTask(cmd.taskKey!, true);
+            this.unschedule([cmd.taskKey!]);
             actionsApplied.push({ type: cmd.type, taskKey: cmd.taskKey, result: 'ok' });
             break;
           }
@@ -2635,6 +2582,70 @@ export class CTPService {
       }
     }
     return [...expanded];
+  }
+
+  // canSolve() is insufficient as an expansion stop predicate at the service layer:
+  // dispatched tasks have wipstate=NOT_STARTED and pinned=false until anchorCommittedTasks()
+  // runs inside the scheduler. commitmentLevel is set by applyCommitmentStack (called at the
+  // top of schedule()) so we check it here to stop at any committed task before anchoring runs.
+  private canExpand(task: CTPTask): boolean {
+    if (task.commitmentLevel === 'dispatched') return false;
+    if (task.commitmentLevel === 'running') return false;
+    if (task.commitmentLevel === 'on_hold') return false;
+    if (task.commitmentLevel === 'completed') return false;
+    return task.canSolve();
+  }
+
+  private expandChainForSchedule(
+    taskKeys: string[],
+    landscape: SchedulingLandscape,
+  ): { requested: string[]; expanded: string[]; full: string[] } {
+    const accumulator = new Set<string>(taskKeys);
+    const reverseIndexCache = new Map<string, Map<string, CTPTask>>();
+
+    for (const key of taskKeys) {
+      const task = landscape.tasks.getEntity(key);
+      if (!task?.linkId?.name) continue;
+
+      const chain = landscape.processes.getEntity(task.linkId.name);
+      if (!chain?.tasks) continue;
+
+      // Backward walk via prevLink
+      let cursor: CTPTask | null = task.linkId?.prevLink
+        ? (landscape.tasks.getEntity(task.linkId.prevLink) ?? null)
+        : null;
+      while (cursor) {
+        if (!this.canExpand(cursor)) break;
+        if (accumulator.has(cursor.key)) break;
+        accumulator.add(cursor.key);
+        cursor = cursor.linkId?.prevLink
+          ? (landscape.tasks.getEntity(cursor.linkId.prevLink) ?? null)
+          : null;
+      }
+
+      // Forward walk via reverse index (successor lookup)
+      let reverseIndex = reverseIndexCache.get(task.linkId.name);
+      if (!reverseIndex) {
+        reverseIndex = new Map<string, CTPTask>();
+        chain.tasks.forEach((t: CTPTask) => {
+          if (t.linkId?.prevLink) reverseIndex!.set(t.linkId.prevLink, t);
+        });
+        reverseIndexCache.set(task.linkId.name, reverseIndex);
+      }
+
+      let forwardCursor: CTPTask | undefined = reverseIndex.get(task.key);
+      while (forwardCursor) {
+        if (!this.canExpand(forwardCursor)) break;
+        if (accumulator.has(forwardCursor.key)) break;
+        accumulator.add(forwardCursor.key);
+        forwardCursor = reverseIndex.get(forwardCursor.key);
+      }
+    }
+
+    const full = Array.from(accumulator);
+    const requestedSet = new Set(taskKeys);
+    const expanded = full.filter(k => !requestedSet.has(k));
+    return { requested: taskKeys, expanded, full };
   }
 
   // ═══════════════════════════════════════
@@ -3159,6 +3170,7 @@ export class CTPService {
         pastDueDays: task.pastDueDays || 0,
         originalWindowEnd: task.originalWindowEnd ? CTPDateTime.toDateTime(task.originalWindowEnd).toISO() : null,
         horizonBucket: task.horizonBucket || '',
+        predKey: task.linkId?.prevLink ?? null,
       };
 
       // Per-task cost breakdown (resource + material)

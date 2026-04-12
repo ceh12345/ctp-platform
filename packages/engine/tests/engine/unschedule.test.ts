@@ -18,6 +18,7 @@ import { CTPDuration, CTPInterval, CTPRunRate } from '../../Models/Core/window';
 import { CTPAvailable, CTPAssignments } from '../../Models/Intervals/intervals';
 import {
   CTPTaskStateConstants,
+  CTPTaskTypeConstants,
   CTPResourceConstants,
   CTPScheduleDirectionConstants,
 } from '../../Models/Core/constants';
@@ -659,5 +660,416 @@ describe('SchedulingLandscape.unscheduleTask', () => {
     expect(result).toBe(false);
     expect(taskA.state).toBe(CTPTaskStateConstants.SCHEDULED);
     expect(taskA.scheduled).not.toBeNull();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// BaseScheduler.unschedule — cascade sweep for route-defined SETUP/TEARDOWN
+// ═══════════════════════════════════════════════════════════════
+
+function makeTypedTask(
+  type: string,
+  name: string,
+  key: string,
+  durationSec: number,
+  horizon: CTPHorizon,
+): CTPTask {
+  const task = new CTPTask(type, name, key);
+  task.duration = new CTPDuration(durationSec, 1.0);
+  task.window = new CTPInterval(horizon.startW, horizon.endW);
+  task.capacityResources = new CTPTaskResourceList();
+  task.capacityResources.add(new CTPTaskResource('Machine', true));
+  return task;
+}
+
+function makeScheduler(landscape: SchedulingLandscape): CTPScheduler {
+  const scoring = new CTPScoring('test', 'test');
+  scoring.addConfig(new CTPScoringConfiguration('EarliestStartTimeScoringRule', 1.0));
+  const settings = new CTPAppSettings();
+  settings.scheduleDirection = CTPScheduleDirectionConstants.FORWARD;
+  settings.solverStrategy = 'Greedy';
+
+  const scheduler = new CTPScheduler();
+  scheduler.initLandscape(
+    landscape.horizon,
+    landscape.tasks,
+    landscape.resources,
+    landscape.stateChanges,
+    landscape.processes,
+  );
+  scheduler.initScoring(scoring);
+  scheduler.initSettings(settings);
+  return scheduler;
+}
+
+function scheduleList(scheduler: CTPScheduler, tasks: CTPTask[]): void {
+  const list = new List<CTPTask>();
+  for (const t of tasks) list.add(t);
+  scheduler.schedule(list);
+}
+
+function unscheduleList(scheduler: CTPScheduler, tasks: CTPTask[]): void {
+  const list = new List<CTPTask>();
+  for (const t of tasks) list.add(t);
+  scheduler.unschedule(list);
+}
+
+describe('BaseScheduler.unschedule — route-defined SETUP/TEARDOWN cascade sweep', () => {
+
+  // ── Scenario 1: single process with own setup/teardown ───────
+
+  it('removes setup and teardown when the only process in the chain is unscheduled', () => {
+    const { horizon } = makeHorizon();
+    const landscape = buildLandscape(horizon);
+
+    const cnc = makeResource('CNC-01', 'CNC-01', horizon);
+    landscape.resources.addEntity(cnc);
+
+    const setup = makeTypedTask('SETUP', 'WO-001 Setup', 'SETUP-WO001', ONE_HOUR, horizon);
+    setup.linkId = new CTPLinkId('WO-001', 'SETUP', '');
+    addPreference(setup, 'CNC-01');
+    landscape.tasks.addEntity(setup);
+
+    const proc = makeTypedTask('PROCESS', 'WO-001 Process', 'PROC-WO001', 2 * ONE_HOUR, horizon);
+    proc.linkId = new CTPLinkId('WO-001', 'PROCESS', 'SETUP-WO001');
+    addPreference(proc, 'CNC-01');
+    landscape.tasks.addEntity(proc);
+
+    const teardown = makeTypedTask('TEARDOWN', 'WO-001 Teardown', 'TEAR-WO001', ONE_HOUR, horizon);
+    teardown.linkId = new CTPLinkId('WO-001', 'TEARDOWN', 'PROC-WO001');
+    addPreference(teardown, 'CNC-01');
+    landscape.tasks.addEntity(teardown);
+
+    const scheduler = makeScheduler(landscape);
+    scheduleList(scheduler, [setup, proc, teardown]);
+
+    expect(setup.state).toBe(CTPTaskStateConstants.SCHEDULED);
+    expect(proc.state).toBe(CTPTaskStateConstants.SCHEDULED);
+    expect(teardown.state).toBe(CTPTaskStateConstants.SCHEDULED);
+
+    // Unschedule only the process — sweep must cascade to setup + teardown
+    unscheduleList(scheduler, [proc]);
+
+    expect(proc.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    expect(setup.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    expect(teardown.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+  });
+
+  // ── Scenario 2: process with no route setup/teardown — no-op ─
+
+  it('is a no-op when the chain has no route-defined setup or teardown', () => {
+    const { horizon } = makeHorizon();
+    const landscape = buildLandscape(horizon);
+
+    const cnc = makeResource('CNC-01', 'CNC-01', horizon);
+    landscape.resources.addEntity(cnc);
+
+    const proc = makeTypedTask('PROCESS', 'WO-001 Process', 'PROC-WO001', 2 * ONE_HOUR, horizon);
+    proc.linkId = new CTPLinkId('WO-001', 'PROCESS', '');
+    addPreference(proc, 'CNC-01');
+    landscape.tasks.addEntity(proc);
+
+    const scheduler = makeScheduler(landscape);
+    scheduleList(scheduler, [proc]);
+
+    expect(proc.state).toBe(CTPTaskStateConstants.SCHEDULED);
+
+    unscheduleList(scheduler, [proc]);
+
+    expect(proc.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    // No crash, no orphan cleanup needed — landscape is clean
+  });
+
+  // ── Scenario 3: 3 separate chains, all processes unscheduled ─
+
+  it('sweeps all three chains independently when processes from three chains are unscheduled', () => {
+    const { horizon } = makeHorizon(21);
+    const landscape = buildLandscape(horizon);
+
+    const cnc = makeResource('CNC-01', 'CNC-01', horizon, 21);
+    landscape.resources.addEntity(cnc);
+
+    const chains = ['WO-001', 'WO-002', 'WO-003'];
+    const procs: CTPTask[] = [];
+    const setups: CTPTask[] = [];
+    const tears: CTPTask[] = [];
+
+    for (const wo of chains) {
+      const s = makeTypedTask('SETUP', `${wo} Setup`, `SETUP-${wo}`, ONE_HOUR, horizon);
+      s.linkId = new CTPLinkId(wo, 'SETUP', '');
+      addPreference(s, 'CNC-01');
+      landscape.tasks.addEntity(s);
+      setups.push(s);
+
+      const p = makeTypedTask('PROCESS', `${wo} Process`, `PROC-${wo}`, 2 * ONE_HOUR, horizon);
+      p.linkId = new CTPLinkId(wo, 'PROCESS', `SETUP-${wo}`);
+      addPreference(p, 'CNC-01');
+      landscape.tasks.addEntity(p);
+      procs.push(p);
+
+      const t = makeTypedTask('TEARDOWN', `${wo} Teardown`, `TEAR-${wo}`, ONE_HOUR, horizon);
+      t.linkId = new CTPLinkId(wo, 'TEARDOWN', `PROC-${wo}`);
+      addPreference(t, 'CNC-01');
+      landscape.tasks.addEntity(t);
+      tears.push(t);
+    }
+
+    const scheduler = makeScheduler(landscape);
+    scheduleList(scheduler, [...setups, ...procs, ...tears]);
+
+    for (const p of procs) expect(p.state).toBe(CTPTaskStateConstants.SCHEDULED);
+
+    // Unschedule all 3 processes in one call
+    unscheduleList(scheduler, procs);
+
+    for (const p of procs) expect(p.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    for (const s of setups) expect(s.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    for (const t of tears) expect(t.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+  });
+
+  // ── Scenario 4: shared setup, unschedule 1 of 3 — sweep leaves setup ─
+
+  it('leaves setup/teardown when the chain still has scheduled process tasks', () => {
+    const { horizon } = makeHorizon();
+    const landscape = buildLandscape(horizon);
+
+    const cnc = makeResource('CNC-01', 'CNC-01', horizon);
+    landscape.resources.addEntity(cnc);
+
+    const setup = makeTypedTask('SETUP', 'WO-001 Setup', 'SETUP-WO001', ONE_HOUR, horizon);
+    setup.linkId = new CTPLinkId('WO-001', 'SETUP', '');
+    addPreference(setup, 'CNC-01');
+    landscape.tasks.addEntity(setup);
+
+    const procA = makeTypedTask('PROCESS', 'WO-001 Proc A', 'PROC-A', 2 * ONE_HOUR, horizon);
+    procA.linkId = new CTPLinkId('WO-001', 'PROCESS', 'SETUP-WO001');
+    addPreference(procA, 'CNC-01');
+    landscape.tasks.addEntity(procA);
+
+    const procB = makeTypedTask('PROCESS', 'WO-001 Proc B', 'PROC-B', 2 * ONE_HOUR, horizon);
+    procB.linkId = new CTPLinkId('WO-001', 'PROCESS', 'PROC-A');
+    addPreference(procB, 'CNC-01');
+    landscape.tasks.addEntity(procB);
+
+    const procC = makeTypedTask('PROCESS', 'WO-001 Proc C', 'PROC-C', 2 * ONE_HOUR, horizon);
+    procC.linkId = new CTPLinkId('WO-001', 'PROCESS', 'PROC-B');
+    addPreference(procC, 'CNC-01');
+    landscape.tasks.addEntity(procC);
+
+    const teardown = makeTypedTask('TEARDOWN', 'WO-001 Teardown', 'TEAR-WO001', ONE_HOUR, horizon);
+    teardown.linkId = new CTPLinkId('WO-001', 'TEARDOWN', 'PROC-C');
+    addPreference(teardown, 'CNC-01');
+    landscape.tasks.addEntity(teardown);
+
+    const scheduler = makeScheduler(landscape);
+    scheduleList(scheduler, [setup, procA, procB, procC, teardown]);
+
+    // Unschedule only procA — chain still has procB and procC scheduled
+    unscheduleList(scheduler, [procA]);
+
+    expect(procA.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    expect(procB.state).toBe(CTPTaskStateConstants.SCHEDULED);
+    expect(procC.state).toBe(CTPTaskStateConstants.SCHEDULED);
+    expect(setup.state).toBe(CTPTaskStateConstants.SCHEDULED);
+    expect(teardown.state).toBe(CTPTaskStateConstants.SCHEDULED);
+  });
+
+  // ── Scenario 5: shared setup, unschedule all 3 in one call ───
+
+  it('removes shared setup/teardown when all processes in the chain are unscheduled in one call', () => {
+    const { horizon } = makeHorizon();
+    const landscape = buildLandscape(horizon);
+
+    const cnc = makeResource('CNC-01', 'CNC-01', horizon);
+    landscape.resources.addEntity(cnc);
+
+    const setup = makeTypedTask('SETUP', 'WO-001 Setup', 'SETUP-WO001', ONE_HOUR, horizon);
+    setup.linkId = new CTPLinkId('WO-001', 'SETUP', '');
+    addPreference(setup, 'CNC-01');
+    landscape.tasks.addEntity(setup);
+
+    const procA = makeTypedTask('PROCESS', 'WO-001 Proc A', 'PROC-A', 2 * ONE_HOUR, horizon);
+    procA.linkId = new CTPLinkId('WO-001', 'PROCESS', 'SETUP-WO001');
+    addPreference(procA, 'CNC-01');
+    landscape.tasks.addEntity(procA);
+
+    const procB = makeTypedTask('PROCESS', 'WO-001 Proc B', 'PROC-B', 2 * ONE_HOUR, horizon);
+    procB.linkId = new CTPLinkId('WO-001', 'PROCESS', 'PROC-A');
+    addPreference(procB, 'CNC-01');
+    landscape.tasks.addEntity(procB);
+
+    const procC = makeTypedTask('PROCESS', 'WO-001 Proc C', 'PROC-C', 2 * ONE_HOUR, horizon);
+    procC.linkId = new CTPLinkId('WO-001', 'PROCESS', 'PROC-B');
+    addPreference(procC, 'CNC-01');
+    landscape.tasks.addEntity(procC);
+
+    const teardown = makeTypedTask('TEARDOWN', 'WO-001 Teardown', 'TEAR-WO001', ONE_HOUR, horizon);
+    teardown.linkId = new CTPLinkId('WO-001', 'TEARDOWN', 'PROC-C');
+    addPreference(teardown, 'CNC-01');
+    landscape.tasks.addEntity(teardown);
+
+    const scheduler = makeScheduler(landscape);
+    scheduleList(scheduler, [setup, procA, procB, procC, teardown]);
+
+    // Unschedule all 3 processes in a single call — post-loop sweep fires once
+    unscheduleList(scheduler, [procA, procB, procC]);
+
+    expect(procA.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    expect(procB.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    expect(procC.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    expect(setup.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    expect(teardown.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+  });
+
+  // ── Scenario 6: shared setup, unschedule 2 of 3 ─────────────
+
+  it('leaves setup/teardown when one of three processes remains scheduled', () => {
+    const { horizon } = makeHorizon();
+    const landscape = buildLandscape(horizon);
+
+    const cnc = makeResource('CNC-01', 'CNC-01', horizon);
+    landscape.resources.addEntity(cnc);
+
+    const setup = makeTypedTask('SETUP', 'WO-001 Setup', 'SETUP-WO001', ONE_HOUR, horizon);
+    setup.linkId = new CTPLinkId('WO-001', 'SETUP', '');
+    addPreference(setup, 'CNC-01');
+    landscape.tasks.addEntity(setup);
+
+    const procA = makeTypedTask('PROCESS', 'WO-001 Proc A', 'PROC-A', 2 * ONE_HOUR, horizon);
+    procA.linkId = new CTPLinkId('WO-001', 'PROCESS', 'SETUP-WO001');
+    addPreference(procA, 'CNC-01');
+    landscape.tasks.addEntity(procA);
+
+    const procB = makeTypedTask('PROCESS', 'WO-001 Proc B', 'PROC-B', 2 * ONE_HOUR, horizon);
+    procB.linkId = new CTPLinkId('WO-001', 'PROCESS', 'PROC-A');
+    addPreference(procB, 'CNC-01');
+    landscape.tasks.addEntity(procB);
+
+    const procC = makeTypedTask('PROCESS', 'WO-001 Proc C', 'PROC-C', 2 * ONE_HOUR, horizon);
+    procC.linkId = new CTPLinkId('WO-001', 'PROCESS', 'PROC-B');
+    addPreference(procC, 'CNC-01');
+    landscape.tasks.addEntity(procC);
+
+    const teardown = makeTypedTask('TEARDOWN', 'WO-001 Teardown', 'TEAR-WO001', ONE_HOUR, horizon);
+    teardown.linkId = new CTPLinkId('WO-001', 'TEARDOWN', 'PROC-C');
+    addPreference(teardown, 'CNC-01');
+    landscape.tasks.addEntity(teardown);
+
+    const scheduler = makeScheduler(landscape);
+    scheduleList(scheduler, [setup, procA, procB, procC, teardown]);
+
+    // Unschedule A and B — procC still scheduled, so sweep leaves setup/teardown
+    unscheduleList(scheduler, [procA, procB]);
+
+    expect(procA.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    expect(procB.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    expect(procC.state).toBe(CTPTaskStateConstants.SCHEDULED);
+    expect(setup.state).toBe(CTPTaskStateConstants.SCHEDULED);
+    expect(teardown.state).toBe(CTPTaskStateConstants.SCHEDULED);
+  });
+
+  // ── Scenario 7: task with no linkId — not swept ──────────────
+
+  it('unschedules tasks with no linkId without triggering the sweep', () => {
+    const { horizon } = makeHorizon();
+    const landscape = buildLandscape(horizon);
+
+    const cnc = makeResource('CNC-01', 'CNC-01', horizon);
+    landscape.resources.addEntity(cnc);
+
+    const standalone = makeTask('Standalone', 'SA', 2 * ONE_HOUR, horizon);
+    // no linkId set
+    addPreference(standalone, 'CNC-01');
+    landscape.tasks.addEntity(standalone);
+
+    const scheduler = makeScheduler(landscape);
+    scheduleList(scheduler, [standalone]);
+
+    expect(standalone.state).toBe(CTPTaskStateConstants.SCHEDULED);
+
+    unscheduleList(scheduler, [standalone]);
+
+    expect(standalone.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+  });
+
+  // ── Scenario 8: pinned setup/teardown survives the sweep ─────
+
+  it('does not remove a pinned setup or teardown even when the chain has no scheduled process', () => {
+    const { horizon } = makeHorizon();
+    const landscape = buildLandscape(horizon);
+
+    const cnc = makeResource('CNC-01', 'CNC-01', horizon);
+    landscape.resources.addEntity(cnc);
+
+    const setup = makeTypedTask('SETUP', 'WO-001 Setup', 'SETUP-WO001', ONE_HOUR, horizon);
+    setup.linkId = new CTPLinkId('WO-001', 'SETUP', '');
+    addPreference(setup, 'CNC-01');
+    landscape.tasks.addEntity(setup);
+
+    const proc = makeTypedTask('PROCESS', 'WO-001 Process', 'PROC-WO001', 2 * ONE_HOUR, horizon);
+    proc.linkId = new CTPLinkId('WO-001', 'PROCESS', 'SETUP-WO001');
+    addPreference(proc, 'CNC-01');
+    landscape.tasks.addEntity(proc);
+
+    const teardown = makeTypedTask('TEARDOWN', 'WO-001 Teardown', 'TEAR-WO001', ONE_HOUR, horizon);
+    teardown.linkId = new CTPLinkId('WO-001', 'TEARDOWN', 'PROC-WO001');
+    addPreference(teardown, 'CNC-01');
+    landscape.tasks.addEntity(teardown);
+
+    const scheduler = makeScheduler(landscape);
+    scheduleList(scheduler, [setup, proc, teardown]);
+
+    // Pin the setup before unscheduling
+    setup.pinned = true;
+
+    unscheduleList(scheduler, [proc]);
+
+    // Process and teardown should be unscheduled
+    expect(proc.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    expect(teardown.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    // Pinned setup must survive
+    expect(setup.state).toBe(CTPTaskStateConstants.SCHEDULED);
+  });
+
+  // ── Scenario 9: landscape is consistent after sweep for re-solve ─
+
+  it('produces a consistent landscape after cascade so a subsequent solve succeeds', () => {
+    const { horizon } = makeHorizon();
+    const landscape = buildLandscape(horizon);
+
+    const cnc = makeResource('CNC-01', 'CNC-01', horizon);
+    landscape.resources.addEntity(cnc);
+
+    const setup = makeTypedTask('SETUP', 'WO-001 Setup', 'SETUP-WO001', ONE_HOUR, horizon);
+    setup.linkId = new CTPLinkId('WO-001', 'SETUP', '');
+    addPreference(setup, 'CNC-01');
+    landscape.tasks.addEntity(setup);
+
+    const proc = makeTypedTask('PROCESS', 'WO-001 Process', 'PROC-WO001', 2 * ONE_HOUR, horizon);
+    proc.linkId = new CTPLinkId('WO-001', 'PROCESS', 'SETUP-WO001');
+    addPreference(proc, 'CNC-01');
+    landscape.tasks.addEntity(proc);
+
+    const teardown = makeTypedTask('TEARDOWN', 'WO-001 Teardown', 'TEAR-WO001', ONE_HOUR, horizon);
+    teardown.linkId = new CTPLinkId('WO-001', 'TEARDOWN', 'PROC-WO001');
+    addPreference(teardown, 'CNC-01');
+    landscape.tasks.addEntity(teardown);
+
+    const scheduler = makeScheduler(landscape);
+    scheduleList(scheduler, [setup, proc, teardown]);
+
+    // Cascade unschedule
+    unscheduleList(scheduler, [proc]);
+
+    expect(proc.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    expect(setup.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    expect(teardown.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+
+    // Re-solve all three — should succeed without errors
+    scheduleList(scheduler, [setup, proc, teardown]);
+
+    expect(setup.state).toBe(CTPTaskStateConstants.SCHEDULED);
+    expect(proc.state).toBe(CTPTaskStateConstants.SCHEDULED);
+    expect(teardown.state).toBe(CTPTaskStateConstants.SCHEDULED);
   });
 });
