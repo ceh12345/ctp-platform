@@ -1,0 +1,49 @@
+{
+  "adapterType": "rest",
+  "source": "genius-api-mock",
+  "description": "Stafford test tenant — RestAdapter pointed at the local mock-genius server. Switch baseUrl to real Genius dev API to run against live data over VPN.",
+  "connection": {
+    "baseUrl": "http://localhost:8080/api/data/fetch",
+    "auth": { "type": "none" },
+    "timeout": 30000,
+    "retries": 3,
+    "retryDelay": 2000
+  },
+  "sync": {
+    "mode": "scheduled",
+    "intervalSeconds": 300,
+    "partialSyncAllowed": false,
+    "maxRecordErrorsBeforeAbort": 50
+  },
+  "endpoints": {
+    "salesOrders": {
+      "path": "/salesOrderDetailEntity",
+      "required": true,
+      "filter": "WoStatusCode!=\"CLOSED\"",
+      "pageSize": 100
+    },
+    "workOrders": {
+      "path": "/workOrderWithAdvancedInformationViewEntity",
+      "required": true,
+      "filter": "WoStatusCode!=\"CLOSED\"",
+      "pageSize": 100
+    },
+    "tasks": {
+      "path": "/productionTaskWithAdvancedInfoViewEntity",
+      "required": true,
+      "pageSize": 200
+    },
+    "resources": {
+      "path": "/machineAndRessourceEntity",
+      "required": true,
+      "filter": "Active=true",
+      "pageSize": 100
+    }
+  },
+  "responseEnvelope": {
+    "resultPath": "Result",
+    "pagingPath": "PagingInfos",
+    "totalPagesField": "TotalPagesFound",
+    "currentPageField": "CurrentPageIndex"
+  }
+}

@@ -1,0 +1,14 @@
+[
+  { "Id": 4001, "MachineCode": "CNC-LATHE-01",  "MachineName": "Okuma LB3000 CNC Lathe",       "MachineType": "CNCLathe",    "Active": true, "HourlyRate": 95,  "IsLabour": false },
+  { "Id": 4008, "MachineCode": "LASER-01",       "MachineName": "Trumpf TruLaser 3030",          "MachineType": "Laser",       "Active": true, "HourlyRate": 120, "IsLabour": false },
+  { "Id": 4009, "MachineCode": "SAW-01",         "MachineName": "Behringer Band Saw",            "MachineType": "Saw",         "Active": true, "HourlyRate": 25,  "IsLabour": false },
+  { "Id": 4010, "MachineCode": "WELD-BAY-01",    "MachineName": "Welding Bay 1 (TIG)",           "MachineType": "WeldBay",     "Active": true, "HourlyRate": 45,  "IsLabour": false },
+  { "Id": 4014, "MachineCode": "ROLL-01",        "MachineName": "Plate Roller",                  "MachineType": "Roller",      "Active": true, "HourlyRate": 40,  "IsLabour": false },
+  { "Id": 4015, "MachineCode": "POLISH-BAY-01",  "MachineName": "Polishing Bay 1",               "MachineType": "PolishBay",   "Active": true, "HourlyRate": 30,  "IsLabour": false },
+  { "Id": 4017, "MachineCode": "ASSEMBLY-01",    "MachineName": "Assembly Bay 1 (Large)",        "MachineType": "AssemblyBay", "Active": true, "HourlyRate": 50,  "IsLabour": false },
+  { "Id": 4019, "MachineCode": "TEST-BAY-01",    "MachineName": "Hydrostatic Test Bay",          "MachineType": "TestBay",     "Active": true, "HourlyRate": 60,  "IsLabour": false },
+  { "Id": 4020, "MachineCode": "PAINT-01",       "MachineName": "Paint / Coating Booth",         "MachineType": "PaintBooth",  "Active": true, "HourlyRate": 35,  "IsLabour": false },
+  { "Id": 4021, "MachineCode": "MACH-JAMES",     "MachineName": "James T. (Machining Foreman)",  "MachineType": "Machinist",   "Active": true, "HourlyRate": 75,  "IsLabour": true  },
+  { "Id": 4024, "MachineCode": "FAB-JACK",       "MachineName": "Jack P. (Fabrication Foreman)", "MachineType": "Welder",      "Active": true, "HourlyRate": 85,  "IsLabour": true  },
+  { "Id": 4027, "MachineCode": "ASSY-HAYDEN",    "MachineName": "Hayden S. (Assembly Foreman)",  "MachineType": "Fitter",      "Active": true, "HourlyRate": 70,  "IsLabour": true  }
+]

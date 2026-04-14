@@ -1,0 +1,113 @@
+{
+  "name": "Stafford Genius → CTP Mapping (Phase 2 starter)",
+  "version": "0.1.0",
+  "description": "Initial mapping to validate the end-to-end pipeline. Covers direct field renames and the minimum transforms needed for the engine to load. Duration calc, date/TZ handling, wipState derivation, commitment levels, and join logic land in subsequent iterations once the happy path is proven.",
+  "sourceTimezone": "Pacific/Auckland",
+  "targetTimezone": "UTC",
+
+  "entities": {
+    "resources": {
+      "source": "resources",
+      "keyField": "Code",
+      "fields": {
+        "key": { "from": "Code" },
+        "name": { "from": "Description1", "onError": "default", "default": "@key" },
+        "class": { "const": "REUSABLE" },
+        "type": {
+          "from": "MachineGroup",
+          "onError": "default",
+          "default": "MACHINE"
+        }
+      }
+    },
+
+    "orders": {
+      "source": "orders",
+      "keyField": "JobCode",
+      "join": {
+        "with": "workOrders",
+        "on": { "left": "JobCode", "right": "Job" },
+        "type": "left",
+        "_comment": "Sales orders carry delivery dates + customer; work orders carry planned qty + product. Join is required for a complete order record."
+      },
+      "fields": {
+        "key": { "from": "JobCode" },
+        "name": {
+          "concat": ["SalesOrderNo", " — ", "ProductDescription1"],
+          "onError": "default",
+          "default": "@key"
+        },
+        "productKey": { "from": "ProductCode", "onError": "skip" },
+        "quantity": { "from": "WoPlannedQuantity", "onError": "default", "default": 1 },
+        "dueDate": {
+          "from": "RequestedDeliveryDate",
+          "transform": "toUTC",
+          "onError": "strict"
+        },
+        "lateDueDate": {
+          "from": "LatestAcceptableDate",
+          "transform": "toUTC",
+          "onError": "default",
+          "default": "@dueDate"
+        },
+        "priority": {
+          "from": "Strategy",
+          "lookup": {
+            "JIT": 30,
+            "STANDARD": 50,
+            "ASAP": 10,
+            "_default": 50
+          }
+        }
+      }
+    },
+
+    "tasks": {
+      "source": "tasks",
+      "keyField": "Id",
+      "fields": {
+        "key": { "from": "Id" },
+        "orderKey": { "from": "JobCode", "onError": "strict" },
+        "workOrderKey": { "from": "WorkOrderCode" },
+        "resourceKey": { "from": "MachineCode", "onError": "strict" },
+        "operationCode": { "from": "OperationCode" },
+        "duration": {
+          "_comment": "TODO Phase 2 step 4: real calc is CycleTime × WoPlannedQuantity via UOM table (Formula like 'HR/UN'). For now, passthrough seconds assumed in fixture to prove the pipeline. Flip to uomDuration once mapping engine supports it.",
+          "from": "CycleTime",
+          "onError": "default",
+          "default": 3600
+        },
+        "wipState": {
+          "_comment": "TODO Phase 2 step 4: derive from IsCompleted + start/actual dates. For now everything non-completed → NOT_STARTED.",
+          "from": "IsCompleted",
+          "lookup": {
+            "true": "COMPLETED",
+            "false": "NOT_STARTED",
+            "_default": "NOT_STARTED"
+          }
+        },
+        "commitmentLevel": {
+          "from": "IsSchedulingLocked",
+          "lookup": {
+            "true": "PINNED",
+            "false": "FREE",
+            "_default": "FREE"
+          }
+        }
+      }
+    },
+
+    "calendars": {
+      "source": "calendars",
+      "_comment": "Genius doesn't expose calendars through the four endpoints the mock serves. For Phase 2 the mock returns an empty array and the engine falls back to appSettings default calendar. Real calendar sourcing is a later sprint.",
+      "keyField": "key",
+      "fields": {}
+    }
+  },
+
+  "validation": {
+    "requireOrphanResourceCheck": true,
+    "requireChainCycleCheck": true,
+    "requireLateAfterDueCheck": true
+  }
+}

@@ -9,7 +9,7 @@ _None_
 | Sprint | Name | Notes |
 |--------|------|-------|
 | Engine — UOM Conversion Table | Unit of measure conversion system + data model foundations | Two-tier: global (HR→s, LB→kg, DZ→EA) + product-specific (1 EA of Product X = 2.5 kg). COUNT→EA and TIME→seconds on ingest; weight/length/volume store in source units, convert at runtime. New `Core/uom.ts`, 9th data file `uom-conversions.json`, landscape integration. Stafford ETL needs this for duration calc (Genius HR/UN formula) and future BOM rollups. CC-ready prompt exists. |
-| Data Adapter Layer | Pluggable data source abstraction | `IDataAdapter` interface (FileAdapter, RestAdapter, CsvUploadAdapter); `MappingEngine` applies tenant mapping profile to raw data; `SyncService` orchestrates fetch→transform→hydrate; adapter.json + mapping.json per tenant; scheduled + on-demand sync; API endpoints (sync, test connection, mapping preview). Refactors current file loading as FileAdapter. Stafford Genius REST API is first live connector. CC-ready prompt exists. |
+| Data Adapter Layer — Phase 2 | REST adapter + Genius connector | `RestAdapter` with retry/timeout/auth; Genius response unwrapping (`{ "Result": [...] }`); Stafford `adapter.json` + `mapping.json`; field transforms (toUTC, concat, lookup, durationCalc, deriveWipState, deriveCommitment, hoursToSeconds); per-field error policies; test with live Genius API + mock-genius server. Depends on Mock Genius Server. |
 | Mock Genius Server | Test harness for the Data Adapter | Standalone Fastify HTTP server in `tools/mock-genius/` that mimics the 4 Genius API endpoints. Three modes: static fixtures (scenario directories), failure injection (500/timeout/malformed/auth/rate-limit via control endpoints), recording mode (proxy real Genius → capture to disk). 13 pre-built scenarios (stafford-clean, empty, bad-data-*, chain-cycle, large-dataset, paginated). Baked into a Docker image for CI (GitHub Actions sidecar). Adapter integration test suite runs against it. ~3-4h CC work (3 sessions). Depends on Data Adapter Layer. |
 | Engine — Setup/Teardown Cascade Unschedule Fix | Orphaned SETUP/TEARDOWN tasks after bulk unschedule | Engine-level chain-scoped sweep: if a chain has no remaining scheduled PROCESS tasks after unschedule, all its SETUP/TEARDOWN tasks are removed too. API response includes cascade counts. UI shows confirmation dialog + toast + filter chip to reveal affected tasks. Spec: `sprint-setup-teardown-unschedule-fix.md`. |
 | Data Integration — Phase 2 WIP Sync | Actuals + resource status | `POST /v1/state/wip-sync`, `PATCH /state/tasks/:key/wip`. Populates commitment stack fields from external systems. Depends on Data Adapter Layer. |
@@ -83,6 +83,8 @@ _None_
 | Optimization Session 2 — Tabu Search | `tabusearch.ts`: TabuList (reverse-move tabu, tenure pruning, backward-scan early exit); generateNeighborhood (Taillard N7: block_first/block_last/internal, frozen guard); evaluateMove (swap→changeover→cycle→critical path→reverse, graph fully restored); tabuSearch main loop (aspiration criterion, worsening moves, stagnation/time/iter stopping); 29 tests | 2026-04-04 |
 | Optimization Session 3 — Graph Translation | `graphtranslation.ts`: topologicalSort (Kahn's, head-pointer queue); findClosestStartTime (exact containment + closest edge); applyOptimizedGraph (unschedule→topo sort→reschedule at earliestStart, changeovers via scheduleStateChangeTask mirroring basescheduler setup/teardown); computeDiff (60s threshold, sorted by |delta|); 23 tests | 2026-04-04 |
 | Optimization Session 4 — Scheduler Integration | TabuSearchScheduler + ILSScheduler wired into full pipeline; `optimizationRan` field (muted no-improvement banner); `elapsedMs` in optimization result; `tier` in solve request body + result; stale closure fix (selectedTier deps); critical path label fix; Settings → Solver optimization grid; 28 integration tests + chain integrity; 846 total tests | 2026-04-04 |
+| Data Adapter Layer Phase 1 | IDataAdapter interface + FileAdapter + MappingEngine (identity) + SyncService + IntegrationModule; StateService `applyTransformed()` seam; ConfigService `getAdapterConfig()`/`getMappingProfile()`; zero behavioral change — 858 tests pass | 2026-04-10 |
+| Bulk Schedule/Unschedule + Chain Auto-Expansion | Unified `POST /ctp/tasks/schedule` + `/unschedule` endpoints; service-layer backward + forward chain walks for reporting scope; `canExpand()` predicate; single-task 404 fix; UI confirmation dialog + expansion-aware toast; `scheduleBulk`/`unscheduleBulk` + `sweepChainOrphanedStateChangeTasks` on engine | 2026-04-13 |
 | Optimization Session 5 — Batch Optimization API | `POST /v1/ctp/optimize` async job with ILS loop + event-loop yielding; `GET /:jobId` poll (progress per pass); `POST /:jobId/accept` (drift guard via landscapeHash, translate-on-demand); `POST /:jobId/reject`; bestGraph stored not landscape clone; Optimization DisjunctiveGraph promoted to primary engine export (replaces read-only version); critical path always returned in solve response at all detail levels; UI critical path badge ungated; 846 tests; Stafford: 71.25h → 59.50h (16.49% improvement, 21s) | 2026-04-05 |
 
 ### Phase 3 Session Fixes (Mar 6)
@@ -190,9 +192,8 @@ ENGINE SPRINTS (CURRENT + PLANNED)
    └──→ feeds into Bottleneck Display + AI explanation
 📋 Engine — UOM Conversion Table (CC-ready, Stafford ETL dependency)
    └──→ feeds into Data Adapter Layer (duration + BOM conversions in MappingEngine)
-📋 Data Adapter Layer (IDataAdapter + MappingEngine + SyncService; CC-ready prompt exists)
-   ├──→ FileAdapter (refactor of current flat-file loading — zero behavioral change)
-   ├──→ RestAdapter (generic config-driven REST client; Genius API first connector)
+✓ Data Adapter Layer Phase 1 (IDataAdapter + FileAdapter + MappingEngine identity + SyncService; zero behavioral change)
+📋 Data Adapter Layer Phase 2 (RestAdapter + Genius connector; CC-ready prompt exists)
    ├──→ CsvUploadAdapter (future — import wizard)
    ├──→ Data Integration Phase 2 (WIP sync — populates commitment stack fields)
    └──→ Mock Genius Server (tools/mock-genius/; Fastify; 3 modes; 13 scenarios; Docker + CI)
@@ -316,4 +317,4 @@ After each sprint:
 
 ---
 
-*Last updated: Apr 10, 2026 (Data Adapter Layer Phase 1 committed; Setup/Teardown Cascade Unschedule Fix sprint added to Up Next)*
+*Last updated: Apr 13, 2026 (Bulk Schedule/Unschedule + Chain Auto-Expansion committed; Data Adapter Layer Phase 1 moved to Done; Phase 2 in Up Next)*

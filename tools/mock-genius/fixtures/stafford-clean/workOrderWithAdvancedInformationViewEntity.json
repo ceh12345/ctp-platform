@@ -1,0 +1,17 @@
+[
+  { "Id": 2001, "Job": "PV-001", "WorkOrderCode": "PV-001-WO", "WoStatusCode": "RELEASED",   "WoPlannedQuantity": 1,  "Product": "PROD-PV", "PlannedStart": "2026-03-15T21:00:00+13:00", "PlannedEnd": "2026-03-21T01:00:00+13:00" },
+  { "Id": 2002, "Job": "PV-002", "WorkOrderCode": "PV-002-WO", "WoStatusCode": "OPEN",        "WoPlannedQuantity": 1,  "Product": "PROD-PV", "PlannedStart": "2026-03-18T08:00:00+13:00", "PlannedEnd": "2026-03-27T01:00:00+13:00" },
+  { "Id": 2003, "Job": "EQ-001", "WorkOrderCode": "EQ-001-WO", "WoStatusCode": "OPEN",        "WoPlannedQuantity": 1,  "Product": "PROD-EQ", "PlannedStart": "2026-03-18T08:00:00+13:00", "PlannedEnd": "2026-03-25T01:00:00+13:00" },
+  { "Id": 2004, "Job": "EQ-002", "WorkOrderCode": "EQ-002-WO", "WoStatusCode": "OPEN",        "WoPlannedQuantity": 1,  "Product": "PROD-EQ", "PlannedStart": "2026-03-18T08:00:00+13:00", "PlannedEnd": "2026-03-26T01:00:00+13:00" },
+  { "Id": 2005, "Job": "EQ-003", "WorkOrderCode": "EQ-003-WO", "WoStatusCode": "RELEASED",   "WoPlannedQuantity": 1,  "Product": "PROD-EQ", "PlannedStart": "2026-03-18T08:00:00+13:00", "PlannedEnd": "2026-03-24T23:00:00+13:00" },
+  { "Id": 2006, "Job": "MC-001", "WorkOrderCode": "MC-001-WO", "WoStatusCode": "OPEN",        "WoPlannedQuantity": 8,  "Product": "PROD-MC", "PlannedStart": "2026-03-18T08:00:00+13:00", "PlannedEnd": "2026-03-20T01:00:00+13:00" },
+  { "Id": 2007, "Job": "MC-002", "WorkOrderCode": "MC-002-WO", "WoStatusCode": "OPEN",        "WoPlannedQuantity": 12, "Product": "PROD-MC", "PlannedStart": "2026-03-18T08:00:00+13:00", "PlannedEnd": "2026-03-24T01:00:00+13:00" },
+  { "Id": 2008, "Job": "MC-003", "WorkOrderCode": "MC-003-WO", "WoStatusCode": "OPEN",        "WoPlannedQuantity": 6,  "Product": "PROD-MC", "PlannedStart": "2026-03-19T08:00:00+13:00", "PlannedEnd": "2026-03-26T01:00:00+13:00" },
+  { "Id": 2009, "Job": "MC-004", "WorkOrderCode": "MC-004-WO", "WoStatusCode": "OPEN",        "WoPlannedQuantity": 1,  "Product": "PROD-MC", "PlannedStart": "2026-03-19T08:00:00+13:00", "PlannedEnd": "2026-03-25T01:00:00+13:00" },
+  { "Id": 2010, "Job": "RP-001", "WorkOrderCode": "RP-001-WO", "WoStatusCode": "RELEASED",   "WoPlannedQuantity": 1,  "Product": "PROD-RP", "PlannedStart": "2026-03-18T08:00:00+13:00", "PlannedEnd": "2026-03-20T01:00:00+13:00" },
+  { "Id": 2011, "Job": "RP-002", "WorkOrderCode": "RP-002-WO", "WoStatusCode": "OPEN",        "WoPlannedQuantity": 1,  "Product": "PROD-RP", "PlannedStart": "2026-03-19T08:00:00+13:00", "PlannedEnd": "2026-03-23T01:00:00+13:00" },
+  { "Id": 2012, "Job": "CX-001", "WorkOrderCode": "CX-001-WO", "WoStatusCode": "OPEN",        "WoPlannedQuantity": 1,  "Product": "PROD-CX", "PlannedStart": "2026-03-19T08:00:00+13:00", "PlannedEnd": "2026-03-25T01:00:00+13:00" },
+  { "Id": 2013, "Job": "CX-002", "WorkOrderCode": "CX-002-WO", "WoStatusCode": "OPEN",        "WoPlannedQuantity": 1,  "Product": "PROD-CX", "PlannedStart": "2026-03-18T08:00:00+13:00", "PlannedEnd": "2026-03-21T01:00:00+13:00" },
+  { "Id": 2014, "Job": "EQ-004", "WorkOrderCode": "EQ-004-WO", "WoStatusCode": "OPEN",        "WoPlannedQuantity": 1,  "Product": "PROD-EQ", "PlannedStart": "2026-03-19T08:00:00+13:00", "PlannedEnd": "2026-03-24T23:00:00+13:00" },
+  { "Id": 2015, "Job": "MC-005", "WorkOrderCode": "MC-005-WO", "WoStatusCode": "OPEN",        "WoPlannedQuantity": 20, "Product": "PROD-MC", "PlannedStart": "2026-03-18T08:00:00+13:00", "PlannedEnd": "2026-03-24T01:00:00+13:00" }
+]
