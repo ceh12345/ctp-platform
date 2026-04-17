@@ -1,9 +1,10 @@
 # Sprint: Mock Genius Server — Test Harness for the Data Adapter
 
-**Status:** 📋 Ready  
-**Size:** ~3-4 hours CC work (Session 1: server skeleton + static fixtures, Session 2: failure injection + scenario library, Session 3: recording mode + CI integration)  
-**Depends on:** Data Adapter Layer sprint (needs the IDataAdapter interface and SyncService to test against)  
+**Status:** ✅ Phase 1 + Phase 2 complete — Phase 3 (recording mode + CI + Docker) deferred
+**Size:** ~3-4 hours CC work (Session 1: server skeleton + static fixtures, Session 2: failure injection + scenario library, Session 3: recording mode + CI integration)
+**Depends on:** Data Adapter Layer sprint (needs the IDataAdapter interface and SyncService to test against)
 **Triggered by:** Need to test the data adapter against controlled responses before deploying to Stafford. Real Genius API can't easily produce error conditions, isn't reachable from CI, and requires VPN access.
+**Shipped:** Phase 1 commit `c006e0d` + closure `47a45e7` (2026-04-13 / 2026-04-17). Phase 2 commit `7e0157d` (2026-04-17).
 
 ---
 

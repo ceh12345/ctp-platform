@@ -28,6 +28,7 @@ Documents in this folder are **frozen as of their close date**. If the underlyin
 
 ## Current contents
 
-| File | Phase | Closed |
+| File | Topic | Closed |
 |---|---|---|
 | `phase-2-mock-genius-failure-injection.md` | Mock-genius sprint Phase 2 | 2026-04-17 |
+| `mapping-engine-nz-to-utc.md` | MappingEngine toUTC — NZ→UTC date normalization | 2026-04-17 |
