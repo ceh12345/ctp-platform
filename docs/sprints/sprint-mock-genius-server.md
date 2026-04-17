@@ -375,14 +375,16 @@ This runs the full adapter test suite on every push, against the mock, in CI. No
 - [x] Add `empty` and `single-order` as the simplest test scenarios
 - [ ] ~~Build the Dockerfile and verify it runs locally~~ — **deferred until Phase 3 (CI integration)**. Mock runs locally via `npm run dev`; containerization not needed for solo iteration this week. Dockerfile lands when GitHub Actions workflow is added.
 
-### Phase 2: Failure injection + scenario library
+### Phase 2: Failure injection + scenario library — ✅ DONE (2026-04-17)
 
-- Implement the control endpoints (`/_mock/scenario`, `/_mock/inject-failure`, `/_mock/reset`, `/_mock/state`)
-- Implement all failure types (500, 503, 401, 429, timeout, slow, malformed, etc.)
-- Build out the bad-data scenarios
-- Build the chain-cycle and orphan-resource validation scenarios
-- Write the adapter integration tests against the mock
-- Verify all 16 error handling scenarios from the data adapter sprint pass
+- [x] Control endpoints: `/_mock/scenario`, `/_mock/inject-failure`, `/_mock/reset`, extended `/_mock/state` (scenario + pendingFailures + requestCount)
+- [x] All 11 failure types: 500, 503, 401, 429, timeout, slow, malformed-json, truncated, wrong-shape, empty-result, partial-records
+- [x] Query-string shortcuts: `?_mock_fail=500`, `?_mock_delay=5000`
+- [x] Pagination: query-param-aware (`pageIndex` + `limit`) with correct `PagingInfos`
+- [x] Bad-data scenarios: `bad-data-null-machine`, `bad-data-missing-priority`, `bad-data-unparseable-date`, `chain-cycle`, `orphan-resource`, `paginated`
+- [x] Mock self-tests: 22 (covers 13 of 15 spec items; #11 auth-required and #15 recording deferred to Phase 3)
+- [x] Adapter integration tests against live mock: 8 scenarios (`rest-adapter-mock.e2e.test.ts`)
+- [ ] ~~Verify all 16 error handling scenarios from data adapter sprint~~ — superseded by the RestAdapter error-paths sprint (commit `62a732d`) which added 11 stub-based tests + 3 isolation tests. Coverage is now a union: 14 adapter-layer tests via stubs + 8 end-to-end tests via live mock.
 
 ### Phase 3: Recording mode + CI integration
 
