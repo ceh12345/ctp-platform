@@ -36,19 +36,19 @@ function isoOffset(hours: number): string {
   return DateTime.now().plus({ hours }).toISO()!;
 }
 
-describe('Resource Downtime Management', () => {
+describe('Resource Downtime Management', async () => {
   let ctpService: CTPService;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     ({ ctpService } = createServices());
     // Solve first so landscape is populated with scheduled tasks
-    ctpService.solve();
+    await ctpService.solve();
   });
 
   // ── addResourceDowntime ──────────────────────────────────────────
 
-  describe('addResourceDowntime', () => {
-    it('creates a downtime with explicit start and end', () => {
+  describe('addResourceDowntime', async () => {
+    it('creates a downtime with explicit start and end', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       const startTime = isoOffset(1);
       const endTime = isoOffset(5);
@@ -65,7 +65,7 @@ describe('Resource Downtime Management', () => {
       expect(result.downtime.endTime).toBeTruthy();
     });
 
-    it('defaults startTime to now when omitted', () => {
+    it('defaults startTime to now when omitted', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       const before = Date.now();
       const result = ctpService.addResourceDowntime(resourceKey, {
@@ -78,7 +78,7 @@ describe('Resource Downtime Management', () => {
       expect(startMs).toBeLessThanOrEqual(after + 1000);
     });
 
-    it('marks downtime as indefinite when endTime omitted', () => {
+    it('marks downtime as indefinite when endTime omitted', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       const result = ctpService.addResourceDowntime(resourceKey, {
         startTime: isoOffset(1), reason: 'Unknown duration',
@@ -88,7 +88,7 @@ describe('Resource Downtime Management', () => {
       expect(result.downtime.endTime).toBeNull();
     });
 
-    it('returns affectedTasks with scheduled tasks on the resource during downtime', () => {
+    it('returns affectedTasks with scheduled tasks on the resource during downtime', async () => {
       // Solve first — tasks are scheduled
       const state = ctpService.getState();
       // Find a resource that has scheduled tasks
@@ -113,7 +113,7 @@ describe('Resource Downtime Management', () => {
       });
     });
 
-    it('returns affectedCount 0 for a downtime window with no scheduled tasks', () => {
+    it('returns affectedCount 0 for a downtime window with no scheduled tasks', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       // Far future window, unlikely to have tasks
       const result = ctpService.addResourceDowntime(resourceKey, {
@@ -125,13 +125,13 @@ describe('Resource Downtime Management', () => {
       expect(result.affectedCount).toBe(0);
     });
 
-    it('throws 404 for unknown resource', () => {
+    it('throws 404 for unknown resource', async () => {
       expect(() =>
         ctpService.addResourceDowntime('DOES-NOT-EXIST', { reason: 'test' })
       ).toThrow();
     });
 
-    it('multiple downtimes on same resource accumulate', () => {
+    it('multiple downtimes on same resource accumulate', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       ctpService.addResourceDowntime(resourceKey, { startTime: isoOffset(1), endTime: isoOffset(3), reason: 'First' });
       ctpService.addResourceDowntime(resourceKey, { startTime: isoOffset(5), endTime: isoOffset(7), reason: 'Second' });
@@ -143,8 +143,8 @@ describe('Resource Downtime Management', () => {
 
   // ── endResourceDowntime ──────────────────────────────────────────
 
-  describe('endResourceDowntime', () => {
-    it('trims an active downtime to the uptime', () => {
+  describe('endResourceDowntime', async () => {
+    it('trims an active downtime to the uptime', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       // Create a downtime that started in the past and ends in the future
       ctpService.addResourceDowntime(resourceKey, {
@@ -162,7 +162,7 @@ describe('Resource Downtime Management', () => {
       expect(result.freedCapacityHours).toBeGreaterThan(0);
     });
 
-    it('removes a future downtime that has not started yet', () => {
+    it('removes a future downtime that has not started yet', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       ctpService.addResourceDowntime(resourceKey, {
         startTime: isoOffset(5),
@@ -178,7 +178,7 @@ describe('Resource Downtime Management', () => {
       expect(result.freedCapacityHours).toBeGreaterThan(0);
     });
 
-    it('freedCapacityHours reflects trimmed duration, not horizon remainder', () => {
+    it('freedCapacityHours reflects trimmed duration, not horizon remainder', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       // 8-hour downtime starting in past
       ctpService.addResourceDowntime(resourceKey, {
@@ -194,7 +194,7 @@ describe('Resource Downtime Management', () => {
       expect(result.freedCapacityHours).toBeCloseTo(5, 0);
     });
 
-    it('defaults uptime to now when actualUpTime omitted', () => {
+    it('defaults uptime to now when actualUpTime omitted', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       ctpService.addResourceDowntime(resourceKey, {
         startTime: isoOffset(-2),
@@ -207,13 +207,13 @@ describe('Resource Downtime Management', () => {
       expect(result.trimmed || result.removed).toBe(true);
     });
 
-    it('throws 404 for unknown resource', () => {
+    it('throws 404 for unknown resource', async () => {
       expect(() =>
         ctpService.endResourceDowntime('DOES-NOT-EXIST', {})
       ).toThrow();
     });
 
-    it('returns trimmed=false and removed=false when no maintenance assignments exist', () => {
+    it('returns trimmed=false and removed=false when no maintenance assignments exist', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       const result = ctpService.endResourceDowntime(resourceKey, { actualUpTime: isoOffset(1) });
       expect(result.trimmed).toBe(false);
@@ -224,8 +224,8 @@ describe('Resource Downtime Management', () => {
 
   // ── getResourceDowntimes ─────────────────────────────────────────
 
-  describe('getResourceDowntimes', () => {
-    it('returns empty downtimes when none exist', () => {
+  describe('getResourceDowntimes', async () => {
+    it('returns empty downtimes when none exist', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       const result = ctpService.getResourceDowntimes(resourceKey);
 
@@ -234,7 +234,7 @@ describe('Resource Downtime Management', () => {
       expect(result.isCurrentlyDown).toBe(false);
     });
 
-    it('returns active downtime with status=active', () => {
+    it('returns active downtime with status=active', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       ctpService.addResourceDowntime(resourceKey, {
         startTime: isoOffset(-1),
@@ -249,7 +249,7 @@ describe('Resource Downtime Management', () => {
       expect(active.reason).toBe('Active now');
     });
 
-    it('returns upcoming downtime with status=upcoming', () => {
+    it('returns upcoming downtime with status=upcoming', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       ctpService.addResourceDowntime(resourceKey, {
         startTime: isoOffset(2),
@@ -264,7 +264,7 @@ describe('Resource Downtime Management', () => {
       expect(upcoming.reason).toBe('Scheduled maintenance');
     });
 
-    it('skips past downtimes', () => {
+    it('skips past downtimes', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       ctpService.addResourceDowntime(resourceKey, {
         startTime: isoOffset(-5),
@@ -276,7 +276,7 @@ describe('Resource Downtime Management', () => {
       expect(result.downtimes.length).toBe(0);
     });
 
-    it('sorts active before upcoming', () => {
+    it('sorts active before upcoming', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       ctpService.addResourceDowntime(resourceKey, { startTime: isoOffset(4), endTime: isoOffset(6), reason: 'Future' });
       ctpService.addResourceDowntime(resourceKey, { startTime: isoOffset(-1), endTime: isoOffset(2), reason: 'Active' });
@@ -286,7 +286,7 @@ describe('Resource Downtime Management', () => {
       expect(result.downtimes[1].status).toBe('upcoming');
     });
 
-    it('marks indefinite downtime correctly', () => {
+    it('marks indefinite downtime correctly', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       ctpService.addResourceDowntime(resourceKey, {
         startTime: isoOffset(-1),
@@ -300,7 +300,7 @@ describe('Resource Downtime Management', () => {
       expect(dt.endTime).toBeNull();
     });
 
-    it('throws 404 for unknown resource', () => {
+    it('throws 404 for unknown resource', async () => {
       expect(() =>
         ctpService.getResourceDowntimes('DOES-NOT-EXIST')
       ).toThrow();
@@ -309,14 +309,14 @@ describe('Resource Downtime Management', () => {
 
   // ── getAllResourceDowntimes ──────────────────────────────────────
 
-  describe('getAllResourceDowntimes', () => {
-    it('returns empty when no downtimes exist', () => {
+  describe('getAllResourceDowntimes', async () => {
+    it('returns empty when no downtimes exist', async () => {
       const result = ctpService.getAllResourceDowntimes();
       expect(result.downtimes).toEqual([]);
       expect(result.activeCount).toBe(0);
     });
 
-    it('aggregates downtimes across multiple resources', () => {
+    it('aggregates downtimes across multiple resources', async () => {
       const state = ctpService.getState();
       const r1 = state.resourceUtilization[0].resourceKey;
       const r2 = state.resourceUtilization[1]?.resourceKey;
@@ -330,7 +330,7 @@ describe('Resource Downtime Management', () => {
       expect(result.activeCount).toBeGreaterThanOrEqual(1);
     });
 
-    it('activeCount matches number of active entries', () => {
+    it('activeCount matches number of active entries', async () => {
       const state = ctpService.getState();
       const r1 = state.resourceUtilization[0].resourceKey;
       const r2 = state.resourceUtilization[1]?.resourceKey;
@@ -343,7 +343,7 @@ describe('Resource Downtime Management', () => {
       expect(result.activeCount).toBe(actualActive);
     });
 
-    it('sorts active entries before upcoming', () => {
+    it('sorts active entries before upcoming', async () => {
       const state = ctpService.getState();
       const r1 = state.resourceUtilization[0].resourceKey;
 
@@ -359,8 +359,8 @@ describe('Resource Downtime Management', () => {
 
   // ── extractResults: downtimes in solve response ──────────────────
 
-  describe('downtimes in solve response (extractResults)', () => {
-    it('resourceUtilization has downtimes array and isCurrentlyDown on each resource', () => {
+  describe('downtimes in solve response (extractResults)', async () => {
+    it('resourceUtilization has downtimes array and isCurrentlyDown on each resource', async () => {
       const state = ctpService.getState();
       state.resourceUtilization.forEach((r: any) => {
         expect(Array.isArray(r.downtimes)).toBe(true);
@@ -368,14 +368,14 @@ describe('Resource Downtime Management', () => {
       });
     });
 
-    it('isCurrentlyDown=false when no downtime exists', () => {
+    it('isCurrentlyDown=false when no downtime exists', async () => {
       const state = ctpService.getState();
       state.resourceUtilization.forEach((r: any) => {
         expect(r.isCurrentlyDown).toBe(false);
       });
     });
 
-    it('isCurrentlyDown=true after adding active downtime', () => {
+    it('isCurrentlyDown=true after adding active downtime', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       ctpService.addResourceDowntime(resourceKey, {
         startTime: isoOffset(-1),
@@ -389,7 +389,7 @@ describe('Resource Downtime Management', () => {
       expect(r.downtimes.length).toBeGreaterThan(0);
     });
 
-    it('downtime cleared from response after endResourceDowntime', () => {
+    it('downtime cleared from response after endResourceDowntime', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       ctpService.addResourceDowntime(resourceKey, {
         startTime: isoOffset(1),
@@ -407,10 +407,10 @@ describe('Resource Downtime Management', () => {
 
   // ── command sequencer integration ───────────────────────────────
 
-  describe('command sequencer (executeCommands)', () => {
-    it('resource_downtime command marks resource down', () => {
+  describe('command sequencer (executeCommands)', async () => {
+    it('resource_downtime command marks resource down', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
-      const result = ctpService.executeCommands({
+      const result = await ctpService.executeCommands({
         commands: [{
           type: 'resource_downtime',
           resourceKey,
@@ -426,7 +426,7 @@ describe('Resource Downtime Management', () => {
       expect(downtimes.downtimes.length).toBeGreaterThan(0);
     });
 
-    it('resource_uptime command brings resource back up', () => {
+    it('resource_uptime command brings resource back up', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
       ctpService.addResourceDowntime(resourceKey, {
         startTime: isoOffset(-1),
@@ -434,7 +434,7 @@ describe('Resource Downtime Management', () => {
         reason: 'Active',
       });
 
-      const result = ctpService.executeCommands({
+      const result = await ctpService.executeCommands({
         commands: [{ type: 'resource_uptime', resourceKey }],
         name: 'test uptime',
       });
@@ -444,9 +444,9 @@ describe('Resource Downtime Management', () => {
       expect(downtimes.isCurrentlyDown).toBe(false);
     });
 
-    it('rolls back on failure in the same batch', () => {
+    it('rolls back on failure in the same batch', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
-      const result = ctpService.executeCommands({
+      const result = await ctpService.executeCommands({
         commands: [
           { type: 'resource_downtime', resourceKey, startTime: isoOffset(1), windowEnd: isoOffset(3), strategy: 'Test' },
           { type: 'hold', taskKey: 'DOES-NOT-EXIST' },  // will throw → triggers rollback
@@ -461,10 +461,10 @@ describe('Resource Downtime Management', () => {
 
   // ── auto-hold running tasks ──────────────────────────────────────
 
-  describe('auto-hold running tasks on resource down', () => {
-    it('running task on downed resource gets put on hold', () => {
+  describe('auto-hold running tasks on resource down', async () => {
+    it('running task on downed resource gets put on hold', async () => {
       // Start a task first to get it to running state
-      ctpService.solve();
+      await ctpService.solve();
       const state = ctpService.getState();
       const scheduledTask = state.tasks.find((t: any) =>
         t.scheduledStart && t.assignedResources?.length > 0 && t.commitmentLevel === 'planned'

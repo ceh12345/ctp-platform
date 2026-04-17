@@ -24,7 +24,7 @@ function createServices() {
   return { ctpService, stateService, configService };
 }
 
-function solve(ctpService: CTPService): any {
+async function solve(ctpService: CTPService): Promise<any> {
   return ctpService.solve({ detailLevel: 'intermediate' } as any);
 }
 
@@ -36,48 +36,48 @@ function findTask(result: any, key: string): any | undefined {
 // Suite 1: Commitment Level Derivation
 // ═══════════════════════════════════════════════════════════════
 
-describe('Commitment Level Derivation', () => {
+describe('Commitment Level Derivation', async () => {
   let ctpService: CTPService;
   let result: any;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     ({ ctpService } = createServices());
-    result = solve(ctpService);
+    result = await solve(ctpService);
   });
 
-  it('should derive running for IN_PROCESS tasks (if test data has them)', () => {
+  it('should derive running for IN_PROCESS tasks (if test data has them)', async () => {
     const task = findTask(result, 'PV-001-ROLL');
     if (!task || !task.actualStart) return; // skip if no WIP test data
     expect(task.commitmentLevel).toBe('running');
   });
 
-  it('should derive dispatched for dispatched tasks (if test data has them)', () => {
+  it('should derive dispatched for dispatched tasks (if test data has them)', async () => {
     const task = findTask(result, 'PV-001-WELD-SEAM');
     if (!task || !task.dispatched) return;
     expect(task.commitmentLevel).toBe('dispatched');
   });
 
-  it('should keep completed tasks in results as pinned (if test data has them)', () => {
+  it('should keep completed tasks in results as pinned (if test data has them)', async () => {
     const task = findTask(result, 'PV-001-CUT');
     if (!task || !task.actualEnd) return;
     expect(task.pinned).toBe(true);
   });
 
-  it('should derive completed for completed WIP tasks', () => {
+  it('should derive completed for completed WIP tasks', async () => {
     const task = findTask(result, 'PV-001-CUT');
     if (!task || !task.actualEnd) return;
     expect(task.commitmentLevel).toBe('completed');
     expect(task.pinned).toBe(true);
   });
 
-  it('should derive unscheduled for infeasible non-pinned tasks', () => {
+  it('should derive unscheduled for infeasible non-pinned tasks', async () => {
     const infeasible = result.tasks.find((t: any) => !t.feasible && !t.pinned);
     if (infeasible) {
       expect(infeasible.commitmentLevel).toBe('unscheduled');
     }
   });
 
-  it('should have commitmentLevel on every task', () => {
+  it('should have commitmentLevel on every task', async () => {
     const validLevels = ['completed', 'running', 'on_hold', 'dispatched', 'pinned', 'planned', 'unscheduled'];
     for (const task of result.tasks) {
       expect(validLevels).toContain(task.commitmentLevel);
@@ -89,50 +89,50 @@ describe('Commitment Level Derivation', () => {
 // Suite 2: Actuals Placement and Resource Assignment
 // ═══════════════════════════════════════════════════════════════
 
-describe('Actuals Placement', () => {
+describe('Actuals Placement', async () => {
   let ctpService: CTPService;
   let result: any;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     ({ ctpService } = createServices());
-    result = solve(ctpService);
+    result = await solve(ctpService);
   });
 
-  it('should set scheduledResource from actualResources on running tasks', () => {
+  it('should set scheduledResource from actualResources on running tasks', async () => {
     const task = findTask(result, 'PV-001-ROLL');
     if (!task || !task.actualResources?.length) return;
     const assignedKeys = task.assignedResources?.map((r: any) => r.resourceKey) ?? [];
     task.actualResources.forEach((key: string) => expect(assignedKeys).toContain(key));
   });
 
-  it('should have assigned resources on dispatched tasks', () => {
+  it('should have assigned resources on dispatched tasks', async () => {
     const task = findTask(result, 'PV-001-WELD-SEAM');
     if (!task || !task.dispatched) return;
     expect(task.assignedResources?.length).toBeGreaterThan(0);
   });
 
-  it('should preserve actual start time on running tasks', () => {
+  it('should preserve actual start time on running tasks', async () => {
     const task = findTask(result, 'PV-001-ROLL');
     if (!task || !task.actualStart) return;
     expect(task.actualStart).toBeDefined();
     expect(typeof task.actualStart).toBe('string');
   });
 
-  it('should preserve actual start and end on completed tasks', () => {
+  it('should preserve actual start and end on completed tasks', async () => {
     const task = findTask(result, 'PV-001-CUT');
     if (!task || !task.actualEnd) return;
     expect(task.actualStart).toBeDefined();
     expect(task.actualEnd).toBeDefined();
   });
 
-  it('should use client-provided remainingDuration for running tasks', () => {
+  it('should use client-provided remainingDuration for running tasks', async () => {
     const task = findTask(result, 'PV-001-ROLL');
     if (!task || task.commitmentLevel !== 'running') return;
     expect(task.percentComplete).toBe(60);
     expect(task.remainingDuration).toBe(5400);
   });
 
-  it('should show percentComplete = 0 for tasks with no progress', () => {
+  it('should show percentComplete = 0 for tasks with no progress', async () => {
     const planned = result.tasks.find((t: any) =>
       t.commitmentLevel === 'planned' && !t.actualStart && !t.actualEnd
     );
@@ -146,16 +146,16 @@ describe('Actuals Placement', () => {
 // Suite 3: Capacity Blocking — Solver Cannot Double-Book
 // ═══════════════════════════════════════════════════════════════
 
-describe('Capacity Blocking', () => {
+describe('Capacity Blocking', async () => {
   let ctpService: CTPService;
   let result: any;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     ({ ctpService } = createServices());
-    result = solve(ctpService);
+    result = await solve(ctpService);
   });
 
-  it('should not schedule another task overlapping a running task on its resource', () => {
+  it('should not schedule another task overlapping a running task on its resource', async () => {
     const running = findTask(result, 'PV-001-ROLL');
     if (!running || !running.scheduledStart || !running.actualResources?.length) return;
 
@@ -178,11 +178,11 @@ describe('Capacity Blocking', () => {
     }
   });
 
-  it('should not move running task on re-solve', () => {
+  it('should not move running task on re-solve', async () => {
     const running1 = findTask(result, 'PV-001-ROLL');
     if (!running1 || !running1.actualStart) return;
 
-    const result2 = solve(ctpService);
+    const result2 = await solve(ctpService);
     const running2 = findTask(result2, 'PV-001-ROLL');
 
     expect(running2.actualStart).toBe(running1.actualStart);
@@ -190,11 +190,11 @@ describe('Capacity Blocking', () => {
     expect(running2.percentComplete).toBe(running1.percentComplete);
   });
 
-  it('should not move dispatched task on re-solve', () => {
+  it('should not move dispatched task on re-solve', async () => {
     const disp1 = findTask(result, 'PV-001-WELD-SEAM');
     if (!disp1 || !disp1.scheduledStart) return;
 
-    const result2 = solve(ctpService);
+    const result2 = await solve(ctpService);
     const disp2 = findTask(result2, 'PV-001-WELD-SEAM');
 
     if (disp1.scheduledStart && disp2.scheduledStart) {
@@ -203,7 +203,7 @@ describe('Capacity Blocking', () => {
     }
   });
 
-  it('should maintain feasibility above 80% with WIP tasks', () => {
+  it('should maintain feasibility above 80% with WIP tasks', async () => {
     expect(result.summary.feasibilityRate).toBeGreaterThanOrEqual(80);
   });
 });
@@ -212,16 +212,16 @@ describe('Capacity Blocking', () => {
 // Suite 4: Chain Propagation with Actuals
 // ═══════════════════════════════════════════════════════════════
 
-describe('Chain Propagation with Actuals', () => {
+describe('Chain Propagation with Actuals', async () => {
   let ctpService: CTPService;
   let result: any;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     ({ ctpService } = createServices());
-    result = solve(ctpService);
+    result = await solve(ctpService);
   });
 
-  it('should not break chain when predecessor is completed', () => {
+  it('should not break chain when predecessor is completed', async () => {
     const pv001Tasks = result.tasks.filter((t: any) => t.key.startsWith('PV-001'));
     expect(pv001Tasks.length).toBeGreaterThanOrEqual(3);
 
@@ -234,7 +234,7 @@ describe('Chain Propagation with Actuals', () => {
     }
   });
 
-  it('should schedule most downstream PV-001 tasks after running step', () => {
+  it('should schedule most downstream PV-001 tasks after running step', async () => {
     const running = findTask(result, 'PV-001-ROLL');
     if (!running || !running.scheduledEnd) return;
 
@@ -248,7 +248,7 @@ describe('Chain Propagation with Actuals', () => {
     }
   });
 
-  it('should allow successors of running task to schedule after remaining duration', () => {
+  it('should allow successors of running task to schedule after remaining duration', async () => {
     const running = findTask(result, 'PV-001-ROLL');
     if (!running || !running.scheduledEnd) return;
 
@@ -265,22 +265,22 @@ describe('Chain Propagation with Actuals', () => {
 // Suite 5: Capacity Waterfall
 // ═══════════════════════════════════════════════════════════════
 
-describe('Capacity Waterfall', () => {
+describe('Capacity Waterfall', async () => {
   let ctpService: CTPService;
   let result: any;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     ({ ctpService } = createServices());
-    result = solve(ctpService);
+    result = await solve(ctpService);
   });
 
-  it('should include capacityWaterfall in solve response', () => {
+  it('should include capacityWaterfall in solve response', async () => {
     expect(result.capacityWaterfall).toBeDefined();
     expect(Array.isArray(result.capacityWaterfall)).toBe(true);
     expect(result.capacityWaterfall.length).toBeGreaterThan(0);
   });
 
-  it('should have all 7 layers per resource', () => {
+  it('should have all 7 layers per resource', async () => {
     for (const resource of result.capacityWaterfall) {
       expect(resource.layers.length).toBe(7);
       const levels = resource.layers.map((l: any) => l.level);
@@ -288,7 +288,7 @@ describe('Capacity Waterfall', () => {
     }
   });
 
-  it('should show running hours on FAB-JACK if WIP data exists', () => {
+  it('should show running hours on FAB-JACK if WIP data exists', async () => {
     const jack = result.capacityWaterfall.find((r: any) => r.resourceKey === 'FAB-JACK');
     if (!jack) return;
     const runningLayer = jack.layers.find((l: any) => l.level === 'running');
@@ -296,7 +296,7 @@ describe('Capacity Waterfall', () => {
     expect(runningLayer).toBeDefined();
   });
 
-  it('should have cumulative sums that increase monotonically', () => {
+  it('should have cumulative sums that increase monotonically', async () => {
     for (const resource of result.capacityWaterfall) {
       let prev = 0;
       for (const layer of resource.layers) {
@@ -306,7 +306,7 @@ describe('Capacity Waterfall', () => {
     }
   });
 
-  it('should calculate remainingCapacity = total - cumulative', () => {
+  it('should calculate remainingCapacity = total - cumulative', async () => {
     for (const resource of result.capacityWaterfall) {
       const lastLayer = resource.layers[resource.layers.length - 1];
       const expected = Math.round((resource.totalAvailableHours - lastLayer.cumulative) * 10) / 10;
@@ -314,7 +314,7 @@ describe('Capacity Waterfall', () => {
     }
   });
 
-  it('should report deadCapacityHours as 0 when no tasks are on hold', () => {
+  it('should report deadCapacityHours as 0 when no tasks are on hold', async () => {
     for (const resource of result.capacityWaterfall) {
       expect(resource.deadCapacityHours).toBe(0);
     }
@@ -326,12 +326,12 @@ describe('Capacity Waterfall', () => {
 // Uses a dedicated task (EQ-001-CUT) and cleans up by completing it
 // ═══════════════════════════════════════════════════════════════
 
-describe('State Transition Endpoints', () => {
+describe('State Transition Endpoints', async () => {
   let ctpService: CTPService;
   // Use PV-002-CUT — a real Stafford task, not involved in existing WIP test data
   const testTask = 'PV-002-CUT';
 
-  beforeAll(() => {
+  beforeAll(async () => {
     ({ ctpService } = createServices());
     solve(ctpService); // initial solve to schedule tasks
   });
@@ -339,13 +339,13 @@ describe('State Transition Endpoints', () => {
   // Tests run sequentially — each builds on the previous state transition
   // No re-solve between transitions (solve reloads from config, wiping in-memory state)
 
-  it('should dispatch a scheduled task', () => {
+  it('should dispatch a scheduled task', async () => {
     const res = ctpService.dispatchTasks([testTask]);
     expect(res.status).toBe('ok');
     expect(res.results[0].result).toBe('ok');
   });
 
-  it('should reject dispatch on unscheduled task', () => {
+  it('should reject dispatch on unscheduled task', async () => {
     // Use the initial solve result to find an infeasible task
     const landscape = (ctpService as any).stateService.getLandscape();
     let infeasibleKey: string | null = null;
@@ -357,43 +357,43 @@ describe('State Transition Endpoints', () => {
     expect(res.results[0].result).toBe('skipped');
   });
 
-  it('should start a dispatched task', () => {
+  it('should start a dispatched task', async () => {
     const res = ctpService.startTask(testTask, undefined, ['SAW-01']);
     expect(res.status).toBe('ok');
     expect(res.commitmentLevel).toBe('running');
     expect(res.actualStart).toBeDefined();
   });
 
-  it('should hold a running task', () => {
+  it('should hold a running task', async () => {
     const res = ctpService.holdTask(testTask, 'Quality inspection required');
     expect(res.status).toBe('ok');
     expect(res.commitmentLevel).toBe('on_hold');
   });
 
-  it('should resume a held task', () => {
+  it('should resume a held task', async () => {
     const res = ctpService.resumeTask(testTask);
     expect(res.status).toBe('ok');
     expect(res.commitmentLevel).toBe('running');
   });
 
-  it('should update progress on a running task', () => {
+  it('should update progress on a running task', async () => {
     const res = ctpService.updateProgress(testTask, { percentComplete: 75, remainingDuration: 1800 });
     expect(res.status).toBe('ok');
     expect(res.percentComplete).toBe(75);
     expect(res.remainingDuration).toBe(1800);
   });
 
-  it('should complete a task', () => {
+  it('should complete a task', async () => {
     const res = ctpService.completeTask(testTask);
     expect(res.status).toBe('ok');
     expect(res.actualEnd).toBeDefined();
   });
 
-  it('should reflect completed state in next solve', () => {
+  it('should reflect completed state in next solve', async () => {
     // This solve reloads from config, but PV-002-CUT isn't in WIP test data
     // So it resets to normal. This test verifies the API calls work, not persistence.
     // For persistence, the task would need WIP data in the config file.
-    const result = solve(ctpService);
+    const result = await solve(ctpService);
     expect(result.summary.scheduledTasks).toBeGreaterThan(0);
   });
 });

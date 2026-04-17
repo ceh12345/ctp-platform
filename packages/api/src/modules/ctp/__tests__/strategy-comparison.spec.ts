@@ -51,14 +51,14 @@ interface StrategyResult {
   worstGapMinutes: number;
 }
 
-function solveWithStrategy(
+async function solveWithStrategy(
   tenantId: string,
   strategy: INeighborhoodStrategy
-): StrategyResult {
+): Promise<StrategyResult> {
   const { stateService, configService } = createServices(tenantId);
 
   // Load fresh landscape
-  stateService.syncFromConfig();
+  await stateService.syncFromAdapter();
   const landscape = stateService.getLandscape()!;
 
   // Build scoring
@@ -148,7 +148,7 @@ function solveWithStrategy(
 // STRATEGY COMPARISON — HEALTHCARE
 // ═══════════════════════════════════════════════════════════════════
 
-describe('Strategy Comparison — Healthcare', () => {
+describe('Strategy Comparison — Healthcare', async () => {
   const strategies: INeighborhoodStrategy[] = [
     new GreedyNeighborhood(),
     new ChainNeighborhood(),
@@ -159,9 +159,9 @@ describe('Strategy Comparison — Healthcare', () => {
 
   const results: StrategyResult[] = [];
 
-  it('runs all 5 strategies against healthcare', () => {
+  it('runs all 5 strategies against healthcare', async () => {
     for (const strategy of strategies) {
-      const result = solveWithStrategy('acme-outpatient', strategy);
+      const result = await solveWithStrategy('acme-outpatient', strategy);
       results.push(result);
     }
 
@@ -188,13 +188,13 @@ describe('Strategy Comparison — Healthcare', () => {
     }
   });
 
-  it('Chain strategy produces zero chain violations', () => {
+  it('Chain strategy produces zero chain violations', async () => {
     const chain = results.find(r => r.name === 'Chain');
     expect(chain).toBeDefined();
     expect(chain!.chainViolations).toBe(0);
   });
 
-  it('Chain strategy schedules at least 28 tasks', () => {
+  it('Chain strategy schedules at least 28 tasks', async () => {
     const chain = results.find(r => r.name === 'Chain');
     expect(chain).toBeDefined();
     expect(chain!.scheduled).toBeGreaterThanOrEqual(28);
@@ -205,7 +205,7 @@ describe('Strategy Comparison — Healthcare', () => {
 // STRATEGY COMPARISON — MANUFACTURING
 // ═══════════════════════════════════════════════════════════════════
 
-describe('Strategy Comparison — Manufacturing', () => {
+describe('Strategy Comparison — Manufacturing', async () => {
   const strategies: INeighborhoodStrategy[] = [
     new GreedyNeighborhood(),
     new ChainNeighborhood(),
@@ -216,9 +216,9 @@ describe('Strategy Comparison — Manufacturing', () => {
 
   const results: StrategyResult[] = [];
 
-  it('runs all 5 strategies against manufacturing', () => {
+  it('runs all 5 strategies against manufacturing', async () => {
     for (const strategy of strategies) {
-      const result = solveWithStrategy('demo-manufacturing', strategy);
+      const result = await solveWithStrategy('demo-manufacturing', strategy);
       results.push(result);
     }
 
@@ -245,7 +245,7 @@ describe('Strategy Comparison — Manufacturing', () => {
     }
   });
 
-  it('Chain-compatible strategies schedule most manufacturing tasks', () => {
+  it('Chain-compatible strategies schedule most manufacturing tasks', async () => {
     const chain = results.find(r => r.name === 'Chain');
     expect(chain).toBeDefined();
     // 25/29 with commitment data (completed + running + dispatched + pinned anchored)

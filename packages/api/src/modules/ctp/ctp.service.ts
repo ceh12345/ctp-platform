@@ -154,12 +154,12 @@ export class CTPService {
   // Endpoint 1: Solve with Overrides
   // ═══════════════════════════════════════
 
-  solve(request?: SolveRequestDto): CTPSolveResult {
+  async solve(request?: SolveRequestDto): Promise<CTPSolveResult> {
     const startTime = Date.now();
 
-    // Only reload from config if NOT preserving landscape state
+    // Only reload from adapter if NOT preserving landscape state
     if (!request?.preserveLandscape) {
-      this.stateService.syncFromConfig();
+      await this.stateService.syncFromAdapter();
     }
 
     const landscape = this.ensureLandscape();
@@ -1227,11 +1227,7 @@ export class CTPService {
   private ensureLandscape(): SchedulingLandscape {
     const landscape = this.stateService.getLandscape();
     if (!landscape) {
-      // Auto-sync if not loaded
-      this.stateService.syncFromConfig();
-      const ls = this.stateService.getLandscape();
-      if (!ls) throw new HttpException({ error: { code: ErrorCodes.STATE_NOT_LOADED, message: 'State not loaded.', category: 'config' } }, HttpStatus.BAD_REQUEST);
-      return ls;
+      throw new HttpException({ error: { code: ErrorCodes.STATE_NOT_LOADED, message: 'State not loaded. POST /v1/state/sync to initialize.', category: 'config' } }, HttpStatus.BAD_REQUEST);
     }
     return landscape;
   }
@@ -2078,7 +2074,7 @@ export class CTPService {
   // Endpoint 17: Apply Recommendation
   // ═══════════════════════════════════════
 
-  applyRecommendation(request: ApplyRecommendationRequestDto): ApplyRecommendationResponse {
+  async applyRecommendation(request: ApplyRecommendationRequestDto): Promise<ApplyRecommendationResponse> {
     const landscape = this.ensureLandscape();
 
     // 1. Staleness check
@@ -2152,7 +2148,7 @@ export class CTPService {
             };
             if (cmd.scope === 'targeted') solveRequest.protectOthers = true;
             if (cmd.expandChains !== false) solveRequest.expandChains = true;
-            this.solve(solveRequest);
+            await this.solve(solveRequest);
             actionsApplied.push({ type: cmd.type, result: 'ok', detail: `scope=${cmd.scope || 'full'}` });
             break;
           }
@@ -2222,7 +2218,7 @@ export class CTPService {
   // Endpoint 18: Execute Command Sequence
   // ═══════════════════════════════════════
 
-  executeCommands(request: ExecuteCommandsRequestDto): ApplyRecommendationResponse {
+  async executeCommands(request: ExecuteCommandsRequestDto): Promise<ApplyRecommendationResponse> {
     this.ensureLandscape();
 
     // Reuse the apply sequencer — auto-populate landscapeHash to skip staleness check

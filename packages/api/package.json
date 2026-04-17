@@ -9,7 +9,8 @@
     "start:dev": "nest start --watch",
     "prebuild": "node ../../scripts/generate-version.js",
     "build": "nest build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:integration": "vitest run src/modules/integration/__tests__/sync-adapter.e2e.ts"
   },
   "dependencies": {
     "@ctp/engine": "1.0.0",

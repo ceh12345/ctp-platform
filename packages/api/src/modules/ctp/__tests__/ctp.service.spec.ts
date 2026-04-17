@@ -33,7 +33,7 @@ function createServices() {
   return { ctpService, stateService, configService };
 }
 
-describe('CTPService', () => {
+describe('CTPService', async () => {
   let ctpService: CTPService;
 
   beforeEach(() => {
@@ -43,8 +43,8 @@ describe('CTPService', () => {
 
   // ── Solve all tasks ──────────────────────────────────────────────
 
-  it('solve all tasks (no filter)', () => {
-    const result = ctpService.solve();
+  it('solve all tasks (no filter)', async () => {
+    const result = await ctpService.solve();
     expect(result.status).toBe('ok');
     // 25 data tasks submitted; scheduler may add state-change tasks to landscape
     expect(result.summary.includedTasks).toBe(28);
@@ -55,8 +55,8 @@ describe('CTPService', () => {
 
   // ── Solve specific tasks by key ──────────────────────────────────
 
-  it('solve specific tasks by key', () => {
-    const result = ctpService.solve({ taskKeys: ['T-1002-B-MACHINE', 'T-1001-ASSEMBLE'] });
+  it('solve specific tasks by key', async () => {
+    const result = await ctpService.solve({ taskKeys: ['T-1002-B-MACHINE', 'T-1001-ASSEMBLE'] });
     // includedTasks counts all PROCESS tasks in landscape (summary-level)
     // The per-task `included` flag shows which were actually submitted
     expect(result.summary.includedTasks).toBe(28);
@@ -78,8 +78,8 @@ describe('CTPService', () => {
 
   // ── Solve filtered by attribute (equals) ─────────────────────────
 
-  it('solve filtered by attribute (equals)', () => {
-    const result = ctpService.solve({
+  it('solve filtered by attribute (equals)', async () => {
+    const result = await ctpService.solve({
       filter: {
         attribute: 'productType',
         value: 'Widget-A',
@@ -106,8 +106,8 @@ describe('CTPService', () => {
 
   // ── Solve filtered by attribute (in) ─────────────────────────────
 
-  it('solve filtered by attribute (in)', () => {
-    const result = ctpService.solve({
+  it('solve filtered by attribute (in)', async () => {
+    const result = await ctpService.solve({
       filter: {
         attribute: 'productType',
         value: ['Widget-A', 'Widget-B'],
@@ -133,8 +133,8 @@ describe('CTPService', () => {
 
   // ── Resource utilization populated ───────────────────────────────
 
-  it('resource utilization populated', () => {
-    const result = ctpService.solve();
+  it('resource utilization populated', async () => {
+    const result = await ctpService.solve();
     expect(result.resourceUtilization).toHaveLength(3);
     result.resourceUtilization.forEach((r) => {
       expect(r.totalAvailable).toBeGreaterThan(0);
@@ -145,8 +145,8 @@ describe('CTPService', () => {
 
   // ── Typed attributes preserved ───────────────────────────────────
 
-  it('typed attributes preserved in results', () => {
-    const result = ctpService.solve();
+  it('typed attributes preserved in results', async () => {
+    const result = await ctpService.solve();
     const task = result.tasks.find((t) => t.key === 'T-1002-B-MACHINE');
     expect(task).toBeDefined();
     expect(task!.typedAttributes.length).toBeGreaterThan(0);
@@ -159,9 +159,9 @@ describe('CTPService', () => {
 
   // ── Cached results ───────────────────────────────────────────────
 
-  it('cached results', () => {
+  it('cached results', async () => {
     expect(ctpService.getLastResult()).toBeNull();
-    ctpService.solve();
+    await ctpService.solve();
     const cached = ctpService.getLastResult();
     expect(cached).not.toBeNull();
     expect(cached!.status).toBe('ok');
@@ -169,8 +169,8 @@ describe('CTPService', () => {
 
   // ── Makespan positive when tasks scheduled ───────────────────────
 
-  it('makespan positive when tasks scheduled', () => {
-    const result = ctpService.solve();
+  it('makespan positive when tasks scheduled', async () => {
+    const result = await ctpService.solve();
     if (result.summary.scheduledTasks > 0) {
       expect(result.summary.makespan).toBeGreaterThan(0);
     }
@@ -178,8 +178,8 @@ describe('CTPService', () => {
 
   // ── Empty taskKeys returns empty solve ───────────────────────────
 
-  it('empty taskKeys returns empty solve', () => {
-    const result = ctpService.solve({ taskKeys: [] });
+  it('empty taskKeys returns empty solve', async () => {
+    const result = await ctpService.solve({ taskKeys: [] });
     // includedTasks counts all PROCESS tasks in landscape (summary-level)
     expect(result.summary.includedTasks).toBe(28);
     // Commitment stack pins running task as scheduled; completed excluded from feasibility count
@@ -191,8 +191,8 @@ describe('CTPService', () => {
 
   // ── New fields: orderRef, outputProductKey, process ──────────────
 
-  it('enriched task fields populated', () => {
-    const result = ctpService.solve();
+  it('enriched task fields populated', async () => {
+    const result = await ctpService.solve();
     const assembleTask = result.tasks.find((t) => t.key === 'T-1001-ASSEMBLE');
     expect(assembleTask).toBeDefined();
     expect(assembleTask!.orderRef).toBe('WO-1001');
@@ -205,8 +205,8 @@ describe('CTPService', () => {
 
   // ── Orders array populated ────────────────────────────────────────
 
-  it('orders array populated with fill rates', () => {
-    const result = ctpService.solve();
+  it('orders array populated with fill rates', async () => {
+    const result = await ctpService.solve();
     expect(result.orders).toBeDefined();
     expect(result.orders.length).toBe(8);
     result.orders.forEach((o: any) => {
@@ -219,8 +219,8 @@ describe('CTPService', () => {
 
   // ── Materials array populated ─────────────────────────────────────
 
-  it('materials array populated with consumption', () => {
-    const result = ctpService.solve();
+  it('materials array populated with consumption', async () => {
+    const result = await ctpService.solve();
     expect(result.materials).toBeDefined();
     expect(result.materials.length).toBe(6);
     result.materials.forEach((m: any) => {

@@ -45,16 +45,16 @@ interface Violation {
   gapMinutes: number; // negative = overlap
 }
 
-function solveManufacturing(strategy: INeighborhoodStrategy, opts?: { hasChains?: boolean }): {
+async function solveManufacturing(strategy: INeighborhoodStrategy, opts?: { hasChains?: boolean }): Promise<{
   result: CTPSolveResult;
   tasks: TaskSnapshot[];
   violations: Violation[];
-} {
+}> {
   const store = new FileConfigStore(CONFIG_ROOT, 'demo-manufacturing');
   const configService = new ConfigService(store);
   const hydrator = new StateHydratorService(configService);
   const stateService = new StateService(hydrator, configService, { sync: async () => ({}) } as any);
-  stateService.syncFromConfig();
+  await stateService.syncFromAdapter();
   const landscape = stateService.getLandscape()!;
 
   // Override hasChains if requested
@@ -142,11 +142,11 @@ function solveManufacturing(strategy: INeighborhoodStrategy, opts?: { hasChains?
   return { result: solveResult, tasks, violations };
 }
 
-describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (auto-detect chains)', () => {
-  const greedy = solveManufacturing(new GreedyNeighborhood());
-  const cff = solveManufacturing(new ChainFirstFitNeighborhood());
+describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (auto-detect chains)', async () => {
+  const greedy = await solveManufacturing(new GreedyNeighborhood());
+  const cff = await solveManufacturing(new ChainFirstFitNeighborhood());
 
-  it('prints solve order for Greedy', () => {
+  it('prints solve order for Greedy', async () => {
     console.log('\n=== GREEDY — Solve Order (manufacturing) ===');
     console.log('#  | Task Name                          | Chain    | Seq | Start     | End');
     console.log('---|--------------------------------------|----------|-----|-----------|----------');
@@ -159,7 +159,7 @@ describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (auto-detect chains)
     });
   });
 
-  it('prints solve order for ChainFirstFit', () => {
+  it('prints solve order for ChainFirstFit', async () => {
     console.log('\n=== CHAINFIRSTFIT — Solve Order (manufacturing) ===');
     console.log('#  | Task Name                          | Chain    | Seq | Start     | End');
     console.log('---|--------------------------------------|----------|-----|-----------|----------');
@@ -172,7 +172,7 @@ describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (auto-detect chains)
     });
   });
 
-  it('Greedy has zero violations (chains auto-detected)', () => {
+  it('Greedy has zero violations (chains auto-detected)', async () => {
     console.log('\n=== GREEDY VIOLATIONS ===');
     console.log('Task                              | Pred                              | Chain    | Task Start | Pred End  | Gap');
     console.log('----------------------------------|-----------------------------------|----------|------------|-----------|--------');
@@ -185,7 +185,7 @@ describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (auto-detect chains)
     expect(greedy.violations.length).toBe(0);
   });
 
-  it('ChainFirstFit has zero violations (chains auto-detected)', () => {
+  it('ChainFirstFit has zero violations (chains auto-detected)', async () => {
     console.log('\n=== CHAINFIRSTFIT VIOLATIONS ===');
     console.log('Task                              | Pred                              | Chain    | Task Start | Pred End  | Gap');
     console.log('----------------------------------|-----------------------------------|----------|------------|-----------|--------');
@@ -198,7 +198,7 @@ describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (auto-detect chains)
     expect(cff.violations.length).toBe(0);
   });
 
-  it('identifies violations unique to Greedy', () => {
+  it('identifies violations unique to Greedy', async () => {
     const cffViolationKeys = new Set(cff.violations.map(v => v.task));
     const greedyOnly = greedy.violations.filter(v => !cffViolationKeys.has(v.task));
 
@@ -215,7 +215,7 @@ describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (auto-detect chains)
 // MANUFACTURING WITH hasChains=true — ALL 5 STRATEGIES
 // ═══════════════════════════════════════════════════════════════════
 
-describe('Manufacturing with hasChains=true — all strategies', () => {
+describe('Manufacturing with hasChains=true — all strategies', async () => {
   const strategies: INeighborhoodStrategy[] = [
     new GreedyNeighborhood(),
     new ChainNeighborhood(),
@@ -236,9 +236,9 @@ describe('Manufacturing with hasChains=true — all strategies', () => {
 
   const rows: StrategyRow[] = [];
 
-  it('runs all 5 strategies with hasChains=true', () => {
+  it('runs all 5 strategies with hasChains=true', async () => {
     for (const strategy of strategies) {
-      const { result, violations } = solveManufacturing(strategy, { hasChains: true });
+      const { result, violations } = await solveManufacturing(strategy, { hasChains: true });
 
       let worstGap = 0;
       // recompute worst gap from the returned violations data isn't enough —
@@ -262,7 +262,7 @@ describe('Manufacturing with hasChains=true — all strategies', () => {
     // Re-do with full gap tracking
     rows.length = 0;
     for (const strategy of strategies) {
-      const s = solveManufacturing(strategy, { hasChains: true });
+      const s = await solveManufacturing(strategy, { hasChains: true });
 
       // Find worst positive gap across all predecessor pairs
       let worstGapSec = 0;
@@ -309,13 +309,13 @@ describe('Manufacturing with hasChains=true — all strategies', () => {
     }
   });
 
-  it('ChainFirstFit has zero violations with hasChains=true', () => {
+  it('ChainFirstFit has zero violations with hasChains=true', async () => {
     const cff = rows.find(r => r.name === 'ChainFirstFit');
     expect(cff).toBeDefined();
     expect(cff!.violations).toBe(0);
   });
 
-  it('Chain has zero violations with hasChains=true', () => {
+  it('Chain has zero violations with hasChains=true', async () => {
     const chain = rows.find(r => r.name === 'Chain');
     expect(chain).toBeDefined();
     expect(chain!.violations).toBe(0);

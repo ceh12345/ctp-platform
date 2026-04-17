@@ -31,17 +31,19 @@ import {
   ITaskData,
   ICalendarData,
   IStateChangeData,
+  IOrderData,
 } from '../../config/interfaces/config-store.interface';
+import { IRawDataPayload } from '../integration/adapter.interface';
 
 @Injectable()
 export class StateHydratorService {
   constructor(private readonly configService: ConfigService) {}
 
-  buildLandscape(): SchedulingLandscape {
+  buildLandscape(data?: IRawDataPayload): SchedulingLandscape {
     const horizonConfig = this.configService.getHorizon();
     const settingsConfig = this.configService.getSettings();
-    const resourceData = this.configService.getResources();
-    const taskData = this.configService.getTasks();
+    const resourceData = (data?.resources?.length ? data.resources : this.configService.getResources()) as IResourceData[];
+    const taskData     = (data?.tasks?.length     ? data.tasks     : this.configService.getTasks())     as ITaskData[];
     const calendarData = this.configService.getCalendars();
     const stateChangeData = this.configService.getStateChanges();
 
@@ -67,7 +69,8 @@ export class StateHydratorService {
     landscape.buildProcesses();
 
     // Load orders into landscape for due date hydration
-    this.hydrateOrders(landscape);
+    const orderOverride = data?.orders?.length ? data.orders as IOrderData[] : undefined;
+    this.hydrateOrders(landscape, orderOverride);
 
     // Resolve cadence profiles per task
     this.hydrateCadences(landscape);
@@ -131,8 +134,8 @@ export class StateHydratorService {
     });
   }
 
-  private hydrateOrders(landscape: SchedulingLandscape): void {
-    const orderData = this.configService.getOrders();
+  private hydrateOrders(landscape: SchedulingLandscape, orderOverride?: IOrderData[]): void {
+    const orderData = orderOverride ?? this.configService.getOrders();
     if (!orderData || orderData.length === 0) return;
 
     for (const item of orderData) {

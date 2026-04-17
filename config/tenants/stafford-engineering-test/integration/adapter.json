@@ -1,0 +1,24 @@
+{
+  "adapterType": "rest",
+  "source": "genius-api-mock",
+  "description": "Stafford test tenant — RestAdapter pointed at the local mock-genius server. Switch baseUrl to real Genius dev API when testing over VPN.",
+  "connection": {
+    "baseUrl": "http://localhost:8080/api/data/fetch",
+    "auth": { "type": "none" },
+    "timeout": 30000,
+    "retries": 3,
+    "retryDelay": 2000
+  },
+  "endpoints": {
+    "salesOrders": { "path": "/salesOrderDetailEntity",                    "pageSize": 100 },
+    "workOrders":  { "path": "/workOrderWithAdvancedInformationViewEntity", "pageSize": 100 },
+    "tasks":       { "path": "/productionTaskWithAdvancedInfoViewEntity",   "pageSize": 200 },
+    "resources":   { "path": "/machineAndRessourceEntity",                 "pageSize": 100 }
+  },
+  "responseEnvelope": {
+    "resultPath": "Result",
+    "pagingPath": "PagingInfos",
+    "totalPagesField": "TotalPagesFound",
+    "currentPageField": "CurrentPageIndex"
+  }
+}

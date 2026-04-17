@@ -8,10 +8,10 @@ export class StateController {
   constructor(private readonly stateService: StateService) {}
 
   @Post('sync')
-  @ApiOperation({ summary: 'Sync scheduling state from config files' })
+  @ApiOperation({ summary: 'Sync scheduling state (adapter-aware: REST tenants fetch from adapter, file tenants read config)' })
   @ApiResponse({ status: 201, description: 'State loaded successfully' })
   sync() {
-    return this.stateService.syncFromConfig();
+    return this.stateService.syncFromAdapter();
   }
 
   @Post('reload')

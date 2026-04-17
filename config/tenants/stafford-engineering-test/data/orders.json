@@ -1,0 +1,17 @@
+[
+  { "key": "PV-001", "name": "Fonterra - 2000L Mix Tank (ASME)", "productKey": "PROD-PV", "demandQty": 1, "dueDate": "2026-03-20T12:00:00Z", "lateDueDate": "2026-03-22T12:00:00Z", "priority": 30 },
+  { "key": "PV-002", "name": "F&P Healthcare - Sterilizer Chamber", "productKey": "PROD-PV", "demandQty": 1, "dueDate": "2026-03-26T12:00:00Z", "lateDueDate": "2026-03-28T06:00:00Z", "priority": 40 },
+  { "key": "EQ-001", "name": "Sealed Air - Conveyor Frame", "productKey": "PROD-EQ", "demandQty": 1, "dueDate": "2026-03-24T12:00:00Z", "lateDueDate": "2026-03-26T12:00:00Z", "priority": 50 },
+  { "key": "EQ-002", "name": "Esko Australia - Cooling Tower Platform", "productKey": "PROD-EQ", "demandQty": 1, "dueDate": "2026-03-25T12:00:00Z", "lateDueDate": "2026-03-27T12:00:00Z", "priority": 50 },
+  { "key": "EQ-003", "name": "Dairy Co-op - Milk Vat Frame", "productKey": "PROD-EQ", "demandQty": 1, "dueDate": "2026-03-24T10:00:00Z", "lateDueDate": "2026-03-24T10:00:00Z", "priority": 60 },
+  { "key": "MC-001", "name": "Tetra Pak - Rotary Valve Components", "productKey": "PROD-MC", "demandQty": 8, "dueDate": "2026-03-19T12:00:00Z", "lateDueDate": "2026-03-21T12:00:00Z", "priority": 40 },
+  { "key": "MC-002", "name": "Krones AG - Filler Head Assemblies", "productKey": "PROD-MC", "demandQty": 12, "dueDate": "2026-03-23T12:00:00Z", "lateDueDate": "2026-03-25T12:00:00Z", "priority": 50 },
+  { "key": "MC-003", "name": "Local - Bearing Housings", "productKey": "PROD-MC", "demandQty": 6, "dueDate": "2026-03-25T12:00:00Z", "lateDueDate": "2026-03-27T12:00:00Z", "priority": 60 },
+  { "key": "MC-004", "name": "Tilt Design - Lighting Bar Parts", "productKey": "PROD-MC", "demandQty": 1, "dueDate": "2026-03-24T12:00:00Z", "lateDueDate": "2026-03-26T12:00:00Z", "priority": 50 },
+  { "key": "RP-001", "name": "Fonterra Hautapu - Emergency Pump Shaft", "productKey": "PROD-RP", "demandQty": 1, "dueDate": "2026-03-19T12:00:00Z", "lateDueDate": "2026-03-20T12:00:00Z", "priority": 10 },
+  { "key": "RP-002", "name": "Local Winery - Destoner Blade", "productKey": "PROD-RP", "demandQty": 1, "dueDate": "2026-03-22T12:00:00Z", "lateDueDate": "2026-03-23T12:00:00Z", "priority": 50 },
+  { "key": "CX-001", "name": "US Pharma - Impeller for Mixing Head", "productKey": "PROD-CX", "demandQty": 1, "dueDate": "2026-03-24T12:00:00Z", "lateDueDate": "2026-03-26T12:00:00Z", "priority": 30 },
+  { "key": "CX-002", "name": "Collins Aerospace - Bracket Prototype", "productKey": "PROD-CX", "demandQty": 1, "dueDate": "2026-03-20T12:00:00Z", "lateDueDate": "2026-03-22T12:00:00Z", "priority": 20 },
+  { "key": "EQ-004", "name": "Stafford Aus - Clutch Bracket", "productKey": "PROD-EQ", "demandQty": 1, "dueDate": "2026-03-24T10:00:00Z", "lateDueDate": "2026-03-24T10:00:00Z", "priority": 50 },
+  { "key": "MC-005", "name": "Rimtec - Smooth Torque Clutch Parts", "productKey": "PROD-MC", "demandQty": 20, "dueDate": "2026-03-23T12:00:00Z", "lateDueDate": "2026-03-25T12:00:00Z", "priority": 40 }
+]

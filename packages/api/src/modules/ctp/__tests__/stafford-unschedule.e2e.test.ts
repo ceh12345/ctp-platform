@@ -50,11 +50,11 @@ function createServices() {
 }
 
 describe('Stafford Engineering — bulk unschedule cascade', () => {
-  it('leaves no scheduled SETUP or TEARDOWN tasks after unscheduling all non-pinned PROCESS tasks', () => {
+  it('leaves no scheduled SETUP or TEARDOWN tasks after unscheduling all non-pinned PROCESS tasks', async () => {
     const { ctpService, stateService } = createServices();
 
     // 1. Solve — schedules all tasks, anchors committed (running/dispatched) tasks with pinned=true
-    ctpService.solve();
+    await ctpService.solve();
 
     const landscape = stateService.getLandscape()!;
     expect(landscape).not.toBeNull();

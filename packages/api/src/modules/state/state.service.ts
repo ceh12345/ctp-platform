@@ -3,6 +3,7 @@ import { SchedulingLandscape } from '@ctp/engine';
 import { StateHydratorService } from './state-hydrator.service';
 import { ConfigService } from '../../config/config.service';
 import { SyncService } from '../integration/sync.service';
+import { IRawDataPayload } from '../integration/adapter.interface';
 
 @Injectable()
 export class StateService {
@@ -14,7 +15,7 @@ export class StateService {
     private readonly syncService: SyncService,
   ) {}
 
-  syncFromConfig() {
+  private syncFromConfig() {
     this.configService.reloadConfig();
     const tenantId = this.configService.getTenantId();
     const landscape = this.hydrator.buildLandscape();
@@ -23,18 +24,30 @@ export class StateService {
   }
 
   // Applies a pre-fetched and mapped payload onto the landscape.
-  // Called by SyncService consumers (Phase 2+) after async adapter.fetchRawData().
-  // In Phase 1 the payload is identity-mapped so the hydrator still reads from ConfigService.
-  applyTransformed(_payload: unknown) {
+  // When payload has data (REST adapter), hydrates from the payload arrays.
+  // When payload is empty (file adapter), falls back to configService reads.
+  applyTransformed(payload: IRawDataPayload) {
     const tenantId = this.configService.getTenantId();
-    const landscape = this.hydrator.buildLandscape();
+    const landscape = this.hydrator.buildLandscape(payload);
     this.landscapes.set(tenantId, landscape);
     return this.buildSummaryResponse(landscape);
   }
 
-  reloadAndSync() {
+  // Sync via the configured adapter (REST or file).
+  // REST tenants: fetch → map → hydrate from payload.
+  // File tenants with no adapter.json: falls back to syncFromConfig().
+  async syncFromAdapter() {
+    const adapterConfig = this.configService.getAdapterConfig();
+    if (!adapterConfig || adapterConfig.adapterType !== 'rest') {
+      return this.syncFromConfig();
+    }
+    const payload = await this.syncService.sync();
+    return this.applyTransformed(payload);
+  }
+
+  async reloadAndSync() {
     this.configService.reloadConfig();
-    return this.syncFromConfig();
+    return this.syncFromAdapter();
   }
 
   getLandscape(): SchedulingLandscape | null {

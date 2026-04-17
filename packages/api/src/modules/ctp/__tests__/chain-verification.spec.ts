@@ -27,7 +27,7 @@ function createServices(tenantId: string) {
 // HEALTHCARE VERIFICATION
 // ═══════════════════════════════════════════════════════════════════
 
-describe('Healthcare Chain Verification', () => {
+describe('Healthcare Chain Verification', async () => {
   const CASES = [
     { id: 'CASE-001', patient: 'Thompson', setup: 'C001-SETUP', proc: 'C001-PROC', rec: 'C001-REC' },
     { id: 'CASE-002', patient: 'Rivera',   setup: 'C002-SETUP', proc: 'C002-PROC', rec: 'C002-REC' },
@@ -44,18 +44,18 @@ describe('Healthcare Chain Verification', () => {
   let result: any;
 
   // Solve once upfront
-  function solveHealthcare() {
+  async function solveHealthcare() {
     const { ctpService } = createServices('acme-outpatient');
     return ctpService.solve();
   }
 
-  it('solves healthcare dataset without error', () => {
-    result = solveHealthcare();
+  it('solves healthcare dataset without error', async () => {
+    result = await solveHealthcare();
     expect(result.status).toBe('ok');
   });
 
-  it('schedules at least 28 tasks (CASE-005 Proc+Rec infeasible: DR-CHEN unavailable Mon)', () => {
-    if (!result) result = solveHealthcare();
+  it('schedules at least 28 tasks (CASE-005 Proc+Rec infeasible: DR-CHEN unavailable Mon)', async () => {
+    if (!result) result = await solveHealthcare();
     const scheduled = result.tasks.filter((t: any) => t.feasible);
     console.log(`\n=== SCHEDULED: ${scheduled.length} / ${result.tasks.length} tasks ===\n`);
 
@@ -69,8 +69,8 @@ describe('Healthcare Chain Verification', () => {
     expect(scheduled.length).toBeGreaterThanOrEqual(28);
   });
 
-  it('prints all 10 cases with Setup/Proc/Rec times', () => {
-    if (!result) result = solveHealthcare();
+  it('prints all 10 cases with Setup/Proc/Rec times', async () => {
+    if (!result) result = await solveHealthcare();
 
     console.log('\n=== ALL 10 CASES — Setup / Procedure / Recovery ===\n');
     console.log('Case       | Patient    | Setup Start          | Setup End            | Proc Start           | Proc End             | Rec Start            | Rec End');
@@ -94,8 +94,8 @@ describe('Healthcare Chain Verification', () => {
     }
   });
 
-  it('no Recovery scheduled before its Procedure (primary criterion)', () => {
-    if (!result) result = solveHealthcare();
+  it('no Recovery scheduled before its Procedure (primary criterion)', async () => {
+    if (!result) result = await solveHealthcare();
 
     const violations: string[] = [];
     for (const c of CASES) {
@@ -131,8 +131,8 @@ describe('Healthcare Chain Verification', () => {
     expect(violations).toEqual([]);
   });
 
-  it('gaps are reasonable (minutes, not hours/days)', () => {
-    if (!result) result = solveHealthcare();
+  it('gaps are reasonable (minutes, not hours/days)', async () => {
+    if (!result) result = await solveHealthcare();
 
     let worstGapSec = 0;
     let worstGapCase = '';
@@ -166,8 +166,8 @@ describe('Healthcare Chain Verification', () => {
     expect(worstGapSec).toBeGreaterThanOrEqual(0);
   });
 
-  it('solve order is chain-by-chain (setup before proc before rec)', () => {
-    if (!result) result = solveHealthcare();
+  it('solve order is chain-by-chain (setup before proc before rec)', async () => {
+    if (!result) result = await solveHealthcare();
 
     // Verify solve order: within each case, setup should be scheduled at or before proc, proc at or before rec
     // (already checked by the no-violation test, but this double-checks via timestamps)
@@ -195,10 +195,10 @@ describe('Healthcare Chain Verification', () => {
 
   // ── Window reset: solve twice, same results ──
 
-  it('window reset: solving twice produces identical results', () => {
+  it('window reset: solving twice produces identical results', async () => {
     const { ctpService } = createServices('acme-outpatient');
-    const result1 = ctpService.solve();
-    const result2 = ctpService.solve();
+    const result1 = await ctpService.solve();
+    const result2 = await ctpService.solve();
 
     const tasks1 = result1.tasks
       .filter((t: any) => t.feasible)
@@ -220,10 +220,10 @@ describe('Healthcare Chain Verification', () => {
 // MANUFACTURING REGRESSION
 // ═══════════════════════════════════════════════════════════════════
 
-describe('Manufacturing Regression', () => {
-  it('solves manufacturing dataset without error', () => {
+describe('Manufacturing Regression', async () => {
+  it('solves manufacturing dataset without error', async () => {
     const { ctpService } = createServices('demo-manufacturing');
-    const result = ctpService.solve();
+    const result = await ctpService.solve();
 
     console.log(`\n=== MANUFACTURING: status=${result.status} scheduled=${result.summary.scheduledTasks}/${result.summary.includedTasks} ===`);
 

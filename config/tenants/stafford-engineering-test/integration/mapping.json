@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "tenantId": "stafford-engineering-test",
+  "source": "genius-api-mock",
+
+  "orders": {
+    "mappings": {
+      "key":         { "from": "JobCode" },
+      "name":        { "from": "ItemDescription" },
+      "productKey":  { "from": "ItemCode" },
+      "demandQty":   { "from": "OrderQty" },
+      "dueDate":     { "from": "DeliveryDate" },
+      "lateDueDate": { "from": "LateDeliveryDate" },
+      "priority":    { "from": "Strategy", "lookup": { "RUSH": 10, "HIGH": 20, "NORMAL": 50, "LOW": 75, "_default": 50 } }
+    }
+  },
+
+  "resources": {
+    "mappings": {
+      "key":        { "from": "MachineCode" },
+      "name":       { "from": "MachineName" },
+      "type":       { "from": "MachineType" },
+      "class":      { "from": "IsLabour", "lookup": { "true": "LABOUR", "false": "REUSABLE", "_default": "REUSABLE" } },
+      "hourlyRate": { "from": "HourlyRate" }
+    }
+  },
+
+  "tasks": {
+    "key": { "from": ["JobCode", "OperationCode"], "sep": "-" },
+    "mappings": {
+      "name":            { "from": ["JobCode", "OperationCode"], "sep": " — " },
+      "type":            { "from": "TaskType" },
+      "durationSeconds": { "from": "CycleTime", "factor": 3600 },
+      "durationQty":     { "from": "WoPlannedQuantity" },
+      "durationType":    { "value": 0 },
+      "wipState":        { "from": "WipState" },
+      "actualStart":     { "from": "ActualStartDate" },
+      "windowStart":     { "from": "TaskStartDate" },
+      "windowEnd":       { "from": "TaskEndDate" }
+    },
+    "capacityResources": { "from": "MachineCode" },
+    "linkId": {
+      "chainKey":     "JobCode",
+      "orderKey":     "SequenceNumber",
+      "lagHoursField":"LagHours"
+    }
+  }
+}
