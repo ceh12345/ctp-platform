@@ -79,14 +79,14 @@ async function mockInject(body: Record<string, unknown>) {
 
 describe('RestAdapter against live mock-genius', () => {
   beforeEach(async () => {
-    if (!mockAvailable) return;
+    if (!mockAvailable) return;   // per-test ctx.skip() handles the skipped state
     await mockReset();
   });
 
   // ── #1 Happy path: stafford-clean ────────────────────────────────────────
 
-  it('#1 stafford-clean — adapter fetches all three entities successfully', async () => {
-    if (!mockAvailable) return;
+  it('#1 stafford-clean — adapter fetches all three entities successfully', async (ctx) => {
+    if (!mockAvailable) ctx.skip();
     await mockScenario('stafford-clean');
 
     const adapter = new RestAdapter(makeConfig());
@@ -99,8 +99,8 @@ describe('RestAdapter against live mock-genius', () => {
 
   // ── #2 Empty scenario ────────────────────────────────────────────────────
 
-  it('#2 empty scenario — adapter returns empty arrays for all entities', async () => {
-    if (!mockAvailable) return;
+  it('#2 empty scenario — adapter returns empty arrays for all entities', async (ctx) => {
+    if (!mockAvailable) ctx.skip();
     await mockScenario('empty');
 
     const adapter = new RestAdapter(makeConfig());
@@ -113,8 +113,8 @@ describe('RestAdapter against live mock-genius', () => {
 
   // ── #3 Transient 500 → retry → success ───────────────────────────────────
 
-  it('#3 transient 500 on tasks endpoint retries and succeeds', async () => {
-    if (!mockAvailable) return;
+  it('#3 transient 500 on tasks endpoint retries and succeeds', async (ctx) => {
+    if (!mockAvailable) ctx.skip();
     await mockScenario('stafford-clean');
     await mockInject({ endpoint: TASKS, failureType: '500', count: 1 });
 
@@ -126,8 +126,8 @@ describe('RestAdapter against live mock-genius', () => {
 
   // ── #4 401 fails fast (no wasted retry time) ─────────────────────────────
 
-  it('#4 HTTP 401 fails fast — no retry spam', async () => {
-    if (!mockAvailable) return;
+  it('#4 HTTP 401 fails fast — no retry spam', async (ctx) => {
+    if (!mockAvailable) ctx.skip();
     await mockScenario('stafford-clean');
     await mockInject({ endpoint: '*', failureType: '401', count: 10 });
 
@@ -144,8 +144,8 @@ describe('RestAdapter against live mock-genius', () => {
 
   // ── #5 Malformed JSON → "Invalid JSON" wrapping ──────────────────────────
 
-  it('#5 malformed JSON surfaces wrapped error with endpoint URL', async () => {
-    if (!mockAvailable) return;
+  it('#5 malformed JSON surfaces wrapped error with endpoint URL', async (ctx) => {
+    if (!mockAvailable) ctx.skip();
     await mockScenario('stafford-clean');
     await mockInject({ endpoint: TASKS, failureType: 'malformed-json', count: 5 });
 
@@ -164,8 +164,8 @@ describe('RestAdapter against live mock-genius', () => {
 
   // ── #6 Wrong shape (raw array) — tolerated via fallback ─────────────────
 
-  it('#6 wrong-shape (raw array) falls back through Array.isArray path', async () => {
-    if (!mockAvailable) return;
+  it('#6 wrong-shape (raw array) falls back through Array.isArray path', async (ctx) => {
+    if (!mockAvailable) ctx.skip();
     await mockScenario('stafford-clean');
     await mockInject({ endpoint: TASKS, failureType: 'wrong-shape', count: 1 });
 
@@ -180,8 +180,8 @@ describe('RestAdapter against live mock-genius', () => {
 
   // ── #7 Pagination — small pageSize forces multi-page loop ────────────────
 
-  it('#7 small pageSize causes adapter to loop through all pages', async () => {
-    if (!mockAvailable) return;
+  it('#7 small pageSize causes adapter to loop through all pages', async (ctx) => {
+    if (!mockAvailable) ctx.skip();
     await mockScenario('stafford-clean');
 
     // Force pageSize=2 — stafford-clean has >2 tasks, so adapter must loop
@@ -200,8 +200,8 @@ describe('RestAdapter against live mock-genius', () => {
 
   // ── #8 Partial records scenario — landscape sees only what the mock sends ─
 
-  it('#8 partial-records failure returns exactly N records — adapter faithfully reports truncated payload', async () => {
-    if (!mockAvailable) return;
+  it('#8 partial-records failure returns exactly N records — adapter faithfully reports truncated payload', async (ctx) => {
+    if (!mockAvailable) ctx.skip();
     await mockScenario('stafford-clean');
     await mockInject({ endpoint: TASKS, failureType: 'partial-records', records: 3, count: 1 });
 
