@@ -159,8 +159,11 @@ export class CommonStartTimesAgent
 
     resourceSlots.recompute = false;
 
-    // Process just a duration no resources
-    if (!resourceSlots.resources) {
+    // Pure-duration path: no capacity resources declared, so feasibility is
+    // determined by temporal constraints alone (window bounds + duration).
+    // Chain sequencing and calendar constraints are enforced upstream via st/et
+    // before this method is called — this branch does NOT bypass those constraints.
+    if (!resourceSlots.resources || resourceSlots.resources.length === 0) {
       if (et - duration.duration() < st)
         resourceSlots.addToErrors(this.INVALID_WINDOW);
       else {

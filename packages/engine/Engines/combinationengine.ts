@@ -55,7 +55,7 @@ export class CombinationEngine {
 
 export class ResourceCombinationEngine extends CombinationEngine {
   public resourcecombinations(
-    input: CTPResourcePreference[],
+    input: CTPResourcePreference[][],
     uniqueness: boolean = true,
   ): CTPResourcePreference[][] {
     let intermediate: CTPResourcePreference[][] = this.combinations(input);

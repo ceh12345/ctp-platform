@@ -242,13 +242,19 @@ export abstract class CTPBaseScheduler {
     tasks.forEach((task) => {
       const found = this.scheduleContexts.byTask.getEntity(task.hashKey);
       if (!found) {
-        let resourceArr: any[] = [];
-        task.capacityResources?.forEach((res) => {
-          if (res.isIgnored()) return;  // Skip ignored resources
-          const effective = res.getEffectivePreferences();
-          if (effective.length === 0) return;  // All preferences excluded
-          resourceArr.push(effective);
-        });
+        const cls = task.capacityResources?.classifyPreferences();
+        if (cls?.isAllFiltered) {
+          const errorSlot = new CTPResourceSlots();
+          errorSlot.addToErrors(
+            `Task ${task.key} declared ${cls.declaredCount} resource preference(s), all filtered out (${cls.ignoredCount} ignored, ${cls.unavailableCount} unavailable)`
+          );
+          const errorContext = new ScheduleContext(this.landscape, task, errorSlot);
+          errorContext.recompute = false; // prevent CommonStartTimesAgent.init() from clearing the errors
+          this.scheduleContexts.addEntity(errorContext);
+          this.contextsEvaluated++;
+          return;
+        }
+        const resourceArr = cls?.effectivePreferences ?? [];
         const resourecombos = comboEngine.resourcecombinations(resourceArr);
         if (resourecombos) {
           resourecombos.forEach((schedule) => {
@@ -858,7 +864,7 @@ export abstract class CTPBaseScheduler {
       // Running/On Hold: compute position from actualStart + remaining duration
       startW = task.actualStart
         ? CTPDateTime.fromDateTime(task.actualStart)
-        : (task.scheduled?.startW ?? task.window?.startW ?? 0);
+        : (task.scheduled?.startW ?? task.window?.startW ?? this.landscape.horizon.startW);
       endW = startW + task.effectiveRemainingDuration();
 
       // Set the scheduled interval

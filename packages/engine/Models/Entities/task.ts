@@ -1,7 +1,7 @@
 "strict";
 import { CTPDuration, CTPInterval } from "../Core/window";
 import { List } from "../Core/list";
-import { IResourcePreference } from "../Entities/resource";
+import { CTPResourcePreference, IResourcePreference } from "../Entities/resource";
 import { CTPKeyEntity, IKeyEntity } from "../Core/entity";
 import {
   CTPResourceModeConstants,
@@ -84,6 +84,15 @@ export class CTPTaskResource implements ITaskResource {
   }
 }
 
+export interface ResourceClassification {
+  declaredCount: number;                           // total capacityResources entries
+  ignoredCount: number;                            // entries with mode === IGNORED
+  unavailableCount: number;                        // entries whose effective preferences are empty
+  effectivePreferences: CTPResourcePreference[][]; // per-slot filtered preference lists
+  isPureDuration: boolean;                         // declaredCount === 0 — no resource slots
+  isAllFiltered: boolean;                          // declaredCount > 0 && all filtered out
+}
+
 export class CTPTaskResourceList extends List<CTPTaskResource> {
   public sortBySequence() {
     let i = 0;
@@ -93,6 +102,31 @@ export class CTPTaskResourceList extends List<CTPTaskResource> {
     });
   }
   public primaryResourceIndex: number | undefined = -1;
+
+  // Classify the capacityResources into pure-duration / all-filtered / normal.
+  // Single source of truth for the solver (basescheduler.explodeScheduleContexts)
+  // and where-to evaluator (ScheduleEvaluator.buildContexts).
+  public classifyPreferences(): ResourceClassification {
+    const effectivePreferences: CTPResourcePreference[][] = [];
+    let ignoredCount = 0;
+    let unavailableCount = 0;
+    this.forEach((res) => {
+      if (res.isIgnored()) { ignoredCount++; return; }
+      const effective = res.getEffectivePreferences();
+      if (effective.length === 0) { unavailableCount++; return; }
+      // preferences are stored as IResourcePreference but constructed as CTPResourcePreference
+      effectivePreferences.push(effective as CTPResourcePreference[]);
+    });
+    const declaredCount = this.length;
+    return {
+      declaredCount,
+      ignoredCount,
+      unavailableCount,
+      effectivePreferences,
+      isPureDuration: declaredCount === 0,
+      isAllFiltered: declaredCount > 0 && effectivePreferences.length === 0,
+    };
+  }
 }
 
 // Material input consumed by a task

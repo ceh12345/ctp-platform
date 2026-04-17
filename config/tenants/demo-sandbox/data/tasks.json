@@ -174,11 +174,29 @@
     ],
     "linkId": {
       "name": "WO-1001",
-      "type": "END",
+      "type": "PROCESS",
       "prevLink": "T-1001-ASSEMBLE"
     },
     "typedAttributes": [],
     "sequence": 4
+  },
+  {
+    "key": "T-1001-FILLER",
+    "name": "Cooling Dwell (WO-1001)",
+    "type": "PROCESS",
+    "process": "packaging",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-14T07:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "linkId": {
+      "name": "WO-1001",
+      "type": "PROCESS",
+      "prevLink": "T-1001-QC"
+    },
+    "typedAttributes": [],
+    "sequence": 5
   },
   {
     "key": "T-1002-B-MACHINE",
@@ -1019,10 +1037,10 @@
     "linkId": {
       "name": "WO-1001",
       "type": "END",
-      "prevLink": "T-1001-QC"
+      "prevLink": "T-1001-FILLER"
     },
     "typedAttributes": [],
-    "sequence": 5
+    "sequence": 6
   },
   {
     "key": "T-1005-PACK",

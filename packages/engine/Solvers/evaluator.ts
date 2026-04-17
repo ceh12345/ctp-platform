@@ -71,20 +71,14 @@ export class ScheduleEvaluator {
   ): ScheduleContext[] {
     const contexts: ScheduleContext[] = [];
 
-    if (!task.capacityResources) return contexts;
+    const cls = task.capacityResources?.classifyPreferences();
+    // All declared preferences filtered out — no feasible resource assignment.
+    // (Pure-duration tasks fall through: resourcecombinations([]) returns [[]],
+    // producing a single empty-slot context for the pure-duration path below.)
+    if (cls?.isAllFiltered) return contexts;
 
+    const resourceArr = cls?.effectivePreferences ?? [];
     const comboEngine = new ResourceCombinationEngine();
-    const resourceArr: any[] = [];
-
-    task.capacityResources.forEach((res) => {
-      if (res.isIgnored()) return;
-      const effective = res.getEffectivePreferences();
-      if (effective.length === 0) return;  // All preferences excluded
-      resourceArr.push(effective);
-    });
-
-    if (resourceArr.length === 0) return contexts;
-
     const combos = comboEngine.resourcecombinations(resourceArr);
     if (!combos) return contexts;
 

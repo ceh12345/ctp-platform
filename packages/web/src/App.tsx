@@ -3268,6 +3268,20 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
         </>
       )}
 
+      {/* Pure-duration indicator — shown when task declares no capacity resources at all */}
+      {(!task.assignedResources?.length) && (!task.compatibleResources?.length) && (
+        <>
+          <SectionLabel label={`Capacity ${t('resources', 'Resources')}`} />
+          <div style={{
+            padding: '8px 10px', marginBottom: 4, borderRadius: 8,
+            background: C.surface, border: `1px dashed ${C.border}`,
+            fontSize: 12, color: C.textDim, fontStyle: 'italic',
+          }}>
+            Pure duration — no resources required
+          </div>
+        </>
+      )}
+
       {/* Resource Preference Overrides */}
       {task.compatibleResources?.length > 0 && (showAt(experienceLevel, 'intermediate') || !task.assignedResources?.length) && (
         <>
