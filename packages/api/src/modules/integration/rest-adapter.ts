@@ -59,18 +59,45 @@ export class RestAdapter implements IDataAdapter {
   }
 
   private async fetchWithRetry(url: string, timeout: number, maxRetries: number, retryDelay: number): Promise<any> {
-    let lastError: Error | undefined;
+    let lastError: any;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeout);
-        const response = await fetch(url, { signal: controller.signal });
-        clearTimeout(timer);
-        if (!response.ok) throw new Error(`HTTP ${response.status} fetching ${url}`);
-        return await response.json();
+        let response: Response;
+        try {
+          response = await fetch(url, { signal: controller.signal });
+        } finally {
+          clearTimeout(timer);
+        }
+        if (!response.ok) {
+          const err: any = new Error(`HTTP ${response.status} ${response.statusText} fetching ${url}`);
+          err.status = response.status;
+          // 4xx are permanent (auth, not-found, bad request) — except 408 Request Timeout
+          // and 429 Too Many Requests, which are transient and should be retried.
+          err.retryable =
+            response.status >= 500 ||
+            response.status < 400 ||
+            response.status === 408 ||
+            response.status === 429;
+          throw err;
+        }
+        try {
+          return await response.json();
+        } catch (parseErr: any) {
+          throw new Error(`Invalid JSON from ${url}: ${parseErr.message}`, { cause: parseErr });
+        }
       } catch (err: any) {
-        lastError = err;
+        // AbortError from the timeout controller — wrap with context before retry/throw
+        if (err?.name === 'AbortError') {
+          lastError = new Error(`Timeout after ${timeout}ms fetching ${url}`, { cause: err });
+          // AbortError from a timeout is transient — let it retry
+        } else {
+          lastError = err;
+        }
+        // Non-retryable errors short-circuit the retry loop (saves ~6s on auth failures)
+        if (err?.retryable === false) break;
         if (attempt < maxRetries) {
           await new Promise(r => setTimeout(r, retryDelay * (attempt + 1)));
         }
