@@ -68,18 +68,24 @@ app.post<{ Body: { scenario?: string } }>('/_mock/scenario', async (req, reply) 
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────
+// Only bind a port when run directly. When imported (tests), the caller
+// uses app.inject() or starts the server on an ephemeral port.
 
-app.listen({ port: PORT, host: '0.0.0.0' }, (err, address) => {
-  if (err) {
-    console.error(err);
-    process.exit(1);
-  }
-  console.log(`[mock-genius] Listening on ${address}  scenario: ${getScenario()}`);
-  console.log(`[mock-genius] Endpoints:`);
-  for (const entity of GENIUS_ENTITIES) {
-    console.log(`  GET  ${address}/api/data/fetch/${entity}`);
-  }
-  console.log(`  GET  ${address}/_mock/health`);
-  console.log(`  GET  ${address}/_mock/state`);
-  console.log(`  POST ${address}/_mock/scenario`);
-});
+export { app };
+
+if (require.main === module) {
+  app.listen({ port: PORT, host: '0.0.0.0' }, (err, address) => {
+    if (err) {
+      console.error(err);
+      process.exit(1);
+    }
+    console.log(`[mock-genius] Listening on ${address}  scenario: ${getScenario()}`);
+    console.log(`[mock-genius] Endpoints:`);
+    for (const entity of GENIUS_ENTITIES) {
+      console.log(`  GET  ${address}/api/data/fetch/${entity}`);
+    }
+    console.log(`  GET  ${address}/_mock/health`);
+    console.log(`  GET  ${address}/_mock/state`);
+    console.log(`  POST ${address}/_mock/scenario`);
+  });
+}

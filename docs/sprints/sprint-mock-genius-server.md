@@ -366,14 +366,14 @@ This runs the full adapter test suite on every push, against the mock, in CI. No
 
 ## Migration Path
 
-### Phase 1: Server skeleton + fixtures
+### Phase 1: Server skeleton + fixtures — ✅ DONE (2026-04-13, commit `c006e0d`)
 
-- Set up the Fastify project with the four Genius endpoints
-- Implement the response envelope wrapping
-- Build the fixture loader with scenario directory support
-- Capture `stafford-clean` from a live Genius API call (one-time, via VPN)
-- Add `empty` and `single-order` as the simplest test scenarios
-- Build the Dockerfile and verify it runs locally
+- [x] Set up the Fastify project with the four Genius endpoints
+- [x] Implement the response envelope wrapping
+- [x] Build the fixture loader with scenario directory support
+- [x] Capture `stafford-clean` from a live Genius API call (one-time, via VPN)
+- [x] Add `empty` and `single-order` as the simplest test scenarios
+- [ ] ~~Build the Dockerfile and verify it runs locally~~ — **deferred until Phase 3 (CI integration)**. Mock runs locally via `npm run dev`; containerization not needed for solo iteration this week. Dockerfile lands when GitHub Actions workflow is added.
 
 ### Phase 2: Failure injection + scenario library
 
