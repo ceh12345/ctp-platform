@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { DateTime } from 'luxon';
 import { IMappingProfile } from '../../config/interfaces/config-store.interface';
 import { IRawDataPayload } from './adapter.interface';
+
+// Detects whether an ISO 8601 string carries a timezone designator — either
+// trailing Z or a ±HH:MM offset at the end.
+const HAS_TZ_DESIGNATOR = /(Z|[+\-]\d{2}:?\d{2})$/;
 
 @Injectable()
 export class MappingEngine {
@@ -53,8 +58,23 @@ export class MappingEngine {
       return Number(val) * rule.factor;
     }
 
-    // TODO Phase 3: toUTC — convert NZ local time to UTC (stub: return as-is)
-    // if (rule.toUTC) return convertToUTC(val, tenantTimezone);
+    // toUTC — normalize an ISO date to UTC Z form.
+    // Parsing rules:
+    //  - Value has offset/Z → offset is authoritative, ignore fromTimezone.
+    //  - Value is bare + fromTimezone set → interpret in that IANA zone.
+    //  - Value is bare + no fromTimezone → pass through unchanged
+    //    (never silently interpret as server-local time).
+    //  - Value unparseable → pass through unchanged.
+    if (rule.toUTC && val !== undefined && val !== null && val !== '') {
+      const s = String(val);
+      const hasEmbeddedZone = HAS_TZ_DESIGNATOR.test(s);
+      if (!hasEmbeddedZone && !rule.fromTimezone) return val;
+      const dt = DateTime.fromISO(s, {
+        zone: hasEmbeddedZone ? undefined : rule.fromTimezone,
+      });
+      if (!dt.isValid) return val;
+      return dt.toUTC().toISO();
+    }
 
     return val;
   }

@@ -301,4 +301,87 @@ describe('MappingEngine', () => {
       expect(byKey.get('PV-001-WELD')!.linkId.maxGap).toBe(3600);
     });
   });
+
+  // ── toUTC transform ────────────────────────────────────────────────────────
+  //
+  // Stafford's Genius API returns dates with literal NZ offsets (+13:00 NZDT /
+  // +12:00 NZST). The `toUTC: true` rule flag normalizes these to UTC Z-suffixed
+  // ISO strings so everything downstream sees a single canonical format.
+
+  describe('toUTC transform', () => {
+    const makeRule = (extras: Record<string, any> = {}) => ({
+      orders: { mappings: { dueDate: { from: 'DeliveryDate', toUTC: true, ...extras } } },
+    }) as IMappingProfile;
+
+    const oneOrder = (dd: unknown) => makePayload({
+      orders: [{ Id: 1, JobCode: 'TEST', DeliveryDate: dd }],
+    });
+
+    it('#1 NZDT offset (+13:00) → Z-suffixed UTC (13h earlier)', () => {
+      const out = engine.transform(oneOrder('2026-03-21T01:00:00+13:00'), makeRule()).orders as any[];
+      expect(out[0].dueDate).toBe('2026-03-20T12:00:00.000Z');
+    });
+
+    it('#2 NZST offset (+12:00) → Z-suffixed UTC (12h earlier)', () => {
+      const out = engine.transform(oneOrder('2026-07-10T09:00:00+12:00'), makeRule()).orders as any[];
+      expect(out[0].dueDate).toBe('2026-07-09T21:00:00.000Z');
+    });
+
+    it('#3 bare date + fromTimezone Pacific/Auckland (NZDT day) → correct UTC', () => {
+      const rule = makeRule({ fromTimezone: 'Pacific/Auckland' });
+      const out = engine.transform(oneOrder('2026-03-21T01:00:00'), rule).orders as any[];
+      expect(out[0].dueDate).toBe('2026-03-20T12:00:00.000Z');
+    });
+
+    it('#4 bare date + fromTimezone Pacific/Auckland (NZST day) → correct UTC', () => {
+      const rule = makeRule({ fromTimezone: 'Pacific/Auckland' });
+      const out = engine.transform(oneOrder('2026-07-10T09:00:00'), rule).orders as any[];
+      expect(out[0].dueDate).toBe('2026-07-09T21:00:00.000Z');
+    });
+
+    it('#5 bare date with NO fromTimezone → passes through unchanged (no silent local interpretation)', () => {
+      const out = engine.transform(oneOrder('2026-03-21T01:00:00'), makeRule()).orders as any[];
+      expect(out[0].dueDate).toBe('2026-03-21T01:00:00');
+    });
+
+    it('#6 unparseable date → passes through unchanged', () => {
+      const out = engine.transform(oneOrder('not-a-date'), makeRule()).orders as any[];
+      expect(out[0].dueDate).toBe('not-a-date');
+    });
+
+    it('#7 null input → field is absent from output', () => {
+      const out = engine.transform(oneOrder(null), makeRule()).orders as any[];
+      expect(out[0]).not.toHaveProperty('dueDate');
+    });
+
+    it('#8 empty string input → passes through as ""', () => {
+      // The rule short-circuits on empty string, then applyMappings sees ""
+      // which is defined-but-falsy. Current applyMappings writes it because
+      // it only skips undefined/null. Test locks in that behavior.
+      const out = engine.transform(oneOrder(''), makeRule()).orders as any[];
+      // Empty string is skipped by applyMappings (not undefined/null per its
+      // filter, but the `toUTC` branch returns the value untouched — then
+      // applyMappings' `if (val !== undefined && val !== null)` keeps it.
+      // Either outcome is valid; the test asserts the current behavior.
+      expect(out[0].dueDate).toBe('');
+    });
+
+    it('#9 NZDT/NZST transition boundary: luxon IANA zone picks the correct offset per instant', () => {
+      const rule = makeRule({ fromTimezone: 'Pacific/Auckland' });
+      // Sept 27, 2026 is start of NZDT (UTC+13). Before that date: NZST (UTC+12).
+      const nzstSide = engine.transform(oneOrder('2026-09-26T10:00:00'), rule).orders as any[];
+      const nzdtSide = engine.transform(oneOrder('2026-09-28T10:00:00'), rule).orders as any[];
+      // NZST (+12): 10:00 NZ → 22:00 UTC previous day
+      expect(nzstSide[0].dueDate).toBe('2026-09-25T22:00:00.000Z');
+      // NZDT (+13): 10:00 NZ → 21:00 UTC previous day
+      expect(nzdtSide[0].dueDate).toBe('2026-09-27T21:00:00.000Z');
+    });
+
+    it('existing rules (without toUTC) continue to pass dates through unchanged — no regression', () => {
+      // This guards the original test at line 123: dueDate pass-through when
+      // the rule has NO toUTC flag.
+      const out = engine.transform(makePayload(), STAFFORD_PROFILE).orders as any[];
+      expect(out[0].dueDate).toBe('2026-03-21T01:00:00+13:00');
+    });
+  });
 });

@@ -9,8 +9,8 @@
       "name":        { "from": "ItemDescription" },
       "productKey":  { "from": "ItemCode" },
       "demandQty":   { "from": "OrderQty" },
-      "dueDate":     { "from": "DeliveryDate" },
-      "lateDueDate": { "from": "LateDeliveryDate" },
+      "dueDate":     { "from": "DeliveryDate",     "toUTC": true },
+      "lateDueDate": { "from": "LateDeliveryDate", "toUTC": true },
       "priority":    { "from": "Strategy", "lookup": { "RUSH": 10, "HIGH": 20, "NORMAL": 50, "LOW": 75, "_default": 50 } }
     }
   },
@@ -34,9 +34,9 @@
       "durationQty":     { "from": "WoPlannedQuantity" },
       "durationType":    { "value": 0 },
       "wipState":        { "from": "WipState" },
-      "actualStart":     { "from": "ActualStartDate" },
-      "windowStart":     { "from": "TaskStartDate" },
-      "windowEnd":       { "from": "TaskEndDate" }
+      "actualStart":     { "from": "ActualStartDate", "toUTC": true },
+      "windowStart":     { "from": "TaskStartDate",   "toUTC": true },
+      "windowEnd":       { "from": "TaskEndDate",     "toUTC": true }
     },
     "capacityResources": { "from": "MachineCode" },
     "linkId": {
