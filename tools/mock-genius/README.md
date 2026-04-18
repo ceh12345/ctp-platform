@@ -149,12 +149,119 @@ curl -X POST http://localhost:8080/_mock/scenario -H "Content-Type: application/
 | `HourlyRate` | number | NZD per hour |
 | `IsLabour` | boolean | True for people resources, false for equipment |
 
+## Recording Mode
+
+When `MOCK_RECORD_FROM` is set at startup, the mock stops serving fixtures and
+becomes a transparent proxy: every Genius endpoint request is forwarded to the
+upstream URL, the raw response body is saved to disk, and the response is
+returned unchanged to the caller. Failure injection and fixture loading are
+disabled — the upstream is authoritative.
+
+Use this once per capture session to snapshot the real Stafford Genius API for
+offline development.
+
+### Start in recording mode
+
+```bash
+cd tools/mock-genius
+
+MOCK_RECORD_FROM=https://genius.stafford.co.nz:53215 \
+MOCK_RECORD_AUTH_USER=<vpn-user> \
+MOCK_RECORD_AUTH_PASS=<vpn-pass> \
+npm start
+```
+
+The startup banner is loud and explicit — it says `Mode: RECORDING` in big
+letters. If you don't see that, you're not in recording mode.
+
+### Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `MOCK_RECORD_FROM` | (unset) | Upstream base URL. Setting this enables recording mode. |
+| `MOCK_RECORD_DIR` | `./recorded` | Where to save captured responses. |
+| `MOCK_RECORD_AUTH_USER` | (unset) | Basic auth username forwarded to upstream. |
+| `MOCK_RECORD_AUTH_PASS` | (unset) | Basic auth password forwarded to upstream. |
+| `MOCK_RECORD_TIMEOUT` | `60000` | Upstream request timeout in milliseconds. |
+
+### Directory layout
+
+Each mock startup creates one session directory timestamped to the second:
+
+```
+recorded/
+  2026-04-18T14-30-00/
+    salesOrderDetailEntity.json                   # single-page or merged
+    workOrderWithAdvancedInformationViewEntity.json
+    productionTaskWithAdvancedInfoViewEntity_page1.json   # multi-page saved per page
+    productionTaskWithAdvancedInfoViewEntity_page2.json
+    machineAndRessourceEntity.json
+    _metadata.json                                # capture summary
+```
+
+Restart the mock to start a fresh session.
+
+### Capture → promote → serve workflow
+
+```bash
+# 1. Record from live upstream (requires VPN)
+MOCK_RECORD_FROM=https://genius.stafford.co.nz:53215 \
+MOCK_RECORD_AUTH_USER=greg MOCK_RECORD_AUTH_PASS=*** \
+npm start
+
+# 2. Trigger a sync in another terminal to exercise all four endpoints
+curl -X POST http://localhost:3000/v1/state/sync \
+  -H "X-Tenant-Id: stafford-engineering-test"
+
+# 3. Review capture — spot errors, unexpected record counts, missing pages
+cat recorded/2026-04-18T14-30-00/_metadata.json
+
+# 4. Stop the mock (Ctrl+C). Copy the capture into a named scenario.
+cp -r recorded/2026-04-18T14-30-00 fixtures/stafford-snapshot-april-18
+
+# 5. Strip the Genius envelope, merge paged files
+node scripts/strip-envelope.js fixtures/stafford-snapshot-april-18
+
+# 6. SANITIZE — replace customer names with CustomerA/B/..., redact prices.
+#    Do not git add the scenario until this step is complete.
+
+# 7. Serve the sanitized scenario from the mock
+MOCK_SCENARIO=stafford-snapshot-april-18 npm start
+
+# 8. Commit — the scenario is now part of the test corpus
+git add fixtures/stafford-snapshot-april-18
+```
+
+### Sensitive data — read before committing
+
+Raw recordings contain customer names, pricing, internal codes. **They are
+`.gitignore`d** — never commit the contents of `recorded/`. Sanitization is
+the gate between a raw capture and a committed fixture scenario. If you skip
+it, Stafford's pricing and customer list land on GitHub.
+
+Minimum sanitization pass:
+- Replace customer-identifying strings (`CustomerName`, `ShipToName`) with
+  sequential aliases `CustomerA`, `CustomerB`, …
+- Redact numeric price/cost fields (set to `0` or `999`) — `UnitPrice`,
+  `HourlyRate` on labor records, `MaterialCost`
+- Keep IDs, codes, dates, quantities, and chain relationships intact — these
+  are the interesting shape for CTP and don't leak
+
+### Control endpoints in recording mode
+
+| Endpoint | Behavior |
+|---|---|
+| `GET /_mock/health` | Returns `{status: "ok", mode: "recording"}` — never proxies |
+| `GET /_mock/state` | Returns `{mode, upstreamUrl, sessionDir, capturedEndpoints, errors, requestCount}` |
+| `POST /_mock/scenario` | **409** — scenario switching disabled in recording mode |
+| `POST /_mock/inject-failure` | **409** — failure injection disabled in recording mode |
+| `POST /_mock/reset` | Clears in-memory capture tracking (disk files untouched) |
+
 ## Notes
 
 - The `stafford-clean` fixtures are **hand-crafted** based on the Stafford flat-file dataset,
   not captured from the live Genius API. Field shapes reflect expected Genius format based on
-  the ETL mapping spec. Replace with VPN-captured data when available (use recording mode —
-  see sprint-mock-genius-server.md Phase 3).
+  the ETL mapping spec. Replace with VPN-captured data via Recording Mode (above).
 - Genius uses `machineAndRessourceEntity` (French spelling "Ressource") — this typo is
   intentional and matches the real API.
 - All dates in fixtures use NZ Daylight Time (+13:00, March 2026). The MappingEngine

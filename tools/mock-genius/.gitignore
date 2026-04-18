@@ -1,3 +1,7 @@
 node_modules/
 dist/
 *.log
+
+# Raw recordings from record mode. Contains customer data before sanitization;
+# promoted/sanitized derivatives live under fixtures/ and ARE committed.
+recorded/

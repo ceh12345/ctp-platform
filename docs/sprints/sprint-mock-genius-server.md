@@ -1,10 +1,10 @@
 # Sprint: Mock Genius Server — Test Harness for the Data Adapter
 
-**Status:** ✅ Phase 1 + Phase 2 complete — Phase 3 (recording mode + CI + Docker) deferred
+**Status:** ✅ Phase 1 + Phase 2 + Recording Mode complete — CI + Docker still deferred
 **Size:** ~3-4 hours CC work (Session 1: server skeleton + static fixtures, Session 2: failure injection + scenario library, Session 3: recording mode + CI integration)
 **Depends on:** Data Adapter Layer sprint (needs the IDataAdapter interface and SyncService to test against)
 **Triggered by:** Need to test the data adapter against controlled responses before deploying to Stafford. Real Genius API can't easily produce error conditions, isn't reachable from CI, and requires VPN access.
-**Shipped:** Phase 1 commit `c006e0d` + closure `47a45e7` (2026-04-13 / 2026-04-17). Phase 2 commit `7e0157d` (2026-04-17).
+**Shipped:** Phase 1 `c006e0d` + closure `47a45e7` (2026-04-13 / 2026-04-17). Phase 2 `7e0157d` (2026-04-17). Recording mode — see `sprint-mock-genius-recording-mode.md` (2026-04-18).
 
 ---
 
@@ -389,11 +389,11 @@ This runs the full adapter test suite on every push, against the mock, in CI. No
 
 ### Phase 3: Recording mode + CI integration
 
-- Implement the proxy/recording mode
-- Use it to capture a fresh `stafford-snapshot` fixture
-- Add the GitHub Actions workflow for CI integration
-- Publish the mock image to ghcr.io as `mock-genius:latest`
-- Document the workflow in the README so other developers can run it
+- [x] Implement the proxy/recording mode — see `sprint-mock-genius-recording-mode.md` (2026-04-18). Proxy + capture, incremental metadata, per-page files, strip-envelope.js helper, 19 new tests, README "Recording Mode" section.
+- [ ] Use it to capture a fresh `stafford-snapshot` fixture — pending VPN session with Stafford
+- [ ] Add the GitHub Actions workflow for CI integration
+- [ ] Publish the mock image to ghcr.io as `mock-genius:latest`
+- [x] Document the workflow in the README so other developers can run it — done as part of recording mode
 
 ---
 
