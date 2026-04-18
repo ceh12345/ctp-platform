@@ -86,6 +86,7 @@ _None_
 | Data Adapter Layer Phase 1 | IDataAdapter interface + FileAdapter + MappingEngine (identity) + SyncService + IntegrationModule; StateService `applyTransformed()` seam; ConfigService `getAdapterConfig()`/`getMappingProfile()`; zero behavioral change — 858 tests pass | 2026-04-10 |
 | Bulk Schedule/Unschedule + Chain Auto-Expansion | Unified `POST /ctp/tasks/schedule` + `/unschedule` endpoints; service-layer backward + forward chain walks for reporting scope; `canExpand()` predicate; single-task 404 fix; UI confirmation dialog + expansion-aware toast; `scheduleBulk`/`unscheduleBulk` + `sweepChainOrphanedStateChangeTasks` on engine | 2026-04-13 |
 | Optimization Session 5 — Batch Optimization API | `POST /v1/ctp/optimize` async job with ILS loop + event-loop yielding; `GET /:jobId` poll (progress per pass); `POST /:jobId/accept` (drift guard via landscapeHash, translate-on-demand); `POST /:jobId/reject`; bestGraph stored not landscape clone; Optimization DisjunctiveGraph promoted to primary engine export (replaces read-only version); critical path always returned in solve response at all detail levels; UI critical path badge ungated; 846 tests; Stafford: 71.25h → 59.50h (16.49% improvement, 21s) | 2026-04-05 |
+| [Solver Live Convergence Chart + KPI Savings](../optimization/sprints/solver-live-convergence-chart.md) | Per-iteration `onSample` callback on `tabuSearch` (new best + heartbeat + first/last); `IterationSample` type; `OptimizeService` samples buffer (1000-cap, preserves isNewBest); `GET /v1/ctp/optimize/:jobId?since=N` incremental fetch; **DTO fix** — added `@IsOptional` + `@IsNumber`/`@IsString`/`@Min`/`@Max` decorators to StartOptimizeDto so global `ValidationPipe({whitelist:true})` stops silently stripping `passes`/`maxIterations`/`stagnationLimit`/`sampleEveryN`/`perturbStrength`/`timeBudgetSeconds`/`freezeHorizon`; per-pass `convergenceReason` + `elapsedMs` in `passResults`; `SavingsEstimate` field on result (configured/currency/ordersImproved/lateDaysAvoided/estimatedDollars) computed from origEnd (node.endW) vs optEnd (earliestStart+duration) grouped by chainKey, applied per-order penalty math with graceDays + cap; new `IKpiRates` interface + `ConfigService.getKPIRates()` reading `kpis/rates.json`; seeded defaults in all 7 tenants ($500/day, USD, 0 grace, $50/hr labor); `cloneTenant` seeds rates.json defensively; new Admin → Live Optimization settings page (Expert level) with preset dropdown (Quick/Default/Aggressive/Custom), live SVG convergence chart (best-so-far + current iteration series, baseline reference, pass boundaries, per-pass delta labels, color-coded legend), fullscreen mode with viewport resize + Esc, per-pass breakdown table (makespan/delta/iterations/stop reason/time), SavingsCard ($ with orders-improved + late-days-avoided, unconfigured → "please configure" prompt). 982 tests pass. | 2026-04-18 |
 
 ### Phase 3 Session Fixes (Mar 6)
 
@@ -236,6 +237,7 @@ INFRA TRACK
   disjunctive-graph-session2-prompt_1.md ← Session 2: analytics KPIs, AI get_critical_path tool
   disjunctive-graph-session3-prompt_3.md ← Session 3: Gantt highlighting, task detail slack, task table column
   optimization-session3-graphtranslation.md ← Session 3: graph-to-landscape translation (topologicalSort, findClosestStartTime, applyOptimizedGraph, computeDiff)
+  ../optimization/sprints/solver-live-convergence-chart.md ← Live convergence chart admin page (per-iteration sample streaming, preset dropdown, delta labels, per-pass table, Savings card backed by kpis/rates.json)
   cost-scoring-model-design.md           ← 5 cost rules design (ResourceCost, Changeover, Overtime, Lateness, Material)
   attribute-resource-matching-sprint.md  ← Attribute matching sprint prompt (CC-ready, Acme proof case)
   sprint-uom-conversion-table.md        ← UOM conversion table + data model foundations (CC-ready, Stafford ETL)
@@ -317,4 +319,4 @@ After each sprint:
 
 ---
 
-*Last updated: Apr 13, 2026 (Bulk Schedule/Unschedule + Chain Auto-Expansion committed; Data Adapter Layer Phase 1 moved to Done; Phase 2 in Up Next)*
+*Last updated: Apr 18, 2026 (Solver Live Convergence Chart + KPI Savings shipped — per-iteration sample streaming, Admin → Live Optimization page with presets/fullscreen/delta-labels/per-pass table/SavingsCard; kpis/rates.json seeded in all 7 tenants; ValidationPipe DTO decorator fix)*

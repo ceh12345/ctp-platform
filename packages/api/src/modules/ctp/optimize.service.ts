@@ -11,7 +11,9 @@ import {
   computeDiff,
   TabuConfig,
   TaskDiff,
+  IterationSample,
 } from '@ctp/engine';
+import { ConfigService } from '../../config/config.service';
 
 // ═══════════════════════════════════════════════════════════════
 //  Job Interfaces
@@ -22,6 +24,12 @@ export interface OptimizeJobConfig {
   passes: number;
   perturbStrength: number;
   freezeHorizon?: string;        // ISO datetime — converted to epoch internally
+  /** Per-pass tabu iteration cap. If unset, falls back to settings.tabuIterations ?? 2000. */
+  maxIterations?: number;
+  /** Per-pass no-improvement cutoff. If unset, falls back to settings.tabuStagnation ?? 300. */
+  stagnationLimit?: number;
+  /** Convergence chart heartbeat. If unset, default 25. */
+  sampleEveryN?: number;
 }
 
 export interface OptimizeJobProgress {
@@ -30,6 +38,35 @@ export interface OptimizeJobProgress {
   bestMakespanSoFar: number;
   improvementPercent: number;
   elapsedSeconds: number;
+  /** Per-iteration convergence samples. Bounded buffer — see executeJob for policy. */
+  samples: IterationSample[];
+}
+
+/** Max total samples held in memory per job. isNewBest samples are always retained. */
+const MAX_SAMPLES = 1000;
+
+/**
+ * Business-value savings estimate derived from the optimized schedule.
+ * `configured=false` means the tenant has no kpi/rates.json; UI should prompt to configure
+ * rather than display a dollar figure.
+ */
+export interface SavingsEstimate {
+  configured: boolean;
+  currency: string;
+  ordersImproved: number;     // orders that moved from late → on-time, or less-late
+  lateDaysAvoided: number;    // sum across improved orders (decimal days)
+  estimatedDollars: number;   // total penalty avoided (zero when !configured)
+}
+
+export interface PassResult {
+  pass: number;
+  makespan: number;
+  improvement: number;
+  iterations: number;
+  /** Why this pass stopped: stagnation, time_budget, max_iterations. */
+  convergenceReason: string;
+  /** Wall-clock duration of this pass in milliseconds. */
+  elapsedMs: number;
 }
 
 export interface OptimizationResult {
@@ -38,12 +75,14 @@ export interface OptimizationResult {
   improvementPercent: number;
   iterations: number;
   movesEvaluated: number;
-  passes: { pass: number; makespan: number; improvement: number; iterations: number }[];
+  passes: PassResult[];
   convergenceReason: string;
   tasksRescheduled: number;
   tasksFailed: number;
   diff: TaskDiff[];
   elapsedMs: number;
+  /** Savings estimate from kpi/rates.json — present when passes completed with improvement. */
+  savings?: SavingsEstimate;
 }
 
 export interface OptimizeJob {
@@ -72,6 +111,8 @@ export interface OptimizeJob {
 export class OptimizeService {
   /** In-memory job store. Production: replace with Redis or Azure Service Bus. */
   private jobs = new Map<string, OptimizeJob>();
+
+  constructor(private readonly configService: ConfigService) {}
 
   // ─── Job Lifecycle ───
 
@@ -274,12 +315,14 @@ export class OptimizeService {
     const originalGraph = graph.clone();
 
     const taskCount = graph.nodes.length;
+    const sampleEveryN = job.config.sampleEveryN ?? 25;
     const tabuConfig: TabuConfig = {
       tenure: Math.min(25, Math.max(10, Math.floor(Math.sqrt(taskCount)))),
-      maxIterations: settings?.tabuIterations ?? 2000,
-      stagnationLimit: settings?.tabuStagnation ?? 300,
+      maxIterations: job.config.maxIterations ?? settings?.tabuIterations ?? 2000,
+      stagnationLimit: job.config.stagnationLimit ?? settings?.tabuStagnation ?? 300,
       timeBudgetMs: 0, // set per-pass below
       freezeHorizon,
+      sampleEveryN,
     };
 
     const totalPasses = job.config.passes;
@@ -288,8 +331,20 @@ export class OptimizeService {
 
     let globalBest = graph.clone();
     let globalBestMakespan = originalMakespan;
-    const passResults: { pass: number; makespan: number; improvement: number; iterations: number }[] = [];
+    const passResults: PassResult[] = [];
     let totalMovesEvaluated = 0;
+
+    // Initialize progress with empty samples so the page can poll immediately.
+    job.progress = {
+      currentPass: 0,
+      totalPasses,
+      bestMakespanSoFar: originalMakespan,
+      improvementPercent: 0,
+      elapsedSeconds: 0,
+      samples: [],
+    };
+
+    let cumulativeIter = 0;
 
     for (let pass = 0; pass < totalPasses; pass++) {
       const elapsed = Date.now() - startMs;
@@ -307,8 +362,29 @@ export class OptimizeService {
       // Yield to event loop before each pass so HTTP polls can be served
       await this.yieldToEventLoop();
 
+      // Wire per-iteration sampling for the live convergence chart.
+      const passNumber = pass + 1;
+      const passStartCum = cumulativeIter;
+      tabuConfig.onSample = (s) => {
+        const buf = job.progress!.samples;
+        buf.push({
+          ...s,
+          pass: passNumber,
+          cumulativeIteration: passStartCum + s.iteration,
+        });
+        // Bounded buffer: drop oldest non-best samples if over cap.
+        // isNewBest samples are always preserved — they ARE the convergence story.
+        if (buf.length > MAX_SAMPLES) {
+          const keepFromIdx = buf.length - Math.floor(MAX_SAMPLES / 2);
+          job.progress!.samples = buf.filter((x, i) => x.isNewBest || i >= keepFromIdx);
+        }
+      };
+
+      const passStartMs = Date.now();
       const result = tabuSearch(working, tabuConfig, landscape.stateChanges);
+      const passElapsedMs = Date.now() - passStartMs;
       totalMovesEvaluated += result.totalMovesEvaluated;
+      cumulativeIter += result.totalIterations;
 
       passResults.push({
         pass: pass + 1,
@@ -317,6 +393,8 @@ export class OptimizeService {
           ? ((originalMakespan - result.bestMakespan) / originalMakespan) * 100
           : 0,
         iterations: result.totalIterations,
+        convergenceReason: result.convergenceReason,
+        elapsedMs: passElapsedMs,
       });
 
       if (result.bestMakespan < globalBestMakespan) {
@@ -325,6 +403,7 @@ export class OptimizeService {
       }
 
       job.progress = {
+        ...job.progress!,
         currentPass: pass + 1,
         totalPasses,
         bestMakespanSoFar: globalBestMakespan,
@@ -345,6 +424,11 @@ export class OptimizeService {
       job.bestGraph = globalBest;
       job.originalGraph = originalGraph;
 
+      // Compute savings estimate now (before accept) so the UI can show it on the
+      // completed job view. Uses graph node end-times, not the landscape — the
+      // landscape is unchanged until the planner accepts.
+      const savings = this.computeSavings(originalGraph, globalBest, landscape);
+
       job.result = {
         originalMakespan,
         optimizedMakespan: globalBestMakespan,
@@ -359,6 +443,7 @@ export class OptimizeService {
         tasksFailed: 0,        // filled in at accept time
         diff: [],              // filled in at accept time
         elapsedMs,
+        savings,
       };
     } else {
       job.result = {
@@ -385,5 +470,91 @@ export class OptimizeService {
   /** Yield to the event loop so HTTP polls can be served between passes. */
   private yieldToEventLoop(): Promise<void> {
     return new Promise(resolve => setImmediate(resolve));
+  }
+
+  /**
+   * Compute a savings estimate from original vs optimized graph end-times.
+   *
+   * For each order (grouped by DisjunctiveGraph node.chainKey):
+   *   1. originalOrderEnd = max end-time across all tasks in the order (from originalGraph)
+   *   2. optimizedOrderEnd = max end-time across all tasks in the order (from bestGraph)
+   *   3. Compare to the order's dueDate to get days late before/after
+   *   4. Penalty = max(0, daysLate - graceDays) * rate, optionally capped
+   *      — rate order: order.latenessPenaltyPerDay (if > 0) → kpi.latePenaltyPerDay
+   *   5. Savings contribution = originalPenalty - optimizedPenalty (clamped ≥ 0)
+   *
+   * When kpi/rates.json is missing for the tenant, returns configured:false and zero dollars.
+   */
+  private computeSavings(
+    originalGraph: DisjunctiveGraph,
+    optimizedGraph: DisjunctiveGraph,
+    landscape: SchedulingLandscape,
+  ): SavingsEstimate {
+    const rates = this.configService.getKPIRates();
+    const configured = rates !== null;
+    const currency = rates?.currency ?? 'USD';
+    const globalRate = rates?.latePenaltyPerDay ?? 0;
+    const graceDays = rates?.graceDays ?? 0;
+    const cap = rates?.latePenaltyCapPerOrder ?? null;
+
+    // Aggregate per-order end-times across both graphs.
+    //   Original: node.endW holds the pre-optimization scheduled end (stable, set at build).
+    //   Optimized: node.earliestStart + node.duration reflects the post-tabu end (endW is stale
+    //              after swaps per DisjunctiveGraph contract).
+    const orderEnds = new Map<string, { origEnd: number; optEnd: number }>();
+    for (let i = 0; i < optimizedGraph.nodes.length; i++) {
+      const orig = originalGraph.nodes[i];
+      const opt = optimizedGraph.nodes[i];
+      const orderKey = opt.chainKey;
+      if (!orderKey) continue;
+      const origEnd = orig.endW;
+      const optEnd = opt.earliestStart + opt.duration;
+      const cur = orderEnds.get(orderKey) ?? { origEnd: 0, optEnd: 0 };
+      if (origEnd > cur.origEnd) cur.origEnd = origEnd;
+      if (optEnd > cur.optEnd) cur.optEnd = optEnd;
+      orderEnds.set(orderKey, cur);
+    }
+
+    let ordersImproved = 0;
+    let lateDaysAvoided = 0;
+    let estimatedDollars = 0;
+
+    const penaltyFor = (daysLate: number, rate: number): number => {
+      const billable = Math.max(0, daysLate - graceDays);
+      const raw = billable * rate;
+      return cap !== null ? Math.min(cap, raw) : raw;
+    };
+
+    const orders = landscape.orders;
+    if (orders && orderEnds.size > 0) {
+      orders.forEach((order: any) => {
+        const ends = orderEnds.get(order.key);
+        if (!ends) return;
+        const dueDate = order.dueDate ?? 0;
+        if (dueDate <= 0) return;
+
+        const origLateDays = Math.max(0, (ends.origEnd - dueDate) / 86400);
+        const optLateDays = Math.max(0, (ends.optEnd - dueDate) / 86400);
+        if (optLateDays >= origLateDays) return;  // no improvement for this order
+
+        ordersImproved++;
+        lateDaysAvoided += origLateDays - optLateDays;
+
+        if (configured) {
+          const rate = order.latenessPenaltyPerDay > 0
+            ? order.latenessPenaltyPerDay
+            : globalRate;
+          estimatedDollars += penaltyFor(origLateDays, rate) - penaltyFor(optLateDays, rate);
+        }
+      });
+    }
+
+    return {
+      configured,
+      currency,
+      ordersImproved,
+      lateDaysAvoided: Math.round(lateDaysAvoided * 100) / 100,
+      estimatedDollars: Math.round(estimatedDollars * 100) / 100,
+    };
   }
 }

@@ -4,6 +4,7 @@ import {
   ITenantConfig,
   IEntitySchema,
   IKPIDefinition,
+  IKpiRates,
   ITerminologyMap,
   IScoringConfig,
   ISettingsConfig,
@@ -50,6 +51,11 @@ export class ConfigService {
 
   getKPIs(): IKPIDefinition[] {
     return this.store.getKPIs();
+  }
+
+  /** Returns business-value rates for savings estimates. null when not configured for this tenant. */
+  getKPIRates(): IKpiRates | null {
+    return this.store.getKPIRates();
   }
 
   getTerminology(): ITerminologyMap {

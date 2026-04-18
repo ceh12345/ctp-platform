@@ -9288,11 +9288,673 @@ function AdminCloneTenant() {
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   ADMIN — LIVE OPTIMIZATION (solver convergence chart)
+   ═══════════════════════════════════════════════════════════════ */
+
+interface IterationSample {
+  pass: number;
+  iteration: number;
+  cumulativeIteration: number;
+  makespan: number;
+  bestSoFar: number;
+  isNewBest: boolean;
+  elapsedMs: number;
+}
+
+type OptimizeStatus = 'idle' | 'queued' | 'running' | 'complete' | 'failed';
+
+interface OptimizeConfig {
+  passes: number;
+  timeBudgetSeconds: number;
+  perturbStrength: number;
+  maxIterations: number;
+  stagnationLimit: number;
+  sampleEveryN: number;
+  freezeHorizon: string;
+}
+
+type PresetKey = 'quick' | 'default' | 'aggressive' | 'custom';
+
+const PRESETS: Record<Exclude<PresetKey, 'custom'>, Omit<OptimizeConfig, 'freezeHorizon'>> = {
+  quick:      { passes: 1,  timeBudgetSeconds: 30,   perturbStrength: 0.07, maxIterations: 500,  stagnationLimit: 100, sampleEveryN: 10 },
+  default:    { passes: 5,  timeBudgetSeconds: 300,  perturbStrength: 0.07, maxIterations: 2000, stagnationLimit: 300, sampleEveryN: 25 },
+  aggressive: { passes: 10, timeBudgetSeconds: 1800, perturbStrength: 0.10, maxIterations: 5000, stagnationLimit: 500, sampleEveryN: 50 },
+};
+
+function AdminOptimizeLive() {
+  const [preset, setPreset] = useState<PresetKey>('default');
+  const [cfg, setCfg] = useState<OptimizeConfig>({ ...PRESETS.default, freezeHorizon: '' });
+
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [status, setStatus] = useState<OptimizeStatus>('idle');
+  const [samples, setSamples] = useState<IterationSample[]>([]);
+  const [progress, setProgress] = useState<any>(null);
+  const [result, setResult] = useState<any>(null);
+  const [originalMakespan, setOriginalMakespan] = useState<number | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Track viewport so the chart scales when the user resizes the window in fullscreen mode.
+  const [viewport, setViewport] = useState({ w: window.innerWidth, h: window.innerHeight });
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [isFullscreen]);
+
+  const samplesRef = useRef<IterationSample[]>([]);
+  samplesRef.current = samples;
+
+  // Polling loop — runs while status is queued/running. Uses ?since=N for incremental fetch.
+  useEffect(() => {
+    if (!jobId || (status !== 'queued' && status !== 'running')) return;
+    let cancelled = false;
+
+    const tick = async () => {
+      const lastSeen = samplesRef.current.length > 0
+        ? samplesRef.current[samplesRef.current.length - 1].cumulativeIteration
+        : -1;
+      try {
+        const data = await api(`/ctp/optimize/${jobId}?since=${lastSeen}`);
+        if (cancelled) return;
+        setStatus(data.status);
+        setProgress(data.progress ?? null);
+        if (data.progress?.samples?.length) {
+          setSamples(prev => [...prev, ...data.progress.samples]);
+        }
+        if (data.status === 'complete' && data.result) {
+          setResult(data.result);
+          setOriginalMakespan(data.result.originalMakespan);
+        } else if (data.status === 'failed') {
+          setErrorMsg(data.error || 'Job failed');
+        }
+      } catch (err: any) {
+        if (!cancelled) setErrorMsg(err.message || 'Poll failed');
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [jobId, status]);
+
+  const applyPreset = (p: PresetKey) => {
+    setPreset(p);
+    if (p !== 'custom') {
+      setCfg(c => ({ ...PRESETS[p], freezeHorizon: c.freezeHorizon }));
+    }
+  };
+
+  const handleStart = async () => {
+    setErrorMsg(null);
+    setSamples([]);
+    setProgress(null);
+    setResult(null);
+    setOriginalMakespan(null);
+    try {
+      const body: any = {
+        passes: cfg.passes,
+        timeBudgetSeconds: cfg.timeBudgetSeconds,
+        perturbStrength: cfg.perturbStrength,
+        maxIterations: cfg.maxIterations,
+        stagnationLimit: cfg.stagnationLimit,
+        sampleEveryN: cfg.sampleEveryN,
+      };
+      if (cfg.freezeHorizon) body.freezeHorizon = cfg.freezeHorizon;
+      const res = await api('/ctp/optimize', { method: 'POST', body: JSON.stringify(body) });
+      setJobId(res.jobId);
+      setStatus('queued');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to start optimization');
+    }
+  };
+
+  const handleAccept = async () => {
+    if (!jobId) return;
+    try {
+      await api(`/ctp/optimize/${jobId}/accept`, { method: 'POST' });
+      setJobId(null);
+      setStatus('idle');
+      setSamples([]);
+      setProgress(null);
+      setResult(null);
+      setOriginalMakespan(null);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Accept failed');
+    }
+  };
+
+  const handleReject = async () => {
+    if (!jobId) return;
+    try {
+      await api(`/ctp/optimize/${jobId}/reject`, { method: 'POST' });
+      setJobId(null);
+      setStatus('idle');
+      setSamples([]);
+      setProgress(null);
+      setResult(null);
+      setOriginalMakespan(null);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Reject failed');
+    }
+  };
+
+  const isRunning = status === 'queued' || status === 'running';
+  const canAccept = status === 'complete' && result && result.improvementPercent > 0;
+  const canReject = status === 'complete';
+  const locked = preset !== 'custom';
+
+  const labelStyle: CSSProperties = { fontSize: 11, color: C.textDim, marginBottom: 4, fontWeight: 600 };
+  const inputStyle: CSSProperties = {
+    width: '100%', padding: '6px 8px', borderRadius: 6, border: `1px solid ${C.border}`,
+    background: C.surface, color: C.text, fontSize: 12, fontFamily: FONT, boxSizing: 'border-box',
+  };
+  const lockedInputStyle: CSSProperties = { ...inputStyle, opacity: 0.6, cursor: 'not-allowed' };
+
+  const chartW = isFullscreen ? Math.max(720, viewport.w - 80) : 720;
+  const chartH = isFullscreen ? Math.max(320, viewport.h - 380) : 280;
+
+  // Esc exits fullscreen
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsFullscreen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isFullscreen]);
+
+  const content = (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <SectionLabel label="Live Optimization" />
+        <button
+          onClick={() => setIsFullscreen(f => !f)}
+          style={{
+            padding: '4px 10px', borderRadius: 6, border: `1px solid ${C.border}`,
+            background: 'transparent', color: C.textMuted, fontSize: 11, fontWeight: 600,
+            cursor: 'pointer', fontFamily: FONT,
+          }}
+          title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Expand to fullscreen'}
+        >
+          {isFullscreen ? 'Exit fullscreen' : 'Expand'}
+        </button>
+      </div>
+      <p style={{ fontSize: 12, color: C.textMuted, margin: '0 0 16px' }}>
+        Run the ILS solver and watch its convergence in real time. Chart shows
+        per-iteration makespan plotted against the current baseline schedule.
+      </p>
+
+      {/* Preset row */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', marginBottom: 14 }}>
+        <div style={{ width: 200 }}>
+          <div style={labelStyle}>Preset</div>
+          <select
+            value={preset}
+            onChange={e => applyPreset(e.target.value as PresetKey)}
+            disabled={isRunning}
+            style={inputStyle}
+          >
+            <option value="quick">Quick (1 pass, 30s)</option>
+            <option value="default">Default (5 passes, 5 min)</option>
+            <option value="aggressive">Aggressive (10 passes, 30 min)</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <button
+          onClick={handleStart}
+          disabled={isRunning}
+          style={{
+            padding: '8px 18px', borderRadius: 6, border: 'none', cursor: isRunning ? 'not-allowed' : 'pointer',
+            background: C.accent, color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: FONT,
+            opacity: isRunning ? 0.4 : 1, whiteSpace: 'nowrap',
+          }}
+        >
+          {isRunning ? 'Running...' : 'Start Run'}
+        </button>
+        {progress && isRunning && (
+          <div style={{ fontSize: 12, color: C.textMuted }}>
+            pass {progress.currentPass}/{progress.totalPasses}
+            {' · '}
+            {progress.elapsedSeconds}s elapsed
+          </div>
+        )}
+      </div>
+
+      {/* Config grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
+        <div>
+          <div style={labelStyle}>Passes</div>
+          <input type="number" min={1} value={cfg.passes}
+            onChange={e => setCfg(c => ({ ...c, passes: Number(e.target.value) || 1 }))}
+            disabled={locked || isRunning} style={locked ? lockedInputStyle : inputStyle} />
+        </div>
+        <div>
+          <div style={labelStyle}>Time budget (s)</div>
+          <input type="number" min={5} value={cfg.timeBudgetSeconds}
+            onChange={e => setCfg(c => ({ ...c, timeBudgetSeconds: Number(e.target.value) || 5 }))}
+            disabled={locked || isRunning} style={locked ? lockedInputStyle : inputStyle} />
+        </div>
+        <div>
+          <div style={labelStyle}>Perturb strength</div>
+          <input type="number" step={0.01} min={0} max={1} value={cfg.perturbStrength}
+            onChange={e => setCfg(c => ({ ...c, perturbStrength: Number(e.target.value) || 0 }))}
+            disabled={locked || isRunning} style={locked ? lockedInputStyle : inputStyle} />
+        </div>
+        <div>
+          <div style={labelStyle}>Max iterations</div>
+          <input type="number" min={1} value={cfg.maxIterations}
+            onChange={e => setCfg(c => ({ ...c, maxIterations: Number(e.target.value) || 1 }))}
+            disabled={locked || isRunning} style={locked ? lockedInputStyle : inputStyle} />
+        </div>
+        <div>
+          <div style={labelStyle}>Stagnation limit</div>
+          <input type="number" min={1} value={cfg.stagnationLimit}
+            onChange={e => setCfg(c => ({ ...c, stagnationLimit: Number(e.target.value) || 1 }))}
+            disabled={locked || isRunning} style={locked ? lockedInputStyle : inputStyle} />
+        </div>
+        <div>
+          <div style={labelStyle}>Sample every N</div>
+          <input type="number" min={1} value={cfg.sampleEveryN}
+            onChange={e => setCfg(c => ({ ...c, sampleEveryN: Number(e.target.value) || 1 }))}
+            disabled={locked || isRunning} style={locked ? lockedInputStyle : inputStyle} />
+        </div>
+        <div style={{ gridColumn: '1 / span 2' }}>
+          <div style={labelStyle}>Freeze horizon (optional)</div>
+          <input type="datetime-local" value={cfg.freezeHorizon}
+            onChange={e => setCfg(c => ({ ...c, freezeHorizon: e.target.value }))}
+            disabled={isRunning} style={inputStyle} />
+        </div>
+      </div>
+
+      {errorMsg && (
+        <div style={{
+          padding: '8px 12px', borderRadius: 6, fontSize: 12, marginBottom: 12,
+          background: '#ef444422', color: '#ef4444', border: '1px solid #ef444444',
+        }}>{errorMsg}</div>
+      )}
+
+      {/* Convergence chart */}
+      <ConvergenceChart
+        samples={samples}
+        originalMakespan={originalMakespan ?? progress?.bestMakespanSoFar ?? null}
+        width={chartW}
+        height={chartH}
+      />
+
+      {/* Summary + actions */}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12, fontSize: 13 }}>
+        <div style={{ color: C.textMuted, flex: 1 }}>
+          {originalMakespan !== null && (
+            <>
+              Baseline: <span style={{ color: C.text, fontWeight: 600 }}>{formatSeconds(originalMakespan)}</span>
+              {progress?.bestMakespanSoFar !== undefined && (
+                <>
+                  {'  ·  '}Best so far: <span style={{ color: C.accent, fontWeight: 600 }}>{formatSeconds(progress.bestMakespanSoFar)}</span>
+                  {'  ·  '}<span style={{ color: progress.improvementPercent > 0 ? '#16a34a' : C.textMuted, fontWeight: 600 }}>
+                    {progress.improvementPercent >= 0 ? '-' : '+'}{Math.abs(progress.improvementPercent).toFixed(1)}%
+                  </span>
+                </>
+              )}
+            </>
+          )}
+          {status === 'complete' && result && (
+            <>
+              {'  ·  '}iterations: {result.iterations} · reason: {result.convergenceReason}
+            </>
+          )}
+        </div>
+        <button onClick={handleAccept} disabled={!canAccept}
+          style={{
+            padding: '6px 14px', borderRadius: 6, border: 'none',
+            background: '#16a34a', color: '#fff', fontSize: 12, fontWeight: 600,
+            cursor: canAccept ? 'pointer' : 'not-allowed', opacity: canAccept ? 1 : 0.4,
+          }}>Accept</button>
+        <button onClick={handleReject} disabled={!canReject}
+          style={{
+            padding: '6px 14px', borderRadius: 6, border: `1px solid ${C.border}`,
+            background: 'transparent', color: C.text, fontSize: 12, fontWeight: 600,
+            cursor: canReject ? 'pointer' : 'not-allowed', opacity: canReject ? 1 : 0.4,
+          }}>Reject</button>
+      </div>
+
+      {/* Savings card — shows dollar estimate or a "please configure" prompt */}
+      {result?.savings && <SavingsCard savings={result.savings} />}
+
+      {/* Per-pass results table */}
+      {result?.passes && result.passes.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <SectionLabel label="Per-pass Breakdown" />
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Pass</th>
+                <th style={thStyle}>Makespan (end)</th>
+                <th style={thStyle}>This pass</th>
+                <th style={thStyle}>Iterations</th>
+                <th style={thStyle}>Stopped on</th>
+                <th style={thStyle}>Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.passes.map((p: any, i: number) => {
+                const prevImprovement = i === 0 ? 0 : result.passes[i - 1].improvement;
+                const passDelta = p.improvement - prevImprovement;
+                const deltaColor = passDelta > 0.01 ? '#22c55e' : C.textMuted;
+                const deltaText = passDelta > 0.01 ? `-${passDelta.toFixed(2)}%` : '—';
+                return (
+                  <tr key={p.pass}>
+                    <td style={tdStyle}>{p.pass}</td>
+                    <td style={tdStyle}>{formatSeconds(p.makespan)}</td>
+                    <td style={{ ...tdStyle, color: deltaColor, fontWeight: 600 }}>{deltaText}</td>
+                    <td style={tdStyle}>{p.iterations}</td>
+                    <td style={tdStyle}>{p.convergenceReason ?? '—'}</td>
+                    <td style={tdStyle}>{p.elapsedMs !== undefined ? formatMs(p.elapsedMs) : '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+
+  if (!isFullscreen) return content;
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: C.bg, padding: '24px 40px', overflow: 'auto',
+      fontFamily: FONT,
+    }}>
+      {content}
+    </div>
+  );
+}
+
+interface SavingsEstimate {
+  configured: boolean;
+  currency: string;
+  ordersImproved: number;
+  lateDaysAvoided: number;
+  estimatedDollars: number;
+}
+
+function SavingsCard({ savings }: { savings: SavingsEstimate }) {
+  // Unconfigured tenants get a prompt instead of a number — honest until real rates are set.
+  if (!savings.configured) {
+    return (
+      <div style={{
+        marginTop: 16, padding: '12px 14px', borderRadius: 8,
+        border: `1px dashed ${C.border}`, background: C.surface, fontSize: 12, color: C.textMuted,
+      }}>
+        <div style={{ fontWeight: 600, color: C.text, marginBottom: 4 }}>Savings estimate unavailable</div>
+        Configure KPI rates for this tenant to see estimated dollar savings.
+        Create <code style={{ color: C.accent }}>config/tenants/&lt;tenantId&gt;/kpis/rates.json</code> with
+        at minimum <code style={{ color: C.accent }}>latePenaltyPerDay</code> and <code style={{ color: C.accent }}>currency</code>.
+      </div>
+    );
+  }
+
+  const noImprovement = savings.ordersImproved === 0;
+  const dollars = new Intl.NumberFormat('en-US', {
+    style: 'currency', currency: savings.currency || 'USD', maximumFractionDigits: 0,
+  }).format(savings.estimatedDollars);
+
+  return (
+    <div style={{
+      marginTop: 16, padding: '14px 16px', borderRadius: 8,
+      border: `1px solid ${C.border}`, background: C.surface,
+    }}>
+      <div style={{ display: 'flex', gap: 32, alignItems: 'center' }}>
+        <div style={{ flex: '0 0 auto' }}>
+          <div style={{ fontSize: 11, color: C.textDim, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Estimated late-fee savings
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: noImprovement ? C.textMuted : '#22c55e', marginTop: 4 }}>
+            {noImprovement ? '—' : dollars}
+          </div>
+        </div>
+        <div style={{ flex: 1, display: 'flex', gap: 24, fontSize: 13, color: C.textMuted }}>
+          <div>
+            <div style={{ fontSize: 11, color: C.textDim }}>Orders improved</div>
+            <div style={{ fontSize: 16, color: C.text, fontWeight: 600 }}>{savings.ordersImproved}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: C.textDim }}>Late days avoided</div>
+            <div style={{ fontSize: 16, color: C.text, fontWeight: 600 }}>{savings.lateDaysAvoided.toFixed(1)}</div>
+          </div>
+        </div>
+      </div>
+      {noImprovement && (
+        <div style={{ marginTop: 8, fontSize: 11, color: C.textDim }}>
+          No orders moved from late to on-time (or less-late) in this run.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatSeconds(sec: number): string {
+  if (!Number.isFinite(sec)) return '\u2014';
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function formatMs(ms: number): string {
+  if (!Number.isFinite(ms)) return '\u2014';
+  if (ms < 1000) return `${ms}ms`;
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return `${m}m ${rem}s`;
+}
+
+const thStyle: CSSProperties = {
+  textAlign: 'left', padding: '6px 8px', borderBottom: `1px solid ${C.border}`,
+  color: C.textDim, fontWeight: 600,
+};
+const tdStyle: CSSProperties = {
+  padding: '6px 8px', borderBottom: `1px solid ${C.border}`, color: C.text,
+};
+
+function ConvergenceChart({ samples, originalMakespan, width = 720, height = 280 }: {
+  samples: IterationSample[];
+  originalMakespan: number | null;
+  width?: number;
+  height?: number;
+}) {
+  const W = width, H = height, PAD_L = 56, PAD_R = 12, PAD_T = 14, PAD_B = 30;
+  const plotW = W - PAD_L - PAD_R;
+  const plotH = H - PAD_T - PAD_B;
+
+  if (samples.length === 0) {
+    return (
+      <div style={{
+        width: W, height: H, border: `1px solid ${C.border}`, borderRadius: 8,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: C.textDim, fontSize: 13, background: C.surface,
+      }}>
+        Start a run to see convergence
+      </div>
+    );
+  }
+
+  const xs = samples.map(s => s.cumulativeIteration);
+  const xMin = Math.min(...xs);
+  const xMax = Math.max(...xs, xMin + 1);
+
+  const ysCandidates = [
+    ...samples.map(s => s.makespan),
+    ...samples.map(s => s.bestSoFar),
+    ...(originalMakespan !== null ? [originalMakespan] : []),
+  ];
+  const yMinRaw = Math.min(...ysCandidates);
+  const yMaxRaw = Math.max(...ysCandidates);
+  const yRange = Math.max(yMaxRaw - yMinRaw, 1);
+  const yMin = yMinRaw - yRange * 0.08;
+  const yMax = yMaxRaw + yRange * 0.08;
+
+  const toX = (x: number) => PAD_L + ((x - xMin) / (xMax - xMin)) * plotW;
+  const toY = (y: number) => PAD_T + plotH - ((y - yMin) / (yMax - yMin)) * plotH;
+
+  const currentPath = samples.map((s, i) =>
+    `${i === 0 ? 'M' : 'L'}${toX(s.cumulativeIteration).toFixed(1)},${toY(s.makespan).toFixed(1)}`
+  ).join(' ');
+  const bestPath = samples.map((s, i) =>
+    `${i === 0 ? 'M' : 'L'}${toX(s.cumulativeIteration).toFixed(1)},${toY(s.bestSoFar).toFixed(1)}`
+  ).join(' ');
+
+  // Pass boundaries — wherever pass number changes
+  const passBoundaries: { x: number; pass: number }[] = [];
+  for (let i = 1; i < samples.length; i++) {
+    if (samples[i].pass !== samples[i - 1].pass) {
+      passBoundaries.push({ x: samples[i].cumulativeIteration, pass: samples[i].pass });
+    }
+  }
+
+  // Pass regions — for each pass, its horizontal extent and improvement delta.
+  // Delta = how much this pass lowered the global best (bestSoFar monotonically decreases).
+  interface PassRegion { pass: number; minX: number; maxX: number; startBest: number; endBest: number; }
+  const passRegions: PassRegion[] = [];
+  {
+    let cur: PassRegion | null = null;
+    for (const s of samples) {
+      if (!cur || s.pass !== cur.pass) {
+        if (cur) passRegions.push(cur);
+        cur = { pass: s.pass, minX: s.cumulativeIteration, maxX: s.cumulativeIteration, startBest: s.bestSoFar, endBest: s.bestSoFar };
+      } else {
+        cur.maxX = s.cumulativeIteration;
+        cur.endBest = s.bestSoFar;
+      }
+    }
+    if (cur) passRegions.push(cur);
+  }
+  // For pass 1, treat the baseline (originalMakespan) as the "before" if available —
+  // otherwise the first sample's bestSoFar already equals originalMakespan in practice.
+  if (passRegions.length > 0 && originalMakespan !== null) {
+    passRegions[0].startBest = originalMakespan;
+  }
+
+  // Y-axis tick values (4 evenly spaced)
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(t => yMin + t * (yMax - yMin));
+
+  // Distinct series colors so legend entries don't collide.
+  const COLOR_BEST = C.accent;       // blue — best-so-far envelope
+  const COLOR_CURRENT = '#fbbf24';   // amber — current iteration (zig-zags above best)
+  const COLOR_BASELINE = '#94a3b8';  // slate — horizontal original-schedule reference
+  const COLOR_PASS = '#a78bfa';      // violet — vertical pass boundaries
+
+  const legendItem = (swatch: React.ReactNode, label: string) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      {swatch}
+      <span style={{ color: C.textMuted }}>{label}</span>
+    </span>
+  );
+
+  return (
+    <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, background: C.surface, padding: 6 }}>
+      {/* Legend */}
+      <div style={{
+        display: 'flex', gap: 18, fontSize: 11, padding: '4px 6px 6px',
+        flexWrap: 'wrap',
+      }}>
+        {legendItem(
+          <svg width={20} height={8}><line x1={0} y1={4} x2={20} y2={4} stroke={COLOR_BEST} strokeWidth={2.5} /></svg>,
+          'Best so far'
+        )}
+        {legendItem(
+          <svg width={20} height={8}><line x1={0} y1={4} x2={20} y2={4} stroke={COLOR_CURRENT} strokeWidth={1.5} opacity={0.9} /></svg>,
+          'Current iteration'
+        )}
+        {legendItem(
+          <svg width={20} height={8}><line x1={0} y1={4} x2={20} y2={4} stroke={COLOR_BASELINE} strokeWidth={1} strokeDasharray="4 3" /></svg>,
+          'Baseline (original)'
+        )}
+        {legendItem(
+          <svg width={8} height={14}><line x1={4} y1={0} x2={4} y2={14} stroke={COLOR_PASS} strokeWidth={1.2} strokeDasharray="3 3" /></svg>,
+          'Pass boundary'
+        )}
+      </div>
+
+      <svg width={W} height={H} style={{ display: 'block' }}>
+        {/* Y grid + labels */}
+        {yTicks.map((y, i) => (
+          <g key={`yt-${i}`}>
+            <line x1={PAD_L} x2={W - PAD_R} y1={toY(y)} y2={toY(y)} stroke={C.border} strokeWidth={0.5} />
+            <text x={PAD_L - 6} y={toY(y) + 3} textAnchor="end" fontSize={10} fill={C.textDim}>
+              {formatSeconds(y)}
+            </text>
+          </g>
+        ))}
+
+        {/* Baseline reference line */}
+        {originalMakespan !== null && (
+          <>
+            <line x1={PAD_L} x2={W - PAD_R} y1={toY(originalMakespan)} y2={toY(originalMakespan)}
+              stroke={COLOR_BASELINE} strokeWidth={1} strokeDasharray="4 3" opacity={0.7} />
+            <text x={W - PAD_R - 4} y={toY(originalMakespan) - 4} textAnchor="end" fontSize={10} fill={COLOR_BASELINE}>
+              Baseline
+            </text>
+          </>
+        )}
+
+        {/* Pass boundaries */}
+        {passBoundaries.map((b, i) => (
+          <g key={`pb-${i}`}>
+            <line x1={toX(b.x)} x2={toX(b.x)} y1={PAD_T} y2={H - PAD_B}
+              stroke={COLOR_PASS} strokeWidth={1} strokeDasharray="3 3" opacity={0.65} />
+            <text x={toX(b.x) + 3} y={PAD_T + 10} fontSize={10} fill={COLOR_PASS} opacity={0.9}>
+              Pass {b.pass}
+            </text>
+          </g>
+        ))}
+
+        {/* Per-pass improvement delta labels (centered in each region, below the boundary label) */}
+        {originalMakespan !== null && passRegions.map((r, i) => {
+          const deltaAbs = r.startBest - r.endBest;
+          const deltaPct = originalMakespan > 0 ? (deltaAbs / originalMakespan) * 100 : 0;
+          const midX = toX((r.minX + r.maxX) / 2);
+          const label = deltaAbs <= 0 ? 'no change' : `-${deltaPct.toFixed(1)}%`;
+          const labelColor = deltaAbs > 0 ? '#22c55e' : C.textDim;
+          return (
+            <g key={`pr-${i}`}>
+              <text x={midX} y={PAD_T + 22} textAnchor="middle" fontSize={10} fill={labelColor} fontWeight={600}>
+                P{r.pass}: {label}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Current iteration — amber, thin but clearly visible */}
+        <path d={currentPath} fill="none" stroke={COLOR_CURRENT} strokeWidth={1.2} opacity={0.85} />
+
+        {/* Best-so-far envelope — bold blue, drawn on top */}
+        <path d={bestPath} fill="none" stroke={COLOR_BEST} strokeWidth={2.5} />
+
+        {/* Axis frame */}
+        <line x1={PAD_L} x2={PAD_L} y1={PAD_T} y2={H - PAD_B} stroke={C.border} strokeWidth={1} />
+        <line x1={PAD_L} x2={W - PAD_R} y1={H - PAD_B} y2={H - PAD_B} stroke={C.border} strokeWidth={1} />
+
+        {/* X axis label */}
+        <text x={PAD_L + plotW / 2} y={H - 6} textAnchor="middle" fontSize={10} fill={C.textDim}>
+          Cumulative iteration
+        </text>
+      </svg>
+    </div>
+  );
+}
+
 const SETTINGS_SECTIONS: { key: string; label: string; icon: string; minLevel: ExperienceLevel; group?: string }[] = [
-  { key: 'general',  label: 'General',       icon: 'G', minLevel: 'novice' },
-  { key: 'scoring',  label: 'Scoring Rules', icon: 'S', minLevel: 'intermediate' },
-  { key: 'solver',   label: 'Solver',        icon: 'D', minLevel: 'expert' },
-  { key: 'admin',    label: 'Admin',         icon: 'A', minLevel: 'novice', group: 'Admin' },
+  { key: 'general',  label: 'General',            icon: 'G', minLevel: 'novice' },
+  { key: 'scoring',  label: 'Scoring Rules',      icon: 'S', minLevel: 'intermediate' },
+  { key: 'solver',   label: 'Solver',             icon: 'D', minLevel: 'expert' },
+  { key: 'admin',    label: 'Admin',              icon: 'A', minLevel: 'novice', group: 'Admin' },
+  { key: 'optimize', label: 'Live Optimization',  icon: 'O', minLevel: 'expert', group: 'Admin' },
 ];
 
 function SettingsContent({ experienceLevel, onExperienceChange, stats, solveResult, scoringRules, onScoringRulesChange, scoringSource, configName }: {
@@ -9390,6 +10052,10 @@ function SettingsContent({ experienceLevel, onExperienceChange, stats, solveResu
 
         {activeSection === 'admin' && (
           <AdminCloneTenant />
+        )}
+
+        {activeSection === 'optimize' && (
+          <AdminOptimizeLive />
         )}
       </div>
     </div>

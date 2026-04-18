@@ -250,6 +250,9 @@ export function tabuSearch(
   let noImproveCount = 0;
   let totalMoves = 0;
   let iter = 0;
+  let lastEmittedIter = -1;
+
+  const heartbeat = config.sampleEveryN ?? 25;
 
   for (iter = 0; iter < config.maxIterations; iter++) {
     // ─── Time budget check ───
@@ -281,6 +284,9 @@ export function tabuSearch(
       }
     }
 
+    let currentMakespan = graph.criticalPath?.makespan ?? Infinity;
+    let isNewBest = false;
+
     // ─── 3. Apply the best move (even if it worsens current — escaping local optima) ───
     if (bestMove) {
       graph.swapOnResource(bestMove.resourceKey, bestMove.nodeIdxA, bestMove.nodeIdxB);
@@ -291,8 +297,9 @@ export function tabuSearch(
       tabu.add(bestMove, iter);
 
       // ─── 4. Check for new global best ───
-      const currentMakespan = graph.criticalPath?.makespan ?? Infinity;
-      if (currentMakespan < bestMakespan) {
+      currentMakespan = graph.criticalPath?.makespan ?? Infinity;
+      isNewBest = currentMakespan < bestMakespan;
+      if (isNewBest) {
         bestMakespan = currentMakespan;
         bestGraph = graph.clone();
         noImproveCount = 0;
@@ -304,8 +311,37 @@ export function tabuSearch(
       noImproveCount++;
     }
 
+    // ─── Sample emission (no-op when onSample is unset) ───
+    if (config.onSample) {
+      const isHeartbeat = (iter % heartbeat) === 0;
+      const isFirst = iter === 0;
+      if (isNewBest || isHeartbeat || isFirst) {
+        config.onSample({
+          iteration: iter,
+          makespan: currentMakespan,
+          bestSoFar: bestMakespan,
+          isNewBest,
+          elapsedMs: Date.now() - startMs,
+        });
+        lastEmittedIter = iter;
+      }
+    }
+
     // ─── 5. Stagnation check ───
     if (noImproveCount >= config.stagnationLimit) break;
+  }
+
+  // Final sample on exit so the curve closes at the real stopping point,
+  // regardless of where the heartbeat cadence happened to land.
+  if (config.onSample && iter > 0 && lastEmittedIter !== iter - 1) {
+    const finalIter = Math.max(0, iter - 1);
+    config.onSample({
+      iteration: finalIter,
+      makespan: graph.criticalPath?.makespan ?? bestMakespan,
+      bestSoFar: bestMakespan,
+      isNewBest: false,
+      elapsedMs: Date.now() - startMs,
+    });
   }
 
   // ─── Determine convergence reason ───

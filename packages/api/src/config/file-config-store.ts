@@ -5,6 +5,7 @@ import {
   ITenantConfig,
   IEntitySchema,
   IKPIDefinition,
+  IKpiRates,
   ITerminologyMap,
   IScoringConfig,
   ISettingsConfig,
@@ -113,6 +114,16 @@ export class FileConfigStore implements IConfigStore {
     const filePath = path.join(this.tenantDir, 'kpis', 'kpis.json');
     this.writeJsonFile(filePath, kpis);
     this.cache.delete('kpis');
+  }
+
+  // Business-value rates used for savings estimates (separate from display KPIs above).
+  // Returns null if the file doesn't exist so callers can surface a "please configure" prompt.
+  getKPIRates(): IKpiRates | null {
+    return this.getCached('kpi-rates', () =>
+      this.readJsonFile<IKpiRates>(
+        path.join(this.tenantDir, 'kpis', 'rates.json'),
+      ),
+    );
   }
 
   // ── Terminology ─────────────────────────────────────────────────────

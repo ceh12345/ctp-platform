@@ -3717,6 +3717,22 @@ export class CTPService {
       fs.writeFileSync(tenantJsonPath, JSON.stringify(data, null, 2), 'utf-8');
     }
 
+    // Ensure kpis/rates.json exists in the clone — recursive copy picks it up when
+    // the source has one, but if the source was an old tenant missing the file,
+    // seed it here so the target is immediately usable on the Live Optimization page.
+    const ratesPath = path.join(targetDir, 'kpis', 'rates.json');
+    if (!fs.existsSync(ratesPath)) {
+      fs.mkdirSync(path.dirname(ratesPath), { recursive: true });
+      const defaults = {
+        currency: 'USD',
+        latePenaltyPerDay: 500,
+        graceDays: 0,
+        latePenaltyCapPerOrder: null,
+        laborRatePerHour: 50,
+      };
+      fs.writeFileSync(ratesPath, JSON.stringify(defaults, null, 2) + '\n', 'utf-8');
+    }
+
     return { status: 'ok', tenant: targetTenant, source: sourceTenant };
   }
 

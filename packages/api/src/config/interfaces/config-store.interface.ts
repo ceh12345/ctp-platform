@@ -53,6 +53,21 @@ export interface IKPIDefinition {
   sequence: number;
 }
 
+// KPI rates — business-value config (separate from display-KPI definitions above).
+// Used to translate optimization improvements into dollar estimates on results screens.
+export interface IKpiRates {
+  /** ISO currency code for display. */
+  currency: string;
+  /** Flat per-day penalty for late orders, in the specified currency. */
+  latePenaltyPerDay: number;
+  /** Grace days allowed past due before penalty kicks in. */
+  graceDays: number;
+  /** Optional cap on total penalty per order; null = uncapped. */
+  latePenaltyCapPerOrder: number | null;
+  /** Fully-loaded labor $/hour for a secondary savings line (optional display). */
+  laborRatePerHour: number;
+}
+
 // Terminology — flat key→label map
 export type ITerminologyMap = Record<string, string>;
 
@@ -268,6 +283,9 @@ export interface IConfigStore {
   // KPIs
   getKPIs(): IKPIDefinition[];
   saveKPIs(kpis: IKPIDefinition[]): void;
+
+  // KPI rates (business-value config for savings estimates). Returns null if file missing.
+  getKPIRates(): IKpiRates | null;
 
   // Terminology
   getTerminology(): ITerminologyMap;

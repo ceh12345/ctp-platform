@@ -7,6 +7,24 @@ import { DisjunctiveGraph } from './disjunctivegraph';
 
 // ─── Tabu Search ───
 
+/** One sample of convergence state, emitted from inside the tabu loop. */
+export interface IterationSample {
+  /** 1-indexed pass number. Populated by the caller (pass-agnostic inside tabuSearch). */
+  pass: number;
+  /** Iteration within this pass (0-indexed). */
+  iteration: number;
+  /** Monotonic across passes. Populated by the caller. */
+  cumulativeIteration: number;
+  /** Makespan of the solution at this iteration. */
+  makespan: number;
+  /** Global best makespan seen so far across all passes. */
+  bestSoFar: number;
+  /** True when this sample represents a new global best. */
+  isNewBest: boolean;
+  /** Milliseconds since the current tabu pass started (not job start). */
+  elapsedMs: number;
+}
+
 /** Configuration parameters for a tabu search pass. */
 export interface TabuConfig {
   /** Tabu list tenure. Typical: 15–25, or sqrt(N). */
@@ -19,6 +37,17 @@ export interface TabuConfig {
   timeBudgetMs: number;
   /** Epoch seconds — tasks starting before this are frozen (0 = no freeze). */
   freezeHorizon: number;
+
+  /**
+   * Optional per-iteration sampling callback for live convergence charts.
+   * Called on every new global best, every `sampleEveryN` iterations as a heartbeat,
+   * the first iteration, and the final iteration (on loop exit).
+   * Receives iteration-within-pass; caller adds pass/cumulativeIteration.
+   */
+  onSample?: (sample: Omit<IterationSample, 'pass' | 'cumulativeIteration'>) => void;
+
+  /** Heartbeat interval — emit a sample every N iterations even without improvement. Default 25. */
+  sampleEveryN?: number;
 }
 
 /** Output of a completed tabu search pass. */
