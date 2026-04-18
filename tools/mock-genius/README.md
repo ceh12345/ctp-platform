@@ -151,28 +151,61 @@ curl -X POST http://localhost:8080/_mock/scenario -H "Content-Type: application/
 
 ## Recording Mode
 
-When `MOCK_RECORD_FROM` is set at startup, the mock stops serving fixtures and
-becomes a transparent proxy: every Genius endpoint request is forwarded to the
-upstream URL, the raw response body is saved to disk, and the response is
-returned unchanged to the caller. Failure injection and fixture loading are
-disabled — the upstream is authoritative.
+One VPN session captures a complete Genius snapshot. Every subsequent dev session runs
+offline against the capture. Re-record when Stafford data drifts.
 
-Use this once per capture session to snapshot the real Stafford Genius API for
-offline development.
-
-### Start in recording mode
+### TL;DR — full capture-to-commit workflow
 
 ```bash
+# ── 1. Start mock in recording mode (VPN must be up) ─────────────────────────
 cd tools/mock-genius
-
 MOCK_RECORD_FROM=https://genius.stafford.co.nz:53215 \
 MOCK_RECORD_AUTH_USER=<vpn-user> \
 MOCK_RECORD_AUTH_PASS=<vpn-pass> \
 npm start
+# Startup banner MUST say "Mode: RECORDING" — stop and fix env if not.
+
+# ── 2. Trigger a sync (in another terminal) — exercises all four endpoints ──
+curl -X POST http://localhost:3000/v1/state/sync \
+  -H "X-Tenant-Id: stafford-engineering-test"
+
+# ── 3. Review what landed ─────────────────────────────────────────────────────
+cat recorded/*/_metadata.json
+# Check: all 4 endpoints present? Expected record counts? Any errors?
+
+# ── 4. Stop the mock (Ctrl+C). Copy the raw capture into a named scenario ───
+SESSION=$(ls -1 recorded | tail -1)
+DATE=$(date +%Y-%m-%d)
+cp -r recorded/$SESSION fixtures/stafford-snapshot-$DATE
+
+# ── 5. Strip Genius envelopes + merge paged files ────────────────────────────
+node scripts/strip-envelope.js fixtures/stafford-snapshot-$DATE
+
+# ── 6. SANITIZE ── see checklist below. Do NOT skip this step. ──────────────
+#     Hand-edit the JSON files in fixtures/stafford-snapshot-$DATE.
+
+# ── 7. Verify the sanitized scenario serves identically ──────────────────────
+MOCK_SCENARIO=stafford-snapshot-$DATE npm start
+curl -X POST http://localhost:3000/v1/state/sync -H "X-Tenant-Id: stafford-engineering-test"
+# Record counts should match the original capture.
+
+# ── 8. Commit the sanitized scenario ─────────────────────────────────────────
+git add fixtures/stafford-snapshot-$DATE
+git commit -m "data: Stafford Genius capture $DATE"
 ```
 
-The startup banner is loud and explicit — it says `Mode: RECORDING` in big
-letters. If you don't see that, you're not in recording mode.
+### Sanitization checklist (step 6 — do not skip)
+
+Raw captures are `.gitignore`d because they contain customer names, pricing,
+and internal codes. **Sanitize before `git add`.** If you skip this step,
+Stafford's pricing and customer list land on GitHub.
+
+- [ ] Customer names: replace `CustomerName`, `ShipToName`, etc. with sequential aliases `CustomerA`, `CustomerB`, …
+- [ ] Prices: set `UnitPrice`, `HourlyRate`, `MaterialCost` and similar numeric cost fields to `0` or `999`
+- [ ] Any other obviously-sensitive strings (vendor contacts, internal URLs, emails) — redact
+- [ ] Keep: IDs, codes, dates, quantities, chain relationships. These are what CTP cares about and don't leak.
+- [ ] **Verify no leakage:** `grep -ri "<real-customer-name>" fixtures/stafford-snapshot-$DATE` returns nothing
+- [ ] **Verify diff is plausible:** `git diff --stat` — number of changed lines matches what you sanitized
 
 ### Environment variables
 
@@ -191,67 +224,21 @@ Each mock startup creates one session directory timestamped to the second:
 ```
 recorded/
   2026-04-18T14-30-00/
-    salesOrderDetailEntity.json                   # single-page or merged
+    salesOrderDetailEntity.json                          # single-page or post-strip merged
     workOrderWithAdvancedInformationViewEntity.json
-    productionTaskWithAdvancedInfoViewEntity_page1.json   # multi-page saved per page
+    productionTaskWithAdvancedInfoViewEntity_page1.json  # multi-page saved per page
     productionTaskWithAdvancedInfoViewEntity_page2.json
     machineAndRessourceEntity.json
-    _metadata.json                                # capture summary
+    _metadata.json                                       # capture summary
 ```
 
 Restart the mock to start a fresh session.
-
-### Capture → promote → serve workflow
-
-```bash
-# 1. Record from live upstream (requires VPN)
-MOCK_RECORD_FROM=https://genius.stafford.co.nz:53215 \
-MOCK_RECORD_AUTH_USER=greg MOCK_RECORD_AUTH_PASS=*** \
-npm start
-
-# 2. Trigger a sync in another terminal to exercise all four endpoints
-curl -X POST http://localhost:3000/v1/state/sync \
-  -H "X-Tenant-Id: stafford-engineering-test"
-
-# 3. Review capture — spot errors, unexpected record counts, missing pages
-cat recorded/2026-04-18T14-30-00/_metadata.json
-
-# 4. Stop the mock (Ctrl+C). Copy the capture into a named scenario.
-cp -r recorded/2026-04-18T14-30-00 fixtures/stafford-snapshot-april-18
-
-# 5. Strip the Genius envelope, merge paged files
-node scripts/strip-envelope.js fixtures/stafford-snapshot-april-18
-
-# 6. SANITIZE — replace customer names with CustomerA/B/..., redact prices.
-#    Do not git add the scenario until this step is complete.
-
-# 7. Serve the sanitized scenario from the mock
-MOCK_SCENARIO=stafford-snapshot-april-18 npm start
-
-# 8. Commit — the scenario is now part of the test corpus
-git add fixtures/stafford-snapshot-april-18
-```
-
-### Sensitive data — read before committing
-
-Raw recordings contain customer names, pricing, internal codes. **They are
-`.gitignore`d** — never commit the contents of `recorded/`. Sanitization is
-the gate between a raw capture and a committed fixture scenario. If you skip
-it, Stafford's pricing and customer list land on GitHub.
-
-Minimum sanitization pass:
-- Replace customer-identifying strings (`CustomerName`, `ShipToName`) with
-  sequential aliases `CustomerA`, `CustomerB`, …
-- Redact numeric price/cost fields (set to `0` or `999`) — `UnitPrice`,
-  `HourlyRate` on labor records, `MaterialCost`
-- Keep IDs, codes, dates, quantities, and chain relationships intact — these
-  are the interesting shape for CTP and don't leak
 
 ### Control endpoints in recording mode
 
 | Endpoint | Behavior |
 |---|---|
-| `GET /_mock/health` | Returns `{status: "ok", mode: "recording"}` — never proxies |
+| `GET /_mock/health` | Returns `{status:"ok", mode:"recording"}` — never proxies |
 | `GET /_mock/state` | Returns `{mode, upstreamUrl, sessionDir, capturedEndpoints, errors, requestCount}` |
 | `POST /_mock/scenario` | **409** — scenario switching disabled in recording mode |
 | `POST /_mock/inject-failure` | **409** — failure injection disabled in recording mode |
