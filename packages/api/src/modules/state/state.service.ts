@@ -4,6 +4,13 @@ import { StateHydratorService } from './state-hydrator.service';
 import { ConfigService } from '../../config/config.service';
 import { SyncService } from '../integration/sync.service';
 import { IRawDataPayload } from '../integration/adapter.interface';
+import { validateReferences } from '../integration/validation-pass';
+import { MappingError } from '../integration/mapping-error';
+import {
+  SyncResult,
+  emptyValidationSummary,
+  summarizeValidation,
+} from '../integration/sync-result';
 
 @Injectable()
 export class StateService {
@@ -15,37 +22,39 @@ export class StateService {
     private readonly syncService: SyncService,
   ) {}
 
-  private syncFromConfig() {
+  private syncFromConfig(): SyncResult {
     this.configService.reloadConfig();
     const tenantId = this.configService.getTenantId();
     const landscape = this.hydrator.buildLandscape();
+    validateReferences(landscape);
     this.landscapes.set(tenantId, landscape);
-    return this.buildSummaryResponse(landscape);
+    return this.buildSyncResult(landscape, []);
   }
 
   // Applies a pre-fetched and mapped payload onto the landscape.
   // When payload has data (REST adapter), hydrates from the payload arrays.
   // When payload is empty (file adapter), falls back to configService reads.
-  applyTransformed(payload: IRawDataPayload) {
+  applyTransformed(payload: IRawDataPayload, mappingErrors: MappingError[] = []): SyncResult {
     const tenantId = this.configService.getTenantId();
     const landscape = this.hydrator.buildLandscape(payload);
+    validateReferences(landscape);
     this.landscapes.set(tenantId, landscape);
-    return this.buildSummaryResponse(landscape);
+    return this.buildSyncResult(landscape, mappingErrors);
   }
 
   // Sync via the configured adapter (REST or file).
   // REST tenants: fetch → map → hydrate from payload.
   // File tenants with no adapter.json: falls back to syncFromConfig().
-  async syncFromAdapter() {
+  async syncFromAdapter(): Promise<SyncResult> {
     const adapterConfig = this.configService.getAdapterConfig();
     if (!adapterConfig || adapterConfig.adapterType !== 'rest') {
       return this.syncFromConfig();
     }
-    const payload = await this.syncService.sync();
-    return this.applyTransformed(payload);
+    const { payload, errors: mappingErrors } = await this.syncService.sync();
+    return this.applyTransformed(payload, mappingErrors);
   }
 
-  async reloadAndSync() {
+  async reloadAndSync(): Promise<SyncResult> {
     this.configService.reloadConfig();
     return this.syncFromAdapter();
   }
@@ -55,19 +64,24 @@ export class StateService {
     return this.landscapes.get(tenantId) ?? null;
   }
 
-  getSummary() {
+  getSummary(): SyncResult {
     const landscape = this.getLandscape();
     if (!landscape) {
-      return { status: 'not_loaded' };
+      return {
+        status: 'not_loaded',
+        mappingErrors: [],
+        validationSummary: emptyValidationSummary(),
+      };
     }
-    return this.buildSummaryResponse(landscape);
+    // getSummary reports the current landscape; no transform ran, so no mappingErrors.
+    return this.buildSyncResult(landscape, []);
   }
 
   isLoaded(): boolean {
     return this.getLandscape() !== null;
   }
 
-  private buildSummaryResponse(ls: SchedulingLandscape) {
+  private buildSyncResult(ls: SchedulingLandscape, mappingErrors: MappingError[]): SyncResult {
     return {
       status: 'ok',
       summary: {
@@ -82,6 +96,8 @@ export class StateService {
           scheduleDirection: ls.appSettings?.scheduleDirection ?? 1,
         },
       },
+      mappingErrors,
+      validationSummary: summarizeValidation(ls),
     };
   }
 }

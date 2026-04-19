@@ -1,5 +1,6 @@
 import { CTPKeyEntity, IKeyEntity } from "../Core/entity";
 import { EntityHashMap } from "../Core/hashmap";
+import { IValidationError } from "../Core/error";
 
 export interface IOrder extends IKeyEntity {
   productKey: string;
@@ -19,9 +20,30 @@ export class CTPOrder extends CTPKeyEntity implements IOrder {
   public priority: number = 0;
   public scheduledQty: number = 0;
   public latenessPenaltyPerDay: number = 0;
+  public validationErrors: IValidationError[] = [];
 
   constructor(t?: string, n?: string, k?: string) {
     super(t, n, k);
+  }
+
+  public addValidationError(err: IValidationError): void {
+    if (!this.validationErrors.some(e =>
+      e.agent === err.agent && e.reason === err.reason && e.field === err.field
+    )) {
+      this.validationErrors.push(err);
+    }
+  }
+
+  public clearValidationErrors(): void {
+    this.validationErrors = [];
+  }
+
+  public hasErrors(): boolean {
+    return this.validationErrors.some(e => e.severity === "error");
+  }
+
+  public hasWarnings(): boolean {
+    return this.validationErrors.some(e => e.severity === "warning");
   }
 
   // How much of the order is fulfilled

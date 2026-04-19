@@ -14,7 +14,7 @@ import {
 import { EntityHashMap } from "../Core/hashmap";
 import { CTPStateChange } from "./statechange";
 import { CTPLinkId } from "../Core/linkid";
-import { CTPError, IError } from "../Core/error";
+import { CTPError, IError, IValidationError } from "../Core/error";
 import { InfeasibilityReport } from "./infeasibilityreport";
 
 export interface ITaskResource {
@@ -218,7 +218,8 @@ export class CTPTask extends CTPKeyEntity implements ITask {
   public processed: boolean;
   public pinned: boolean;
 
-  public errors: IError[];
+  public errors: IError[];                             // per-solve scheduler errors — cleared at solve start
+  public validationErrors: IValidationError[] = [];    // persistent data-quality errors — survive solves
 
   // Product output — what does this task produce?
   public outputProductKey: string | null;
@@ -335,6 +336,30 @@ export class CTPTask extends CTPKeyEntity implements ITask {
     if (!this.errors.some(e => e.agent === a && e.reason === r)) {
       this.errors.push({ agent: a, reason: r, type: "" });
     }
+  }
+
+  public addValidationError(err: IValidationError) {
+    if (!this.validationErrors.some(e =>
+      e.agent === err.agent && e.reason === err.reason && e.field === err.field
+    )) {
+      this.validationErrors.push(err);
+    }
+  }
+
+  public clearValidationErrors() {
+    this.validationErrors = [];
+  }
+
+  public hasErrors(): boolean {
+    return this.validationErrors.some(e => e.severity === "error");
+  }
+
+  public hasWarnings(): boolean {
+    return this.validationErrors.some(e => e.severity === "warning");
+  }
+
+  public get schedulable(): boolean {
+    return !this.hasErrors();
   }
 
   constructor(t?: string, n?: string, k?: string) {

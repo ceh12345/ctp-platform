@@ -2,21 +2,31 @@ import { Injectable } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { IMappingProfile } from '../../config/interfaces/config-store.interface';
 import { IRawDataPayload } from './adapter.interface';
+import { MappingError } from './mapping-error';
 
 // Detects whether an ISO 8601 string carries a timezone designator — either
 // trailing Z or a ±HH:MM offset at the end.
 const HAS_TZ_DESIGNATOR = /(Z|[+\-]\d{2}:?\d{2})$/;
 
+export interface MappingResult {
+  payload: IRawDataPayload;
+  errors: MappingError[];
+}
+
 @Injectable()
 export class MappingEngine {
-  transform(raw: IRawDataPayload, profile: IMappingProfile | null): IRawDataPayload {
-    if (!profile) return raw;
-    return {
+  transform(raw: IRawDataPayload, profile: IMappingProfile | null): MappingResult {
+    const errors: MappingError[] = [];
+    if (!profile) return { payload: raw, errors };
+    // Sprint 1a: accumulator plumbed through; no transform currently pushes.
+    // Sprint 1b (bug fixes) populates this from `toUTC` on !isValid.
+    const payload: IRawDataPayload = {
       ...raw,
       orders:    this.mapEntities(raw.orders,    profile['orders']),
       resources: this.mapEntities(raw.resources, profile['resources']),
       tasks:     this.mapTasks(raw.tasks,        profile['tasks']),
     };
+    return { payload, errors };
   }
 
   // ── Generic entity mapping ────────────────────────────────────────────────

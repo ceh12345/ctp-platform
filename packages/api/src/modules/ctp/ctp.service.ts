@@ -3132,6 +3132,8 @@ export class CTPService {
         score: task.score === Number.MAX_VALUE ? null : task.score,
         feasible: isScheduled,
         errors: task.errors ?? [],
+        validationErrors: task.validationErrors ?? [],
+        schedulable: task.schedulable,
         infeasibilityReport: task.infeasibilityReport ? this.serializeInfeasibilityReport(task.infeasibilityReport) : null,
         typedAttributes: task.typedAttributes.toArray(),
         orderRef,
@@ -3378,6 +3380,7 @@ export class CTPService {
         netAvailable,
         downtimes: resourceDowntimes,
         isCurrentlyDown: resourceDowntimes.some(d => d.status === 'active'),
+        validationErrors: resource.validationErrors ?? [],
       });
     });
 

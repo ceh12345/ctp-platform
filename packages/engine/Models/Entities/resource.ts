@@ -1,5 +1,6 @@
 import { CTPKeyEntity, IKeyEntity } from "../Core/entity";
 import { EntityHashMap } from "../Core/hashmap";
+import { IValidationError } from "../Core/error";
 import { CTPAvailable, CTPAssignments } from "../Intervals/intervals";
 import { CTPPreference, IPreference } from "../Core/preference";
 import { List } from "../Core/list";
@@ -26,11 +27,32 @@ export class CTPResource extends CTPBaseResource implements IResource {
   public available: AvailableMatrix;
   public class: string;
   public hourlyRate: number = 0;
+  public validationErrors: IValidationError[] = [];
 
   constructor(c?: string, t?: string, n?: string, k?: string) {
     super(t, n, k);
     this.available = new AvailableMatrix();
     this.class = c ?? CTPResourceConstants.REUSABLE;
+  }
+
+  public addValidationError(err: IValidationError): void {
+    if (!this.validationErrors.some(e =>
+      e.agent === err.agent && e.reason === err.reason && e.field === err.field
+    )) {
+      this.validationErrors.push(err);
+    }
+  }
+
+  public clearValidationErrors(): void {
+    this.validationErrors = [];
+  }
+
+  public hasErrors(): boolean {
+    return this.validationErrors.some(e => e.severity === "error");
+  }
+
+  public hasWarnings(): boolean {
+    return this.validationErrors.some(e => e.severity === "warning");
   }
 }
 
