@@ -18,6 +18,25 @@ export class CTPDateTime {
   }
 
   public static toDateTime(sec: number): DateTime {
+    // Defense in depth: if sec is NaN or baseDate is invalid, luxon throws
+    // the opaque "Invalid unit value NaN" message deep in its internals.
+    // Upstream layers (MappingEngine.toUTC, StateHydratorService.parseIsoDateOrRecord)
+    // should catch bad dates before reaching here. This guard replaces the
+    // luxon error with a structured one that names the actual failure so
+    // ops can trace which upstream layer failed to filter.
+    if (!Number.isFinite(sec)) {
+      throw new Error(
+        `CTPDateTime.toDateTime: seconds must be a finite number, got ${sec}. ` +
+        `This indicates an upstream validation gap — a bad date value reached engine arithmetic ` +
+        `without being flagged by MappingEngine or the hydrator's parseIsoDateOrRecord helper.`,
+      );
+    }
+    if (!this.baseDate.isValid) {
+      throw new Error(
+        `CTPDateTime.toDateTime: baseDate is invalid (${this.baseDate.invalidReason ?? 'unknown'}). ` +
+        `This is a static constant and should never be invalid at runtime.`,
+      );
+    }
     return this.baseDate.plus({ seconds: sec });
   }
   public static fromDateTime(dt: DateTime | string): number {

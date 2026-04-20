@@ -676,6 +676,22 @@ export class CTPService {
       }, 'Task is already in process and cannot be moved');
     }
 
+    // Validation gate: if the task has severity:error validationErrors
+    // (orphan resource, unparseable date, etc.), Where-To must not offer a
+    // placement — the evaluator would silently propose empty-resources or
+    // duration-only slots that the operator could commit as garbage.
+    if (!task.schedulable) {
+      const codes = task.validationErrors.map(e => e.type).join(', ') || 'unknown';
+      return this.formatWhereToResponse(
+        {
+          taskKey, taskName: task.name, currentAssignment: null, options: [],
+          stats: { contextsEvaluated: 0, feasibleCount: 0, infeasibleCount: 0, timeMs: 0 },
+        },
+        `Task has unresolved validation errors (${codes}) — fix the source data and re-sync`,
+        task.validationErrors,
+      );
+    }
+
     const scoring = this.buildScoring();
 
     // Convert date constraints to engine time
@@ -706,6 +722,20 @@ export class CTPService {
 
     if (!task) {
       throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
+    }
+
+    // Validation gate — symmetric with whereTo(). Refusing Where-To while
+    // accepting moveTo would leave a hole: the UI could stash an old
+    // contextHash from a pre-validation-error state and commit it.
+    if (!task.schedulable) {
+      const codes = task.validationErrors.map(e => e.type).join(', ') || 'unknown';
+      return {
+        taskKey,
+        success: false,
+        reason: `Task has unresolved validation errors (${codes}) — fix the source data and re-sync`,
+        suggestRefresh: true,
+        validationErrors: task.validationErrors,
+      };
     }
 
     // Re-evaluate to confirm option is still feasible
@@ -2963,7 +2993,11 @@ export class CTPService {
     return waterfall;
   }
 
-  private formatWhereToResponse(result: WhereToResult, reason?: string): WhereToResponseDto {
+  private formatWhereToResponse(
+    result: WhereToResult,
+    reason?: string,
+    validationErrors?: any[],
+  ): WhereToResponseDto {
     const response: WhereToResponseDto = {
       taskKey: result.taskKey,
       taskName: result.taskName,
@@ -2989,7 +3023,8 @@ export class CTPService {
       })),
       stats: result.stats,
     };
-    if (reason) (response as any).reason = reason;
+    if (reason) response.reason = reason;
+    if (validationErrors && validationErrors.length > 0) response.validationErrors = validationErrors;
     return response;
   }
 
@@ -3384,9 +3419,15 @@ export class CTPService {
       });
     });
 
-    // Order fill rates
-    const orderData = this.configService.getOrders();
-    const orders = orderData.map((order) => {
+    // Order fill rates.
+    // Bug A fix (Sprint 1b): read from landscape.orders (which reflects
+    // MappingEngine output for REST-adapter tenants) rather than the raw
+    // configService.getOrders(). Previously, REST tenants' order fields
+    // bypassed MappingEngine entirely at this endpoint — priorities and
+    // dates never reflected mapping-profile transformations.
+    // CTPOrder stores dueDate/lateDueDate as epoch seconds; convert back
+    // to ISO for the response shape. dueDate === 0 means "not set".
+    const orders = landscape.orders.toArray().map((order) => {
       const scheduledQty = orderScheduledQty.get(order.key) ?? 0;
       return {
         orderKey: order.key,
@@ -3397,9 +3438,14 @@ export class CTPService {
         fillRate: order.demandQty > 0
           ? Math.round((scheduledQty / order.demandQty) * 10000) / 10000
           : 0,
-        dueDate: order.dueDate,
-        lateDueDate: order.lateDueDate ?? null,
+        dueDate: order.dueDate > 0
+          ? CTPDateTime.toDateTime(order.dueDate).toISO()
+          : null,
+        lateDueDate: order.lateDueDate > 0
+          ? CTPDateTime.toDateTime(order.lateDueDate).toISO()
+          : null,
         priority: order.priority ?? 0,
+        validationErrors: order.validationErrors ?? [],
       };
     });
 

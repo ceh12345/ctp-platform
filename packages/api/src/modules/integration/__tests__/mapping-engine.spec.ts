@@ -385,4 +385,108 @@ describe('MappingEngine', () => {
       expect(out[0].dueDate).toBe('2026-03-21T01:00:00+13:00');
     });
   });
+
+  // ── toUTC validation (Sprint 1b, Bug C transform layer) ────────────────────
+  //
+  // When `toUTC` attempts a parse and luxon returns `!isValid`, the engine
+  // records an UNPARSEABLE_DATE MappingError in the per-call accumulator
+  // (populated by Sprint 1a's plumbing). Pass-through of the raw value is
+  // preserved so the hydrator's defensive parse (Sprint 1b Phase 2) is the
+  // second-layer defense.
+
+  describe('toUTC validation — UNPARSEABLE_DATE MappingError', () => {
+    // Use fromTimezone so we reach the parse attempt (bare + no fromTimezone
+    // is the documented pass-through-without-parse path, intentionally silent).
+    const ruleWithTz = () => ({
+      orders: { mappings: { dueDate: { from: 'DeliveryDate', toUTC: true, fromTimezone: 'Pacific/Auckland' } } },
+    }) as IMappingProfile;
+
+    const oneOrder = (dd: unknown) => makePayload({
+      orders: [{ Id: 1, JobCode: 'TEST', DeliveryDate: dd }],
+    });
+
+    it('M1 garbage string → UNPARSEABLE_DATE error + pass-through preserved', () => {
+      const result = engine.transform(oneOrder('not-a-date'), ruleWithTz());
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toMatchObject({
+        code:        'UNPARSEABLE_DATE',
+        entity:      'orders',
+        targetField: 'dueDate',
+        sourceField: 'DeliveryDate',
+        rawValue:    'not-a-date',
+        recordIndex: 0,
+        severity:    'error',
+      });
+      expect((result.payload.orders as any[])[0].dueDate).toBe('not-a-date');
+    });
+
+    it('M2 valid shape but invalid calendar date ("2026-02-31") → UNPARSEABLE_DATE', () => {
+      const result = engine.transform(oneOrder('2026-02-31'), ruleWithTz());
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].code).toBe('UNPARSEABLE_DATE');
+      expect(result.errors[0].rawValue).toBe('2026-02-31');
+      // luxon's invalidReason for calendar errors surfaces in message
+      expect(result.errors[0].message).toMatch(/not a valid ISO date/);
+      expect((result.payload.orders as any[])[0].dueDate).toBe('2026-02-31');
+    });
+
+    it('M3 empty string → short-circuits before parse, no error', () => {
+      const result = engine.transform(oneOrder(''), ruleWithTz());
+      expect(result.errors).toEqual([]);
+    });
+
+    it('M4 null → short-circuits before parse, no error', () => {
+      const result = engine.transform(oneOrder(null), ruleWithTz());
+      expect(result.errors).toEqual([]);
+    });
+
+    it('M5 valid date → no error, UTC-normalized', () => {
+      const result = engine.transform(oneOrder('2026-03-15T08:00:00+13:00'), ruleWithTz());
+      expect(result.errors).toEqual([]);
+      expect((result.payload.orders as any[])[0].dueDate).toBe('2026-03-14T19:00:00.000Z');
+    });
+
+    it('M6 three records, middle has bad date → one error with recordIndex:1', () => {
+      const payload = makePayload({
+        orders: [
+          { Id: 1, JobCode: 'A', DeliveryDate: '2026-03-15T08:00:00+13:00' },
+          { Id: 2, JobCode: 'B', DeliveryDate: 'garbage' },
+          { Id: 3, JobCode: 'C', DeliveryDate: '2026-03-16T09:00:00+13:00' },
+        ],
+      });
+      const result = engine.transform(payload, ruleWithTz());
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].recordIndex).toBe(1);
+      const out = result.payload.orders as any[];
+      expect(out[0].dueDate).toBe('2026-03-14T19:00:00.000Z');
+      expect(out[1].dueDate).toBe('garbage');
+      expect(out[2].dueDate).toBe('2026-03-15T20:00:00.000Z');
+    });
+
+    it('M7 garbage + NO fromTimezone still flags UNPARSEABLE_DATE (validation always runs)', () => {
+      // Sharpened semantic (Sprint 1b): if a field is marked `toUTC`, the
+      // value must at minimum be parseable as an ISO date. Garbage is flagged
+      // regardless of whether we can convert it. The fromTimezone / embedded-
+      // offset check only gates the *conversion*, not the validation.
+      const ruleNoTz = {
+        orders: { mappings: { dueDate: { from: 'DeliveryDate', toUTC: true } } },
+      } as IMappingProfile;
+      const result = engine.transform(oneOrder('not-a-date'), ruleNoTz);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].code).toBe('UNPARSEABLE_DATE');
+      expect((result.payload.orders as any[])[0].dueDate).toBe('not-a-date');
+    });
+
+    it('M8 bare-valid date + NO fromTimezone → no error, passes through (not converted)', () => {
+      // Conversion requires knowing the zone; bare valid dates stay as-is.
+      // This protects the semantics for flat-file tenants that don't set
+      // fromTimezone and keep their dates in local, unspecified time.
+      const ruleNoTz = {
+        orders: { mappings: { dueDate: { from: 'DeliveryDate', toUTC: true } } },
+      } as IMappingProfile;
+      const result = engine.transform(oneOrder('2026-03-15T08:00:00'), ruleNoTz);
+      expect(result.errors).toEqual([]);
+      expect((result.payload.orders as any[])[0].dueDate).toBe('2026-03-15T08:00:00');
+    });
+  });
 });

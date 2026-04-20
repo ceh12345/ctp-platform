@@ -1,4 +1,4 @@
-import { SchedulingLandscape } from '@ctp/engine';
+import { SchedulingLandscape, makeValidationError } from '@ctp/engine';
 
 // Cross-entity validation pass. Runs after entities have been hydrated into
 // instances but before the new landscape replaces the current one.
@@ -20,13 +20,29 @@ export function validateReferences(landscape: SchedulingLandscape): void {
   landscape.orders.forEach(o => orderKeys.add(o.key));
 
   landscape.tasks.forEach(task => {
-    // Checks are registered here by the bug-fix sprint and beyond:
-    //   - ORPHAN_RESOURCE  (Bug D, Sprint 1b)
-    //   - ORPHAN_ORDER     (placeholder; register if needed)
-    //   - Chain integrity  (Sprint 2+)
-    void task;
-    void resourceKeys;
+    // ORPHAN_RESOURCE (Bug D, Sprint 1b): flag any capacity-resource slot
+    // whose `resource` key isn't in the landscape's resource master. Skips
+    // null/empty (null MachineCode is Bug B, Sprint 2's warning layer).
+    task.capacityResources?.forEach((cr, idx) => {
+      if (!cr.resource) return;
+      if (!resourceKeys.has(cr.resource)) {
+        task.addValidationError(makeValidationError({
+          agent:    'CrossEntityValidation',
+          type:     'ORPHAN_RESOURCE',
+          reason:   `Task '${task.key}' references resource '${cr.resource}' which does not exist in the landscape`,
+          severity: 'error',
+          source:   'validation',
+          policy:   'annotate',
+          field:    `capacityResources[${idx}].resource`,
+          rawValue: cr.resource,
+        }));
+      }
+    });
+
+    // ORPHAN_ORDER placeholder (register when needed — no known bug today).
     void orderKeys;
+
+    // Chain integrity — Sprint 2+ (chain-cycle warnings).
   });
 
   // Piggyback on the existing includeInSolve skip path. Any task whose

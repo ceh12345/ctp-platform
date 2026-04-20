@@ -31,7 +31,7 @@
     "IsCompleted": false,
     "IsSchedulingLocked": false,
     "LagHours": 0,
-    "TaskStartDate": null,
+    "TaskStartDate": "2026-02-31",
     "TaskEndDate": null,
     "WipState": "NOT_STARTED"
   },
@@ -49,7 +49,7 @@
     "IsCompleted": false,
     "IsSchedulingLocked": false,
     "LagHours": 0,
-    "TaskStartDate": null,
+    "TaskStartDate": "",
     "TaskEndDate": null,
     "WipState": "NOT_STARTED"
   },

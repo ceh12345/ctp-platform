@@ -13,39 +13,57 @@ export interface MappingResult {
   errors: MappingError[];
 }
 
+// Per-call context threaded through private methods. MappingEngine is a Nest
+// singleton; putting mutable state on `this` would race across concurrent
+// requests. The ctx object is created fresh per `transform()` invocation.
+interface MappingCtx {
+  errors: MappingError[];
+  entity: 'orders' | 'resources' | 'tasks';
+  recordIndex: number;  // updated as the record loop iterates
+  targetField: string;  // updated as the rule loop iterates
+}
+
 @Injectable()
 export class MappingEngine {
   transform(raw: IRawDataPayload, profile: IMappingProfile | null): MappingResult {
     const errors: MappingError[] = [];
     if (!profile) return { payload: raw, errors };
-    // Sprint 1a: accumulator plumbed through; no transform currently pushes.
-    // Sprint 1b (bug fixes) populates this from `toUTC` on !isValid.
     const payload: IRawDataPayload = {
       ...raw,
-      orders:    this.mapEntities(raw.orders,    profile['orders']),
-      resources: this.mapEntities(raw.resources, profile['resources']),
-      tasks:     this.mapTasks(raw.tasks,        profile['tasks']),
+      orders:    this.mapEntities(raw.orders,    profile['orders'],    'orders',    errors),
+      resources: this.mapEntities(raw.resources, profile['resources'], 'resources', errors),
+      tasks:     this.mapTasks(raw.tasks,        profile['tasks'],     errors),
     };
     return { payload, errors };
   }
 
   // ── Generic entity mapping ────────────────────────────────────────────────
 
-  private mapEntities(records: unknown[], spec: any): unknown[] {
+  private mapEntities(
+    records: unknown[],
+    spec: any,
+    entity: 'orders' | 'resources' | 'tasks',
+    errors: MappingError[],
+  ): unknown[] {
     if (!spec?.mappings) return records;
-    return (records as Record<string, any>[]).map(r => this.applyMappings(r, spec.mappings));
+    return (records as Record<string, any>[]).map((r, recordIndex) =>
+      this.applyMappings(r, spec.mappings, { errors, entity, recordIndex, targetField: '' }));
   }
 
-  private applyMappings(record: Record<string, any>, mappings: Record<string, any>): Record<string, any> {
+  private applyMappings(
+    record: Record<string, any>,
+    mappings: Record<string, any>,
+    ctx: MappingCtx,
+  ): Record<string, any> {
     const out: Record<string, any> = {};
     for (const [targetField, rule] of Object.entries(mappings)) {
-      const val = this.applyRule(record, rule);
+      const val = this.applyRule(record, rule, { ...ctx, targetField });
       if (val !== undefined && val !== null) out[targetField] = val;
     }
     return out;
   }
 
-  private applyRule(record: Record<string, any>, rule: any): any {
+  private applyRule(record: Record<string, any>, rule: any, ctx: MappingCtx): any {
     // const — static value
     if (rule.value !== undefined) return rule.value;
 
@@ -69,20 +87,36 @@ export class MappingEngine {
     }
 
     // toUTC — normalize an ISO date to UTC Z form.
-    // Parsing rules:
-    //  - Value has offset/Z → offset is authoritative, ignore fromTimezone.
-    //  - Value is bare + fromTimezone set → interpret in that IANA zone.
-    //  - Value is bare + no fromTimezone → pass through unchanged
-    //    (never silently interpret as server-local time).
-    //  - Value unparseable → pass through unchanged.
+    // Two-step logic:
+    //  1. Always attempt a parse to validate the shape. Garbage strings
+    //     emit UNPARSEABLE_DATE regardless of whether a zone is known.
+    //  2. Only convert to UTC when a zone is available (embedded offset/Z,
+    //     or profile-level fromTimezone). Bare-valid dates without zone
+    //     information pass through unchanged — we never silently interpret
+    //     as server-local time.
     if (rule.toUTC && val !== undefined && val !== null && val !== '') {
       const s = String(val);
       const hasEmbeddedZone = HAS_TZ_DESIGNATOR.test(s);
-      if (!hasEmbeddedZone && !rule.fromTimezone) return val;
       const dt = DateTime.fromISO(s, {
-        zone: hasEmbeddedZone ? undefined : rule.fromTimezone,
+        zone: hasEmbeddedZone ? undefined : (rule.fromTimezone ?? undefined),
       });
-      if (!dt.isValid) return val;
+
+      if (!dt.isValid) {
+        ctx.errors.push({
+          code:        'UNPARSEABLE_DATE',
+          entity:      ctx.entity,
+          targetField: ctx.targetField,
+          sourceField: typeof rule.from === 'string' ? rule.from : undefined,
+          rawValue:    val,
+          message:     `Field '${ctx.targetField}' value ${JSON.stringify(val)} is not a valid ISO date (${dt.invalidReason ?? 'unknown'})`,
+          recordIndex: ctx.recordIndex,
+          severity:    'error',
+        });
+        return val;  // pass-through preserved; hydrator's defensive parse is second layer
+      }
+
+      // Valid shape, but only convert if we know the zone.
+      if (!hasEmbeddedZone && !rule.fromTimezone) return val;
       return dt.toUTC().toISO();
     }
 
@@ -91,7 +125,7 @@ export class MappingEngine {
 
   // ── Task mapping (needs chain linkId post-processing) ────────────────────
 
-  private mapTasks(records: unknown[], spec: any): unknown[] {
+  private mapTasks(records: unknown[], spec: any, errors: MappingError[]): unknown[] {
     if (!spec) return records;
     const recs = records as Record<string, any>[];
 
@@ -100,10 +134,14 @@ export class MappingEngine {
     const linkSpec  = spec.linkId;
     const mappings  = spec.mappings ?? {};
 
-    // Step 1: resolve key for every task
-    const withKeys = recs.map(r => ({
+    // Step 1: resolve key for every task. Key resolution doesn't benefit from
+    // the error pipe (no toUTC on keys in any known profile), but we thread
+    // ctx for symmetry and future-proofing.
+    const withKeys = recs.map((r, recordIndex) => ({
       ...r,
-      _key: keySpec ? this.applyRule(r, keySpec) : String(r['Id'] ?? r['id'] ?? ''),
+      _key: keySpec
+        ? this.applyRule(r, keySpec, { errors, entity: 'tasks', recordIndex, targetField: 'key' })
+        : String(r['Id'] ?? r['id'] ?? ''),
     }));
 
     // Step 2: group by chain, sort by sequence → build prevLink map
@@ -114,9 +152,10 @@ export class MappingEngine {
     const lagField      = linkSpec?.lagHoursField ?? 'LagHours';
     const capField      = capSpec?.from ?? 'MachineCode';
 
-    return withKeys.map(r => {
+    return withKeys.map((r, recordIndex) => {
       const rec = r as Record<string, any>;
-      const base    = this.applyMappings(rec, mappings);
+      const base = this.applyMappings(rec, mappings,
+        { errors, entity: 'tasks', recordIndex, targetField: '' });
       const taskKey = r._key as string;
       const chainKey = rec[chainKeyField] as string | undefined;
       const prevKey  = prevLinkMap.get(taskKey);

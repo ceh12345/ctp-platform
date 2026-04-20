@@ -146,20 +146,29 @@ STATE | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end
 
 ### 3c — `bad-data-unparseable-date`
 
-First task has `TaskStartDate: "not-a-date"`.
+Fixture has three bad-date variants across the first three tasks: `"not-a-date"` (garbage string), `"2026-02-31"` (valid shape, invalid calendar), `""` (empty string). Plus the usual `null`s downstream.
 
 ```bash
 SWITCH bad-data-unparseable-date
-curl -X POST http://localhost:3000/v1/state/sync -H "X-Tenant-Id: stafford-engineering-test"
+SYNC=$(curl -s -X POST http://localhost:3000/v1/state/sync -H "X-Tenant-Id: stafford-engineering-test")
+echo "$SYNC" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{
+  const r=JSON.parse(d);
+  console.log('mappingErrors:', r.mappingErrors?.length, 'rawValues:', JSON.stringify(r.mappingErrors?.map(e=>e.rawValue)));
+  console.log('validationSummary:', JSON.stringify(r.validationSummary));
+});"
 STATE | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{
   const r=JSON.parse(d);
-  const first = (r.tasks||[])[0];
-  console.log('key:', first?.key);
-  console.log('windowStart:', first?.windowStart, '← should be \"not-a-date\" (toUTC pass-through)');
+  (r.tasks||[]).slice(0,3).forEach(t => {
+    console.log(t.key, 'schedulable:', t.schedulable, 'validationErrors:', t.validationErrors?.length);
+  });
 });"
 ```
 
-**Look for:** `windowStart` is literal string `"not-a-date"` — proves `toUTC` passes unparseable values through rather than crashing. If it's `undefined` or throws, the mapping is too strict.
+**Look for (post-Sprint 1b):**
+- `/v1/state/sync` returns 201 (never 500). `mappingErrors` contains entries for `"not-a-date"` and `"2026-02-31"` (the two that reach `toUTC`). Empty string is silently skipped — correct semantic (opt-out of validation when the profile doesn't set `fromTimezone` or the input is truly empty).
+- `/v1/ctp/state` returns 200. The first two tasks have `validationErrors: [{type: UNPARSEABLE_DATE, field: 'windowStart', rawValue: ...}]` and `schedulable: false`. Third task (empty-string variant) has no validation error and `schedulable: true` — falls back to the horizon window silently.
+- `validationSummary` shows `recordsWithErrors: 2, unschedulableTasks: 2, byCode: {UNPARSEABLE_DATE: 2}`.
+- Sprint 1b's defense-in-depth: even if `toUTC` passed a garbage string through (e.g. bare-garbage with no `fromTimezone`), the hydrator's `parseIsoDateOrRecord` helper still catches it and attaches the entity-level error before arithmetic can fire.
 
 ### 3d — `chain-cycle`
 
@@ -179,24 +188,41 @@ STATE | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end
 
 ### 3e — `orphan-resource`
 
-First task references `MachineCode: "MACHINE-DOES-NOT-EXIST-999"`.
+Active task `PV-001-FLANGE` references `MachineCode: "MACHINE-DOES-NOT-EXIST-999"` — moved off the completed setup task in Sprint 1b so the symptom actually manifests on a schedulable task.
 
 ```bash
 SWITCH orphan-resource
-curl -X POST http://localhost:3000/v1/state/sync -H "X-Tenant-Id: stafford-engineering-test"
-curl -X POST http://localhost:3000/v1/ctp/solve-and-sync -H "X-Tenant-Id: stafford-engineering-test" \
+curl -s -X POST http://localhost:3000/v1/state/sync -H "X-Tenant-Id: stafford-engineering-test" | node -e "
+let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{
+  const r=JSON.parse(d);
+  console.log('validationSummary:', JSON.stringify(r.validationSummary));
+});"
+curl -s -X POST http://localhost:3000/v1/ctp/solve-and-sync -H "X-Tenant-Id: stafford-engineering-test" \
   -H "Content-Type: application/json" -d '{}' | node -e "
 let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{
   const r=JSON.parse(d);
-  const orphan = (r.tasks||[]).find(t => t.capacityResources?.some(cr => cr.resource === 'MACHINE-DOES-NOT-EXIST-999')
-                                          || t.assignedResources?.some(ar => ar.resourceKey === 'MACHINE-DOES-NOT-EXIST-999'));
-  console.log('orphan task:', orphan?.key);
-  console.log('state:', orphan?.state, '(1=scheduled, 0=not-scheduled)');
-  console.log('errors:', JSON.stringify(orphan?.errors));
+  const t = (r.tasks||[]).find(x => x.key === 'PV-001-FLANGE');
+  console.log('state:', t?.state, '(0=not-scheduled)');
+  console.log('schedulable:', t?.schedulable);
+  console.log('validationErrors:', JSON.stringify(t?.validationErrors));
+});"
+# Where-To should refuse placement
+curl -s -X POST 'http://localhost:3000/v1/ctp/tasks/PV-001-FLANGE/where-to' \
+  -H "X-Tenant-Id: stafford-engineering-test" -H "Content-Type: application/json" -d '{}' | node -e "
+let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{
+  const r=JSON.parse(d);
+  console.log('options:', r.options?.length, 'reason:', r.reason);
+  console.log('validationErrors on Where-To response:', r.validationErrors?.length);
 });"
 ```
 
-**Look for:** task should be infeasible with a clear error like `"Task X declared 1 resource preference(s), all filtered out"` (from the all-filtered guard we shipped in commit `0b98bd1`).
+**Look for (post-Sprint 1b):**
+- `validationSummary.byCode: {ORPHAN_RESOURCE: 1}`, `unschedulableTasks: 1`
+- `PV-001-FLANGE`: `state: 0, schedulable: false, validationErrors: [{type: ORPHAN_RESOURCE, field: 'capacityResources[0].resource', rawValue: 'MACHINE-DOES-NOT-EXIST-999'}]`
+- Where-To: `options: []`, `reason: "Task has unresolved validation errors (ORPHAN_RESOURCE) — fix the source data and re-sync"`, `validationErrors` populated with structured context. Move-To on the same task returns `{success: false, suggestRefresh: true, validationErrors: [...]}`.
+- UI (reload `http://localhost:3001/?tenant=stafford-engineering-test` with the scenario active): right-click PV-001-FLANGE on the Gantt → "Where to?" → red card showing `ORPHAN_RESOURCE` + field path + raw value + reason, instead of a false placement or a generic "No feasible options found".
+
+Historical note: `0b98bd1`'s all-filtered guard already prevented the silent-SCHEDULED-with-empty-assignedResources symptom before Sprint 1b; what Sprint 1b added is the operator-visible diagnostic signal (previously the task just failed to schedule with no hint why).
 
 Cleanup: `curl -X POST http://localhost:8080/_mock/reset`.
 

@@ -113,6 +113,29 @@ export class WhereToStatsDto {
   @ApiProperty() timeMs!: number;
 }
 
+// Structured data-quality error surfaced on Where-To / Move-To responses
+// when the task is gated by validationErrors. Mirrors engine's IValidationError.
+export class ValidationErrorDto {
+  @ApiProperty({ description: 'Who detected (e.g. Hydrator, CrossEntityValidation, MappingEngine)' })
+  agent!: string;
+  @ApiProperty({ description: 'Machine-readable code (e.g. UNPARSEABLE_DATE, ORPHAN_RESOURCE)' })
+  type!: string;
+  @ApiProperty({ description: 'Human-readable message' })
+  reason!: string;
+  @ApiProperty({ description: 'error | warning | info' })
+  severity!: string;
+  @ApiPropertyOptional({ description: 'Field path (e.g. windowStart, capacityResources[0].resource)' })
+  field?: string;
+  @ApiProperty({ description: 'mapping | validation | engine | adapter' })
+  source!: string;
+  @ApiPropertyOptional({ description: 'strict | skip | default | annotate' })
+  policy?: string;
+  @ApiProperty({ description: 'ISO 8601 timestamp' })
+  detectedAt!: string;
+  @ApiPropertyOptional({ description: 'Offending source value (trimmed for display; omitted for sensitive fields)' })
+  rawValue?: any;
+}
+
 export class WhereToResponseDto {
   @ApiProperty() taskKey!: string;
   @ApiProperty() taskName!: string;
@@ -120,6 +143,10 @@ export class WhereToResponseDto {
   currentAssignment!: WhereToCurrentAssignmentDto | null;
   @ApiProperty({ type: [WhereToOptionDto] }) options!: WhereToOptionDto[];
   @ApiProperty({ type: WhereToStatsDto }) stats!: WhereToStatsDto;
+  @ApiPropertyOptional({ description: 'Human-readable reason when options is empty' })
+  reason?: string;
+  @ApiPropertyOptional({ type: [ValidationErrorDto], description: 'Present when the task was gated by severity:error validationErrors' })
+  validationErrors?: ValidationErrorDto[];
 }
 
 // ─── Move-To ───
@@ -157,4 +184,6 @@ export class MoveToResponseDto {
   changeover?: WhereToChangeoverDto | null;
   @ApiPropertyOptional({ type: [String] }) affectedTasks?: string[];
   @ApiPropertyOptional() requiresResolve?: boolean;
+  @ApiPropertyOptional({ type: [ValidationErrorDto], description: 'Present when the task was gated by severity:error validationErrors' })
+  validationErrors?: ValidationErrorDto[];
 }

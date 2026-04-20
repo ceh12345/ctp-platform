@@ -2832,7 +2832,7 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   onPinTask, onExcludeTask, onUnscheduleTask, onCancelUnschedule: _onCancelUnschedule,
   onApiUnschedule, onApiPin,
   resourceModeOverrides, onResourceModeChange, experienceLevel = 'novice',
-  whereToTaskKey, whereToOptions, onMoveTo, onNavigateToOrders, onTaskClick,
+  whereToTaskKey, whereToOptions, whereToReason, whereToValidationErrors, onMoveTo, onNavigateToOrders, onTaskClick,
   resourcePreferenceOverrides, onResourcePrefChange, onClearResourceOverrides,
   windowOverrides, onSetWindowOverride,
   priorityOverrides, onSetPriority,
@@ -2854,6 +2854,8 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
   experienceLevel?: ExperienceLevel;
   whereToTaskKey?: string | null;
   whereToOptions?: any[];
+  whereToReason?: string | null;
+  whereToValidationErrors?: any[];
   onMoveTo?: (key: string, option: any) => void;
   onNavigateToOrders?: (orderKey: string) => void;
   onTaskClick?: (task: any) => void;
@@ -2986,9 +2988,35 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
       )}
       {/* WhereTo no options in panel */}
       {whereToSource === 'panel' && whereToTaskKey === task.key && !whereToLoading && whereToOptions && whereToOptions.length === 0 && (
-        <div style={{ fontSize: 12, color: C.red, marginTop: 16, textAlign: 'center' }}>
-          No feasible options found
-        </div>
+        whereToValidationErrors && whereToValidationErrors.length > 0 ? (
+          <div style={{
+            marginTop: 16, padding: 12, borderRadius: 8,
+            background: '#f9731615', border: `1px solid ${C.red}`,
+            fontSize: 12, color: C.text,
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.red, marginBottom: 6 }}>
+              ⚠️ Cannot place: data quality issue
+            </div>
+            {whereToReason && (
+              <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 8 }}>{whereToReason}</div>
+            )}
+            {whereToValidationErrors.map((err: any, i: number) => (
+              <div key={i} style={{ fontSize: 11, marginTop: 4, paddingTop: 4, borderTop: i > 0 ? `1px solid ${C.border}` : 'none' }}>
+                <div><strong style={{ color: C.red }}>{err.type}</strong> {err.field ? <span style={{ color: C.textMuted }}>({err.field})</span> : null}</div>
+                <div style={{ color: C.textMuted, marginTop: 2 }}>{err.reason}</div>
+                {err.rawValue !== undefined && (
+                  <div style={{ color: C.textMuted, marginTop: 2 }}>
+                    raw value: <code style={{ background: C.surface, padding: '1px 4px', borderRadius: 3 }}>{JSON.stringify(err.rawValue)}</code>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, color: C.red, marginTop: 16, textAlign: 'center' }}>
+            {whereToReason || 'No feasible options found'}
+          </div>
+        )
       )}
       {/* WhereTo Available Positions */}
       {whereToTaskKey === task.key && whereToOptions && whereToOptions.length > 0 && (
@@ -4702,7 +4730,7 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   onPinTask, onExcludeTask, onUnscheduleTask,
   onApiUnschedule, onApiPin, onApiBulkUnschedule: _onApiBulkUnschedule, actionLoading,
   onResourceFilter, resourceFilter,
-  onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
+  onWhereTo, whereToTaskKey, whereToOptions, whereToReason, whereToValidationErrors, whereToLoading,
   whereToCurrentAssignment, whereToSource, onMoveTo, onCancelWhereTo,
   zoomLevel, setZoomLevel, scrollOffset, setScrollOffset,
   onSetResourcePrefForTask, onViewAgenda, onOpenDowntimeEditor, onAskAI,
@@ -4727,6 +4755,8 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
   onWhereTo?: (key: string) => void;
   whereToTaskKey?: string | null;
   whereToOptions?: any[];
+  whereToReason?: string | null;
+  whereToValidationErrors?: any[];
   whereToLoading?: boolean;
   whereToCurrentAssignment?: any;
   whereToSource?: 'gantt' | 'table' | 'panel' | null;
@@ -5460,22 +5490,57 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
           🗺️ Finding options...
         </div>
       )}
-      {/* No options found */}
+      {/* No options found — validation-gated variant shows structured errors */}
       {showGanttWhereTo && whereToTaskKey && !whereToLoading && whereToOptions && whereToOptions.length === 0 && (
-        <div style={{
-          position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 20, padding: '8px 20px', borderRadius: 8,
-          background: C.surface, border: `1px solid ${C.red}`,
-          fontSize: 12, fontWeight: 600, color: C.red,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-        }}>
-          No feasible options found
-          <button onClick={onCancelWhereTo} style={{
-            marginLeft: 12, padding: '2px 8px', borderRadius: 4,
-            border: `1px solid ${C.border}`, background: 'transparent',
-            color: C.textMuted, fontSize: 11, cursor: 'pointer', fontFamily: FONT,
-          }}>Dismiss</button>
-        </div>
+        whereToValidationErrors && whereToValidationErrors.length > 0 ? (
+          <div style={{
+            position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 20, padding: 12, borderRadius: 8,
+            background: C.surface, border: `1px solid ${C.red}`,
+            fontSize: 12, color: C.text, maxWidth: 480,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.3)', fontFamily: FONT,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.red }}>
+                ⚠️ Cannot place: data quality issue
+              </div>
+              <button onClick={onCancelWhereTo} style={{
+                padding: '2px 8px', borderRadius: 4,
+                border: `1px solid ${C.border}`, background: 'transparent',
+                color: C.textMuted, fontSize: 11, cursor: 'pointer', fontFamily: FONT,
+              }}>Dismiss</button>
+            </div>
+            {whereToReason && (
+              <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 8 }}>{whereToReason}</div>
+            )}
+            {whereToValidationErrors.map((err: any, i: number) => (
+              <div key={i} style={{ fontSize: 11, marginTop: 4, paddingTop: 4, borderTop: i > 0 ? `1px solid ${C.border}` : 'none' }}>
+                <div><strong style={{ color: C.red }}>{err.type}</strong> {err.field ? <span style={{ color: C.textMuted }}>({err.field})</span> : null}</div>
+                <div style={{ color: C.textMuted, marginTop: 2 }}>{err.reason}</div>
+                {err.rawValue !== undefined && (
+                  <div style={{ color: C.textMuted, marginTop: 2 }}>
+                    raw value: <code style={{ background: C.bg, padding: '1px 4px', borderRadius: 3 }}>{JSON.stringify(err.rawValue)}</code>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{
+            position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 20, padding: '8px 20px', borderRadius: 8,
+            background: C.surface, border: `1px solid ${C.red}`,
+            fontSize: 12, fontWeight: 600, color: C.red,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+          }}>
+            {whereToReason || 'No feasible options found'}
+            <button onClick={onCancelWhereTo} style={{
+              marginLeft: 12, padding: '2px 8px', borderRadius: 4,
+              border: `1px solid ${C.border}`, background: 'transparent',
+              color: C.textMuted, fontSize: 11, cursor: 'pointer', fontFamily: FONT,
+            }}>Dismiss</button>
+          </div>
+        )
       )}
       {/* Info panel */}
       {showGanttWhereTo && whereToTaskKey && whereToOptions && whereToOptions.length > 0 && !whereToLoading && (
@@ -8386,7 +8451,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   onPinTask, onExcludeTask, onUnscheduleTask,
   onApiUnschedule, onApiPin, onApiSchedule, onApiBulkUnschedule, onApiBulkPin, actionLoading,
   experienceLevel = 'novice',
-  onWhereTo, whereToTaskKey, whereToOptions, whereToLoading,
+  onWhereTo, whereToTaskKey, whereToOptions, whereToReason, whereToValidationErrors, whereToLoading,
   whereToCurrentAssignment, whereToSource, onMoveTo, onCancelWhereTo,
   caseFilter, onClearCaseFilter, onNavigateToOrders,
   selectedTasks, onToggleSelect, onSetSelectedTasks,
@@ -8418,6 +8483,8 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   onWhereTo?: (key: string, source?: 'gantt' | 'table') => void;
   whereToTaskKey?: string | null;
   whereToOptions?: any[];
+  whereToReason?: string | null;
+  whereToValidationErrors?: any[];
   whereToLoading?: boolean;
   whereToCurrentAssignment?: any;
   whereToSource?: 'gantt' | 'table' | 'panel' | null;
@@ -8481,6 +8548,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
             onResourceFilter={(key) => { setResourceFilter(prev => prev === key ? null : key); if (resourceFilter !== key) setSubIdx(2); }}
             resourceFilter={resourceFilter}
             onWhereTo={onWhereTo} whereToTaskKey={whereToTaskKey} whereToOptions={whereToOptions}
+            whereToReason={whereToReason} whereToValidationErrors={whereToValidationErrors}
             whereToLoading={whereToLoading} whereToCurrentAssignment={whereToCurrentAssignment}
             whereToSource={whereToSource} onMoveTo={onMoveTo} onCancelWhereTo={onCancelWhereTo}
             zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
@@ -12993,6 +13061,9 @@ export default function App() {
   const [whereToLoading, setWhereToLoading] = useState(false);
   const [whereToCurrentAssignment, setWhereToCurrentAssignment] = useState<any>(null);
   const [whereToSource, setWhereToSource] = useState<'gantt' | 'table' | 'panel' | null>(null);
+  // Populated when the API returns options:[] with a gate reason + structured validationErrors.
+  const [whereToReason, setWhereToReason] = useState<string | null>(null);
+  const [whereToValidationErrors, setWhereToValidationErrors] = useState<any[]>([]);
   // Schedule case filter (set from Analytics chain links)
   const [scheduleCaseFilter, setScheduleCaseFilter] = useState<string | null>(null);
   // Orders case filter (set from task orderRef click)
@@ -13180,6 +13251,7 @@ export default function App() {
     setSelectedResource(null);
     // Cancel WhereTo if active
     setWhereToTaskKey(null); setWhereToOptions([]); setWhereToCurrentAssignment(null);
+    setWhereToReason(null); setWhereToValidationErrors([]);
     // Clear analytics so they reload after new solve
     setAnalyticsKpis([]); setAnalyticsDetail(null); setSelectedKpi(null);
 
@@ -13690,6 +13762,8 @@ export default function App() {
     setWhereToOptions([]);
     setWhereToCurrentAssignment(null);
     setWhereToSource(null);
+    setWhereToReason(null);
+    setWhereToValidationErrors([]);
   }, []);
 
   const handleWhereTo = useCallback(async (taskKey: string, source: 'gantt' | 'table' | 'panel' = 'gantt', startAfter?: string, startBefore?: string) => {
@@ -13703,6 +13777,8 @@ export default function App() {
     setWhereToLoading(true);
     setWhereToOptions([]);
     setWhereToCurrentAssignment(null);
+    setWhereToReason(null);
+    setWhereToValidationErrors([]);
     try {
       const constraints: any = { maxResults: 10 };
       if (startAfter) constraints.startAfter = startAfter;
@@ -13713,6 +13789,8 @@ export default function App() {
       });
       setWhereToOptions(result.options || []);
       setWhereToCurrentAssignment(result.currentAssignment || null);
+      setWhereToReason(result.reason || null);
+      setWhereToValidationErrors(result.validationErrors || []);
     } catch (err) {
       console.error('WhereTo failed:', err);
       setWhereToOptions([]);
@@ -14962,6 +15040,7 @@ export default function App() {
             onApiBulkUnschedule={handleApiBulkUnschedule} onApiBulkPin={handleApiBulkPin}
             onWhereTo={handleWhereTo} whereToTaskKey={whereToTaskKey}
             whereToOptions={whereToOptions} whereToLoading={whereToLoading}
+            whereToReason={whereToReason} whereToValidationErrors={whereToValidationErrors}
             whereToCurrentAssignment={whereToCurrentAssignment}
             whereToSource={whereToSource}
             onMoveTo={handleMoveTo} onCancelWhereTo={cancelWhereTo}
@@ -15224,6 +15303,8 @@ export default function App() {
           experienceLevel={experienceLevel}
           whereToTaskKey={whereToTaskKey}
           whereToOptions={whereToOptions}
+          whereToReason={whereToReason}
+          whereToValidationErrors={whereToValidationErrors}
           onMoveTo={handleMoveTo}
           onNavigateToOrders={(orderKey) => {
             setOrdersCaseFilter(orderKey);

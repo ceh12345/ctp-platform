@@ -22,6 +22,8 @@ import {
   CTPTaskMaterialInput,
   CTPTaskMaterialInputList,
   CTPOrder,
+  IValidationError,
+  makeValidationError,
 } from '@ctp/engine';
 import { ConfigService } from '../../config/config.service';
 import {
@@ -35,9 +37,43 @@ import {
 } from '../../config/interfaces/config-store.interface';
 import { IRawDataPayload } from '../integration/adapter.interface';
 
+// Small target interface so the helper works with any entity that carries
+// validationErrors (CTPTask, CTPOrder, CTPResource all qualify).
+interface ValidationTarget {
+  addValidationError(err: IValidationError): void;
+}
+
 @Injectable()
 export class StateHydratorService {
   constructor(private readonly configService: ConfigService) {}
+
+  // Defensive ISO-date parse for entity fields. Second-layer defense after
+  // MappingEngine.toUTC — catches bad dates on flat-file tenants (no
+  // MappingEngine) and fields the profile didn't mark `toUTC`.
+  //
+  // Returns null for missing (undefined/null/empty) values WITHOUT attaching
+  // an error; callers fall back to sensible defaults. For truly unparseable
+  // values, attaches an UNPARSEABLE_DATE validation error on `target` and
+  // returns null so arithmetic sites never see NaN.
+  private parseIsoDateOrRecord(
+    raw: unknown,
+    target: ValidationTarget | null,
+    field: string,
+  ): DateTime | null {
+    if (raw === undefined || raw === null || raw === '') return null;
+    const dt = DateTime.fromISO(String(raw));
+    if (dt.isValid) return dt;
+    target?.addValidationError(makeValidationError({
+      agent:    'Hydrator',
+      type:     'UNPARSEABLE_DATE',
+      reason:   `Field '${field}' is not a valid ISO date: ${JSON.stringify(raw)} (${dt.invalidReason ?? 'unknown'})`,
+      severity: 'error',
+      source:   'validation',
+      field,
+      rawValue: raw,
+    }));
+    return null;
+  }
 
   buildLandscape(data?: IRawDataPayload): SchedulingLandscape {
     const horizonConfig = this.configService.getHorizon();
@@ -142,12 +178,10 @@ export class StateHydratorService {
       const order = new CTPOrder('Order', item.name, item.key);
       order.productKey = item.productKey;
       order.demandQty = item.demandQty;
-      if (item.dueDate) {
-        order.dueDate = CTPDateTime.fromDateTime(DateTime.fromISO(item.dueDate));
-      }
-      if (item.lateDueDate) {
-        order.lateDueDate = CTPDateTime.fromDateTime(DateTime.fromISO(item.lateDueDate));
-      }
+      const dueDt = this.parseIsoDateOrRecord(item.dueDate, order, 'dueDate');
+      if (dueDt) order.dueDate = CTPDateTime.fromDateTime(dueDt);
+      const lateDt = this.parseIsoDateOrRecord(item.lateDueDate, order, 'lateDueDate');
+      if (lateDt) order.lateDueDate = CTPDateTime.fromDateTime(lateDt);
       order.priority = item.priority ?? 0;
       if (item.latenessPenaltyPerDay !== undefined) order.latenessPenaltyPerDay = item.latenessPenaltyPerDay;
       landscape.orders.addEntity(order);
@@ -254,14 +288,12 @@ export class StateHydratorService {
     for (const item of data) {
       const task = new CTPTask(item.type ?? 'PROCESS', item.name, item.key);
 
-      // Window
+      // Window — defensive parse so arithmetic sites never see NaN.
       const window = new CTPInterval();
-      if (item.windowStart && item.windowEnd) {
-        window.fromDates(
-          DateTime.fromISO(item.windowStart),
-          DateTime.fromISO(item.windowEnd),
-          1,
-        );
+      const ws = this.parseIsoDateOrRecord(item.windowStart, task, 'windowStart');
+      const we = this.parseIsoDateOrRecord(item.windowEnd,   task, 'windowEnd');
+      if (ws && we) {
+        window.fromDates(ws, we, 1);
       } else {
         window.set(horizon.startW, horizon.endW, 1);
       }
