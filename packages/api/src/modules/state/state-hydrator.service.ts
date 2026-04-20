@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import {
   SchedulingLandscape,
@@ -45,7 +45,41 @@ interface ValidationTarget {
 
 @Injectable()
 export class StateHydratorService {
+  private readonly logger = new Logger(StateHydratorService.name);
+
   constructor(private readonly configService: ConfigService) {}
+
+  private isRestTenant(): boolean {
+    const cfg = this.configService.getAdapterConfig?.();
+    return cfg?.adapterType === 'rest';
+  }
+
+  // Entity-data source resolver. The rule: if a REST payload is present and
+  // non-empty, use it. If a REST payload is empty AND the tenant is REST-
+  // based, an empty result is the REAL answer — do NOT silently fall back
+  // to file data (that masks adapter bugs like envelope-unwrap failures and
+  // makes a broken REST adapter look identical to a working one). For file-
+  // based tenants (no adapter config or adapterType !== 'rest'), empty/
+  // missing payload means "no override, read the file" — existing behavior.
+  //
+  // This was finding #5 from the PokeAPI test session. Before Stafford.
+  private resolveEntityData<T>(
+    payloadSlot: unknown[] | undefined,
+    entityName: string,
+    fileFallback: () => T[],
+  ): T[] {
+    if (payloadSlot && payloadSlot.length > 0) return payloadSlot as T[];
+    if (this.isRestTenant()) {
+      const tenantId = this.configService.getTenantId();
+      this.logger.warn(
+        `REST adapter returned empty '${entityName}' for tenant '${tenantId}'. ` +
+        `NOT falling back to file data — empty is the real answer. ` +
+        `If the adapter should have returned data, check envelope config and endpoint path.`,
+      );
+      return [];
+    }
+    return fileFallback();
+  }
 
   // Defensive ISO-date parse for entity fields. Second-layer defense after
   // MappingEngine.toUTC — catches bad dates on flat-file tenants (no
@@ -78,8 +112,12 @@ export class StateHydratorService {
   buildLandscape(data?: IRawDataPayload): SchedulingLandscape {
     const horizonConfig = this.configService.getHorizon();
     const settingsConfig = this.configService.getSettings();
-    const resourceData = (data?.resources?.length ? data.resources : this.configService.getResources()) as IResourceData[];
-    const taskData     = (data?.tasks?.length     ? data.tasks     : this.configService.getTasks())     as ITaskData[];
+    const resourceData = this.resolveEntityData<IResourceData>(
+      data?.resources, 'resources', () => this.configService.getResources(),
+    );
+    const taskData = this.resolveEntityData<ITaskData>(
+      data?.tasks, 'tasks', () => this.configService.getTasks(),
+    );
     const calendarData = this.configService.getCalendars();
     const stateChangeData = this.configService.getStateChanges();
 
@@ -104,9 +142,13 @@ export class StateHydratorService {
     landscape.stateChanges = stateChanges;
     landscape.buildProcesses();
 
-    // Load orders into landscape for due date hydration
-    const orderOverride = data?.orders?.length ? data.orders as IOrderData[] : undefined;
-    this.hydrateOrders(landscape, orderOverride);
+    // Load orders into landscape for due date hydration. For REST tenants
+    // with empty payload.orders, resolveEntityData returns [] (no file
+    // fallback) so an adapter bug doesn't silently serve file data.
+    const orderData = this.resolveEntityData<IOrderData>(
+      data?.orders, 'orders', () => this.configService.getOrders(),
+    );
+    this.hydrateOrders(landscape, orderData);
 
     // Resolve cadence profiles per task
     this.hydrateCadences(landscape);
@@ -170,8 +212,7 @@ export class StateHydratorService {
     });
   }
 
-  private hydrateOrders(landscape: SchedulingLandscape, orderOverride?: IOrderData[]): void {
-    const orderData = orderOverride ?? this.configService.getOrders();
+  private hydrateOrders(landscape: SchedulingLandscape, orderData: IOrderData[]): void {
     if (!orderData || orderData.length === 0) return;
 
     for (const item of orderData) {

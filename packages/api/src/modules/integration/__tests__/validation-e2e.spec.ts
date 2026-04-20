@@ -250,6 +250,69 @@ describe('Sprint 1b E2E — happy path summary', () => {
   });
 });
 
+// ── Finding #5 from PokeAPI test session: no-silent-fallback ───────────────
+//
+// Before the fix: if the REST adapter returned 0 records (e.g., envelope
+// unwrap failure), the hydrator silently fell back to file data. A broken
+// adapter was indistinguishable from a working one. Fix: for REST tenants,
+// empty payload is THE answer — no file fallback.
+
+describe('Finding #5 — REST tenant empty payload no longer falls back to file', () => {
+  // Synthetic ConfigService that reports the tenant as REST-adapter-based
+  // without touching disk. This isolates the hydrator behavior we care about.
+  function makeRestHydrator(): StateHydratorService {
+    const store = new FileConfigStore(CONFIG_ROOT, TENANT_ID);
+    const configService = new ConfigService(store);
+    // Force the tenant to report as REST-based
+    (configService as any).getAdapterConfig = () => ({
+      adapterType: 'rest',
+      connection: { baseUrl: 'http://unused' },
+    });
+    return new StateHydratorService(configService);
+  }
+
+  it('REST tenant with empty resources payload → landscape has 0 resources, no file fallback', () => {
+    const hydrator = makeRestHydrator();
+    const landscape = hydrator.buildLandscape(makePayload({
+      resources: [],
+      tasks: [],
+      orders: [],
+    }));
+    expect(landscape.resources.size()).toBe(0);
+    expect(landscape.tasks.size()).toBe(0);
+    expect(landscape.orders.size()).toBe(0);
+  });
+
+  it('REST tenant with non-empty resources payload → uses payload (existing behavior preserved)', () => {
+    const hydrator = makeRestHydrator();
+    const landscape = hydrator.buildLandscape(makePayload({
+      resources: [{ key: 'R-1', name: 'R1', type: 'MACHINE', class: 'REUSABLE' }],
+      tasks: [],
+      orders: [],
+    }));
+    expect(landscape.resources.size()).toBe(1);
+    expect(landscape.resources.getEntity('R-1')).toBeDefined();
+  });
+
+  it('File tenant with undefined payload → file fallback (existing behavior preserved)', () => {
+    // createHydrator() uses demo-manufacturing (file-based, no adapter config)
+    const hydrator = createHydrator();
+    const landscape = hydrator.buildLandscape();
+    // demo-manufacturing has real file data → should populate
+    expect(landscape.resources.size()).toBeGreaterThan(0);
+  });
+
+  it('File tenant with empty payload → STILL falls back to file (empty payload is not a real answer from a file-adapter)', () => {
+    const hydrator = createHydrator();
+    const landscape = hydrator.buildLandscape(makePayload({
+      resources: [],
+      tasks: [],
+    }));
+    // Empty payload from a non-REST tenant means "no override", fall back to file
+    expect(landscape.resources.size()).toBeGreaterThan(0);
+  });
+});
+
 // ── Phase 1: MappingEngine errors propagate through stack ──────────────────
 
 describe('Sprint 1b E2E — MappingEngine toUTC validation', () => {
