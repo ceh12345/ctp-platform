@@ -52,12 +52,29 @@ function baseTask(overrides: any = {}) {
   };
 }
 
-function basePayload(taskOverrides: any = {}, extraOrders: any[] = []): IRawDataPayload {
+// IRawDataPayload has 10 required fields. Most are empty for our tests.
+function makePayload(overrides: Partial<IRawDataPayload>): IRawDataPayload {
   return {
+    resources: [],
+    tasks: [],
+    calendars: [],
+    stateChanges: [],
+    products: [],
+    orders: [],
+    materials: [],
+    processes: [],
+    cadences: [],
+    uomConversions: null,
+    ...overrides,
+  };
+}
+
+function basePayload(taskOverrides: any = {}, extraOrders: any[] = []): IRawDataPayload {
+  return makePayload({
     resources: MIN_RESOURCES,
     tasks: [baseTask(taskOverrides)],
     orders: extraOrders,
-  };
+  });
 }
 
 // ── E1: Bad date in hydrator path ──────────────────────────────────────────
@@ -135,14 +152,14 @@ describe('Sprint 1b E2E — Bug C: unparseable date', () => {
 describe('Sprint 1b E2E — Bug D: orphan resource', () => {
   it('E2a: task with orphan MachineCode gets ORPHAN_RESOURCE, includeInSolve flipped', () => {
     const hydrator = createHydrator();
-    const landscape = hydrator.buildLandscape({
+    const landscape = hydrator.buildLandscape(makePayload({
       resources: MIN_RESOURCES,
       tasks: [baseTask({
         key: 'TASK-ORPHAN',
         capacityResources: [{ resource: 'MACHINE-NOT-REAL', isPrimary: true, qty: 1, mode: 'ON' }],
       })],
       orders: [],
-    });
+    }));
 
     // includeInSolve starts at default true before validation runs
     const taskBefore = landscape.tasks.getEntity('TASK-ORPHAN')!;
@@ -164,11 +181,11 @@ describe('Sprint 1b E2E — Bug D: orphan resource', () => {
 
   it('E2b: valid resource reference → no error', () => {
     const hydrator = createHydrator();
-    const landscape = hydrator.buildLandscape({
+    const landscape = hydrator.buildLandscape(makePayload({
       resources: MIN_RESOURCES,
       tasks: [baseTask()],
       orders: [],
-    });
+    }));
     validateReferences(landscape);
     const task = landscape.tasks.getEntity('TASK-1')!;
     expect(task.validationErrors).toEqual([]);
@@ -181,7 +198,7 @@ describe('Sprint 1b E2E — Bug D: orphan resource', () => {
 describe('Sprint 1b E2E — happy path summary', () => {
   it('E3: clean payload produces zeroed validationSummary', () => {
     const hydrator = createHydrator();
-    const landscape = hydrator.buildLandscape({
+    const landscape = hydrator.buildLandscape(makePayload({
       resources: MIN_RESOURCES,
       tasks: [baseTask({
         windowStart: '2026-03-15T00:00:00Z',
@@ -190,7 +207,7 @@ describe('Sprint 1b E2E — happy path summary', () => {
       orders: [
         { key: 'ORD-1', name: 'Order 1', productKey: 'P1', demandQty: 1, dueDate: '2026-03-20T00:00:00Z', priority: 50 },
       ],
-    });
+    }));
     validateReferences(landscape);
     const summary = summarizeValidation(landscape);
     expect(summary.recordsWithErrors).toBe(0);
@@ -202,7 +219,7 @@ describe('Sprint 1b E2E — happy path summary', () => {
 
   it('E3b: mix of clean and bad → summary tallies correctly', () => {
     const hydrator = createHydrator();
-    const landscape = hydrator.buildLandscape({
+    const landscape = hydrator.buildLandscape(makePayload({
       resources: MIN_RESOURCES,
       tasks: [
         baseTask({ key: 'T-CLEAN' }),
@@ -220,7 +237,7 @@ describe('Sprint 1b E2E — happy path summary', () => {
         { key: 'O-CLEAN', name: 'x', productKey: 'P1', demandQty: 1, dueDate: '2026-03-20T00:00:00Z', priority: 50 },
         { key: 'O-BAD', name: 'y', productKey: 'P1', demandQty: 1, dueDate: 'nope', priority: 50 },
       ],
-    });
+    }));
     validateReferences(landscape);
     const summary = summarizeValidation(landscape);
 
@@ -245,11 +262,9 @@ describe('Sprint 1b E2E — MappingEngine toUTC validation', () => {
         },
       },
     } as IMappingProfile;
-    const raw: IRawDataPayload = {
+    const raw: IRawDataPayload = makePayload({
       orders: [{ Id: 1, DeliveryDate: 'not-a-date' }],
-      resources: [],
-      tasks: [],
-    };
+    });
     const result = engine.transform(raw, profile);
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0]).toMatchObject({
