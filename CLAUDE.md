@@ -56,8 +56,12 @@ New spec files are untracked by default — this ensures they're never left out 
 After every sprint's code is complete, run the full regression test suite before committing:
 1. Clean-build the engine: `rm -rf packages/engine/dist && npm run build --workspace=@ctp/engine`
 2. Build the API: `npm run build --workspace=@ctp/api`
-3. Run all tests: `npx vitest run`
-4. All tests must pass (or failures must be confirmed pre-existing) before the sprint commit
+3. **Strict type-check (matches CI):** `npx tsc --noEmit -p packages/api/tsconfig.json`
+4. Run all tests: `npx vitest run`
+5. All tests must pass (or failures must be confirmed pre-existing) before the sprint commit
+
+### Why step 3 matters
+`nest build` (used by `npm run build --workspace=@ctp/api`) skips test files, and `vitest`'s transform is lenient at runtime — both will accept payloads missing required fields. GitHub Actions runs `npx tsc --noEmit -p packages/api/tsconfig.json` as a final strict type-check over everything including tests, and will reject what the local build chain accepted. Run step 3 locally to catch those before pushing. (See fix commit `2e1e78b` for the class of bug this catches — `IRawDataPayload` has 10 required fields, test builders supplied 3.)
 
 # Agent Constraints for Usage Efficiency
 
