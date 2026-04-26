@@ -17,7 +17,7 @@
 
   "resources": {
     "mappings": {
-      "key":        { "from": "MachineCode" },
+      "key":        { "from": "Code" },
       "name":       { "from": "MachineName" },
       "type":       { "from": "MachineType" },
       "class":      { "from": "IsLabour", "lookup": { "true": "LABOUR", "false": "REUSABLE", "_default": "REUSABLE" } },

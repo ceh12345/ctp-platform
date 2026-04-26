@@ -1,0 +1,126 @@
+{
+  "_comment": "Generated 2026-04-26 from audit findings (mapping-gap-2026-04-26.md + mapping-remediation-2026-04-26.md) and the proposed-update prompt. Revised same-day after architectural decision: orders now sourced from workOrderWithAdvancedInformationViewEntity (work orders are CTP's natural scheduling unit), NOT salesOrderDetailEntity. See mapping-change-log.md for rationale per rule. NOT yet applied to live config. Several rules use _TODO/_derive placeholders for capabilities the current MappingEngine does not yet support; gaps documented in the change log.",
+  "version": "1.2-proposed",
+  "tenantId": "stafford-engineering-test",
+  "source": "genius-real",
+
+  "_adapter_note": "This mapping assumes the adapter's 'orders' slot is fed from workOrderWithAdvancedInformationViewEntity, not salesOrderDetailEntity. Adapter wiring must be updated alongside applying this mapping — see change log under 'Adapter wiring change required'.",
+
+  "orders": {
+    "mappings": {
+      "key":         { "from": "WorkOrder" },
+      "name":        { "from": "ItemDescription1" },
+      "productKey":  { "from": "ItemCode" },
+      "demandQty":   { "from": "QuantityPlanned" },
+      "dueDate":     { "from": "DeliveryDate", "toUTC": true },
+
+      "lateDueDate": {
+        "_TODO": "engine does not support cross-field references; no late-tolerance field exists in WO schema; placeholder defaults late-due to @dueDate (i.e., zero tolerance) until Stafford specifies a tolerance concept. JobEndDate is a candidate alternative — semantics need confirmation.",
+        "_default": "@dueDate"
+      },
+
+      "priority":    {
+        "from": "Strategy",
+        "lookup": { "JIT": 10, "ASAP": 5, "_default": 50 }
+      },
+
+      "_comment_enrichment_fields": "Below: customer-facing data from work orders. Useful for UI Gantt labels, filters, etc. Engine doesn't currently consume them.",
+
+      "customerCode": { "from": "CustomerCode" },
+      "customerName": { "from": "CustomerName" },
+      "itemFamily":   { "from": "ItemFamily" },
+      "wostatus":     { "from": "Wostatus" }
+    }
+  },
+
+  "resources": {
+    "mappings": {
+      "key":         { "from": "Code" },
+      "name":        { "from": "Description1" },
+      "type": {
+        "from": "RessourceType",
+        "lookup": {
+          "R": "MACHINE",
+          "W": "WORKCENTER",
+          "S": "SUBCONTRACT",
+          "_default": "MACHINE"
+        },
+        "_TODO": "Stafford confirmation needed — what do R/W/S codes mean operationally? Tentative: R=Resource (machine), W=Work center (pooled), S=Subcontract"
+      },
+      "class": {
+        "_TODO": "engine does not yet support derive; intent: derive class from RessourceType. R -> MACHINE, W -> LABOR_POOL, S -> SUBCONTRACT. Was IsLabour (doesn't exist).",
+        "_derive": {
+          "from": "RessourceType",
+          "lookup": {
+            "R": "MACHINE",
+            "W": "LABOR_POOL",
+            "S": "SUBCONTRACT",
+            "_default": "MACHINE"
+          }
+        }
+      },
+      "hourlyRate":  { "from": "MachineRateCost" },
+
+      "_comment_new_fields": "Below are NEW resource attributes surfaced by the audit. Engine doesn't consume them yet; data-layer captures everything.",
+
+      "efficiency":       { "from": "Efficiency" },
+      "parallelCapacity": { "from": "NumOfAvgResource" },
+      "isFinite":         { "from": "IsFinite" },
+      "calendarCode":     { "from": "CalendarMspCode" }
+    }
+  },
+
+  "tasks": {
+    "key": { "from": ["JobCode", "OperationCode"], "sep": "-" },
+    "mappings": {
+      "name":            { "from": ["JobCode", "OperationCode"], "sep": " — " },
+
+      "type": {
+        "_TODO": "engine does not yet support derive; intent: derive type from Formula. Tentative: HR/UN -> STANDARD, JR/DY -> DAILY. Stafford confirmation needed — what does Formula encode?",
+        "_derive": {
+          "from": "Formula",
+          "lookup": {
+            "HR/UN":  "STANDARD",
+            "JR/DY":  "DAILY",
+            "_default": "STANDARD"
+          }
+        }
+      },
+
+      "durationSeconds": { "from": "CycleTime", "factor": 3600 },
+      "durationQty":     { "from": "WoPlannedQuantity" },
+      "durationType":    { "value": 0 },
+
+      "wipState": {
+        "_TODO": "engine does not yet support multi-condition derive; intent below. WoStatusCode (3 distinct values) might be a simpler direct rename — see change log open question.",
+        "_derive": {
+          "rules": [
+            { "if": { "field": "IsCompleted", "equals": true },                    "then": "COMPLETED" },
+            { "if": { "field": "TaskStartDate", "exists": true, "nonNull": true }, "then": "IN_PROCESS" },
+            { "else": "NOT_STARTED" }
+          ]
+        }
+      },
+
+      "actualStart": {
+        "_TODO": "engine does not yet support conditional source selection; intent: use TaskStartDate when IsCompleted=false (in-process) or as the historical actual when IsCompleted=true; null otherwise",
+        "_derive": {
+          "rules": [
+            { "if": { "field": "IsCompleted", "equals": true },                    "then": { "from": "TaskStartDate", "toUTC": true } },
+            { "if": { "field": "TaskStartDate", "exists": true, "nonNull": true }, "then": { "from": "TaskStartDate", "toUTC": true } },
+            { "else": null }
+          ]
+        }
+      },
+
+      "windowStart":     { "from": "TaskStartDate", "toUTC": true },
+      "windowEnd":       { "from": "TaskEndDate",   "toUTC": true }
+    },
+    "capacityResources": { "from": "MachineCode" },
+    "linkId": {
+      "chainKey":     "JobCode",
+      "orderKey":     "SequenceNumber",
+      "lagHoursField":"LagHours"
+    }
+  }
+}

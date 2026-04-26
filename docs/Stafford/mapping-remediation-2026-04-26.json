@@ -1,0 +1,976 @@
+{
+  "generatedAt": "2026-04-26T13:25:34.158520",
+  "captureDir": "tools\\mock-genius\\recorded\\stafford-work7-2026-04-23",
+  "mappingProfile": "config\\tenants\\stafford-engineering-test\\integration\\mapping.json",
+  "summary": {
+    "orders": {
+      "PARTIAL_POPULATION": 1,
+      "DERIVE": 3,
+      "OK": 1,
+      "AMBIGUOUS": 2
+    },
+    "resources": {
+      "OK": 1,
+      "AMBIGUOUS": 2,
+      "DERIVE": 2
+    },
+    "tasks": {
+      "OK": 10,
+      "AMBIGUOUS": 1,
+      "DERIVE": 2
+    }
+  },
+  "findings": [
+    {
+      "classification": "PARTIAL_POPULATION",
+      "confidence": null,
+      "currentFieldStats": {
+        "type": "null/str",
+        "populated": 430,
+        "total": 474,
+        "populationPct": 90.7,
+        "distinctValues": 430
+      },
+      "alternatives100pct": [],
+      "status": "PARTIAL",
+      "entity": "orders",
+      "entityRaw": "salesOrderDetailEntity",
+      "ruleTarget": "key",
+      "currentRule": {
+        "from": "JobCode"
+      },
+      "currentSourceField": "JobCode",
+      "keyRole": true
+    },
+    {
+      "classification": "DERIVE",
+      "confidence": null,
+      "conceptualKin": [
+        {
+          "field": "BomOptionFactor",
+          "stats": {
+            "type": "int",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 1
+          }
+        },
+        {
+          "field": "BomOptionIsManual",
+          "stats": {
+            "type": "bool",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 1
+          }
+        },
+        {
+          "field": "BomOptionItemHasOption",
+          "stats": {
+            "type": "bool",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 1
+          }
+        },
+        {
+          "field": "BomOptionItemKey",
+          "stats": {
+            "type": "int",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 1
+          }
+        },
+        {
+          "field": "BomOptionLevel",
+          "stats": {
+            "type": "int",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 1
+          }
+        },
+        {
+          "field": "ConfirmationDate",
+          "stats": {
+            "type": "null/str",
+            "populated": 430,
+            "total": 474,
+            "populationPct": 90.7,
+            "distinctValues": 87
+          }
+        },
+        {
+          "field": "CreationDate",
+          "stats": {
+            "type": "str",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 474
+          }
+        },
+        {
+          "field": "DateJobProductionEnd",
+          "stats": {
+            "type": "str",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 79
+          }
+        }
+      ],
+      "crossEntity": [],
+      "note": "No direct rename found. These same-entity fields share name fragments and could be candidates for a computed transform. Formula is a human decision.",
+      "status": "MISSING",
+      "entity": "orders",
+      "entityRaw": "salesOrderDetailEntity",
+      "ruleTarget": "name",
+      "currentRule": {
+        "from": "ItemDescription"
+      },
+      "currentSourceField": "ItemDescription",
+      "keyRole": false
+    },
+    {
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "str",
+        "populated": 474,
+        "total": 474,
+        "populationPct": 100.0,
+        "distinctValues": 330
+      },
+      "status": "OK",
+      "entity": "orders",
+      "entityRaw": "salesOrderDetailEntity",
+      "ruleTarget": "productKey",
+      "currentRule": {
+        "from": "ItemCode"
+      },
+      "currentSourceField": "ItemCode",
+      "keyRole": false
+    },
+    {
+      "classification": "DERIVE",
+      "confidence": null,
+      "conceptualKin": [
+        {
+          "field": "QtyOrderedBase",
+          "stats": {
+            "type": "float",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 20
+          }
+        },
+        {
+          "field": "QtyOrderedNet",
+          "stats": {
+            "type": "float",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 20
+          }
+        },
+        {
+          "field": "SalesOrderHeaderCode",
+          "stats": {
+            "type": "str",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 79
+          }
+        }
+      ],
+      "crossEntity": [],
+      "note": "No direct rename found. These same-entity fields share name fragments and could be candidates for a computed transform. Formula is a human decision.",
+      "status": "MISSING",
+      "entity": "orders",
+      "entityRaw": "salesOrderDetailEntity",
+      "ruleTarget": "demandQty",
+      "currentRule": {
+        "from": "OrderQty"
+      },
+      "currentSourceField": "OrderQty",
+      "keyRole": false
+    },
+    {
+      "classification": "AMBIGUOUS",
+      "confidence": 0.5,
+      "allCandidates": [],
+      "crossEntity": [
+        {
+          "field": "DeliveryDate",
+          "entity": "workOrderWithAdvancedInformationViewEntity",
+          "stats": {
+            "type": "str",
+            "populated": 956,
+            "total": 956,
+            "populationPct": 100.0,
+            "distinctValues": 92
+          },
+          "warning": "different entity \u2014 semantics may differ; verify before adopting"
+        }
+      ],
+      "status": "MISSING",
+      "entity": "orders",
+      "entityRaw": "salesOrderDetailEntity",
+      "ruleTarget": "dueDate",
+      "currentRule": {
+        "from": "DeliveryDate",
+        "toUTC": true
+      },
+      "currentSourceField": "DeliveryDate",
+      "keyRole": false
+    },
+    {
+      "classification": "DERIVE",
+      "confidence": null,
+      "conceptualKin": [
+        {
+          "field": "ConfirmationDate",
+          "stats": {
+            "type": "null/str",
+            "populated": 430,
+            "total": 474,
+            "populationPct": 90.7,
+            "distinctValues": 87
+          }
+        },
+        {
+          "field": "CreationDate",
+          "stats": {
+            "type": "str",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 474
+          }
+        },
+        {
+          "field": "DateCustomer",
+          "stats": {
+            "type": "str",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 55
+          }
+        },
+        {
+          "field": "DateDelivery",
+          "stats": {
+            "type": "str",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 65
+          }
+        },
+        {
+          "field": "DateJobProductionEnd",
+          "stats": {
+            "type": "str",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 79
+          }
+        },
+        {
+          "field": "DateJobProductionStart",
+          "stats": {
+            "type": "str",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 428
+          }
+        },
+        {
+          "field": "DbrDateModeId",
+          "stats": {
+            "type": "int",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 1
+          }
+        },
+        {
+          "field": "DrumEndDate",
+          "stats": {
+            "type": "str",
+            "populated": 474,
+            "total": 474,
+            "populationPct": 100.0,
+            "distinctValues": 160
+          }
+        }
+      ],
+      "crossEntity": [],
+      "note": "No direct rename found. These same-entity fields share name fragments and could be candidates for a computed transform. Formula is a human decision.",
+      "status": "MISSING",
+      "entity": "orders",
+      "entityRaw": "salesOrderDetailEntity",
+      "ruleTarget": "lateDueDate",
+      "currentRule": {
+        "from": "LateDeliveryDate",
+        "toUTC": true
+      },
+      "currentSourceField": "LateDeliveryDate",
+      "keyRole": false
+    },
+    {
+      "classification": "AMBIGUOUS",
+      "confidence": 0.5,
+      "allCandidates": [],
+      "crossEntity": [
+        {
+          "field": "Strategy",
+          "entity": "workOrderWithAdvancedInformationViewEntity",
+          "stats": {
+            "type": "str",
+            "populated": 956,
+            "total": 956,
+            "populationPct": 100.0,
+            "distinctValues": 2
+          },
+          "warning": "different entity \u2014 semantics may differ; verify before adopting"
+        }
+      ],
+      "status": "MISSING",
+      "entity": "orders",
+      "entityRaw": "salesOrderDetailEntity",
+      "ruleTarget": "priority",
+      "currentRule": {
+        "from": "Strategy",
+        "lookup": {
+          "RUSH": 10,
+          "HIGH": 20,
+          "NORMAL": 50,
+          "LOW": 75,
+          "_default": 50
+        }
+      },
+      "currentSourceField": "Strategy",
+      "keyRole": false
+    },
+    {
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "str",
+        "populated": 77,
+        "total": 77,
+        "populationPct": 100.0,
+        "distinctValues": 77
+      },
+      "status": "OK",
+      "entity": "resources",
+      "entityRaw": "machineAndRessourceEntity",
+      "ruleTarget": "key",
+      "currentRule": {
+        "from": "Code"
+      },
+      "currentSourceField": "Code",
+      "keyRole": true
+    },
+    {
+      "classification": "AMBIGUOUS",
+      "confidence": 0.5,
+      "allCandidates": [
+        {
+          "field": "MachineLoadings",
+          "confidence": 0.5,
+          "heuristic": "levenshtein (dist=7)",
+          "stats": {
+            "type": "array",
+            "populated": 77,
+            "total": 77,
+            "populationPct": 100.0,
+            "distinctValues": 1
+          }
+        },
+        {
+          "field": "MachineProfit",
+          "confidence": 0.5,
+          "heuristic": "levenshtein (dist=6)",
+          "stats": {
+            "type": "float",
+            "populated": 77,
+            "total": 77,
+            "populationPct": 100.0,
+            "distinctValues": 1
+          }
+        },
+        {
+          "field": "MachineRateCost",
+          "confidence": 0.5,
+          "heuristic": "levenshtein (dist=6)",
+          "stats": {
+            "type": "float",
+            "populated": 77,
+            "total": 77,
+            "populationPct": 100.0,
+            "distinctValues": 9
+          }
+        }
+      ],
+      "crossEntity": [],
+      "status": "MISSING",
+      "entity": "resources",
+      "entityRaw": "machineAndRessourceEntity",
+      "ruleTarget": "name",
+      "currentRule": {
+        "from": "MachineName"
+      },
+      "currentSourceField": "MachineName",
+      "keyRole": false
+    },
+    {
+      "classification": "AMBIGUOUS",
+      "confidence": 0.5,
+      "allCandidates": [
+        {
+          "field": "MachineProfit",
+          "confidence": 0.5,
+          "heuristic": "levenshtein (dist=6)",
+          "stats": {
+            "type": "float",
+            "populated": 77,
+            "total": 77,
+            "populationPct": 100.0,
+            "distinctValues": 1
+          }
+        },
+        {
+          "field": "MachineRateCost",
+          "confidence": 0.5,
+          "heuristic": "levenshtein (dist=7)",
+          "stats": {
+            "type": "float",
+            "populated": 77,
+            "total": 77,
+            "populationPct": 100.0,
+            "distinctValues": 9
+          }
+        }
+      ],
+      "crossEntity": [
+        {
+          "field": "MachineType",
+          "entity": "productionTaskWithAdvancedInfoViewEntity",
+          "stats": {
+            "type": "str",
+            "populated": 3118,
+            "total": 3118,
+            "populationPct": 100.0,
+            "distinctValues": 3
+          },
+          "warning": "different entity \u2014 semantics may differ; verify before adopting"
+        }
+      ],
+      "status": "MISSING",
+      "entity": "resources",
+      "entityRaw": "machineAndRessourceEntity",
+      "ruleTarget": "type",
+      "currentRule": {
+        "from": "MachineType"
+      },
+      "currentSourceField": "MachineType",
+      "keyRole": false
+    },
+    {
+      "classification": "DERIVE",
+      "confidence": null,
+      "conceptualKin": [
+        {
+          "field": "LabourProfit",
+          "stats": {
+            "type": "float",
+            "populated": 77,
+            "total": 77,
+            "populationPct": 100.0,
+            "distinctValues": 1
+          }
+        }
+      ],
+      "crossEntity": [],
+      "note": "No direct rename found. These same-entity fields share name fragments and could be candidates for a computed transform. Formula is a human decision.",
+      "status": "MISSING",
+      "entity": "resources",
+      "entityRaw": "machineAndRessourceEntity",
+      "ruleTarget": "class",
+      "currentRule": {
+        "from": "IsLabour",
+        "lookup": {
+          "true": "LABOUR",
+          "false": "REUSABLE",
+          "_default": "REUSABLE"
+        }
+      },
+      "currentSourceField": "IsLabour",
+      "keyRole": false
+    },
+    {
+      "classification": "DERIVE",
+      "confidence": null,
+      "conceptualKin": [
+        {
+          "field": "AverageWorkerRate",
+          "stats": {
+            "type": "float",
+            "populated": 77,
+            "total": 77,
+            "populationPct": 100.0,
+            "distinctValues": 2
+          }
+        },
+        {
+          "field": "HourCapacityPerDay",
+          "stats": {
+            "type": "float",
+            "populated": 77,
+            "total": 77,
+            "populationPct": 100.0,
+            "distinctValues": 3
+          }
+        },
+        {
+          "field": "MachineRateCost",
+          "stats": {
+            "type": "float",
+            "populated": 77,
+            "total": 77,
+            "populationPct": 100.0,
+            "distinctValues": 9
+          }
+        },
+        {
+          "field": "MinimumRate",
+          "stats": {
+            "type": "float",
+            "populated": 77,
+            "total": 77,
+            "populationPct": 100.0,
+            "distinctValues": 1
+          }
+        },
+        {
+          "field": "SellingRate",
+          "stats": {
+            "type": "float",
+            "populated": 77,
+            "total": 77,
+            "populationPct": 100.0,
+            "distinctValues": 8
+          }
+        }
+      ],
+      "crossEntity": [],
+      "note": "No direct rename found. These same-entity fields share name fragments and could be candidates for a computed transform. Formula is a human decision.",
+      "status": "MISSING",
+      "entity": "resources",
+      "entityRaw": "machineAndRessourceEntity",
+      "ruleTarget": "hourlyRate",
+      "currentRule": {
+        "from": "HourlyRate"
+      },
+      "currentSourceField": "HourlyRate",
+      "keyRole": false
+    },
+    {
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "str",
+        "populated": 3118,
+        "total": 3118,
+        "populationPct": 100.0,
+        "distinctValues": 271
+      },
+      "status": "OK",
+      "entity": "tasks",
+      "entityRaw": "productionTaskWithAdvancedInfoViewEntity",
+      "ruleTarget": "name",
+      "currentRule": {
+        "from": [
+          "JobCode",
+          "OperationCode"
+        ],
+        "sep": " \u00e2\u20ac\u201d "
+      },
+      "currentSourceField": "JobCode",
+      "keyRole": false
+    },
+    {
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "str",
+        "populated": 3118,
+        "total": 3118,
+        "populationPct": 100.0,
+        "distinctValues": 41
+      },
+      "status": "OK",
+      "entity": "tasks",
+      "entityRaw": "productionTaskWithAdvancedInfoViewEntity",
+      "ruleTarget": "name",
+      "currentRule": {
+        "from": [
+          "JobCode",
+          "OperationCode"
+        ],
+        "sep": " \u00e2\u20ac\u201d "
+      },
+      "currentSourceField": "OperationCode",
+      "keyRole": false
+    },
+    {
+      "classification": "AMBIGUOUS",
+      "confidence": 0.5,
+      "allCandidates": [],
+      "crossEntity": [
+        {
+          "field": "TaskType",
+          "entity": "machineAndRessourceEntity",
+          "stats": {
+            "type": "str",
+            "populated": 77,
+            "total": 77,
+            "populationPct": 100.0,
+            "distinctValues": 2
+          },
+          "warning": "different entity \u2014 semantics may differ; verify before adopting"
+        }
+      ],
+      "status": "MISSING",
+      "entity": "tasks",
+      "entityRaw": "productionTaskWithAdvancedInfoViewEntity",
+      "ruleTarget": "type",
+      "currentRule": {
+        "from": "TaskType"
+      },
+      "currentSourceField": "TaskType",
+      "keyRole": false
+    },
+    {
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "float",
+        "populated": 3118,
+        "total": 3118,
+        "populationPct": 100.0,
+        "distinctValues": 71
+      },
+      "status": "OK",
+      "entity": "tasks",
+      "entityRaw": "productionTaskWithAdvancedInfoViewEntity",
+      "ruleTarget": "durationSeconds",
+      "currentRule": {
+        "from": "CycleTime",
+        "factor": 3600
+      },
+      "currentSourceField": "CycleTime",
+      "keyRole": false
+    },
+    {
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "float",
+        "populated": 3118,
+        "total": 3118,
+        "populationPct": 100.0,
+        "distinctValues": 29
+      },
+      "status": "OK",
+      "entity": "tasks",
+      "entityRaw": "productionTaskWithAdvancedInfoViewEntity",
+      "ruleTarget": "durationQty",
+      "currentRule": {
+        "from": "WoPlannedQuantity"
+      },
+      "currentSourceField": "WoPlannedQuantity",
+      "keyRole": false
+    },
+    {
+      "classification": "DERIVE",
+      "confidence": null,
+      "conceptualKin": [
+        {
+          "field": "WoStatusCode",
+          "stats": {
+            "type": "str",
+            "populated": 3118,
+            "total": 3118,
+            "populationPct": 100.0,
+            "distinctValues": 3
+          }
+        },
+        {
+          "field": "WoStatusId",
+          "stats": {
+            "type": "int",
+            "populated": 3118,
+            "total": 3118,
+            "populationPct": 100.0,
+            "distinctValues": 3
+          }
+        }
+      ],
+      "crossEntity": [],
+      "note": "No direct rename found. These same-entity fields share name fragments and could be candidates for a computed transform. Formula is a human decision.",
+      "status": "MISSING",
+      "entity": "tasks",
+      "entityRaw": "productionTaskWithAdvancedInfoViewEntity",
+      "ruleTarget": "wipState",
+      "currentRule": {
+        "from": "WipState"
+      },
+      "currentSourceField": "WipState",
+      "keyRole": false
+    },
+    {
+      "classification": "DERIVE",
+      "confidence": null,
+      "conceptualKin": [
+        {
+          "field": "CompletionDate",
+          "stats": {
+            "type": "str",
+            "populated": 3118,
+            "total": 3118,
+            "populationPct": 100.0,
+            "distinctValues": 1
+          }
+        },
+        {
+          "field": "JobClosingDate",
+          "stats": {
+            "type": "str",
+            "populated": 3118,
+            "total": 3118,
+            "populationPct": 100.0,
+            "distinctValues": 1
+          }
+        },
+        {
+          "field": "JobProductionEndDate",
+          "stats": {
+            "type": "str",
+            "populated": 3118,
+            "total": 3118,
+            "populationPct": 100.0,
+            "distinctValues": 79
+          }
+        },
+        {
+          "field": "JobProductionStartDate",
+          "stats": {
+            "type": "str",
+            "populated": 3118,
+            "total": 3118,
+            "populationPct": 100.0,
+            "distinctValues": 248
+          }
+        },
+        {
+          "field": "MaterialAvailabilityDate",
+          "stats": {
+            "type": "str",
+            "populated": 3118,
+            "total": 3118,
+            "populationPct": 100.0,
+            "distinctValues": 125
+          }
+        },
+        {
+          "field": "TaskEndDate",
+          "stats": {
+            "type": "null/str",
+            "populated": 3109,
+            "total": 3118,
+            "populationPct": 99.7,
+            "distinctValues": 1497
+          }
+        },
+        {
+          "field": "TaskStartDate",
+          "stats": {
+            "type": "null/str",
+            "populated": 3109,
+            "total": 3118,
+            "populationPct": 99.7,
+            "distinctValues": 1873
+          }
+        },
+        {
+          "field": "WorkOrderClosingDate",
+          "stats": {
+            "type": "str",
+            "populated": 3118,
+            "total": 3118,
+            "populationPct": 100.0,
+            "distinctValues": 1
+          }
+        }
+      ],
+      "crossEntity": [],
+      "note": "No direct rename found. These same-entity fields share name fragments and could be candidates for a computed transform. Formula is a human decision.",
+      "status": "MISSING",
+      "entity": "tasks",
+      "entityRaw": "productionTaskWithAdvancedInfoViewEntity",
+      "ruleTarget": "actualStart",
+      "currentRule": {
+        "from": "ActualStartDate",
+        "toUTC": true
+      },
+      "currentSourceField": "ActualStartDate",
+      "keyRole": false
+    },
+    {
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "null/str",
+        "populated": 3109,
+        "total": 3118,
+        "populationPct": 99.7,
+        "distinctValues": 1873
+      },
+      "status": "OK",
+      "entity": "tasks",
+      "entityRaw": "productionTaskWithAdvancedInfoViewEntity",
+      "ruleTarget": "windowStart",
+      "currentRule": {
+        "from": "TaskStartDate",
+        "toUTC": true
+      },
+      "currentSourceField": "TaskStartDate",
+      "keyRole": false
+    },
+    {
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "null/str",
+        "populated": 3109,
+        "total": 3118,
+        "populationPct": 99.7,
+        "distinctValues": 1497
+      },
+      "status": "OK",
+      "entity": "tasks",
+      "entityRaw": "productionTaskWithAdvancedInfoViewEntity",
+      "ruleTarget": "windowEnd",
+      "currentRule": {
+        "from": "TaskEndDate",
+        "toUTC": true
+      },
+      "currentSourceField": "TaskEndDate",
+      "keyRole": false
+    },
+    {
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "str",
+        "populated": 3118,
+        "total": 3118,
+        "populationPct": 100.0,
+        "distinctValues": 63
+      },
+      "status": "OK",
+      "entity": "tasks",
+      "entityRaw": "productionTaskWithAdvancedInfoViewEntity",
+      "ruleTarget": "capacityResources",
+      "currentRule": {
+        "from": "MachineCode"
+      },
+      "currentSourceField": "MachineCode",
+      "keyRole": false
+    },
+    {
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "str",
+        "populated": 3118,
+        "total": 3118,
+        "populationPct": 100.0,
+        "distinctValues": 271
+      },
+      "status": "OK",
+      "entity": "tasks",
+      "entityRaw": "productionTaskWithAdvancedInfoViewEntity",
+      "ruleTarget": "linkId.chainKey",
+      "currentRule": {
+        "chainKey": "JobCode",
+        "orderKey": "SequenceNumber",
+        "lagHoursField": "LagHours"
+      },
+      "currentSourceField": "JobCode",
+      "keyRole": true
+    },
+    {
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "int",
+        "populated": 3118,
+        "total": 3118,
+        "populationPct": 100.0,
+        "distinctValues": 703
+      },
+      "status": "OK",
+      "entity": "tasks",
+      "entityRaw": "productionTaskWithAdvancedInfoViewEntity",
+      "ruleTarget": "linkId.orderKey",
+      "currentRule": {
+        "chainKey": "JobCode",
+        "orderKey": "SequenceNumber",
+        "lagHoursField": "LagHours"
+      },
+      "currentSourceField": "SequenceNumber",
+      "keyRole": false
+    },
+    {
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "float",
+        "populated": 3118,
+        "total": 3118,
+        "populationPct": 100.0,
+        "distinctValues": 5
+      },
+      "status": "OK",
+      "entity": "tasks",
+      "entityRaw": "productionTaskWithAdvancedInfoViewEntity",
+      "ruleTarget": "linkId.lagHoursField",
+      "currentRule": {
+        "chainKey": "JobCode",
+        "orderKey": "SequenceNumber",
+        "lagHoursField": "LagHours"
+      },
+      "currentSourceField": "LagHours",
+      "keyRole": false
+    }
+  ]
+}
