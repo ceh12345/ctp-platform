@@ -10,7 +10,7 @@
     "retryDelay": 2000
   },
   "endpoints": {
-    "salesOrders": { "path": "/salesOrderDetailEntity",                    "pageSize": 100 },
+    "salesOrders": { "path": "/workOrderWithAdvancedInformationViewEntity", "pageSize": 100 },
     "workOrders":  { "path": "/workOrderWithAdvancedInformationViewEntity", "pageSize": 100 },
     "tasks":       { "path": "/productionTaskWithAdvancedInfoViewEntity",   "pageSize": 200 },
     "resources":   { "path": "/machineAndRessourceEntity",                 "pageSize": 100 }

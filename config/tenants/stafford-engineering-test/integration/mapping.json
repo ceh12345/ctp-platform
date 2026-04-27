@@ -5,13 +5,23 @@
 
   "orders": {
     "mappings": {
-      "key":         { "from": "JobCode" },
-      "name":        { "from": "ItemDescription" },
+      "key":         { "from": "WorkOrder" },
+      "name":        { "from": ["WorkOrder", "ItemDescription1"], "sep": " — " },
       "productKey":  { "from": "ItemCode" },
-      "demandQty":   { "from": "OrderQty" },
-      "dueDate":     { "from": "DeliveryDate",     "toUTC": true },
-      "lateDueDate": { "from": "LateDeliveryDate", "toUTC": true },
-      "priority":    { "from": "Strategy", "lookup": { "RUSH": 10, "HIGH": 20, "NORMAL": 50, "LOW": 75, "_default": 50 } }
+      "demandQty":   { "from": "QuantityPlanned" },
+      "dueDate":     { "from": "DeliveryDate", "toUTC": true },
+
+      "lateDueDate": {
+        "_TODO": "engine does not support cross-field references; intent is to default lateDueDate to dueDate (zero tolerance) when no late-tolerance source exists. Until engine supports @-references, this rule is declarative — engine ignores it and lateDueDate falls to default 0. JobEndDate may be the right late-tolerance signal — see Stafford escalation #6.",
+        "_default": "@dueDate"
+      },
+
+      "priority":    { "from": "Strategy", "lookup": { "JIT": 10, "ASAP": 5, "_default": 50 } },
+
+      "customerCode": { "from": "CustomerCode" },
+      "customerName": { "from": "CustomerName" },
+      "itemFamily":   { "from": "ItemFamily" },
+      "wostatus":     { "from": "Wostatus" }
     }
   },
 
@@ -34,19 +44,19 @@
     "key": { "from": ["JobCode", "OperationCode"], "sep": "-" },
     "mappings": {
       "name":            { "from": ["JobCode", "OperationCode"], "sep": " — " },
-      "type":            { "from": "TaskType" },
+      "type":            { "from": "Formula", "lookup": { "HR/UN": "STANDARD", "JR/DY": "DAILY", "_default": "STANDARD" } },
       "durationSeconds": { "from": "CycleTime", "factor": 3600 },
       "durationQty":     { "from": "WoPlannedQuantity" },
       "durationType":    { "value": 0 },
       "wipState":        { "from": "WipState" },
-      "actualStart":     { "from": "ActualStartDate", "toUTC": true },
+      "actualStart":     { "from": "TaskStartDate", "toUTC": true },
       "windowStart":     { "from": "TaskStartDate",   "toUTC": true },
       "windowEnd":       { "from": "TaskEndDate",     "toUTC": true }
     },
     "capacityResources": { "from": "MachineCode" },
     "linkId": {
-      "chainKey":     "JobCode",
-      "orderKey":     "SequenceNumber",
+      "chainKey":     "WorkOrderCode",
+      "orderKey":     "Order",
       "lagHoursField":"LagHours"
     }
   }
