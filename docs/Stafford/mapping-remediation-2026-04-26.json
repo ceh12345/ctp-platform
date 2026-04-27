@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-26T13:25:34.158520",
+  "generatedAt": "2026-04-26T20:07:46.513919",
   "captureDir": "tools\\mock-genius\\recorded\\stafford-work7-2026-04-23",
   "mappingProfile": "config\\tenants\\stafford-engineering-test\\integration\\mapping.json",
   "summary": {
@@ -10,9 +10,7 @@
       "AMBIGUOUS": 2
     },
     "resources": {
-      "OK": 1,
-      "AMBIGUOUS": 2,
-      "DERIVE": 2
+      "OK": 9
     },
     "tasks": {
       "OK": 10,
@@ -389,207 +387,175 @@
       "keyRole": true
     },
     {
-      "classification": "AMBIGUOUS",
-      "confidence": 0.5,
-      "allCandidates": [
-        {
-          "field": "MachineLoadings",
-          "confidence": 0.5,
-          "heuristic": "levenshtein (dist=7)",
-          "stats": {
-            "type": "array",
-            "populated": 77,
-            "total": 77,
-            "populationPct": 100.0,
-            "distinctValues": 1
-          }
-        },
-        {
-          "field": "MachineProfit",
-          "confidence": 0.5,
-          "heuristic": "levenshtein (dist=6)",
-          "stats": {
-            "type": "float",
-            "populated": 77,
-            "total": 77,
-            "populationPct": 100.0,
-            "distinctValues": 1
-          }
-        },
-        {
-          "field": "MachineRateCost",
-          "confidence": 0.5,
-          "heuristic": "levenshtein (dist=6)",
-          "stats": {
-            "type": "float",
-            "populated": 77,
-            "total": 77,
-            "populationPct": 100.0,
-            "distinctValues": 9
-          }
-        }
-      ],
-      "crossEntity": [],
-      "status": "MISSING",
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "str",
+        "populated": 77,
+        "total": 77,
+        "populationPct": 100.0,
+        "distinctValues": 68
+      },
+      "status": "OK",
       "entity": "resources",
       "entityRaw": "machineAndRessourceEntity",
       "ruleTarget": "name",
       "currentRule": {
-        "from": "MachineName"
+        "from": "Description1"
       },
-      "currentSourceField": "MachineName",
+      "currentSourceField": "Description1",
       "keyRole": false
     },
     {
-      "classification": "AMBIGUOUS",
-      "confidence": 0.5,
-      "allCandidates": [
-        {
-          "field": "MachineProfit",
-          "confidence": 0.5,
-          "heuristic": "levenshtein (dist=6)",
-          "stats": {
-            "type": "float",
-            "populated": 77,
-            "total": 77,
-            "populationPct": 100.0,
-            "distinctValues": 1
-          }
-        },
-        {
-          "field": "MachineRateCost",
-          "confidence": 0.5,
-          "heuristic": "levenshtein (dist=7)",
-          "stats": {
-            "type": "float",
-            "populated": 77,
-            "total": 77,
-            "populationPct": 100.0,
-            "distinctValues": 9
-          }
-        }
-      ],
-      "crossEntity": [
-        {
-          "field": "MachineType",
-          "entity": "productionTaskWithAdvancedInfoViewEntity",
-          "stats": {
-            "type": "str",
-            "populated": 3118,
-            "total": 3118,
-            "populationPct": 100.0,
-            "distinctValues": 3
-          },
-          "warning": "different entity \u2014 semantics may differ; verify before adopting"
-        }
-      ],
-      "status": "MISSING",
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "str",
+        "populated": 77,
+        "total": 77,
+        "populationPct": 100.0,
+        "distinctValues": 3
+      },
+      "status": "OK",
       "entity": "resources",
       "entityRaw": "machineAndRessourceEntity",
       "ruleTarget": "type",
       "currentRule": {
-        "from": "MachineType"
+        "from": "RessourceType",
+        "lookup": {
+          "R": "MACHINE",
+          "W": "WORKCENTER",
+          "S": "SUBCONTRACT",
+          "_default": "MACHINE"
+        }
       },
-      "currentSourceField": "MachineType",
+      "currentSourceField": "RessourceType",
       "keyRole": false
     },
     {
-      "classification": "DERIVE",
-      "confidence": null,
-      "conceptualKin": [
-        {
-          "field": "LabourProfit",
-          "stats": {
-            "type": "float",
-            "populated": 77,
-            "total": 77,
-            "populationPct": 100.0,
-            "distinctValues": 1
-          }
-        }
-      ],
-      "crossEntity": [],
-      "note": "No direct rename found. These same-entity fields share name fragments and could be candidates for a computed transform. Formula is a human decision.",
-      "status": "MISSING",
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "str",
+        "populated": 77,
+        "total": 77,
+        "populationPct": 100.0,
+        "distinctValues": 3
+      },
+      "status": "OK",
       "entity": "resources",
       "entityRaw": "machineAndRessourceEntity",
       "ruleTarget": "class",
       "currentRule": {
-        "from": "IsLabour",
+        "from": "RessourceType",
         "lookup": {
-          "true": "LABOUR",
-          "false": "REUSABLE",
-          "_default": "REUSABLE"
+          "R": "MACHINE",
+          "W": "LABOR_POOL",
+          "S": "SUBCONTRACT",
+          "_default": "MACHINE"
         }
       },
-      "currentSourceField": "IsLabour",
+      "currentSourceField": "RessourceType",
       "keyRole": false
     },
     {
-      "classification": "DERIVE",
-      "confidence": null,
-      "conceptualKin": [
-        {
-          "field": "AverageWorkerRate",
-          "stats": {
-            "type": "float",
-            "populated": 77,
-            "total": 77,
-            "populationPct": 100.0,
-            "distinctValues": 2
-          }
-        },
-        {
-          "field": "HourCapacityPerDay",
-          "stats": {
-            "type": "float",
-            "populated": 77,
-            "total": 77,
-            "populationPct": 100.0,
-            "distinctValues": 3
-          }
-        },
-        {
-          "field": "MachineRateCost",
-          "stats": {
-            "type": "float",
-            "populated": 77,
-            "total": 77,
-            "populationPct": 100.0,
-            "distinctValues": 9
-          }
-        },
-        {
-          "field": "MinimumRate",
-          "stats": {
-            "type": "float",
-            "populated": 77,
-            "total": 77,
-            "populationPct": 100.0,
-            "distinctValues": 1
-          }
-        },
-        {
-          "field": "SellingRate",
-          "stats": {
-            "type": "float",
-            "populated": 77,
-            "total": 77,
-            "populationPct": 100.0,
-            "distinctValues": 8
-          }
-        }
-      ],
-      "crossEntity": [],
-      "note": "No direct rename found. These same-entity fields share name fragments and could be candidates for a computed transform. Formula is a human decision.",
-      "status": "MISSING",
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "float",
+        "populated": 77,
+        "total": 77,
+        "populationPct": 100.0,
+        "distinctValues": 9
+      },
+      "status": "OK",
       "entity": "resources",
       "entityRaw": "machineAndRessourceEntity",
       "ruleTarget": "hourlyRate",
       "currentRule": {
-        "from": "HourlyRate"
+        "from": "MachineRateCost"
       },
-      "currentSourceField": "HourlyRate",
+      "currentSourceField": "MachineRateCost",
+      "keyRole": false
+    },
+    {
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "float",
+        "populated": 77,
+        "total": 77,
+        "populationPct": 100.0,
+        "distinctValues": 3
+      },
+      "status": "OK",
+      "entity": "resources",
+      "entityRaw": "machineAndRessourceEntity",
+      "ruleTarget": "efficiency",
+      "currentRule": {
+        "from": "Efficiency"
+      },
+      "currentSourceField": "Efficiency",
+      "keyRole": false
+    },
+    {
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "float",
+        "populated": 77,
+        "total": 77,
+        "populationPct": 100.0,
+        "distinctValues": 6
+      },
+      "status": "OK",
+      "entity": "resources",
+      "entityRaw": "machineAndRessourceEntity",
+      "ruleTarget": "parallelCapacity",
+      "currentRule": {
+        "from": "NumOfAvgResource"
+      },
+      "currentSourceField": "NumOfAvgResource",
+      "keyRole": false
+    },
+    {
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "bool",
+        "populated": 77,
+        "total": 77,
+        "populationPct": 100.0,
+        "distinctValues": 2
+      },
+      "status": "OK",
+      "entity": "resources",
+      "entityRaw": "machineAndRessourceEntity",
+      "ruleTarget": "isFinite",
+      "currentRule": {
+        "from": "IsFinite"
+      },
+      "currentSourceField": "IsFinite",
+      "keyRole": false
+    },
+    {
+      "classification": "OK",
+      "confidence": 1.0,
+      "currentFieldStats": {
+        "type": "str",
+        "populated": 76,
+        "total": 77,
+        "populationPct": 98.7,
+        "distinctValues": 1
+      },
+      "status": "OK",
+      "entity": "resources",
+      "entityRaw": "machineAndRessourceEntity",
+      "ruleTarget": "calendarCode",
+      "currentRule": {
+        "from": "CalendarMspCode"
+      },
+      "currentSourceField": "CalendarMspCode",
       "keyRole": false
     },
     {

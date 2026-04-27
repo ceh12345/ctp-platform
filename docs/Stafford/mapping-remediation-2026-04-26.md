@@ -1,13 +1,13 @@
 # Mapping Remediation Report — 2026-04-26
 
-Classified 25 mapping rules against captured WORK7 fixtures (n=7,665 records across 4 entities).
+Classified 29 mapping rules against captured WORK7 fixtures (n=7,665 records across 4 entities).
 
 ## Summary
 
 | Entity | OK | DIRECT_RENAME | PARTIAL_POPULATION | DERIVE | AMBIGUOUS | UNMAPPABLE |
 |---|---|---|---|---|---|---|
 | orders | 1 | 0 | 1 | 3 | 2 | 0 |
-| resources | 1 | 0 | 0 | 2 | 2 | 0 |
+| resources | 9 | 0 | 0 | 0 | 0 | 0 |
 | tasks | 10 | 0 | 0 | 2 | 1 | 0 |
 
 ## orders
@@ -107,89 +107,7 @@ _No direct rename found. These same-entity fields share name fragments and could
 
 ## resources
 
-**1 OK / 4 need attention.**
-
-### resources.name
-
-**Currently:** `{"from": "MachineName"}`
-**Status:** ❌ MISSING — `MachineName` not found in `resources` records
-**Classification:** AMBIGUOUS (confidence: 0.5)
-
-**Same-entity candidates:**
-
-◇ `MachineLoadings`
-  - Type: array
-  - Populated: 77/77 (100.0%)
-  - Distinct: 1
-  - Confidence: 0.5 (levenshtein (dist=7))
-◇ `MachineProfit`
-  - Type: float
-  - Populated: 77/77 (100.0%)
-  - Distinct: 1
-  - Confidence: 0.5 (levenshtein (dist=6))
-◇ `MachineRateCost`
-  - Type: float
-  - Populated: 77/77 (100.0%)
-  - Distinct: 9
-  - Confidence: 0.5 (levenshtein (dist=6))
-
-**Recommended action:** Human decision before applying. Possibly escalate to Stafford if intent unclear.
-
-### resources.type
-
-**Currently:** `{"from": "MachineType"}`
-**Status:** ❌ MISSING — `MachineType` not found in `resources` records
-**Classification:** AMBIGUOUS (confidence: 0.5)
-
-**Same-entity candidates:**
-
-◇ `MachineProfit`
-  - Type: float
-  - Populated: 77/77 (100.0%)
-  - Distinct: 1
-  - Confidence: 0.5 (levenshtein (dist=6))
-◇ `MachineRateCost`
-  - Type: float
-  - Populated: 77/77 (100.0%)
-  - Distinct: 9
-  - Confidence: 0.5 (levenshtein (dist=7))
-
-**Cross-entity candidates** (different entity — semantics may differ; verify before adopting):
-
-◇ `MachineType` in `productionTaskWithAdvancedInfoViewEntity`
-  - Type: str, Populated: 3118/3118 (100.0%), Distinct: 3
-
-**Recommended action:** Human decision before applying. Possibly escalate to Stafford if intent unclear.
-
-### resources.class
-
-**Currently:** `{"from": "IsLabour", "lookup": {"true": "LABOUR", "false": "REUSABLE", "_default": "REUSABLE"}}`
-**Status:** ❌ MISSING — `IsLabour` not found in `resources` records
-**Classification:** DERIVE 
-
-_No direct rename found. These same-entity fields share name fragments and could be candidates for a computed transform. Formula is a human decision._
-
-**Conceptually-related fields in this entity:**
-- `LabourProfit` — float, 100.0% populated, 1 distinct
-
-**Recommended action:** Design a transform/computed field. Formula is a human decision (script does not propose).
-
-### resources.hourlyRate
-
-**Currently:** `{"from": "HourlyRate"}`
-**Status:** ❌ MISSING — `HourlyRate` not found in `resources` records
-**Classification:** DERIVE 
-
-_No direct rename found. These same-entity fields share name fragments and could be candidates for a computed transform. Formula is a human decision._
-
-**Conceptually-related fields in this entity:**
-- `AverageWorkerRate` — float, 100.0% populated, 2 distinct
-- `HourCapacityPerDay` — float, 100.0% populated, 3 distinct
-- `MachineRateCost` — float, 100.0% populated, 9 distinct
-- `MinimumRate` — float, 100.0% populated, 1 distinct
-- `SellingRate` — float, 100.0% populated, 8 distinct
-
-**Recommended action:** Design a transform/computed field. Formula is a human decision (script does not propose).
+_All 9 rules OK._
 
 ## tasks
 
@@ -247,18 +165,14 @@ _No direct rename found. These same-entity fields share name fragments and could
 **Decide null-handling strategy (PARTIAL_POPULATION)** (1)
 - `orders.key` (`JobCode`) 
 
-**Design transform logic (DERIVE)** (7)
+**Design transform logic (DERIVE)** (5)
 - `orders.name` (`ItemDescription`) 
 - `orders.demandQty` (`OrderQty`) 
 - `orders.lateDueDate` (`LateDeliveryDate`) 
-- `resources.class` (`IsLabour`) 
-- `resources.hourlyRate` (`HourlyRate`) 
 - `tasks.wipState` (`WipState`) 
 - `tasks.actualStart` (`ActualStartDate`) 
 
-**Pick option or escalate (AMBIGUOUS)** (5)
+**Pick option or escalate (AMBIGUOUS)** (3)
 - `orders.dueDate` (`DeliveryDate`) 
 - `orders.priority` (`Strategy`) 
-- `resources.name` (`MachineName`) 
-- `resources.type` (`MachineType`) 
 - `tasks.type` (`TaskType`) 

@@ -1,0 +1,96 @@
+{
+  "_comment": "Generated 2026-04-26. v3 — corrections from diff review against live mapping. Three real fixes: (1) resources.class is a regular `lookup` not a derive, (2) tasks.linkId scoped to WorkOrderCode + Order (verified against captured data: WorkOrderCode 100% populated 797 distinct; Order has clean routing values 1-22; SequenceNumber has sentinel 32767/9999/9998 patterns and is unsuitable), (3) tasks.actualStart simplified to a regular passthrough (engine's existing null-handling produces the desired behavior). Two genuine engine gaps remain: orders.lateDueDate (cross-field reference) and tasks.wipState (multi-condition derive). NOT yet applied to live config — see mapping-apply-plan-v3.md for staged rollout.",
+  "version": "1.3-proposed",
+  "tenantId": "stafford-engineering-test",
+  "source": "genius-real",
+
+  "_adapter_note": "Orders sourced from workOrderWithAdvancedInformationViewEntity. Adapter wiring must be updated alongside applying the orders section — see Sprint B in apply plan.",
+
+  "orders": {
+    "mappings": {
+      "key":         { "from": "WorkOrder" },
+      "name":        { "from": ["WorkOrder", "ItemDescription1"], "sep": " — " },
+      "productKey":  { "from": "ItemCode" },
+      "demandQty":   { "from": "QuantityPlanned" },
+      "dueDate":     { "from": "DeliveryDate", "toUTC": true },
+
+      "lateDueDate": {
+        "_TODO": "engine does not support cross-field references; intent is to default lateDueDate to the value of dueDate (zero tolerance) when no late-tolerance source exists. Until the engine supports @-references or a similar primitive, this rule is declarative — engine ignores it and lateDueDate falls to default 0. JobEndDate may be the right late-tolerance signal — see Stafford escalation #6.",
+        "_default": "@dueDate"
+      },
+
+      "priority":    {
+        "from": "Strategy",
+        "lookup": { "JIT": 10, "ASAP": 5, "_default": 50 }
+      },
+
+      "_comment_enrichment_fields": "Customer-facing data from work orders. UI/filter use; engine doesn't currently consume.",
+
+      "customerCode": { "from": "CustomerCode" },
+      "customerName": { "from": "CustomerName" },
+      "itemFamily":   { "from": "ItemFamily" },
+      "wostatus":     { "from": "Wostatus" }
+    }
+  },
+
+  "resources": {
+    "mappings": {
+      "key":        { "from": "Code" },
+      "name":       { "from": "Description1" },
+      "type": {
+        "from": "RessourceType",
+        "lookup": { "R": "MACHINE", "W": "WORKCENTER", "S": "SUBCONTRACT", "_default": "MACHINE" }
+      },
+      "class": {
+        "from": "RessourceType",
+        "lookup": { "R": "MACHINE", "W": "LABOR_POOL", "S": "SUBCONTRACT", "_default": "MACHINE" }
+      },
+      "hourlyRate":  { "from": "MachineRateCost" },
+
+      "_comment_new_fields": "New resource attributes surfaced by the audit. Engine doesn't consume them yet; data-layer captures everything.",
+
+      "efficiency":       { "from": "Efficiency" },
+      "parallelCapacity": { "from": "NumOfAvgResource" },
+      "isFinite":         { "from": "IsFinite" },
+      "calendarCode":     { "from": "CalendarMspCode" }
+    }
+  },
+
+  "tasks": {
+    "key": { "from": ["JobCode", "OperationCode"], "sep": "-" },
+    "mappings": {
+      "name":            { "from": ["JobCode", "OperationCode"], "sep": " — " },
+
+      "type": {
+        "from": "Formula",
+        "lookup": { "HR/UN": "STANDARD", "JR/DY": "DAILY", "_default": "STANDARD" }
+      },
+
+      "durationSeconds": { "from": "CycleTime", "factor": 3600 },
+      "durationQty":     { "from": "WoPlannedQuantity" },
+      "durationType":    { "value": 0 },
+
+      "wipState": {
+        "_TODO": "engine does not yet support multi-condition derive — only genuine engine gap remaining in this proposal. Stafford confirmation needed: are PRINTED/CREATED/PLANNED in WoStatusCode the lifecycle states (which would let this be a simpler lookup)? If so, this becomes from+lookup; if not, the IsCompleted+TaskStartDate fallback below is needed.",
+        "_derive": {
+          "rules": [
+            { "if": { "field": "IsCompleted",  "equals": true                  }, "then": "COMPLETED"   },
+            { "if": { "field": "TaskStartDate","exists": true, "nonNull": true }, "then": "IN_PROCESS"  },
+            { "else": "NOT_STARTED" }
+          ]
+        }
+      },
+
+      "actualStart": { "from": "TaskStartDate", "toUTC": true },
+
+      "windowStart": { "from": "TaskStartDate", "toUTC": true },
+      "windowEnd":   { "from": "TaskEndDate",   "toUTC": true }
+    },
+    "capacityResources": { "from": "MachineCode" },
+    "linkId": {
+      "chainKey":     "WorkOrderCode",
+      "orderKey":     "Order",
+      "lagHoursField":"LagHours"
+    }
+  }
+}

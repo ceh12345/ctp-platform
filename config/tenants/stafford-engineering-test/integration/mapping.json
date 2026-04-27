@@ -17,11 +17,16 @@
 
   "resources": {
     "mappings": {
-      "key":        { "from": "Code" },
-      "name":       { "from": "MachineName" },
-      "type":       { "from": "MachineType" },
-      "class":      { "from": "IsLabour", "lookup": { "true": "LABOUR", "false": "REUSABLE", "_default": "REUSABLE" } },
-      "hourlyRate": { "from": "HourlyRate" }
+      "key":         { "from": "Code" },
+      "name":        { "from": "Description1" },
+      "type":        { "from": "RessourceType", "lookup": { "R": "MACHINE", "W": "WORKCENTER", "S": "SUBCONTRACT", "_default": "MACHINE" } },
+      "class":       { "from": "RessourceType", "lookup": { "R": "MACHINE", "W": "LABOR_POOL", "S": "SUBCONTRACT", "_default": "MACHINE" } },
+      "hourlyRate":  { "from": "MachineRateCost" },
+
+      "efficiency":       { "from": "Efficiency" },
+      "parallelCapacity": { "from": "NumOfAvgResource" },
+      "isFinite":         { "from": "IsFinite" },
+      "calendarCode":     { "from": "CalendarMspCode" }
     }
   },
 
