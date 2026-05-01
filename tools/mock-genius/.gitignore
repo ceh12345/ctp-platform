@@ -5,3 +5,9 @@ dist/
 # Raw recordings from record mode. Contains customer data before sanitization;
 # promoted/sanitized derivatives live under fixtures/ and ARE committed.
 recorded/
+
+# Sliced scenarios derived from real customer data via scripts/slice-fixtures.py.
+# These contain real customer names/descriptions — regenerate locally rather
+# than commit. Sanitized variants (when produced) can override this with a
+# different naming prefix.
+fixtures/stafford-work7-*tasks/

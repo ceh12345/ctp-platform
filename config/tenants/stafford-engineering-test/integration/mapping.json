@@ -41,12 +41,12 @@
   },
 
   "tasks": {
-    "key": { "from": ["JobCode", "OperationCode"], "sep": "-" },
+    "key": { "from": ["WorkOrderCode", "OperationCode", "Order"], "sep": "-" },
     "mappings": {
       "name":            { "from": ["JobCode", "OperationCode"], "sep": " — " },
       "type":            { "from": "Formula", "lookup": { "HR/UN": "STANDARD", "JR/DY": "DAILY", "_default": "STANDARD" } },
-      "durationSeconds": { "from": "CycleTime", "factor": 3600 },
-      "durationQty":     { "from": "WoPlannedQuantity" },
+      "durationSeconds": { "from": "TotalPlannedMachineHours", "factor": 3600 },
+      "durationQty":     { "value": 1 },
       "durationType":    { "value": 0 },
       "wipState":        { "from": "WipState" },
       "actualStart":     { "from": "TaskStartDate", "toUTC": true },
