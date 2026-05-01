@@ -9,15 +9,12 @@
       "name":        { "from": ["WorkOrder", "ItemDescription1"], "sep": " — " },
       "productKey":  { "from": "ItemCode" },
       "demandQty":   { "from": "QuantityPlanned" },
-      "dueDate":     { "from": "DeliveryDate", "toUTC": true },
-
-      "lateDueDate": {
-        "_TODO": "engine does not support cross-field references; intent is to default lateDueDate to dueDate (zero tolerance) when no late-tolerance source exists. Until engine supports @-references, this rule is declarative — engine ignores it and lateDueDate falls to default 0. JobEndDate may be the right late-tolerance signal — see Stafford escalation #6.",
-        "_default": "@dueDate"
-      },
+      "dueDate":     { "from": "JobEndDate",   "toUTC": true },
+      "lateDueDate": { "from": "DeliveryDate", "toUTC": true },
 
       "priority":    { "from": "Strategy", "lookup": { "JIT": 10, "ASAP": 5, "_default": 50 } },
 
+      "jobCode":      { "from": "Job" },
       "customerCode": { "from": "CustomerCode" },
       "customerName": { "from": "CustomerName" },
       "itemFamily":   { "from": "ItemFamily" },
@@ -29,8 +26,8 @@
     "mappings": {
       "key":         { "from": "Code" },
       "name":        { "from": "Description1" },
-      "type":        { "from": "RessourceType", "lookup": { "R": "MACHINE", "W": "WORKCENTER", "S": "SUBCONTRACT", "_default": "MACHINE" } },
-      "class":       { "from": "RessourceType", "lookup": { "R": "MACHINE", "W": "LABOR_POOL", "S": "SUBCONTRACT", "_default": "MACHINE" } },
+      "type":        { "from": "RessourceType", "lookup": { "R": "MACHINE", "W": "MACHINE", "S": "SUBCONTRACT", "_default": "MACHINE" } },
+      "class":       { "from": "RessourceType", "lookup": { "R": "MACHINE", "W": "MACHINE", "S": "SUBCONTRACT", "_default": "MACHINE" } },
       "hourlyRate":  { "from": "MachineRateCost" },
 
       "efficiency":       { "from": "Efficiency" },
@@ -44,11 +41,11 @@
     "key": { "from": ["WorkOrderCode", "OperationCode", "Order"], "sep": "-" },
     "mappings": {
       "name":            { "from": ["JobCode", "OperationCode"], "sep": " — " },
-      "type":            { "from": "Formula", "lookup": { "HR/UN": "STANDARD", "JR/DY": "DAILY", "_default": "STANDARD" } },
+      "type":            { "from": "Formula", "lookup": { "HR/UN": "STANDARD", "JR/DY": "SUBCONTRACT_DAYS", "_default": "STANDARD" } },
       "durationSeconds": { "from": "TotalPlannedMachineHours", "factor": 3600 },
       "durationQty":     { "value": 1 },
       "durationType":    { "value": 0 },
-      "wipState":        { "from": "WipState" },
+      "wipState":        { "from": "WoStatusCode", "lookup": { "CREATED": "NOT_STARTED", "PRINTED": "IN_PROCESS", "CLOSED": "COMPLETED", "_default": "NOT_STARTED" } },
       "actualStart":     { "from": "TaskStartDate", "toUTC": true },
       "windowStart":     { "from": "TaskStartDate",   "toUTC": true },
       "windowEnd":       { "from": "TaskEndDate",     "toUTC": true }
