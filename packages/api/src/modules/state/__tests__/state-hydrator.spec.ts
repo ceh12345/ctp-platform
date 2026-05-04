@@ -203,4 +203,73 @@ describe('StateHydratorService', () => {
       expect(landscape.appSettings!.tasksPerLoop).toBe(50);
     });
   });
+
+  // ── Window defaults + scheduledStart/End hydration ────────────────
+  // The default lives in the engine layer (this hydrator), not in mapping config.
+  // Mapping translates source fields → CTP fields; the engine layer completes
+  // the landscape by defaulting absent windowStart/End to the tenant horizon.
+
+  describe('window defaults + scheduled fields', () => {
+    function basePayload(taskOverrides: any) {
+      return {
+        resources: [{ key: 'MACHINE-1', name: 'M1', type: 'MACHINE', class: 'REUSABLE' }],
+        tasks: [{
+          key: 'TASK-1', name: 'Task 1', type: 'PROCESS',
+          durationSeconds: 3600, durationQty: 1, durationType: 0,
+          capacityResources: [{ resource: 'MACHINE-1', isPrimary: true, qty: 1, mode: 'ON' }],
+          ...taskOverrides,
+        }],
+        calendars: [], stateChanges: [], products: [], orders: [],
+        materials: [], processes: [], cadences: [], uomConversions: null,
+      };
+    }
+
+    it('windowStart/End from source pass through unchanged', () => {
+      const landscape = hydrator.buildLandscape(basePayload({
+        windowStart: '2026-02-10T00:00:00Z',
+        windowEnd: '2026-02-15T00:00:00Z',
+      }));
+      const task = landscape.tasks.getEntity('TASK-1')!;
+      expect(task.window).not.toBeNull();
+      // 5 days = 432_000 seconds — verify via delta, not absolute (internal time base)
+      expect(task.window!.endW - task.window!.startW).toBe(5 * 24 * 3600);
+      // And the window is NOT the horizon default
+      expect(task.window!.startW).not.toBe(landscape.horizon.startW);
+    });
+
+    it('absent windowStart/End defaults to horizon bounds', () => {
+      const landscape = hydrator.buildLandscape(basePayload({}));
+      const task = landscape.tasks.getEntity('TASK-1')!;
+      expect(task.window).not.toBeNull();
+      expect(task.window!.startW).toBe(landscape.horizon.startW);
+      expect(task.window!.endW).toBe(landscape.horizon.endW);
+    });
+
+    it('null windowStart/End defaults to horizon bounds (same as absent)', () => {
+      const landscape = hydrator.buildLandscape(basePayload({
+        windowStart: null,
+        windowEnd: null,
+      }));
+      const task = landscape.tasks.getEntity('TASK-1')!;
+      expect(task.window!.startW).toBe(landscape.horizon.startW);
+      expect(task.window!.endW).toBe(landscape.horizon.endW);
+    });
+
+    it('scheduledStart/End populated → task.scheduled is set', () => {
+      const landscape = hydrator.buildLandscape(basePayload({
+        scheduledStart: '2026-03-01T08:00:00Z',
+        scheduledEnd: '2026-03-01T16:00:00Z',
+      }));
+      const task = landscape.tasks.getEntity('TASK-1')!;
+      expect(task.scheduled).not.toBeNull();
+      // 8h delta verifies dates parsed and ordered correctly
+      expect(task.scheduled!.endW - task.scheduled!.startW).toBe(8 * 3600);
+    });
+
+    it('absent scheduledStart/End → task.scheduled stays null', () => {
+      const landscape = hydrator.buildLandscape(basePayload({}));
+      const task = landscape.tasks.getEntity('TASK-1')!;
+      expect(task.scheduled).toBeNull();
+    });
+  });
 });

@@ -329,7 +329,9 @@ export class StateHydratorService {
     for (const item of data) {
       const task = new CTPTask(item.type ?? 'PROCESS', item.name, item.key);
 
-      // Window — defensive parse so arithmetic sites never see NaN.
+      // Window — solver constraint bounds. Defaults to horizon when source omits them
+      // (universal default lives here, not in per-tenant mapping config — mapping translates
+      // source fields to CTP fields; the engine layer completes the landscape).
       const window = new CTPInterval();
       const ws = this.parseIsoDateOrRecord(item.windowStart, task, 'windowStart');
       const we = this.parseIsoDateOrRecord(item.windowEnd,   task, 'windowEnd');
@@ -339,6 +341,16 @@ export class StateHydratorService {
         window.set(horizon.startW, horizon.endW, 1);
       }
       task.window = window;
+
+      // Scheduled — where an upstream planner (Genius, our solver) placed the task.
+      // Distinct from window (constraint) and actualStart/End (execution). Optional.
+      const ss = this.parseIsoDateOrRecord(item.scheduledStart, task, 'scheduledStart');
+      const se = this.parseIsoDateOrRecord(item.scheduledEnd,   task, 'scheduledEnd');
+      if (ss && se) {
+        const scheduled = new CTPInterval();
+        scheduled.fromDates(ss, se, 1);
+        task.scheduled = scheduled;
+      }
 
       // Duration
       if (item.durationSeconds !== undefined) {

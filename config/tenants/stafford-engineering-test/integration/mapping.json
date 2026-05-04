@@ -47,8 +47,8 @@
       "durationType":    { "value": 0 },
       "wipState":        { "from": "WoStatusCode", "lookup": { "CREATED": "NOT_STARTED", "PRINTED": "IN_PROCESS", "CLOSED": "COMPLETED", "_default": "NOT_STARTED" } },
       "actualStart":     { "from": "TaskStartDate", "toUTC": true },
-      "windowStart":     { "from": "TaskStartDate",   "toUTC": true },
-      "windowEnd":       { "from": "TaskEndDate",     "toUTC": true }
+      "scheduledStart":  { "from": "TaskStartDate", "toUTC": true },
+      "scheduledEnd":    { "from": "TaskEndDate",   "toUTC": true }
     },
     "capacityResources": { "from": "MachineCode" },
     "linkId": {

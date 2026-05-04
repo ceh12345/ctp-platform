@@ -159,6 +159,8 @@ export interface ITaskData {
   type?: string;
   windowStart?: string;
   windowEnd?: string;
+  scheduledStart?: string;
+  scheduledEnd?: string;
   durationSeconds?: number;
   durationType?: number;
   durationQty?: number;

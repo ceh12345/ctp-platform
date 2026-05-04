@@ -236,3 +236,72 @@ After applying:
 2. Re-run the slim-100 scenario test
 3. Verify: 101 tasks load, wipState distributes by WO status, jobCode visible on orders, dueDate values shift to JobEndDate
 4. Run full test suite (`npx vitest run`) and strict tsc (`npx tsc --noEmit -p packages/api/tsconfig.json`) per CLAUDE.md
+
+---
+
+## v3.1.1 architectural correction — three-window model
+
+Added later in the v3.1 cycle after the slim end-to-end test exposed a conflation: v3 had been putting Genius's planning dates into solver-window slots. Wrong slot. CTPTask has three pairs of date fields with distinct meanings:
+
+| Pair | Meaning | Source for Stafford |
+|---|---|---|
+| `windowStart` / `windowEnd` | Solver constraint — where placement is *allowed* | NOT in source. Engine defaults to horizon bounds. |
+| `scheduledStart` / `scheduledEnd` | Schedule output — where Genius (or our solver) *placed* the task | `TaskStartDate` / `TaskEndDate` from Genius |
+| `actualStart` / `actualEnd` | Execution reality — when work *actually* ran | `TaskStartDate` (placeholder for actualStart); `actualEnd` deferred (no completed tasks in current capture) |
+
+### Mapping changes (v3.1.1)
+
+**Removed from mapping:**
+```json
+// removed — these were silently mapped to TaskStartDate/EndDate (zero-width and wrong slot)
+"windowStart": ...,
+"windowEnd":   ...
+```
+
+**Added to mapping:**
+```json
+"scheduledStart": { "from": "TaskStartDate", "toUTC": true },
+"scheduledEnd":   { "from": "TaskEndDate",   "toUTC": true }
+```
+
+`actualStart` retained as the v3-simplified `{ "from": "TaskStartDate", "toUTC": true }` form (deviation from prompt #6 noted; behaviorally identical via engine null-handling — drops engine-derive scope to zero rules).
+
+### Engine layer — default-windows-to-horizon
+
+The prompt asked for an engine-side default: tasks without explicit windowStart/End should default to horizon bounds. **Investigation found this default already exists** in `state-hydrator.service.ts` at lines 332-341:
+
+```typescript
+if (ws && we) { window.fromDates(ws, we, 1); }
+else { window.set(horizon.startW, horizon.endW, 1); }
+```
+
+The hydrator IS the engine-side layer for translating API DTO → engine landscape model. The behavior the prompt requires was already in place. v3.1.1 added an explanatory code comment documenting the layering decision (default lives here, not in mapping config).
+
+### Engine wiring for scheduledStart/End
+
+`CTPTask.scheduled` (CTPInterval slot) already existed but no hydrator path populated it from string source fields. v3.1.1 adds:
+
+1. `ITaskData.scheduledStart`/`scheduledEnd` interface fields (`config-store.interface.ts`)
+2. Hydrator block parallel to the window block — parses scheduled string fields into `task.scheduled` CTPInterval
+3. Five new tests covering: window from source, window default to horizon, null window same as missing, scheduled populated, scheduled absent stays null
+
+### `actualEnd` — deferred to v3.2
+
+All four Genius candidate fields (`CompletionDate`, `JobClosingDate`, `JobProductionEndDate`, `WorkOrderClosingDate`) are 100% populated on every task, but **0% of tasks in the slim are completed** (we filter `IsCompleted=false` upstream). Without completion data we can't tell which field semantically represents *actual* end vs a planning-side date. Documented as v3.2 deferred question.
+
+### Validation — slim-100 post-v3.1.1
+
+| Check | Result |
+|---|---|
+| Sync clean (0 mapping errors) | ✓ |
+| `windowStart` populated on all 101 tasks (= horizon default 2026-02-07) | ✓ |
+| `scheduledStart` populated on 98/101 tasks (from `TaskStartDate`) | ✓ |
+| `commitmentLevel`: 76 running / 25 unscheduled (per Kaleb full lookup) | ✓ |
+| Full test suite green (1038 tests, +5 from v3.1.1) | ✓ |
+| Strict tsc clean | ✓ |
+
+### v3.2 deferred questions added
+
+- `actualEnd` field — which Genius field captures execution end? Investigation needs completed-task data.
+- IN_PROCESS solver behavior — 76% of landscape now classified IN_PROCESS via PRINTED→IN_PROCESS. Solver locks them at `actualStart` (= TaskStartDate). Should this be gated on `TaskStartDate` populated AND not in the future? Engine derive question.
+
