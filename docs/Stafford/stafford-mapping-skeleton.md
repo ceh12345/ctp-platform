@@ -44,15 +44,17 @@
 
 | CTP field | Genius source | Sample (from slim) | ? |
 |-----------|---------------|--------------------|---|
-| key | `Code` | `'A'` (W), `'D-02'` (R), `'NA'` (S) | confirm Code is the join key — tasks reference via `MachineCode` |
+| key | `Id` (stringified) | `'2'` (ASSEMBLY & FITTING, W), `'37'` (D-02, R), `'69'` (ELIJAH, R) | switched from `Code` to `Id` — Id is stable, Code can be renamed in Genius |
 | name | `Description1` | `'ASSEMBLY & FITTING'` (W), `'HAYDEN'` (R) | R rows are people's names — confirm? |
-| type | `RessourceType` (R/W → MACHINE, S → SUBCONTRACT) | R: `'D-02'`→MACHINE, W: `'A'`→MACHINE, S: `'NA'`→SUBCONTRACT | per email: R+W = single capacity. Still right? |
+| type | `RessourceType` (R/W → MACHINE, S → SUBCONTRACT) | R: D-02→MACHINE, W: A→MACHINE, S: NA→SUBCONTRACT | per email: R+W = single capacity. Still right? |
 | class | same lookup | identical to type | type and class collapsed; OK? |
-| hourlyRate | `MachineRateCost` | W `'A'`: `84.0` · R `'D-03'` (KATHRYN): `105.0` · S `'NA'`: `0.0` | NZD/hr — confirm |
+| hourlyRate | `MachineRateCost` | W ASSEMBLY: `84.0` · R KATHRYN: `105.0` · S NA: `0.0` | NZD/hr — confirm |
 | efficiency | `Efficiency` | W: `75.0` · R: `90.0` · S: `100.0` | what does the number mean? duration multiplier? scoring only? |
 | parallelCapacity | `NumOfAvgResource` | W ASSEMBLY: `4.0` · R HAYDEN: `0.0` · S NA: `1.0` | **0 on R** — does that mean "single instance" or "unused"? |
 | isFinite | `IsFinite` | W ASSEMBLY: `false` · R HAYDEN: `true` · S NA: `false` | a W with `IsFinite=false` AND `ParallelN=4` — capacity model? |
 | calendarCode | `CalendarMspCode` | `'Standard'` (76 of 77) | calendar fetch deferred — confirm Standard default is OK |
+| **hierarchy.level1** | `DepartmentCode` | `'FAB'`, `'MAC'`, `'ENG'`, `'OTH'`, `'FIT'`, `'PRE'`, `'QMS'`, `'NA'` (8 buckets) | UI groups resources by this — top-level shop departments |
+| **hierarchy.level2** | `OperationsCode` | `'F'`, `'D'`, `'P'`, `'A'`, `'M'`, … (24 distinct) | second-level under department |
 
 ---
 
@@ -92,7 +94,7 @@
 | scheduledEnd | `TaskEndDate` | `'2026-03-26T11:09:43.200+13:00'` | Genius's planning — confirm |
 | actualStart | `TaskStartDate` (placeholder) | same as scheduledStart for now | real actuals path TBD |
 | actualEnd | _(unmapped)_ | candidates: `CompletionDate`, `JobClosingDate`, `WorkOrderClosingDate` | all are 100% populated but 0% completed in slim → **which is the real one?** |
-| capacityResources | `MachineCode` | `'FA-02'` (resource Code = ADRIAN) | |
+| capacityResources | `MachineId` (stringified) | `'33'` → resource ADRIAN (Code FA-02) | switched from `MachineCode` to `MachineId` to match resource key choice |
 | chain | `WorkOrderCode + Order` (linkId) | chain = `'27187'`, position 1, lag = `LagHours` | confirm `Order` is right (vs sentinel-laden `SequenceNumber`) |
 | windowStart | _(engine default: horizon start)_ | `'2026-02-07T00:00:00Z'` | not in source — engine handles |
 | windowEnd | _(engine default: horizon end)_ | `'2026-07-02T00:00:00Z'` | not in source — engine handles |
@@ -105,6 +107,7 @@
 - Is "Job" a separate Genius API entity or a conceptual aggregation of sales order line + matching work orders?
 - For ~half of work orders that have no sales order parent (stock builds, internal work), where does job-level data live?
 - Should CTPOrder represent a Job (potentially multiple work orders) or stay 1:1 with Work Order?
+- **Scheduling source: Genius's plan, our solver, or both?** Concrete exhibit: `27187-PLL-5` has Genius's `TaskStartDate=2026-03-26T13:24` on `P-05` (ELIJAH) — Genius scheduled it. CTP loads that into `task.scheduled` but treats the task as `state=NOT_SCHEDULED, commitmentLevel='unscheduled', assignedResources=[]` — our solver disagreed (resource conflict) and produced no placement. UI shows the requirement only as a "preference," not as a committed assignment. Three options: **(A)** treat Genius's plan as the truth and visualize it as-is (hydrator translates scheduledStart + MachineCode → committed assignment); **(B)** treat Genius's data as a hint, let CTP re-solve from scratch (current behavior); **(C)** support both with a `scheduleSource: 'erp' | 'solver'` flag so the UI can distinguish "Genius's plan" from "CTP's optimization." Drives whether the demo shows their existing schedule, our optimization, or both side-by-side.
 
 **Field-level:**
 - Which Genius field captures execution end (`actualEnd`)? `CompletionDate` / `JobClosingDate` / `WorkOrderClosingDate` are all populated but 0 completed tasks in slim makes semantics indeterminate.
@@ -118,6 +121,9 @@
 **Filtering questions:**
 - How to exclude admin/overhead WOs from production scheduling? Candidates: `ItemFamily = 'NA'`, `JobType = 'U'`, `ItemCode LIKE 'Z-%'`, `JobCode LIKE 'ZWOR%'`.
 - Active `Wostatus` set: PRINTED + CREATED? Is PLANNED ready or premature?
+
+**UX / workflow:**
+- **Work order detail drill-in** — currently the Orders tab shows summary rows but no dedicated "view this WO's detail" action. Workaround: Tasks tab → click order ref → filter Schedule. What's the natural workflow Stafford expects? Tabular task list under each WO? Open the chain on the Gantt? Pop up the first task and navigate from there? (Quick-build option: order row click → opens first task's detail panel — ~30-60 min if that's the right UX.)
 
 **Deferred (not for this meeting):**
 - Calendar / availability data — Kaleb said ignore for now
@@ -145,6 +151,7 @@ Open these in the UI / JSON when each topic comes up.
 
 **Tasks — exhibits:**
 - `27187-F-1` — the one task our solver could "plan" freely (CREATED status, not locked).
+- `27187-PLL-5` — **multi-shift duration exhibit**: 16h `TotalPlannedMachineHours` on operator `P-05` (ELIJAH), but `HourCapacityPerDay=8`. Engine reports infeasible because a 16h task can't fit in a single 8h shift block. **How does Stafford handle multi-shift work?** Pause/resume same operator across shifts? Different operator picks up next day? Current mapping hydrates every task as `durationType=FIXED_DURATION (0)` — the alternative is `FLOAT_DURATION (1)` which lets a task span calendar boundaries. Stafford's answer determines: switch all to FLOAT (uniform), conditional FLOAT (when duration > shift length, needs engine derive), or FLOAT-by-Formula (e.g., HR/UN=FIXED, JR/DY=FLOAT) via mapping lookup.
 - `20540-L-6` — zero duration (every planned-hour field = 0), `CompletionPercentage=100` while `IsCompleted=false`, sentinel `1900-01-01` close dates. Concrete instance of the admin-WO problem.
 - A `OUT` task (e.g. `27187-OUT-6`) — subcontract op with `Formula=JR/DY`, `TotalPlannedMachineHours=0`. Where should its duration come from?
 - A task with `TaskStartDate == TaskEndDate` (zero-width, ~27 in slim) — confirms these are event timestamps not planning windows.

@@ -3399,8 +3399,11 @@ export class CTPService {
         utilization: totalAvailable > 0
           ? Math.round((totalAssigned / totalAvailable) * 10000) / 100
           : 0,
-        workCenter: resConfig?.hierarchy?.level1 ?? '',
-        line: resConfig?.hierarchy?.level2 ?? '',
+        // Hierarchy: prefer engine-state (set by hydrator from adapter mapping
+        // for REST tenants, or from file resources.json for file tenants),
+        // fall back to file resConfig for any path that bypassed the hydrator.
+        workCenter: resource.hierarchy?.first  ?? resConfig?.hierarchy?.level1 ?? '',
+        line:       resource.hierarchy?.second ?? resConfig?.hierarchy?.level2 ?? '',
         resourceClass: resConfig?.class ?? resource.class ?? 'REUSABLE',
         resourceType: resConfig?.type ?? resource.type ?? '',
         hourlyRate: resource.hourlyRate ?? 0,

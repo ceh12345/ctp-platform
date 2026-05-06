@@ -57,17 +57,39 @@ export class MappingEngine {
   ): Record<string, any> {
     const out: Record<string, any> = {};
     for (const [targetField, rule] of Object.entries(mappings)) {
+      // Nested rule object — recurse. A rule is "nested" when it's a plain
+      // object that carries none of the known rule keys (value/from/lookup/
+      // factor/toUTC). This lets mappings target nested CTP fields like
+      // `hierarchy: { level1: { from: ... } }`.
+      if (this.isNestedRule(rule)) {
+        const nested = this.applyMappings(record, rule, { ...ctx, targetField });
+        if (Object.keys(nested).length > 0) out[targetField] = nested;
+        continue;
+      }
       const val = this.applyRule(record, rule, { ...ctx, targetField });
       if (val !== undefined && val !== null) out[targetField] = val;
     }
     return out;
   }
 
-  private applyRule(record: Record<string, any>, rule: any, ctx: MappingCtx): any {
-    // const — static value
-    if (rule.value !== undefined) return rule.value;
+  private isNestedRule(rule: any): boolean {
+    if (typeof rule !== 'object' || rule === null || Array.isArray(rule)) return false;
+    // Use own-property checks because `toString` is inherited from
+    // Object.prototype and would always test truthy with `!==undefined`.
+    const RULE_KEYS = ['value', 'from', 'lookup', 'factor', 'toUTC', 'toString'] as const;
+    return !RULE_KEYS.some(k => Object.prototype.hasOwnProperty.call(rule, k));
+  }
 
-    // concat — join multiple source fields
+  private applyRule(record: Record<string, any>, rule: any, ctx: MappingCtx): any {
+    // toString flag — coerce final value to string. Useful when source is
+    // numeric (e.g., Genius's `Id` field) but target is a CTP key (string).
+    const coerce = (v: any) =>
+      rule.toString === true && v !== null && v !== undefined ? String(v) : v;
+
+    // const — static value
+    if (rule.value !== undefined) return coerce(rule.value);
+
+    // concat — join multiple source fields (already produces a string)
     if (Array.isArray(rule.from)) {
       const parts = (rule.from as string[]).map(f => record[f] ?? '').filter(Boolean);
       return parts.join(rule.sep ?? ' ');
@@ -78,12 +100,12 @@ export class MappingEngine {
     // lookup — value map with optional _default
     if (rule.lookup) {
       const key = String(val);
-      return rule.lookup[key] ?? rule.lookup['_default'] ?? val;
+      return coerce(rule.lookup[key] ?? rule.lookup['_default'] ?? val);
     }
 
     // multiply — e.g. hours → seconds
     if (rule.factor !== undefined && val !== undefined && val !== null) {
-      return Number(val) * rule.factor;
+      return coerce(Number(val) * rule.factor);
     }
 
     // toUTC — normalize an ISO date to UTC Z form.
@@ -112,15 +134,15 @@ export class MappingEngine {
           recordIndex: ctx.recordIndex,
           severity:    'error',
         });
-        return val;  // pass-through preserved; hydrator's defensive parse is second layer
+        return coerce(val);  // pass-through preserved; hydrator's defensive parse is second layer
       }
 
       // Valid shape, but only convert if we know the zone.
-      if (!hasEmbeddedZone && !rule.fromTimezone) return val;
+      if (!hasEmbeddedZone && !rule.fromTimezone) return coerce(val);
       return dt.toUTC().toISO();
     }
 
-    return val;
+    return coerce(val);
   }
 
   // ── Task mapping (needs chain linkId post-processing) ────────────────────
@@ -166,10 +188,14 @@ export class MappingEngine {
         key: taskKey,
       };
 
-      // capacityResources
+      // capacityResources — always coerce to string. Resource keys must
+      // be strings to match CTPResource.key (engine uses string keys for
+      // Map lookups). Source field may be numeric (e.g., MachineId).
       const machineCode = rec[capField];
-      if (machineCode) {
-        result['capacityResources'] = [{ resource: machineCode, isPrimary: true, qty: 1, mode: 'ON' }];
+      if (machineCode !== undefined && machineCode !== null && machineCode !== '') {
+        result['capacityResources'] = [{
+          resource: String(machineCode), isPrimary: true, qty: 1, mode: 'ON',
+        }];
       }
 
       // linkId

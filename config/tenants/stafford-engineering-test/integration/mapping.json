@@ -24,7 +24,7 @@
 
   "resources": {
     "mappings": {
-      "key":         { "from": "Code" },
+      "key":         { "from": "Id", "toString": true },
       "name":        { "from": "Description1" },
       "type":        { "from": "RessourceType", "lookup": { "R": "MACHINE", "W": "MACHINE", "S": "SUBCONTRACT", "_default": "MACHINE" } },
       "class":       { "from": "RessourceType", "lookup": { "R": "MACHINE", "W": "MACHINE", "S": "SUBCONTRACT", "_default": "MACHINE" } },
@@ -33,7 +33,12 @@
       "efficiency":       { "from": "Efficiency" },
       "parallelCapacity": { "from": "NumOfAvgResource" },
       "isFinite":         { "from": "IsFinite" },
-      "calendarCode":     { "from": "CalendarMspCode" }
+      "calendarCode":     { "from": "CalendarMspCode" },
+
+      "hierarchy": {
+        "level1": { "from": "DepartmentCode" },
+        "level2": { "from": "OperationsCode" }
+      }
     }
   },
 
@@ -50,7 +55,7 @@
       "scheduledStart":  { "from": "TaskStartDate", "toUTC": true },
       "scheduledEnd":    { "from": "TaskEndDate",   "toUTC": true }
     },
-    "capacityResources": { "from": "MachineCode" },
+    "capacityResources": { "from": "MachineId" },
     "linkId": {
       "chainKey":     "WorkOrderCode",
       "orderKey":     "Order",

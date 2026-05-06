@@ -97,12 +97,14 @@ def main():
     print(f'  Subcontract:   24/7 unlimited ({len(allday_template)} intervals/resource)')
     print(f'  Coverage:      {START_DATE} → {END_DATE}')
 
+    # Resource key matches the CTP mapping (resources.key from Id, stringified).
+    # Switched from Code to Id so renames in Genius don't orphan calendar entries.
     output = []
     counts = {'R': 0, 'W': 0, 'S': 0, 'other': 0}
     for r in resources:
         rtype = r.get('RessourceType')
-        code = r.get('Code')
-        if not code:
+        rid = r.get('Id')
+        if rid is None:
             continue
         if rtype == 'S':
             intervals = allday_template
@@ -114,7 +116,7 @@ def main():
             intervals = weekday_template
             counts['other'] += 1
         output.append({
-            'resourceKey': code,
+            'resourceKey': str(rid),
             'intervals': intervals,
         })
 

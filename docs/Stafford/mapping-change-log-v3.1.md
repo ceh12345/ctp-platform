@@ -305,3 +305,68 @@ All four Genius candidate fields (`CompletionDate`, `JobClosingDate`, `JobProduc
 - `actualEnd` field — which Genius field captures execution end? Investigation needs completed-task data.
 - IN_PROCESS solver behavior — 76% of landscape now classified IN_PROCESS via PRINTED→IN_PROCESS. Solver locks them at `actualStart` (= TaskStartDate). Should this be gated on `TaskStartDate` populated AND not in the future? Engine derive question.
 
+---
+
+## v3.1.2 — resource hierarchy + Id-based FK
+
+Two related changes that together let the slim render with proper resource grouping AND a stable foreign-key.
+
+### 1. Resource hierarchy mapping
+
+The UI groups resources by `workCenter` → `line` → resource. That projection comes from `CTPResource.hierarchy.first` / `.second` in the engine model (= `hierarchy.level1` / `level2` on the source side).
+
+Mapping addition (resources block):
+```json
+"hierarchy": {
+  "level1": { "from": "DepartmentCode" },
+  "level2": { "from": "OperationsCode" }
+}
+```
+
+**Engine work to enable nested rules.** The mapping engine previously only handled flat rules. v3.1.2 extends `applyMappings` to recurse on nested rule objects via a new `isNestedRule` predicate. Generic — any tenant can use nested mappings.
+
+**DTO fix (ctp.service.ts:3402).** The DTO was reading `workCenter`/`line` only from `resourceConfigMap` (file-based). Now prefers `resource.hierarchy.first`/`.second` (engine-state, set by hydrator from adapter mapping), falls back to file config.
+
+**Result on slim:** 77 resources now render in 8 department buckets (FAB 22, MAC 23, ENG 11, OTH 7, FIT 5, PRE 5, QMS 3, NA 1) instead of one flat "Other" group.
+
+### 2. Resource FK switched from Code to Id
+
+Previously:
+```json
+"resources": { "key": { "from": "Code" } }
+"tasks":     { "capacityResources": { "from": "MachineCode" } }
+```
+
+Now:
+```json
+"resources": { "key": { "from": "Id", "toString": true } }
+"tasks":     { "capacityResources": { "from": "MachineId" } }
+```
+
+**Why:** Genius's `Code` is the operator-facing label and could in principle be renamed. `Id` is the internal stable primary key. Foreign-key joins should bind to the stable identifier; readability comes from `Description1` which still shows in the UI.
+
+**Engine work to enable.** Two mapping-engine additions:
+
+- New `toString: true` rule flag — coerces a numeric source value to a string. General-purpose; any tenant can use it for similar conversions.
+- `mapTasks` now auto-stringifies `capacityResources[i].resource` regardless of source type. The CTP engine uses string keys for resource lookups; numeric values would silently break joins.
+
+**The `isNestedRule` gotcha (worth noting).** Initial implementation used `rule.toString === undefined` to detect nested rules — but every JavaScript object inherits `toString` from `Object.prototype`, so the check always failed and broke nested rule detection. Fixed by using `Object.prototype.hasOwnProperty.call(rule, k)` against an explicit list of rule keys.
+
+**Calendar regenerated.** `data/calendars.json` (and `scripts/generate-stafford-calendar.py`) now use `Id` (stringified) as the resource key, matching the new mapping.
+
+### Validation — post-v3.1.2
+
+| Check | Result |
+|---|---|
+| Resources keyed by Id (stringified) — `'2'`, `'37'`, `'69'` | ✓ |
+| Names still display via `Description1` — `'ASSEMBLY & FITTING'`, `'ELIJAH'` | ✓ |
+| Tasks reference resources by Id-string — `27187-PLL-5.compatibleResources[0].resourceKey = '69'` | ✓ |
+| Hierarchy buckets render — 8 departments, 24 line codes | ✓ |
+| Calendar matches new keys (totalAvailable populated) | ✓ |
+| Full test suite green (1041 tests; +3 from v3.1.2 for nested-mapping + toString) | ✓ |
+| Strict tsc clean | ✓ |
+
+### Why this matters operationally
+
+For Stafford to use CTP long-term: **renaming a resource Code in Genius should not break CTP's history.** Joining on `Id` decouples internal scheduling-history from user-facing label changes. Same reasoning applies to any future Genius FK we surface (JobId, OperationId, etc.) — start with Id, accept the readability hit, surface human labels via name fields.
+

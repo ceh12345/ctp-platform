@@ -272,4 +272,73 @@ describe('StateHydratorService', () => {
       expect(task.scheduled).toBeNull();
     });
   });
+
+  // ── toString rule flag (mapping engine) ─────────────────────────
+  // Verifies the rule.toString flag coerces numeric source values to
+  // strings, so a tenant whose source FK is an integer (e.g. Genius's
+  // Id field) can map cleanly into CTP's string-keyed entities.
+
+  describe('toString rule coercion (engine indirect via mapping output → hydrator)', () => {
+    // We test the mapping engine's output via direct unit, but the
+    // contract is: numeric source + toString:true produces string.
+    it('mapping engine: from + toString coerces number to string', async () => {
+      const { MappingEngine } = await import('../../integration/mapping-engine');
+      const engine = new MappingEngine();
+      const profile = {
+        version: '1.0',
+        resources: { mappings: {
+          key:  { from: 'Id', toString: true },
+          name: { from: 'Description' },
+        }},
+      } as any;
+      const result = engine.transform({
+        resources: [{ Id: 42, Description: 'Test' }],
+        tasks: [], orders: [], calendars: [], stateChanges: [],
+        products: [], materials: [], processes: [], cadences: [], uomConversions: null,
+      } as any, profile);
+      expect((result.payload.resources[0] as any).key).toBe('42');
+      expect(typeof (result.payload.resources[0] as any).key).toBe('string');
+    });
+
+    it('mapping engine: from without toString preserves number type', async () => {
+      const { MappingEngine } = await import('../../integration/mapping-engine');
+      const engine = new MappingEngine();
+      const profile = {
+        version: '1.0',
+        resources: { mappings: {
+          key:        { from: 'Description' },
+          someNumber: { from: 'Id' },
+        }},
+      } as any;
+      const result = engine.transform({
+        resources: [{ Id: 42, Description: 'Test' }],
+        tasks: [], orders: [], calendars: [], stateChanges: [],
+        products: [], materials: [], processes: [], cadences: [], uomConversions: null,
+      } as any, profile);
+      expect((result.payload.resources[0] as any).someNumber).toBe(42);
+      expect(typeof (result.payload.resources[0] as any).someNumber).toBe('number');
+    });
+
+    it('mapping engine: capacityResources stringifies numeric MachineId', async () => {
+      const { MappingEngine } = await import('../../integration/mapping-engine');
+      const engine = new MappingEngine();
+      const profile = {
+        version: '1.0',
+        tasks: {
+          key: { from: ['JobCode', 'OperationCode'], sep: '-' },
+          mappings: { name: { from: 'OperationCode' } },
+          capacityResources: { from: 'MachineId' },
+        },
+      } as any;
+      const result = engine.transform({
+        resources: [],
+        tasks: [{ JobCode: 'J1', OperationCode: 'OP1', MachineId: 99 }],
+        orders: [], calendars: [], stateChanges: [],
+        products: [], materials: [], processes: [], cadences: [], uomConversions: null,
+      } as any, profile);
+      const task = result.payload.tasks[0] as any;
+      expect(task.capacityResources[0].resource).toBe('99');
+      expect(typeof task.capacityResources[0].resource).toBe('string');
+    });
+  });
 });
