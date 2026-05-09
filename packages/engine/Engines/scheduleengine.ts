@@ -1,17 +1,21 @@
 import { TaskFactory } from "../Factories/taskfactory";
 import {
   CTPAssignmentConstants,
+  CTPDurationConstants,
   CTPScheduleDirectionConstants,
   CTPTaskStateConstants,
   CTPTaskTypeConstants,
 } from "../Models/Core/constants";
-import { CTPAssignment, CTPInterval } from "../Models/Core/window";
+import { CTPAssignment, CTPDuration, CTPInterval } from "../Models/Core/window";
+import { walkForward } from "../Models/Core/interval-walker";
+import { ListNode } from "../Models/Core/linklist";
 import { ILandscape } from "../Models/Entities/landscape";
 import { CTPResource } from "../Models/Entities/resource";
 import {
   BestScheduleContext,
   ScheduleContext,
 } from "../Models/Entities/schedulecontext";
+import { CTPResourceSlots } from "../Models/Entities/slot";
 import { CTPTask, CTPTaskResource } from "../Models/Entities/task";
 
 export interface IScheduleEngine {
@@ -37,12 +41,21 @@ export class ScheduleEngine implements IScheduleEngine {
     if (!schedule || !schedule.best || !schedule.best.slot || !task.duration)
       return;
 
-    let offset = (direction === CTPScheduleDirectionConstants.FORWARD) 
-                  ? schedule.startTimes.processChangeDuration 
+    let offset = (direction === CTPScheduleDirectionConstants.FORWARD)
+                  ? schedule.startTimes.processChangeDuration
                   : -schedule.startTimes.processChangeDuration;
 
     let st = schedule.startTime + offset;
-    let et = st + task.duration.duration();
+    let et: number;
+
+    // FLOAT: end time is the wall-clock moment when accumulated working
+    // time across the resource's available shifts equals task.duration.
+    // FIXED: end = start + duration (single contiguous slot, by definition).
+    if (this.isFloat(task.duration)) {
+      et = this.computeFloatEndW(schedule.best.slot, st, task.duration);
+    } else {
+      et = st + task.duration.duration();
+    }
 
     task.state = CTPTaskStateConstants.SCHEDULED;
 
@@ -54,6 +67,41 @@ export class ScheduleEngine implements IScheduleEngine {
       this.addTaskToResource(res.resource, task, st, et, CTPAssignmentConstants.PROCESS, index, schedule.subType);
       index = index + 1;
     });
+  }
+
+  private isFloat(d: CTPDuration): boolean {
+    return d.durationType === CTPDurationConstants.FLOAT_DURATION
+        || d.durationType === CTPDurationConstants.FLOAT_RUN_RATE;
+  }
+
+  // Walk the canonical resource's calendar from startW, accumulating working
+  // time across shifts (skipping gaps), and return the wall-clock end after
+  // `duration` working seconds have been consumed. Falls back to st+duration
+  // if the calendar is missing or startW is past the calendar's end.
+  private computeFloatEndW(
+    slot: CTPResourceSlots,
+    startW: number,
+    duration: CTPDuration,
+  ): number {
+    const required = duration.duration();
+    const res = slot.resources?.at(0)?.resource;
+    const list = res?.available?.staticAvailable;
+    if (!list || !list.head) return startW + required;
+
+    // Find the first calendar interval whose end is past startW.
+    let head: ListNode<CTPInterval> | null = list.head;
+    while (head && head.data.endW <= startW) head = head.next;
+    if (!head) return startW + required;
+
+    const tail = list.tail;
+    if (!tail) return startW + required;
+
+    const useRunRate = duration.durationType === CTPDurationConstants.FLOAT_RUN_RATE;
+    const result = walkForward(
+      head, tail, required, startW, Number.MAX_SAFE_INTEGER,
+      useRunRate, /*fixedReset*/ false,
+    );
+    return result.feasible ? result.end : startW + required;
   }
 
   public unschedule(landscape: ILandscape, task: CTPTask): void {

@@ -48,12 +48,7 @@ describe('FLOAT task duration handling', () => {
     expect(p.endW - p.startW).toBe(4 * 3600); // 4 hours wall clock = 4 hours of work
   });
 
-  // Skipped pending engine fix in commonstarttimes.ts + scheduleengine.ts.
-  // The walker (interval-walker.ts) and CTPRange (range.ts) compute the
-  // working-time end correctly via range.values.eet, but commonstarttimes.ts
-  // discards it when constructing CTPStartTime, and scheduleengine.ts then
-  // computes et = st + duration (wall-clock). See sprint-float-working-time.md.
-  it.skip('PLL-5 case: 16h FLOAT task spans two shifts and ends Tuesday 15:00', () => {
+  it('PLL-5 case: 16h FLOAT task spans two shifts and ends Tuesday 15:00', () => {
     // The headline case from Stafford. A 16h task can't fit in a single
     // 8h shift; under FIXED it would be infeasible. Under FLOAT, working
     // time accumulates across shifts: 8h Monday + 8h Tuesday = 16h, with
