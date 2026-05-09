@@ -150,8 +150,6 @@ export class CTPStartTimeEngine
       let firsttime = true;
       this.valid = false;
       while (this.aRangePtr) {
-        //console.log("TRYING RANGE");
-        //this.aRangePtr.data.debug();
         this.aRangePtr.data.valid = false;
         rc = this.aRangePtr.data.computeDurationForward(
           this.startW,

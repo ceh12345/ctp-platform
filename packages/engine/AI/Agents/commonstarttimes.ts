@@ -77,7 +77,6 @@ export class CommonStartTimesAgent
     if (feasibe.startTimes && feasibe.startTimes.size() > 0) {
       let a: ListNode<CTPInterval> | null = feasibe.startTimes?.head;
       while (a) {
-        //const c = new CTPInterval(a.data.startW,a.data.endW, a.data.qty ?? 0);
         let dur = duration.duration();
         const st1 = new CTPStartTime(
           a.data.startW,
@@ -87,7 +86,6 @@ export class CommonStartTimesAgent
           duration.duration()
         );
         this.createStateChanges(st, et, resourceSlots, st1);
-        // compute State CHanges here
         resourceSlots.startTimes?.insertAtEnd(st1);
         a = a.next;
       }

@@ -166,15 +166,7 @@ describe('FLOAT task duration handling', () => {
     expect(a!.workDuration()).toBe(6 * 3600);
   });
 
-  // SKIPPED: Backward-direction FLOAT needs the deferred CommonStartTimesAgent
-  // fix (sprint plan Task #2). The range walker correctly computes range.values.lst
-  // (the working-time-aware latest start), but feasibleStartTimes() emits one
-  // interval per shift in the feasible range and CommonStartTimesAgent builds
-  // CTPStartTime entries from those rather than from the range's lst. The picker
-  // then takes the latest shift's start instead of the deadline-anchored start.
-  // To make this test green, propagate range.eet/lst into CTPStartTime upstream
-  // of the picker. Tracked as a follow-up sprint.
-  it.skip('backward direction: 16h FLOAT anchored to Friday 15:00 deadline starts Thursday 07:00', () => {
+  it('backward direction: 16h FLOAT anchored to Friday 15:00 deadline starts Thursday 07:00', () => {
     // BACKWARD scheduling: pick the LATEST start that still satisfies the
     // working-time requirement before the deadline. With 16h work and 8h
     // shifts, the task should consume Thu's 8h + Fri's 8h, starting Thu 7am
