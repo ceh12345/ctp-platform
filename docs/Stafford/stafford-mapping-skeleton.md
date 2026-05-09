@@ -119,7 +119,7 @@
 - Sentinel `1900-01-01` dates — confirm Genius's "no value" placeholder
 
 **Filtering questions:**
-- How to exclude admin/overhead WOs from production scheduling? Candidates: `ItemFamily = 'NA'`, `JobType = 'U'`, `ItemCode LIKE 'Z-%'`, `JobCode LIKE 'ZWOR%'`.
+- How to exclude admin/overhead WOs from production scheduling? **Proposed filter (validated against full WORK7): `Job < 'SYST%'`** — passes 866 of 956 WOs (90.6%) and 3,060 of 3,118 tasks (98.1%); cleanly excludes all `ZCUS` (37), `ZWOR 24-25` / `ZWOR` (18), `ZTRA 24-25` (10), `ZSER 24-25` (7), `ZCON` (12), `SYST-01/02` (2), `Z-REPAIRS` / `Z-TRAINING` / `Z-VBREAK` / `Z-CLEANING` (4). Confirm this is correct, and decide where to apply: adapter-side (when filter support lands), mapping-side, or Stafford-side (Genius's own filter — cleanest). Alt candidates if Stafford's preferred axis differs: `ItemFamily = 'NA'`, `JobType = 'U'`, `ItemCode LIKE 'Z-%'`.
 - Active `Wostatus` set: PRINTED + CREATED? Is PLANNED ready or premature?
 
 **UX / workflow:**
@@ -169,5 +169,48 @@ Open these in the UI / JSON when each topic comes up.
 
 ## Decisions and notes from meeting
 
-_(blank section — fill in during/after the meeting)_
+### Confirmed (from Kaleb)
+
+- **Job = Work Orders** — keep CTPOrder 1:1 with Work Order; Job is just the WO grouping. (No separate Job entity.)
+- **Earliest task drives priority** — order priority derives from the earliest task's start. (Not from `Strategy`.)
+- **`TotalCumulativeMachineHours > 0` = running** — replaces `WoStatusCode=PRINTED` as the IN_PROCESS classifier. Real running rate ~9% (vs 92% under PRINTED).
+- **`pinned` = `IsSchedulingLocked`** — boolean; when true, the task is locked at its planned position.
+- **For pinned tasks** — use `TaskStartDate` / `TaskEndDate` as the authoritative scheduledStart/End (the locked schedule).
+- **`CompletionPercentage >= 100`** = COMPLETED. (`IsCompleted` is **not reliable** — was the obvious choice but Kaleb confirmed `CompletionPercentage` is authoritative. Resolves the contradiction we'd flagged where `CompletionPercentage=100` and `IsCompleted=false` co-occurred.)
+- **Cascade rule**: if a task is COMPLETED, **all its predecessor tasks in the chain are also assumed COMPLETED**. Engine should propagate the state backward through the linkId chain.
+- **No `dispatched`** at this point — Stafford doesn't use the dispatched concept. Don't map.
+- **Admin/overhead filter: `Job < 'SYST%'`** (validated 866 of 956 WOs / 3,060 of 3,118 tasks).
+- **`JobType` enum**: `U` = maintenance, `C` = customer, `I` = inventory, `Q` = quality (rework).
+- **Two-level scheduling model** — Stafford runs two layers:
+  - **Detail** = R-type resources (`IsFinite=true`, `ParallelN=0`) — named operators/machines, individual time-precise calendars
+  - **Aggregate / mid-range** = W-type resources (`IsFinite=false`, `ParallelN=4`) — work centres, capacity expressed via parallelN against a coarser work-centre calendar
+  - Out-of-box CTP modeling: **two resource profiles** (detail + aggregate). Tasks attach to the appropriate profile based on the task's nature; both task types still request `qty=1`. Aggregate behavior comes from the W resource itself having `parallelN > 1`, allowing N simultaneous tasks.
+- **Commit CTP dates back to Genius as locked** — write-back path is the future direction (CTP → Genius bi-directional). **Not for now** — flagged future-state only, not blocking current demo / mapping work.
+
+### Applied (v3.2)
+
+- [x] **`pinned` ← `IsSchedulingLocked`** — added to tasks.mappings. Boolean passes through; hydrator reads `item.pinned` and sets `task.pinned`.
+- [x] **scheduledStart/End now gated on pinned=true** — hydrator only honors source-supplied scheduled values when the task is locked. Non-pinned: solver owns placement. New regression test added.
+- [x] **`IN_PROCESS` classifier rewritten** — `wipState` is now a `cascade` of two threshold rules: `CompletionPercentage >= 99.99 → COMPLETED`, then `TotalCumulativeMachineHours > 0 → IN_PROCESS`, else `NOT_STARTED`. Replaces `WoStatusCode=PRINTED→IN_PROCESS` over-classifier.
+- [x] **`COMPLETED` from `CompletionPercentage >= 99.99`** — same cascade; threshold of 99.99 (not exactly 100) handles floating-point quirks.
+- [x] **Cascade COMPLETED backward through chain** — added in `state-hydrator.service.ts:hydrateTasks` post-build pass. Walks `linkId.prevLink` for each COMPLETED task and propagates state backward. Iterates until convergence (handles multi-hop chains).
+- [x] **Mapping engine: new `threshold` rule type** — `{from, threshold, above, below}` with optional sides. Returns `above` if value > threshold, else `below`. Non-numeric / null → "below". Generic, any tenant.
+- [x] **Mapping engine: new `cascade` rule type** — `{cascade: [sub-rules], default: x}` tries each sub-rule, returns first non-null, else default. Generic.
+- [x] **R/W split** — `R→MACHINE` (detail), `W→WORK_CENTER` (aggregate), `S→SUBCONTRACT`. Reverted v3.1.1 collapse.
+- [x] **`jobType` ← `JobType`** — passthrough on orders. UI/downstream can read U / C / I / Q. (Engine may not yet consume it; field is captured at mapping layer.)
+- [x] **No `dispatched`** — already absent from mapping. Confirmed during implementation review.
+
+### TODO — still pending
+
+- [ ] **Apply `Job < 'SYST%'` filter** — adapter-side (when filter support lands) or Stafford-side (Genius API filter). Mapping config alone can't filter; needs adapter or upstream support.
+- [ ] **Define aggregate-task time window** — engine-default `windowStart=horizon.start` is wrong for W-type aggregate tasks. Open design question: bucketing scheme (per-week / per-month / derived from JobEndDate). Needs a hydrator branch on resource type or a new mapping path.
+- [ ] **Define FIXED vs FLOAT durationType per task** — current mapping hydrates every task as FIXED. Aggregate (W) tasks may always be FLOAT; detail tasks > shift length may need conditional FLOAT. Concrete exhibit: `27187-PLL-5` = 16h on 8h shift → infeasible under FIXED.
+- [ ] **Slim slicer Phase 0.5 — bias toward at least one locked WO** — current slim has 0 pinned tasks because only 11 of 2,568 (0.4%) are locked. Demo loses the pinned-handling demonstration. Easy fix: add a phase to the slicer that picks 1-2 locked WOs if any exist.
+
+### Open / pending discussion
+
+- ~~**Finite Capacity** — vs Infinite vs "detail" (a third tier?). What's the operational difference?~~ **Resolved** — `IsFinite=true` is the **detail** layer (R-type, named operators), `IsFinite=false` is the **aggregate** layer (W-type, work centres with parallelN cap). See "Two-level scheduling model" above.
+- **Cum Time > 0 AND task ___** — incomplete note; what's the second condition?
+- **Created vs Printed** — operational distinction in the WO lifecycle; how should each map (now that PRINTED ≠ IN_PROCESS via cum-hours classifier)? 
+
 

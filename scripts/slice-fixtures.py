@@ -32,8 +32,11 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
 REPO     = Path(__file__).resolve().parents[1]
-SOURCE   = REPO / 'tools/mock-genius/recorded/stafford-work7-2026-04-23'
+DEFAULT_SOURCE = REPO / 'tools/mock-genius/recorded/stafford-work7-2026-04-23'
 FIXTURES = REPO / 'tools/mock-genius/fixtures'
+
+# Set later from CLI args; load_paged() reads this module-level variable.
+SOURCE = DEFAULT_SOURCE
 
 
 def load_paged(entity_name):
@@ -147,7 +150,16 @@ def main():
                         help='Output scenario name (default: stafford-work7-{N}tasks)')
     parser.add_argument('--statuses', default='PRINTED,CREATED',
                         help='Comma-separated Wostatus values to include (default: PRINTED,CREATED)')
+    parser.add_argument('--source', default=None,
+                        help=f'Source recording directory (default: {DEFAULT_SOURCE.name})')
     args = parser.parse_args()
+
+    global SOURCE
+    if args.source:
+        SOURCE = Path(args.source) if Path(args.source).is_absolute() else (REPO / 'tools/mock-genius/recorded' / args.source)
+    if not SOURCE.is_dir():
+        print(f'ERROR: source directory not found: {SOURCE}')
+        sys.exit(1)
 
     statuses = set(args.statuses.split(','))
     scenario_name = args.name or f'stafford-work7-{args.target_tasks}tasks'

@@ -15,6 +15,7 @@
       "priority":    { "from": "Strategy", "lookup": { "JIT": 10, "ASAP": 5, "_default": 50 } },
 
       "jobCode":      { "from": "Job" },
+      "jobType":      { "from": "JobType" },
       "customerCode": { "from": "CustomerCode" },
       "customerName": { "from": "CustomerName" },
       "itemFamily":   { "from": "ItemFamily" },
@@ -26,8 +27,8 @@
     "mappings": {
       "key":         { "from": "Id", "toString": true },
       "name":        { "from": "Description1" },
-      "type":        { "from": "RessourceType", "lookup": { "R": "MACHINE", "W": "MACHINE", "S": "SUBCONTRACT", "_default": "MACHINE" } },
-      "class":       { "from": "RessourceType", "lookup": { "R": "MACHINE", "W": "MACHINE", "S": "SUBCONTRACT", "_default": "MACHINE" } },
+      "type":        { "from": "RessourceType", "lookup": { "R": "MACHINE", "W": "WORK_CENTER", "S": "SUBCONTRACT", "_default": "MACHINE" } },
+      "class":       { "from": "RessourceType", "lookup": { "R": "MACHINE", "W": "WORK_CENTER", "S": "SUBCONTRACT", "_default": "MACHINE" } },
       "hourlyRate":  { "from": "MachineRateCost" },
 
       "efficiency":       { "from": "Efficiency" },
@@ -50,7 +51,14 @@
       "durationSeconds": { "from": "TotalPlannedMachineHours", "factor": 3600 },
       "durationQty":     { "value": 1 },
       "durationType":    { "value": 0 },
-      "wipState":        { "from": "WoStatusCode", "lookup": { "CREATED": "NOT_STARTED", "PRINTED": "IN_PROCESS", "CLOSED": "COMPLETED", "_default": "NOT_STARTED" } },
+      "wipState": {
+        "cascade": [
+          { "from": "CompletionPercentage",       "threshold": 99.99, "above": "COMPLETED" },
+          { "from": "TotalCumulativeMachineHours", "threshold": 0,    "above": "IN_PROCESS" }
+        ],
+        "default": "NOT_STARTED"
+      },
+      "pinned":          { "from": "IsSchedulingLocked" },
       "actualStart":     { "from": "TaskStartDate", "toUTC": true },
       "scheduledStart":  { "from": "TaskStartDate", "toUTC": true },
       "scheduledEnd":    { "from": "TaskEndDate",   "toUTC": true }

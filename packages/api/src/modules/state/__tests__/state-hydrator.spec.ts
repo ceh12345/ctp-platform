@@ -255,15 +255,28 @@ describe('StateHydratorService', () => {
       expect(task.window!.endW).toBe(landscape.horizon.endW);
     });
 
-    it('scheduledStart/End populated → task.scheduled is set', () => {
+    it('scheduledStart/End populated AND pinned=true → task.scheduled is set', () => {
       const landscape = hydrator.buildLandscape(basePayload({
         scheduledStart: '2026-03-01T08:00:00Z',
         scheduledEnd: '2026-03-01T16:00:00Z',
+        pinned: true,
       }));
       const task = landscape.tasks.getEntity('TASK-1')!;
       expect(task.scheduled).not.toBeNull();
+      expect(task.pinned).toBe(true);
       // 8h delta verifies dates parsed and ordered correctly
       expect(task.scheduled!.endW - task.scheduled!.startW).toBe(8 * 3600);
+    });
+
+    it('scheduledStart/End populated but pinned=false → task.scheduled stays null', () => {
+      const landscape = hydrator.buildLandscape(basePayload({
+        scheduledStart: '2026-03-01T08:00:00Z',
+        scheduledEnd: '2026-03-01T16:00:00Z',
+        // pinned omitted → defaults false
+      }));
+      const task = landscape.tasks.getEntity('TASK-1')!;
+      expect(task.scheduled).toBeNull();
+      expect(task.pinned).toBe(false);
     });
 
     it('absent scheduledStart/End → task.scheduled stays null', () => {

@@ -342,11 +342,23 @@ export class StateHydratorService {
       }
       task.window = window;
 
-      // Scheduled — where an upstream planner (Genius, our solver) placed the task.
-      // Distinct from window (constraint) and actualStart/End (execution). Optional.
+      // Pinned — set BEFORE the scheduled block so the scheduled fields
+      // can be conditionally honored. Per Stafford v3.2 meeting decision:
+      // task.scheduled is only authoritative when the upstream system has
+      // explicitly locked the placement (Genius `IsSchedulingLocked=true`,
+      // mapped to `pinned`). For non-pinned tasks, scheduled-shaped data
+      // from the source represents a non-binding plan; let the solver own
+      // placement instead.
+      if (item.pinned === true) {
+        task.pinned = true;
+      }
+
+      // Scheduled — where an upstream planner (Genius, our solver) placed
+      // the task. Honor source values only when the task is pinned (locked).
+      // Otherwise, leave task.scheduled null so the solver decides.
       const ss = this.parseIsoDateOrRecord(item.scheduledStart, task, 'scheduledStart');
       const se = this.parseIsoDateOrRecord(item.scheduledEnd,   task, 'scheduledEnd');
-      if (ss && se) {
+      if (ss && se && task.pinned) {
         const scheduled = new CTPInterval();
         scheduled.fromDates(ss, se, 1);
         task.scheduled = scheduled;
@@ -528,6 +540,33 @@ export class StateHydratorService {
 
       tasks.addEntity(task);
     }
+
+    // Cascade COMPLETED backward through chains. Per Stafford v3.2 meeting:
+    // when a task is COMPLETED, all its predecessors are assumed COMPLETED
+    // even if their own source data doesn't carry the signal. This handles
+    // the typical ERP pattern where only the latest-completed task is flagged
+    // and earlier ops in the chain are implicitly done.
+    //
+    // We iterate until no more changes — a single backward pass would miss
+    // multi-hop chains where the cascade reveals a new COMPLETED that itself
+    // has predecessors. In practice convergence is fast (chain depth bounded).
+    const tasksByKey = new Map<string, CTPTask>();
+    tasks.forEach((t) => tasksByKey.set(t.key, t));
+    let changed = true;
+    while (changed) {
+      changed = false;
+      tasks.forEach((t) => {
+        if (t.wipstate === 5 /* COMPLETED */ && t.linkId?.prevLink) {
+          const prev = tasksByKey.get(t.linkId.prevLink);
+          if (prev && prev.wipstate !== 5) {
+            prev.wipstate = 5;
+            prev.percentComplete = 100;
+            changed = true;
+          }
+        }
+      });
+    }
+
     return tasks;
   }
 

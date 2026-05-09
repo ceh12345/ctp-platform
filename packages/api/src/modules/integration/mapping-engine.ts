@@ -76,7 +76,10 @@ export class MappingEngine {
     if (typeof rule !== 'object' || rule === null || Array.isArray(rule)) return false;
     // Use own-property checks because `toString` is inherited from
     // Object.prototype and would always test truthy with `!==undefined`.
-    const RULE_KEYS = ['value', 'from', 'lookup', 'factor', 'toUTC', 'toString'] as const;
+    const RULE_KEYS = [
+      'value', 'from', 'lookup', 'factor', 'toUTC', 'toString',
+      'threshold', 'cascade',
+    ] as const;
     return !RULE_KEYS.some(k => Object.prototype.hasOwnProperty.call(rule, k));
   }
 
@@ -85,6 +88,19 @@ export class MappingEngine {
     // numeric (e.g., Genius's `Id` field) but target is a CTP key (string).
     const coerce = (v: any) =>
       rule.toString === true && v !== null && v !== undefined ? String(v) : v;
+
+    // cascade — try a list of sub-rules in order. First sub-rule that returns
+    // a non-null/non-undefined value wins. If all return null/undefined, use
+    // the rule's `default`. Useful for tiered classifications where multiple
+    // signals can produce a result (e.g., wipState from CompletionPercentage
+    // OR TotalCumulativeMachineHours, with NOT_STARTED as the default).
+    if (Array.isArray(rule.cascade)) {
+      for (const sub of rule.cascade) {
+        const sv = this.applyRule(record, sub, ctx);
+        if (sv !== null && sv !== undefined) return coerce(sv);
+      }
+      return coerce(rule.default);
+    }
 
     // const — static value
     if (rule.value !== undefined) return coerce(rule.value);
@@ -96,6 +112,16 @@ export class MappingEngine {
     }
 
     const val = record[rule.from];
+
+    // threshold — numeric comparison. Returns `above` if val > threshold,
+    // `below` if val ≤ threshold. Either side can be omitted; an omitted
+    // side returns undefined for that branch (lets cascade move on to the
+    // next sub-rule). Non-numeric / null vals are treated as "below".
+    if (rule.threshold !== undefined) {
+      const n = Number(val);
+      if (!isNaN(n) && n > rule.threshold) return coerce(rule.above);
+      return coerce(rule.below);
+    }
 
     // lookup — value map with optional _default
     if (rule.lookup) {
