@@ -96,10 +96,14 @@ export function makeFloatTask(opts: {
   durationHours: number;
   resourceKey: string;
   horizon: CTPHorizon;
+  windowStart?: DateTime;   // optional — defaults to horizon.startDate
+  windowEnd?: DateTime;     // optional — defaults to horizon.endDate
 }): CTPTask {
   const t = new CTPTask('PROCESS', opts.key, opts.key);
   t.duration = new CTPDuration(opts.durationHours * ONE_HOUR, 1.0, CTPDurationConstants.FLOAT_DURATION);
-  t.window = new CTPInterval(opts.horizon.startW, opts.horizon.endW);
+  const wStart = opts.windowStart ? CTPDateTime.fromDateTime(opts.windowStart) : opts.horizon.startW;
+  const wEnd = opts.windowEnd ? CTPDateTime.fromDateTime(opts.windowEnd) : opts.horizon.endW;
+  t.window = new CTPInterval(wStart, wEnd);
   t.sequence = 1;
   t.rank = 1;
   t.capacityResources = new CTPTaskResourceList();
@@ -140,6 +144,9 @@ export function solveScenario(args: {
   horizon: CTPHorizon;
   resources: CTPResource[];
   tasks: CTPTask[];
+  direction?: number;          // 1 = FORWARD (default), -1 = BACKWARD
+  scoringRule?: string;        // defaults to 'EarliestStartTimeScoringRule';
+                               // pass 'LatestStartTimeScoringRule' for BACKWARD
 }): Map<string, FloatPlacement> {
   const ctpTasks = new CTPTasks();
   args.tasks.forEach(t => ctpTasks.addEntity(t));
@@ -148,13 +155,15 @@ export function solveScenario(args: {
   args.resources.forEach(r => ctpResources.addEntity(r));
 
   const settings = new CTPAppSettings();
-  settings.scheduleDirection = 1; // FORWARD
+  settings.scheduleDirection = args.direction ?? 1; // FORWARD by default
 
   const scheduler = new CTPScheduler();
   scheduler.initLandscape(args.horizon, ctpTasks, ctpResources, new CTPStateChanges(), new CTPProcesses());
 
   const scoring = new CTPScoring('Test', 'test');
-  scoring.addConfig(new CTPScoringConfiguration('EarliestStartTimeScoringRule', 1.0));
+  scoring.addConfig(new CTPScoringConfiguration(
+    args.scoringRule ?? 'EarliestStartTimeScoringRule', 1.0,
+  ));
   scheduler.initScoring(scoring);
   scheduler.initSettings(settings);
 
