@@ -67,7 +67,10 @@ export class CTPAvailableEngine
     while (aPtr) {
       if (aPtr.data && aPtr.data.type == CTPAssignmentConstants.PROCESS) {
         usage += 1;
-        taskDuration += aPtr.data.duration();
+        // workDuration() = segment-summed for FLOAT, envelope for FIXED.
+        // State-change runtime counter should reflect actual run time, not
+        // wall-clock span across overnight gaps.
+        taskDuration += aPtr.data.workDuration();
       } else if (
         aPtr.data &&
         aPtr.data.subType == CTPAssignmentConstants.CHANGE_OVER

@@ -94,6 +94,14 @@ export class CTPInterval implements IInterval {
     return this.endW - this.startW;
   }
 
+  // Default working-time = wall-clock envelope. CTPAssignment overrides to
+  // sum its segments[] when populated (FLOAT tasks). Putting this on the base
+  // class lets consumers call .workDuration() on any CTPInterval reference
+  // without type narrowing.
+  public workDuration(): number {
+    return this.duration();
+  }
+
   public runRateQty() {
     if (this.runRate) return this.duration() * this.runRate;
     return 0;
@@ -169,10 +177,9 @@ export class CTPAssignment extends CTPInterval {
     super.fromDates(s, e, q);
   }
 
-  // Sum of working-time segments (FLOAT) or wall-clock envelope (FIXED).
-  // Falls back to envelope duration when segments is null/empty so callers
-  // always get a sensible non-negative number.
-  public workDuration(): number {
+  // Override base: sum segment durations (FLOAT tasks) or fall back to
+  // envelope duration() when segments is null (FIXED — base behavior).
+  public override workDuration(): number {
     if (!this.segments || this.segments.length === 0) return this.duration();
     let sum = 0;
     for (const s of this.segments) sum += s.endW - s.startW;
