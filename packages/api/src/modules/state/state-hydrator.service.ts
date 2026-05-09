@@ -415,6 +415,27 @@ export class StateHydratorService {
         task.capacityResources = capList;
       }
 
+      // Pinned-or-running → committed resource assignment.
+      // For tasks where the upstream system has authoritative assignment
+      // info — IsSchedulingLocked=true (pinned) or work is actively
+      // happening on the floor (running, classified later from
+      // CompletionPercentage / TotalCumulativeMachineHours via wipState) —
+      // the requested resource on each capacityResource entry IS the
+      // committed assignment. Populate `scheduledResource` from `resource`
+      // so the DTO's assignedResources surfaces the binding to the UI's
+      // "Capacity Resources" section.
+      //
+      // Pinned: handled here unconditionally (we know task.pinned by now).
+      // Running: handled in the wipState=IN_PROCESS branch below, where
+      // we ALSO set actualResources (because the task is on-the-floor).
+      if (task.pinned && task.capacityResources) {
+        task.capacityResources.forEach((entry: any) => {
+          if (entry.resource && !entry.scheduledResource) {
+            entry.scheduledResource = entry.resource;
+          }
+        });
+      }
+
       // Materials resources
       if (item.materialsResources && item.materialsResources.length > 0) {
         const matList = new CTPTaskResourceList();
@@ -480,11 +501,40 @@ export class StateHydratorService {
         task.dispatchedAt = (item as any).dispatchedAt || null;
         task.materialsPulled = (item as any).materialsPulled ?? true;
         // Don't pin here — applyCommitmentStack handles pinning after first solve
+        // Surface the resource assignment for UI's "Capacity Resources"
+        // section — dispatched tasks have been formally released to the
+        // floor, so the assignment IS committed.
+        if (task.capacityResources) {
+          task.capacityResources.forEach((entry: any) => {
+            if (entry.resource && !entry.scheduledResource) {
+              entry.scheduledResource = entry.resource;
+            }
+          });
+        }
       }
       if ((item as any).wipState === 'IN_PROCESS') {
         task.wipstate = 1; // CTPWipStateConstants.IN_PROCESS
         task.actualStart = (item as any).actualStart || null;
-        task.actualResources = (item as any).actualResources ?? [];
+        // actualResources: prefer source-supplied values, otherwise derive
+        // from capacityResources (the requested resource IS where work is
+        // actively happening for an in-process task per Stafford's signal).
+        let actuals: string[] = (item as any).actualResources ?? [];
+        if (actuals.length === 0 && task.capacityResources) {
+          actuals = [];
+          task.capacityResources.forEach((entry: any) => {
+            if (entry.resource) actuals.push(entry.resource);
+          });
+        }
+        task.actualResources = actuals;
+        // Also commit the resource assignment to scheduledResource so the
+        // UI's "Capacity Resources" section renders for running tasks.
+        if (task.capacityResources) {
+          task.capacityResources.forEach((entry: any) => {
+            if (entry.resource && !entry.scheduledResource) {
+              entry.scheduledResource = entry.resource;
+            }
+          });
+        }
         task.percentComplete = (item as any).percentComplete ?? 0;
         task.remainingDuration = (item as any).remainingDuration ?? null;
       }
@@ -500,7 +550,25 @@ export class StateHydratorService {
         task.wipstate = 5; // CTPWipStateConstants.COMPLETED
         task.actualStart = (item as any).actualStart || null;
         task.actualEnd = (item as any).actualEnd || null;
-        task.actualResources = (item as any).actualResources ?? [];
+        // actualResources: prefer source-supplied; else derive from
+        // capacityResources (the requested resource IS where the
+        // completed work was done).
+        let actuals: string[] = (item as any).actualResources ?? [];
+        if (actuals.length === 0 && task.capacityResources) {
+          actuals = [];
+          task.capacityResources.forEach((entry: any) => {
+            if (entry.resource) actuals.push(entry.resource);
+          });
+        }
+        task.actualResources = actuals;
+        // Also surface the assignment for UI's "Capacity Resources" section.
+        if (task.capacityResources) {
+          task.capacityResources.forEach((entry: any) => {
+            if (entry.resource && !entry.scheduledResource) {
+              entry.scheduledResource = entry.resource;
+            }
+          });
+        }
         task.percentComplete = 100;
       }
 
@@ -561,6 +629,19 @@ export class StateHydratorService {
           if (prev && prev.wipstate !== 5) {
             prev.wipstate = 5;
             prev.percentComplete = 100;
+            // Surface the predecessor's resource assignment too — the
+            // work was done on its capacityResources by the time the
+            // successor completed.
+            if (prev.capacityResources) {
+              const actuals: string[] = [];
+              prev.capacityResources.forEach((entry: any) => {
+                if (entry.resource) {
+                  actuals.push(entry.resource);
+                  if (!entry.scheduledResource) entry.scheduledResource = entry.resource;
+                }
+              });
+              if (prev.actualResources?.length === 0) prev.actualResources = actuals;
+            }
             changed = true;
           }
         }

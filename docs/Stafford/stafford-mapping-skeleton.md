@@ -202,7 +202,7 @@ Open these in the UI / JSON when each topic comes up.
 
 ### TODO — still pending
 
-- [ ] **Apply `Job < 'SYST%'` filter** — adapter-side (when filter support lands) or Stafford-side (Genius API filter). Mapping config alone can't filter; needs adapter or upstream support.
+- [ ] ~~**Apply `Job < 'SYST%'` filter**~~ — **DEFERRED to Stafford-side**. Decision: long-term filter belongs at the Genius API call (Kaleb-side). Short-term we deliberately do NOT filter — we want to see all data during the vetting phase. Sprint doc filed at `docs/sprints/sprint-mapping-engine-filters.md` for future reference if we ever need CTP-side filtering. Admin records (20540 BREAKTIMES, 99500, ZCUS, etc.) remain visible as exhibits/talking points.
 - [ ] **Define aggregate-task time window** — engine-default `windowStart=horizon.start` is wrong for W-type aggregate tasks. Open design question: bucketing scheme (per-week / per-month / derived from JobEndDate). Needs a hydrator branch on resource type or a new mapping path.
 - [ ] **Define FIXED vs FLOAT durationType per task** — current mapping hydrates every task as FIXED. Aggregate (W) tasks may always be FLOAT; detail tasks > shift length may need conditional FLOAT. Concrete exhibit: `27187-PLL-5` = 16h on 8h shift → infeasible under FIXED.
 - [ ] **Slim slicer Phase 0.5 — bias toward at least one locked WO** — current slim has 0 pinned tasks because only 11 of 2,568 (0.4%) are locked. Demo loses the pinned-handling demonstration. Easy fix: add a phase to the slicer that picks 1-2 locked WOs if any exist.

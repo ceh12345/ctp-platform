@@ -56,8 +56,13 @@ def load_paged(entity_name):
     return records
 
 
+# Job prefixes that mark admin / overhead / system WOs we never want in the
+# slim. Anything starting with these is dropped before selection runs.
+EXCLUDE_JOB_PREFIXES = ('SYST', 'Z')
+
+
 def annotate_wos(wos, tasks_by_wo, resources_by_code, statuses):
-    """Build per-WO annotations for selection."""
+    """Build per-WO annotations for selection. Skips admin/overhead WOs."""
     annotated = []
     for w in wos:
         if w.get('Wostatus') not in statuses:
@@ -65,9 +70,19 @@ def annotate_wos(wos, tasks_by_wo, resources_by_code, statuses):
         wo_code = w.get('WorkOrder')
         if not wo_code:
             continue
+        # Drop admin/overhead WOs by Job prefix (matches the post-meeting
+        # filter Stafford will eventually apply at the Genius API level —
+        # for now we deterministically exclude them from the slim so the
+        # demo doesn't render breaktime/SYST records as schedulable work).
+        job = (w.get('Job') or '')
+        if any(job.startswith(p) for p in EXCLUDE_JOB_PREFIXES):
+            continue
         chain = tasks_by_wo.get(wo_code, [])
         if not chain:
             continue
+        # Detect locked tasks — bias selection to include at least one
+        # locked WO so the demo can show the pinned-task code path.
+        locked_count = sum(1 for t in chain if t.get('IsSchedulingLocked'))
         deps = set()
         for t in chain:
             mc = t.get('MachineCode')
@@ -83,6 +98,7 @@ def annotate_wos(wos, tasks_by_wo, resources_by_code, statuses):
             'departments': deps,
             'strategy': w.get('Strategy'),
             'status': w.get('Wostatus'),
+            'locked_count': locked_count,
         })
     return annotated
 
@@ -109,6 +125,21 @@ def select_wos(annotated, target_tasks):
             continue
         # Tie-break: chain_length asc, then WorkOrder code asc (stable)
         best = min(candidates, key=lambda a: (a['chain_length'], a['code']))
+        add(best)
+
+    # Phase 0.5 — locked-WO inclusion: ensure at least one WO with locked
+    # tasks lands in the slim, so the demo exercises the pinned-task code
+    # path. Without this, locked WOs (typically ~0.4% of records) almost
+    # always get missed by random selection. Picks the WO with the most
+    # locked tasks; ties broken by chain_length asc, then code asc.
+    locked_candidates = [a for a in annotated
+                         if a['locked_count'] > 0 and a['code'] not in selected_codes]
+    if locked_candidates:
+        best = max(locked_candidates,
+                   key=lambda a: (a['locked_count'], -a['chain_length'], -ord(a['code'][0])))
+        # Simpler tie-break: max locked count, then smallest chain, then code asc
+        best = sorted(locked_candidates,
+                      key=lambda a: (-a['locked_count'], a['chain_length'], a['code']))[0]
         add(best)
 
     # Phase 1 — department coverage: smallest WO per uncovered department
@@ -194,12 +225,14 @@ def main():
     strategy_dist = Counter()
     status_dist = Counter()
     chain_lengths = []
+    total_locked = 0
     for s in selected:
         for d in s['departments']:
             dept_coverage[d] += 1
         strategy_dist[s['strategy']] += 1
         status_dist[s['status']] += 1
         chain_lengths.append(s['chain_length'])
+        total_locked += s['locked_count']
 
     print()
     print(f'Selected {len(selected_wos)} WOs / {len(selected_tasks)} tasks / {len(selected_sos)} linked SOs')
@@ -207,6 +240,8 @@ def main():
     print(f'Department coverage:   {dict(sorted(dept_coverage.items()))}')
     print(f'Strategy distribution: {dict(strategy_dist)}')
     print(f'Status distribution:   {dict(status_dist)}')
+    n_locked_wos = sum(1 for s in selected if s['locked_count'] > 0)
+    print(f'Locked tasks in slim:  {total_locked}  (across {n_locked_wos} WOs)')
 
     # Stable output ordering
     selected_wos.sort(key=lambda w: w.get('WorkOrder', ''))
