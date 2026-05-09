@@ -21,7 +21,7 @@ import { CTPHorizon } from '../../Models/Entities/horizon';
 import { CTPResource, CTPResources, CTPResourcePreference } from '../../Models/Entities/resource';
 import { CTPTask, CTPTasks, CTPTaskResource, CTPTaskResourceList } from '../../Models/Entities/task';
 import { CTPDuration, CTPInterval } from '../../Models/Core/window';
-import { CTPAvailable } from '../../Models/Intervals/intervals';
+import { CTPAssignments, CTPAvailable } from '../../Models/Intervals/intervals';
 import { CTPDurationConstants, CTPResourceConstants } from '../../Models/Core/constants';
 import { CTPStateChanges } from '../../Models/Entities/statechange';
 import { CTPProcesses } from '../../Models/Entities/process';
@@ -82,7 +82,8 @@ export function makeResourceWithShifts(
     shift.workdays,
   );
   res.original = avail;
-  res.available.setOriginal(res.original);
+  res.assignments = new CTPAssignments();
+  res.available.setLists(res.original, res.assignments);
   return res;
 }
 

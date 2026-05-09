@@ -164,8 +164,12 @@ export class ScheduleEngine implements IScheduleEngine {
     if (capresource) {
       t = new CTPAssignment(st, et, capresource.qty);
       t.name = task.key;
-      t.type = assType; 
+      t.type = assType;
       t.subType = subType ?? -1;
+      // Compute working-time segments only for FLOAT — FIXED's envelope IS work time.
+      if (task.duration && this.isFloat(task.duration)) {
+        t.segments = CTPAssignment.segmentsFromCalendar(resource.original, st, et);
+      }
       resource.assignments?.add(t);
       resource.recompute = true;
       capresource.scheduledResource = resource.key;

@@ -74,4 +74,48 @@ describe('FLOAT task duration handling', () => {
     expect(p.endW - p.startW).toBe(32 * 3600);
   });
 
+  it('records two segments and 16h workDuration on the resource for the PLL-5 case', () => {
+    // Segment-aware booking: the FLOAT task envelope spans the overnight
+    // gap, but the assignment's segments[] should contain only the on-shift
+    // slices (Mon 7-15 and Tue 7-15), and workDuration() should sum to 16h.
+    const horizon = makeHorizon(monday('2026-04-13'), 14);
+    const resource = makeResourceWithShifts('M1', horizon, { startHour: 7, endHour: 15 });
+    const task = makeFloatTask({
+      key: 'T1', durationHours: 16, resourceKey: 'M1', horizon,
+    });
+
+    solveScenario({ horizon, resources: [resource], tasks: [task] });
+
+    const a = resource.assignments?.head?.data;
+    expect(a).toBeDefined();
+    expect(a!.segments).not.toBeNull();
+    expect(a!.segments!.length).toBe(2);
+    // segment 0 = Mon 7-15 (8h)
+    expect(a!.segments![0].endW - a!.segments![0].startW).toBe(8 * 3600);
+    // segment 1 = Tue 7-15 (8h)
+    expect(a!.segments![1].endW - a!.segments![1].startW).toBe(8 * 3600);
+    // Sum equals task duration (16h working)
+    expect(a!.workDuration()).toBe(16 * 3600);
+    // Envelope is 32h wall-clock — distinct from work duration
+    expect(a!.duration()).toBe(32 * 3600);
+  });
+
+  it('FIXED task assignment has no segments populated (envelope == work)', () => {
+    // FIXED tasks fit in a single contiguous slot by definition, so segments
+    // computation is skipped. workDuration() falls back to envelope duration.
+    const horizon = makeHorizon(monday('2026-04-13'), 14);
+    const resource = makeResourceWithShifts('M1', horizon, { startHour: 7, endHour: 15 });
+    const task = makeFixedTask({
+      key: 'T1', durationHours: 4, resourceKey: 'M1', horizon,
+    });
+
+    solveScenario({ horizon, resources: [resource], tasks: [task] });
+
+    const a = resource.assignments?.head?.data;
+    expect(a).toBeDefined();
+    expect(a!.segments).toBeNull();
+    expect(a!.workDuration()).toBe(4 * 3600); // falls back to envelope
+    expect(a!.duration()).toBe(4 * 3600);
+  });
+
 });

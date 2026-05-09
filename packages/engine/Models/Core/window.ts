@@ -5,6 +5,7 @@ import {
   CTPAssignmentConstants,
   CTPDurationConstants,
 } from "../Core/constants";
+import { LinkedList } from "./linklist";
 
 export interface IIntervalDTO {
   startW: number;
@@ -150,6 +151,12 @@ export class CTPRunRate extends CTPInterval {
 }
 
 export class CTPAssignment extends CTPInterval {
+  // Working-time segments — populated only for FLOAT_DURATION / FLOAT_RUN_RATE
+  // assignments at booking time. For FIXED tasks this stays null (the envelope
+  // IS the work time by construction). Used by workDuration() and by consumers
+  // that want to render or tally per-shift bookings.
+  public segments: CTPInterval[] | null = null;
+
   public constructor(s?: number, e?: number, q?: number) {
     super(s, e, q);
     this.name = "";
@@ -160,6 +167,38 @@ export class CTPAssignment extends CTPInterval {
     this.name = "";
     this.type = CTPAssignmentConstants.PROCESS;
     super.fromDates(s, e, q);
+  }
+
+  // Sum of working-time segments (FLOAT) or wall-clock envelope (FIXED).
+  // Falls back to envelope duration when segments is null/empty so callers
+  // always get a sensible non-negative number.
+  public workDuration(): number {
+    if (!this.segments || this.segments.length === 0) return this.duration();
+    let sum = 0;
+    for (const s of this.segments) sum += s.endW - s.startW;
+    return sum;
+  }
+
+  // Clip a resource calendar (linked-list of CTPInterval) against an envelope
+  // [st, et] and return the on-shift slices as plain CTPInterval entries.
+  // Caller decides whether to compute segments based on durationType — this
+  // helper is durationType-agnostic. Returns [] if the envelope is outside
+  // the calendar entirely.
+  public static segmentsFromCalendar(
+    original: LinkedList<CTPInterval> | null | undefined,
+    st: number,
+    et: number,
+  ): CTPInterval[] {
+    const segments: CTPInterval[] = [];
+    if (!original) return segments;
+    let n = original.head;
+    while (n) {
+      const s = Math.max(n.data.startW, st);
+      const e = Math.min(n.data.endW, et);
+      if (s < e) segments.push(new CTPInterval(s, e, n.data.qty ?? 1));
+      n = n.next;
+    }
+    return segments;
   }
 }
 
