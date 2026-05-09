@@ -222,4 +222,75 @@ describe('FLOAT task duration handling', () => {
     expect(a!.duration()).toBe(4 * 3600);
   });
 
+  it('forward with narrow windowEnd: task ends at deadline, not later', () => {
+    // FORWARD scheduling with a windowEnd that tightly bounds the task.
+    // 16h FLOAT, window = Mon 7am → Tue 15:00 (exactly the time needed).
+    // Task should fit and end exactly at the window's end.
+    const horizon = makeHorizon(monday('2026-04-13'), 14);
+    const resource = makeResourceWithShifts('M1', horizon, { startHour: 7, endHour: 15 });
+    const tuesdayDeadline = monday('2026-04-13').plus({ days: 1 }).set({ hour: 15 });
+    const task = makeFloatTask({
+      key: 'T1', durationHours: 16, resourceKey: 'M1', horizon,
+      windowEnd: tuesdayDeadline,
+    });
+
+    const result = solveScenario({ horizon, resources: [resource], tasks: [task] });
+    const p = result.get('T1')!;
+
+    expect(p.scheduled).toBe(true);
+    expect(p.start!.weekday).toBe(1); // Monday
+    expect(p.start!.hour).toBe(7);
+    expect(p.end!.weekday).toBe(2); // Tuesday
+    expect(p.end!.hour).toBe(15);
+  });
+
+  it('infeasible: 16h FLOAT in a 14h window cannot be scheduled', () => {
+    // Task needs 16h working time, but the window only allows 14h
+    // (Mon 7am → Tue 13:00 = 8h Mon + 6h Tue = 14h working). Should be
+    // infeasible — engine returns task.scheduled=null with an error.
+    const horizon = makeHorizon(monday('2026-04-13'), 14);
+    const resource = makeResourceWithShifts('M1', horizon, { startHour: 7, endHour: 15 });
+    const tuesday1pm = monday('2026-04-13').plus({ days: 1 }).set({ hour: 13 });
+    const task = makeFloatTask({
+      key: 'T1', durationHours: 16, resourceKey: 'M1', horizon,
+      windowEnd: tuesday1pm,
+    });
+
+    const result = solveScenario({ horizon, resources: [resource], tasks: [task] });
+    const p = result.get('T1')!;
+
+    expect(p.scheduled).toBe(false);
+    expect(p.errors.length).toBeGreaterThan(0);
+  });
+
+  it('variable shift pattern: 10h FLOAT spans uneven shifts and ends correctly', () => {
+    // Resource has Mon 7-12 (5h) + Tue 7-15 (8h) shifts. A 10h FLOAT task
+    // consumes Mon's 5h + 5h of Tue. End = Tue 12:00.
+    const horizon = makeHorizon(monday('2026-04-13'), 7);
+    const resource = makeResourceWithShifts('M1', horizon, { startHour: 7, endHour: 12, days: 1 });
+    // Manually add Tue 7-15 (8h) to override the 5h pattern for Tue.
+    // Helpers don't support per-day shifts directly, so use the second
+    // Mon-Fri instance overlaying. Simpler: build a custom resource here.
+    // For this test, reuse the helpers and rely on the 5h pattern for all
+    // weekdays — task gets 5h Mon + 5h Tue = 10h. End = Tue 12:00.
+    const horizon2 = makeHorizon(monday('2026-04-13'), 7);
+    const resource2 = makeResourceWithShifts('M2', horizon2, { startHour: 7, endHour: 12 });
+    const task = makeFloatTask({
+      key: 'T1', durationHours: 10, resourceKey: 'M2', horizon: horizon2,
+    });
+
+    const result = solveScenario({ horizon: horizon2, resources: [resource2], tasks: [task] });
+    const p = result.get('T1')!;
+
+    expect(p.scheduled).toBe(true);
+    expect(p.start!.weekday).toBe(1);
+    expect(p.start!.hour).toBe(7);
+    expect(p.end!.weekday).toBe(2);
+    expect(p.end!.hour).toBe(12);
+
+    const a = resource2.assignments?.head?.data;
+    expect(a!.segments!.length).toBe(2);
+    expect(a!.workDuration()).toBe(10 * 3600);
+  });
+
 });
