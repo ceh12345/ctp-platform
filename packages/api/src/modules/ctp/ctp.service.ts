@@ -3168,6 +3168,16 @@ export class CTPService {
           ? CTPDateTime.toDateTime(task.scheduled.endW).toISO()
           : null,
         durationSeconds: task.scheduled ? task.scheduled.duration() : (task.duration?.duration() ?? null),
+        // workDurationSeconds = actual working time (sum of on-shift segments).
+        // For FIXED tasks this equals durationSeconds. For FLOAT tasks spanning
+        // shift gaps, durationSeconds is the wall-clock envelope (e.g., 32h)
+        // while workDurationSeconds is the work time (e.g., 16h).
+        workDurationSeconds: task.duration?.duration() ?? null,
+        // segments = the on-shift slices of the assignment envelope. Populated
+        // only for FLOAT tasks; null for FIXED. Drawn from the first scheduled
+        // capacity resource (canonical). UI uses these to render N Gantt
+        // blocks per task instead of one envelope-spanning block.
+        segments: this.extractTaskSegments(task, landscape),
         assignedResources,
         score: task.score === Number.MAX_VALUE ? null : task.score,
         feasible: isScheduled,
@@ -3666,6 +3676,30 @@ export class CTPService {
     }
 
     return result;
+  }
+
+  // Pull the working-time segments from this task's assignment on its first
+  // scheduled capacity resource. Returns null for FIXED tasks (segments
+  // never populated) and unscheduled tasks. Returns ISO-formatted segments
+  // for FLOAT tasks. UI consumes these to render per-shift Gantt blocks.
+  private extractTaskSegments(task: any, landscape: any): { start: string; end: string }[] | null {
+    if (!task.scheduled) return null;
+    const capRes = task.capacityResources?.at?.(0) ?? task.capacityResources?.[0];
+    const resourceKey = capRes?.scheduledResource;
+    if (!resourceKey) return null;
+    const resource = landscape.resources?.getEntity(resourceKey);
+    if (!resource?.assignments) return null;
+    let node = resource.assignments.head;
+    while (node) {
+      if (node.data?.name === task.key && node.data?.segments) {
+        return node.data.segments.map((s: any) => ({
+          start: CTPDateTime.toDateTime(s.startW).toISO()!,
+          end: CTPDateTime.toDateTime(s.endW).toISO()!,
+        }));
+      }
+      node = node.next;
+    }
+    return null;
   }
 
   private serializeInfeasibilityReport(report: any): any {
