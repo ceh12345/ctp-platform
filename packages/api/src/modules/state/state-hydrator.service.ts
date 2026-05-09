@@ -24,6 +24,7 @@ import {
   CTPOrder,
   IValidationError,
   makeValidationError,
+  CTPTaskStateConstants,
 } from '@ctp/engine';
 import { ConfigService } from '../../config/config.service';
 import {
@@ -362,6 +363,16 @@ export class StateHydratorService {
         const scheduled = new CTPInterval();
         scheduled.fromDates(ss, se, 1);
         task.scheduled = scheduled;
+        // A pinned task is at a placement by definition. Reflect that in
+        // task.state so the commitmentLevel deriver classifies the task by
+        // its lifecycle (planned / running / completed) rather than treating
+        // pinned itself as a status. Pinned is a parallel orthogonal flag.
+        task.state = CTPTaskStateConstants.SCHEDULED;
+      } else if (task.pinned) {
+        // Edge case: pinned=true but no scheduledStart/End. Preserve the
+        // pinned flag (source data fidelity) but leave state as default.
+        // Doesn't happen in current Stafford data; defensive log for future.
+        this.logger.warn(`Task ${task.key} marked pinned but missing scheduledStart/End; state left as default`);
       }
 
       // Duration

@@ -5699,31 +5699,37 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                 items.push(<div key="sep1" style={{ height: 1, background: C.border, margin: '2px 0' }} />);
               }
 
-              // Commitment actions by level
+              // Commitment actions by level. Pinned is now an orthogonal flag
+              // on task.pinned, not a separate level. A pinned task has
+              // level='planned' (it has a placement, just not yet started)
+              // and we branch by task.pinned within the planned case.
               switch (level) {
                 case 'planned':
-                  if (onApiPin) items.push(
-                    <button key="pin" onClick={async () => { setContextMenu(null); await onApiPin(task.key, true); }}
-                      style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>📌 Pin</button>
-                  );
-                  if (onApiUnschedule) items.push(
-                    <button key="unsched" onClick={async () => { setContextMenu(null); await onApiUnschedule(task.key); }}
-                      style={{ ...menuBtnStyle, color: C.red }} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>↩ Unschedule</button>
-                  );
-                  if (onExcludeTask) items.push(
-                    <button key="exclude" onClick={() => { onExcludeTask(task.key, true); setContextMenu(null); }}
-                      style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>✕ Exclude</button>
-                  );
-                  break;
-                case 'pinned':
-                  if (onApiPin) items.push(
-                    <button key="unpin" onClick={async () => { setContextMenu(null); await onApiPin(task.key, false); }}
-                      style={{ ...menuBtnStyle, color: C.yellow }} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>📌 Unpin</button>
-                  );
-                  if (onToolbarAction) items.push(
-                    <button key="dispatch" onClick={() => { setContextMenu(null); onToolbarAction('dispatch', [task.key]); }}
-                      style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>🚀 Dispatch</button>
-                  );
+                  if (task.pinned === true) {
+                    // Pinned planned task — offer unpin / dispatch
+                    if (onApiPin) items.push(
+                      <button key="unpin" onClick={async () => { setContextMenu(null); await onApiPin(task.key, false); }}
+                        style={{ ...menuBtnStyle, color: C.yellow }} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>📌 Unpin</button>
+                    );
+                    if (onToolbarAction) items.push(
+                      <button key="dispatch" onClick={() => { setContextMenu(null); onToolbarAction('dispatch', [task.key]); }}
+                        style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>🚀 Dispatch</button>
+                    );
+                  } else {
+                    // Unpinned planned task — offer pin / unschedule / exclude
+                    if (onApiPin) items.push(
+                      <button key="pin" onClick={async () => { setContextMenu(null); await onApiPin(task.key, true); }}
+                        style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>📌 Pin</button>
+                    );
+                    if (onApiUnschedule) items.push(
+                      <button key="unsched" onClick={async () => { setContextMenu(null); await onApiUnschedule(task.key); }}
+                        style={{ ...menuBtnStyle, color: C.red }} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>↩ Unschedule</button>
+                    );
+                    if (onExcludeTask) items.push(
+                      <button key="exclude" onClick={() => { onExcludeTask(task.key, true); setContextMenu(null); }}
+                        style={menuBtnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>✕ Exclude</button>
+                    );
+                  }
                   break;
                 case 'dispatched':
                   if (onToolbarAction) {
@@ -6343,6 +6349,11 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
 
 function deriveTaskStatus(tk: any, taskPins?: Record<string, boolean>, taskExcludes?: Record<string, boolean>,
   taskUnschedules?: Set<string>, orderModes?: Record<string, string>): string {
+  // Pinned is intentionally NOT a status here — it's an orthogonal flag.
+  // A pinned task classifies by its lifecycle (planned / running / completed)
+  // and the pinned dimension is filtered separately in the UI.
+  // See also: ctp.service.ts:applyCommitmentStack (engine deriver).
+
   // Commitment-level statuses from API
   if (tk.commitmentLevel === 'completed') return 'completed';
   if (tk.commitmentLevel === 'running') return 'running';
@@ -6352,8 +6363,6 @@ function deriveTaskStatus(tk: any, taskPins?: Record<string, boolean>, taskExclu
   const isExcluded = taskExcludes?.[tk.key] || false;
   const orderMode = orderModes?.[tk.orderRef] || 'INCLUDE';
   if (isExcluded || orderMode === 'EXCLUDE') return 'excluded';
-  const isPinned = taskPins?.[tk.key] || false;
-  if (isPinned || orderMode === 'LOCKED') return 'pinned';
   if (taskUnschedules?.has?.(tk.key)) return 'unscheduled';
   if (tk.horizonBucket === 'beyond') return 'deferred';
   if (tk.feasible && tk.scheduledStart) return 'planned';
@@ -6384,11 +6393,11 @@ const TASK_STATUS_CONFIG: Record<string, { label: string; color: string; icon: s
 };
 
 function deriveDisplayLevel(task: any): string {
+  // Pinned is orthogonal — not a status. Falls through to lifecycle classification.
   if (task.commitmentLevel) return task.commitmentLevel;
   if (task.excluded || task._status === 'excluded') return 'excluded';
   if (!task.feasible && task.errors?.length > 0) return 'infeasible';
   if (task.dispatched) return 'dispatched';
-  if (task.pinned) return 'pinned';
   if (task.feasible && task.scheduledStart) return 'planned';
   return 'unscheduled';
 }
@@ -6405,27 +6414,31 @@ function taskStatusBadge(tk: any) {
    COMMITMENT STATE MACHINE
    ═══════════════════════════════════════════════════════════════ */
 
-// State machine: unscheduled→planned→pinned→dispatched→running→completed (on_hold branch)
+// State machine: unscheduled→planned→(pin)→dispatched→running→completed (on_hold branch).
+// Pinned is now an orthogonal flag — read from task.pinned boolean rather than
+// from `level` which only reflects lifecycle state.
 
 function canTransition(task: any, action: string): { allowed: boolean; reason?: string } {
   const level = task._status || task.commitmentLevel || deriveDisplayLevel(task);
+  const isPinned = task.pinned === true;
 
   switch (action) {
     case 'unschedule':
       if (level === 'running') return { allowed: false, reason: 'Cannot unschedule a running task' };
       if (level === 'on_hold') return { allowed: false, reason: 'Cannot unschedule a task on hold' };
       if (level === 'dispatched') return { allowed: false, reason: 'Revert to pinned first — materials have been pulled' };
-      if (level === 'pinned') return { allowed: false, reason: 'Unpin first, then unschedule' };
+      if (isPinned) return { allowed: false, reason: 'Unpin first, then unschedule' };
       if (level === 'completed') return { allowed: false, reason: 'Cannot unschedule a completed task' };
       return { allowed: true };
     case 'pin':
       if (level !== 'planned') return { allowed: false, reason: 'Only planned tasks can be pinned' };
+      if (isPinned) return { allowed: false, reason: 'Task is already pinned' };
       return { allowed: true };
     case 'unpin':
-      if (level !== 'pinned') return { allowed: false, reason: 'Task is not pinned' };
+      if (!isPinned) return { allowed: false, reason: 'Task is not pinned' };
       return { allowed: true };
     case 'dispatch':
-      if (level !== 'pinned') return { allowed: false, reason: 'Pin the task first, then dispatch' };
+      if (!isPinned) return { allowed: false, reason: 'Pin the task first, then dispatch' };
       return { allowed: true };
     case 'revert':
       if (level !== 'dispatched') return { allowed: false, reason: 'Only dispatched tasks can be reverted' };
@@ -6638,9 +6651,9 @@ function TaskBulkActions({ filteredTasks, taskPins: _taskPins, taskExcludes: _ta
     const orderMode = orderModes[t.orderRef] || 'INCLUDE';
     return orderMode !== 'LOCKED';
   });
-  // Use _status (commitment-aware) to determine what can be unscheduled/pinned
+  // Use _status (commitment-aware) for lifecycle, t.pinned boolean for pinned dimension.
   const planned = actionable.filter(t => t._status === 'planned');
-  const pinnedTasks = actionable.filter(t => t._status === 'pinned');
+  const pinnedTasks = actionable.filter(t => t.pinned === true);
   const unscheduled = actionable.filter(t => t._status === 'unscheduled');
   const infeasible = actionable.filter(t => t._status === 'infeasible');
   const excludedCount = actionable.filter(t => t._status === 'excluded').length;
@@ -6999,6 +7012,22 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
     return Array.from(types).sort();
   }, [enriched]);
 
+  // Default activeTypeChips is {'PROCESS'} which works for tenants whose
+  // tasks have type='PROCESS'. For tenants where task types are different
+  // (e.g., Stafford uses 'STANDARD' / 'SUBCONTRACT_DAYS'), the default
+  // matches nothing and the entire status-chip row renders empty until the
+  // user clicks "All". Auto-correct on first load when the active set has
+  // no intersection with the actual data types — fall back to all types
+  // so tasks render and status counts populate at startup.
+  useEffect(() => {
+    if (distinctTypes.length === 0) return;
+    const intersection = [...activeTypeChips].filter(t => distinctTypes.includes(t));
+    if (intersection.length === 0) {
+      setActiveTypeChips(new Set(distinctTypes));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [distinctTypes]);
+
   const allTypesActive = activeTypeChips.size >= distinctTypes.length;
   const toggleTypeChip = useCallback((key: string) => {
     setActiveTypeChips(prev => {
@@ -7014,6 +7043,8 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   }, [allTypesActive, distinctTypes]);
 
   const [priorityFilter, setPriorityFilter] = useState('all');
+  // Pinned filter: 'all' | 'pinned' | 'unpinned' — orthogonal to status.
+  const [pinnedFilter, setPinnedFilter] = useState<'all' | 'pinned' | 'unpinned'>('all');
 
   const typeFiltered = useMemo(() => {
     if (activeTypeChips.size === 0) return [];
@@ -7072,8 +7103,16 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
         });
       });
     }
+    // Pinned filter — orthogonal to lifecycle. Intersection (AND) with the
+    // other filters: 'pinned' shows only pinned tasks, 'unpinned' the opposite,
+    // 'all' applies no further filter.
+    if (pinnedFilter === 'pinned') {
+      filtered = filtered.filter(tk => tk.pinned === true);
+    } else if (pinnedFilter === 'unpinned') {
+      filtered = filtered.filter(tk => tk.pinned !== true);
+    }
     return filtered;
-  }, [typeFiltered, hierarchyResources, attrFilters, resAttrMap]);
+  }, [typeFiltered, hierarchyResources, attrFilters, resAttrMap, pinnedFilter]);
 
   const filter = useFilter(hierarchyFiltered, { statusDeriver });
 
@@ -7134,20 +7173,21 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   const dispatchedCount = typeFiltered.filter(tk => tk._status === 'dispatched').length;
   const plannedCount = typeFiltered.filter(tk => tk._status === 'planned' || tk._status === 'scheduled').length;
   const unscheduledCount = typeFiltered.filter(tk => tk._status === 'unscheduled').length;
-  const pinnedCount = typeFiltered.filter(tk => tk._status === 'pinned').length;
   const infeasibleCount = typeFiltered.filter(tk => tk._status === 'infeasible').length;
   const excludedCount = typeFiltered.filter(tk => tk._status === 'excluded').length;
   const rushCount = typeFiltered.filter(tk => (tk.priority ?? 100) <= 10).length;
   const pastDueCount = typeFiltered.filter(tk => tk._status === 'past_due').length;
   const deferredCount = typeFiltered.filter(tk => tk._status === 'deferred').length;
 
+  // Pinned is an orthogonal flag, not a lifecycle status — surfaced as a
+  // separate filter (below) instead of a status chip. Pinned tasks classify
+  // by their actual lifecycle (planned / running / completed).
   const statusOptions = [
     { value: 'all', label: 'All', count: typeFiltered.length },
     { value: 'completed', label: '✔ Done', color: '#06b6d4', count: completedCount },
     { value: 'running', label: '● Running', color: '#ef4444', count: runningCount },
     { value: 'on_hold', label: '⚠ On Hold', color: '#f59e0b', count: onHoldCount },
     { value: 'dispatched', label: '◆ Dispatched', color: '#f97316', count: dispatchedCount },
-    { value: 'pinned', label: '📌 Pinned', color: '#3b82f6', count: pinnedCount },
     { value: 'planned', label: '✓ Planned', color: '#22c55e', count: plannedCount },
     { value: 'unscheduled', label: '○ Unsched', color: '#9ca3af', count: unscheduledCount },
     { value: 'infeasible', label: '✕ Infeasible', color: '#ef4444', count: infeasibleCount },
@@ -7156,6 +7196,17 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
     { value: 'excluded', label: '— Excluded', color: '#475569', count: excludedCount },
     { value: 'rush', label: '🔥 Rush', color: '#f97316', count: rushCount },
   ].filter(opt => opt.value === 'all' || opt.count > 0);
+
+  // Pinned filter — orthogonal to status. Three values: 'all' (no filter),
+  // 'pinned' (pinned only), 'unpinned' (unpinned only). Combines with
+  // status filter via intersection (AND).
+  const pinnedTotal   = typeFiltered.filter(tk => tk.pinned).length;
+  const unpinnedTotal = typeFiltered.length - pinnedTotal;
+  const pinnedFilterOptions = [
+    { value: 'all',      label: 'All',          count: typeFiltered.length },
+    { value: 'pinned',   label: '📌 Pinned',    color: '#3b82f6', count: pinnedTotal },
+    { value: 'unpinned', label: '○ Unpinned',   color: '#9ca3af', count: unpinnedTotal },
+  ];
 
   const hasActions = !!(onPinTask || onExcludeTask || onUnscheduleTask);
   const safePins = taskPins || {};
@@ -7292,6 +7343,14 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
           </>
         )}
       </div>
+
+      {/* Row 1.5: PINNED — orthogonal to status, only render if any pinned tasks exist */}
+      {pinnedTotal > 0 && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: C.textDim, minWidth: 44, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pinned</span>
+          <StatusToggles options={pinnedFilterOptions} active={pinnedFilter} onChange={(v) => setPinnedFilter(v as 'all' | 'pinned' | 'unpinned')} />
+        </div>
+      )}
 
       {/* Row 2: WHEN */}
       {onTimeFilterChange && (
@@ -7526,7 +7585,7 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
                   cursor: onTaskClick ? 'pointer' : 'default',
                   opacity: tk._status === 'excluded' ? 0.4 : 1,
                   borderLeft: taskUnschedules?.has(tk.key) ? `3px solid ${C.red}` :
-                              tk._status === 'pinned' ? `3px solid ${C.yellow}` :
+                              tk.pinned === true ? `3px solid ${C.yellow}` :
                               tk._orderMode === 'LOCKED' ? `3px solid ${C.yellow}` :
                               '3px solid transparent',
                   ...(selectedTasks?.has(tk.key) && { background: `${C.accent}0a` }),

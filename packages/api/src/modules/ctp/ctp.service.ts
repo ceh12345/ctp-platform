@@ -2847,6 +2847,13 @@ export class CTPService {
    * Physical anchoring is handled by basescheduler.anchorCommittedTasks().
    */
   private applyCommitmentStack(landscape: SchedulingLandscape): void {
+    // NOTE: pinned is intentionally NOT used in lifecycle classification.
+    // A pinned task can be in any lifecycle state (scheduled-not-started,
+    // running, completed). pinned-ness is an orthogonal boolean flag
+    // exposed via task.pinned and surfaced separately in the UI. The
+    // hydrator (state-hydrator.service.ts) ensures task.state=SCHEDULED
+    // when pinning, so pinned tasks classify as 'planned' here unless
+    // their wipstate has advanced.
     landscape.tasks.forEach(task => {
       if (task.wipstate === CTPWipStateConstants.IN_PROCESS) {
         task.commitmentLevel = 'running';
@@ -2856,8 +2863,6 @@ export class CTPService {
         task.commitmentLevel = 'completed';
       } else if (task.dispatched) {
         task.commitmentLevel = 'dispatched';
-      } else if (task.pinned) {
-        task.commitmentLevel = 'pinned';
       } else if (task.state === CTPTaskStateConstants.SCHEDULED) {
         task.commitmentLevel = 'planned';
       } else {
