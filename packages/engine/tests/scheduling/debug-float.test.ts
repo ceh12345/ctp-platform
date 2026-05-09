@@ -11,6 +11,49 @@ function fmt(sec: number): string {
   return dt.toFormat('ccc LLL dd HH:mm');
 }
 
+describe('FLOAT debug — backward direction', () => {
+  // Diagnostic for the deferred backward-FLOAT story. Unskip + tweak prints
+  // when investigating why the picker selects window.endW instead of
+  // ranges.lst. Today the matrix is empty after solve (logs in post-solve
+  // dumps); investigation needs in-engine instrumentation or a different
+  // entry point.
+  it.skip('dumps CTPStartTime entries + matrix for backward 16h FLOAT to deadline Fri 15', () => {
+    const horizon = makeHorizon(monday('2026-04-13'), 14);
+    const resource = makeResourceWithShifts('M1', horizon, { startHour: 7, endHour: 15 });
+    const fridayDeadline = monday('2026-04-13').plus({ days: 4 }).set({ hour: 15 });
+    const task = makeFloatTask({
+      key: 'T1', durationHours: 16, resourceKey: 'M1', horizon,
+      windowEnd: fridayDeadline,
+    });
+
+    const result = solveScenario({
+      horizon, resources: [resource], tasks: [task],
+      direction: -1,
+      scoringRule: 'LatestStartTimeScoringRule',
+    });
+    const p = result.get('T1')!;
+    console.log('\n=== Backward placement ===');
+    console.log(`  start: ${p.start?.toISO()}  weekday=${p.start?.weekday} hour=${p.start?.hour}`);
+    console.log(`  end:   ${p.end?.toISO()}  weekday=${p.end?.weekday} hour=${p.end?.hour}`);
+    console.log(`  span:  ${(p.endW - p.startW)/3600}h wall-clock`);
+
+    // Inspect the FLOAT range stored on the resource's matrix
+    console.log('\n=== FLOAT ranges in matrix ===');
+    const floatList = resource.available?.matrix?.index(CTPDurationConstants.FLOAT_DURATION);
+    let r = floatList?.head;
+    let i = 0;
+    while (r && i < 5) {
+      const range: any = r.data;
+      console.log(`  range[${i}]: startW=${fmt(range.startW)} endW=${fmt(range.endW)} qty=${range.qty}`);
+      console.log(`    overallDuration=${range.overallDuration}s (=${range.overallDuration/3600}h)`);
+      console.log(`    values.est=${fmt(range.values.est)}, values.eet=${fmt(range.values.eet)}`);
+      console.log(`    values.lst=${fmt(range.values.lst)}, values.lett=${fmt(range.values.lett)}`);
+      console.log(`    valid=${range.valid}`);
+      r = r.next; i++;
+    }
+  });
+});
+
 describe('FLOAT debug', () => {
   it('dumps the resource availability + task duration + matrix state', () => {
     const horizon = makeHorizon(monday('2026-04-13'), 14);
