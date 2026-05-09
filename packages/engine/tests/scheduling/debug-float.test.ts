@@ -12,11 +12,9 @@ function fmt(sec: number): string {
 }
 
 describe('FLOAT debug — backward direction', () => {
-  // Diagnostic for the deferred backward-FLOAT story. Unskip + tweak prints
-  // when investigating why the picker selects window.endW instead of
-  // ranges.lst. Today the matrix is empty after solve (logs in post-solve
-  // dumps); investigation needs in-engine instrumentation or a different
-  // entry point.
+  // Diagnostic dump for backward FLOAT. Backward FLOAT now works correctly
+  // (post afd129e window-clip fix) — unskip to inspect CTPStartTime entries
+  // and matrix state when extending to multi-resource or chain-FLOAT cases.
   it.skip('dumps CTPStartTime entries + matrix for backward 16h FLOAT to deadline Fri 15', () => {
     const horizon = makeHorizon(monday('2026-04-13'), 14);
     const resource = makeResourceWithShifts('M1', horizon, { startHour: 7, endHour: 15 });
