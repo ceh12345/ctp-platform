@@ -23,6 +23,8 @@ import {
   makeHorizon, makeResourceWithShifts, makeFloatTask, makeFixedTask,
   solveScenario, monday,
 } from '../helpers/float-helpers';
+import { ScheduleEngine } from '../../Engines/scheduleengine';
+import { CTPTaskStateConstants } from '../../Models/Core/constants';
 
 describe('FLOAT task duration handling', () => {
 
@@ -261,6 +263,122 @@ describe('FLOAT task duration handling', () => {
 
     expect(p.scheduled).toBe(false);
     expect(p.errors.length).toBeGreaterThan(0);
+  });
+
+  it('sparse calendar: 16h FLOAT on Monday-only resource accumulates across two weeks', () => {
+    // Resource has shifts only on Mondays (workdays=[1]). A 16h FLOAT task
+    // consumes Mon Apr 13's 8h shift, skips the rest of the week + Sat/Sun
+    // + the next week's Tue-Fri (none of which have shifts), and finishes
+    // on Mon Apr 20's shift. End = Mon Apr 20 15:00.
+    const horizon = makeHorizon(monday('2026-04-13'), 14);
+    const resource = makeResourceWithShifts('M1', horizon, {
+      startHour: 7, endHour: 15, workdays: [1],
+    });
+    const task = makeFloatTask({
+      key: 'T1', durationHours: 16, resourceKey: 'M1', horizon,
+    });
+
+    const result = solveScenario({ horizon, resources: [resource], tasks: [task] });
+    const p = result.get('T1')!;
+
+    expect(p.scheduled).toBe(true);
+    // Starts Mon Apr 13 07:00
+    expect(p.start!.weekday).toBe(1);
+    expect(p.start!.hour).toBe(7);
+    expect(p.start!.day).toBe(13);
+    // Ends Mon Apr 20 15:00 — a full week later, after consuming the second Monday's shift
+    expect(p.end!.weekday).toBe(1);
+    expect(p.end!.hour).toBe(15);
+    expect(p.end!.day).toBe(20);
+    // Wall-clock span: Mon Apr 13 7am → Mon Apr 20 3pm = 7 days + 8h = 176h
+    expect(p.endW - p.startW).toBe(176 * 3600);
+
+    const a = resource.assignments?.head?.data;
+    expect(a!.segments).not.toBeNull();
+    expect(a!.segments!.length).toBe(2);
+    expect(a!.workDuration()).toBe(16 * 3600);
+    expect(a!.duration()).toBe(176 * 3600);
+  });
+
+  it('infeasible by horizon: 48h FLOAT on a 5-day calendar (40h) cannot be scheduled', () => {
+    // 5-day horizon (Mon-Fri only) provides 5 × 8h = 40h of working time.
+    // A 48h FLOAT task exceeds total available time and must be rejected.
+    const horizon = makeHorizon(monday('2026-04-13'), 5);
+    const resource = makeResourceWithShifts('M1', horizon, { startHour: 7, endHour: 15 });
+    const task = makeFloatTask({
+      key: 'T1', durationHours: 48, resourceKey: 'M1', horizon,
+    });
+
+    const result = solveScenario({ horizon, resources: [resource], tasks: [task] });
+    const p = result.get('T1')!;
+
+    expect(p.scheduled).toBe(false);
+    expect(p.errors.length).toBeGreaterThan(0);
+  });
+
+  it('holiday in middle: 16h FLOAT skips Wednesday and finishes Thursday', () => {
+    // Calendar has Mon, Tue, Thu, Fri shifts (workdays=[1,2,4,5]) — no
+    // Wednesday. A 16h FLOAT task starting Tuesday consumes Tue 8h,
+    // skips the Wed holiday, then 8h Thursday. End = Thu 15:00.
+    const horizon = makeHorizon(monday('2026-04-13'), 14);
+    const resource = makeResourceWithShifts('M1', horizon, {
+      startHour: 7, endHour: 15, workdays: [1, 2, 4, 5],
+    });
+    const tuesdayStart = monday('2026-04-13').plus({ days: 1 }).set({ hour: 7 });
+    const task = makeFloatTask({
+      key: 'T1', durationHours: 16, resourceKey: 'M1', horizon,
+      windowStart: tuesdayStart,
+    });
+
+    const result = solveScenario({ horizon, resources: [resource], tasks: [task] });
+    const p = result.get('T1')!;
+
+    expect(p.scheduled).toBe(true);
+    expect(p.start!.weekday).toBe(2); // Tuesday
+    expect(p.start!.hour).toBe(7);
+    expect(p.end!.weekday).toBe(4); // Thursday
+    expect(p.end!.hour).toBe(15);
+
+    // Segments: Tue 7-15 + Thu 7-15 (NO Wed entry — holiday skipped)
+    const a = resource.assignments?.head?.data;
+    expect(a!.segments!.length).toBe(2);
+    expect(a!.segments![0].endW - a!.segments![0].startW).toBe(8 * 3600);
+    expect(a!.segments![1].endW - a!.segments![1].startW).toBe(8 * 3600);
+    expect(a!.workDuration()).toBe(16 * 3600);
+    // Envelope spans Tue → Thu = 56h wall-clock (includes Wed holiday gap)
+    expect(a!.duration()).toBe(56 * 3600);
+  });
+
+  it('round-trip: schedule then unschedule clears assignments and segments', () => {
+    // After scheduling a FLOAT task, the resource has one assignment with
+    // populated segments. Unschedule must remove the assignment, clear
+    // task.scheduled, and reset task.state to NOT_SCHEDULED.
+    const horizon = makeHorizon(monday('2026-04-13'), 14);
+    const resource = makeResourceWithShifts('M1', horizon, { startHour: 7, endHour: 15 });
+    const task = makeFloatTask({
+      key: 'T1', durationHours: 16, resourceKey: 'M1', horizon,
+    });
+
+    solveScenario({ horizon, resources: [resource], tasks: [task] });
+
+    // Pre-unschedule: scheduled, one assignment with segments
+    expect(task.state).toBe(CTPTaskStateConstants.SCHEDULED);
+    expect(task.scheduled).not.toBeNull();
+    expect(resource.assignments?.size()).toBe(1);
+    const a = resource.assignments!.head!.data;
+    expect(a.segments).not.toBeNull();
+    expect(a.segments!.length).toBe(2);
+
+    // Unschedule via the engine
+    const engine = new ScheduleEngine();
+    engine.removeTaskFromResource(resource, task);
+    task.state = CTPTaskStateConstants.NOT_SCHEDULED;
+    task.scheduled = null;
+
+    // Post-unschedule: clean state
+    expect(task.state).toBe(CTPTaskStateConstants.NOT_SCHEDULED);
+    expect(task.scheduled).toBeNull();
+    expect(resource.assignments?.size()).toBe(0);
   });
 
   it('variable shift pattern: 10h FLOAT spans uneven shifts and ends correctly', () => {
