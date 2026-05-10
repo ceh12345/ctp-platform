@@ -24,7 +24,7 @@ import { CTPDuration, CTPInterval } from '../../Models/Core/window';
 import { CTPAssignments, CTPAvailable } from '../../Models/Intervals/intervals';
 import { CTPDurationConstants, CTPResourceConstants } from '../../Models/Core/constants';
 import { CTPStateChanges } from '../../Models/Entities/statechange';
-import { CTPProcesses } from '../../Models/Entities/process';
+import { CTPProcess, CTPProcesses } from '../../Models/Entities/process';
 import { CTPAppSettings } from '../../Models/Entities/appsettings';
 import { CTPScheduler } from '../../AI/Schedulers/defaultscheduler';
 import { CTPScoring, CTPScoringConfiguration } from '../../Models/Entities/score';
@@ -157,8 +157,24 @@ export function solveScenario(args: {
   const settings = new CTPAppSettings();
   settings.scheduleDirection = args.direction ?? 1; // FORWARD by default
 
+  // Auto-register chain processes from task linkIds. The scheduler needs a
+  // CTPProcess entry per unique chain name for chain-aware scheduling to fire.
+  const processes = new CTPProcesses();
+  const chainsByName = new Map<string, CTPProcess>();
+  args.tasks.forEach(t => {
+    const name = t.linkId?.name;
+    if (!name) return;
+    let chain = chainsByName.get(name);
+    if (!chain) {
+      chain = new CTPProcess(name);
+      chainsByName.set(name, chain);
+      processes.addEntity(chain);
+    }
+    chain.tasks?.add(t);
+  });
+
   const scheduler = new CTPScheduler();
-  scheduler.initLandscape(args.horizon, ctpTasks, ctpResources, new CTPStateChanges(), new CTPProcesses());
+  scheduler.initLandscape(args.horizon, ctpTasks, ctpResources, new CTPStateChanges(), processes);
 
   const scoring = new CTPScoring('Test', 'test');
   scoring.addConfig(new CTPScoringConfiguration(

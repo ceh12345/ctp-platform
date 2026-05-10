@@ -25,6 +25,9 @@ import {
 } from '../helpers/float-helpers';
 import { ScheduleEngine } from '../../Engines/scheduleengine';
 import { CTPTaskStateConstants } from '../../Models/Core/constants';
+import { CTPAssignment } from '../../Models/Core/window';
+import { CTPDateTime } from '../../Models/Core/date';
+import { CTPLinkId } from '../../Models/Core/linkid';
 
 describe('FLOAT task duration handling', () => {
 
@@ -347,6 +350,82 @@ describe('FLOAT task duration handling', () => {
     expect(a!.workDuration()).toBe(16 * 3600);
     // Envelope spans Tue → Thu = 56h wall-clock (includes Wed holiday gap)
     expect(a!.duration()).toBe(56 * 3600);
+  });
+
+  it('chained FLOAT contention: T2 (successor of T1) books Tuesday after T1 takes Monday', () => {
+    // Two 8h FLOAT tasks on the same resource, chained so T2 succeeds T1
+    // back-to-back (maxGap=0). With Mon-Fri 8h shifts, T1 consumes Monday
+    // and T2 picks up Tuesday's shift — back-to-back across the overnight
+    // gap. Verifies that booking T1 makes Monday unavailable for T2 AND
+    // that the chain successor honors FLOAT's working-time end of T1.
+    const horizon = makeHorizon(monday('2026-04-13'), 14);
+    const resource = makeResourceWithShifts('M1', horizon, { startHour: 7, endHour: 15 });
+    const t1 = makeFloatTask({ key: 'T1', durationHours: 8, resourceKey: 'M1', horizon });
+    const t2 = makeFloatTask({ key: 'T2', durationHours: 8, resourceKey: 'M1', horizon });
+    t1.linkId = new CTPLinkId('CHAIN-A', 'ES', '', null);
+    t2.linkId = new CTPLinkId('CHAIN-A', 'ES', 'T1', 0); // maxGap=0 → back-to-back
+    t1.sequence = 1; t1.rank = 1;
+    t2.sequence = 2; t2.rank = 2;
+
+    const result = solveScenario({ horizon, resources: [resource], tasks: [t1, t2] });
+    const p1 = result.get('T1')!;
+    const p2 = result.get('T2')!;
+
+    expect(p1.scheduled).toBe(true);
+    expect(p2.scheduled).toBe(true);
+
+    // T1 books Monday
+    expect(p1.start!.weekday).toBe(1);
+    expect(p1.start!.hour).toBe(7);
+    expect(p1.end!.weekday).toBe(1);
+    expect(p1.end!.hour).toBe(15);
+
+    // T2 starts at T1's wall-clock end (Mon 15:00 — back-to-back via maxGap=0).
+    // Working time accumulates across the overnight gap into Tue's shift.
+    expect(p2.start!.weekday).toBe(1); // Monday (15:00 is end of Mon shift)
+    expect(p2.start!.hour).toBe(15);
+    expect(p2.end!.weekday).toBe(2);   // Tuesday
+    expect(p2.end!.hour).toBe(15);
+    // T2's envelope spans the overnight gap; workDuration is 8h
+    expect(p2.endW - p2.startW).toBe(24 * 3600); // wall-clock
+    // Two distinct assignments on the resource
+    expect(resource.assignments?.size()).toBe(2);
+    // T2's segments: only the on-shift slice (Tue 7-15), since Mon 15:00 is
+    // exactly the end of Mon's shift — the envelope's leading sliver is empty.
+    let t2Assignment: any = null;
+    let n = resource.assignments!.head;
+    while (n) {
+      if (n.data.name === 'T2') { t2Assignment = n.data; break; }
+      n = n.next;
+    }
+    expect(t2Assignment).not.toBeNull();
+    expect(t2Assignment.workDuration()).toBe(8 * 3600);
+  });
+
+  it('pinned FLOAT segments computed at the booking position', () => {
+    // Lightweight check: when an assignment is created via the booking path
+    // for a FLOAT task starting at a specific time, its segments reflect the
+    // calendar at that position. This validates that pinned/dispatched FLOAT
+    // tasks (which book directly via basescheduler.applyCommitmentStack)
+    // get the same segment treatment as solver-placed FLOAT tasks.
+    //
+    // Direct test of CTPAssignment.segmentsFromCalendar — the same helper
+    // used at every booking site — over a multi-shift envelope.
+    const horizon = makeHorizon(monday('2026-04-13'), 14);
+    const resource = makeResourceWithShifts('M1', horizon, { startHour: 7, endHour: 15 });
+
+    const monday7am = monday('2026-04-13').set({ hour: 7 });
+    const tuesday3pm = monday('2026-04-13').plus({ days: 1 }).set({ hour: 15 });
+    const startW = CTPDateTime.fromDateTime(monday7am);
+    const endW = CTPDateTime.fromDateTime(tuesday3pm);
+
+    // Same helper basescheduler / scheduleengine call for pinned tasks.
+    const segments = CTPAssignment.segmentsFromCalendar(resource.original, startW, endW);
+
+    // Mon 7-15 (8h) + Tue 7-15 (8h) — overnight gap excluded
+    expect(segments.length).toBe(2);
+    expect(segments[0].endW - segments[0].startW).toBe(8 * 3600);
+    expect(segments[1].endW - segments[1].startW).toBe(8 * 3600);
   });
 
   it('round-trip: schedule then unschedule clears assignments and segments', () => {
