@@ -1196,23 +1196,22 @@
   },
   {
     "key": "T-FLOAT-MACHINE",
-    "name": "Machine Float Part (WO-FLOAT)",
+    "name": "FLOAT Demo: 16h spans 2 shifts",
     "type": "PROCESS",
     "process": "cnc-machine",
     "windowStart": "2026-02-10T07:00:00Z",
-    "windowEnd": "2026-02-20T07:00:00Z",
-    "durationSeconds": 7200,
+    "windowEnd": "2026-02-25T00:00:00Z",
+    "durationSeconds": 57600,
     "durationQty": 1,
-    "durationType": 0,
+    "durationType": 1,
     "capacityResources": [
       {
-        "resource": "CNC-02",
+        "resource": "FLOAT-DEMO",
         "isPrimary": true,
         "qty": 1,
         "mode": "ON",
         "preferences": [
-          "CNC-01",
-          "CNC-02"
+          "FLOAT-DEMO"
         ]
       }
     ],
@@ -1268,26 +1267,26 @@
   },
   {
     "key": "T-FLOAT-ASSEMBLE",
-    "name": "Assemble Float Widget (WO-FLOAT)",
+    "name": "FLOAT Demo: 12h skips weekend (independent)",
     "type": "PROCESS",
     "process": "assembly",
-    "windowStart": "2026-02-10T07:00:00Z",
-    "windowEnd": "2026-02-20T07:00:00Z",
-    "durationSeconds": 3600,
+    "windowStart": "2026-02-13T07:00:00Z",
+    "windowEnd": "2026-02-25T00:00:00Z",
+    "durationSeconds": 43200,
     "durationQty": 1,
-    "durationType": 0,
+    "durationType": 1,
     "capacityResources": [
       {
-        "resource": "ASM-01",
+        "resource": "FLOAT-DEMO",
         "isPrimary": true,
         "qty": 1,
         "mode": "ON"
       }
     ],
     "linkId": {
-      "name": "WO-FLOAT",
-      "type": "END",
-      "prevLink": "T-FLOAT-MACHINE"
+      "name": "WO-FLOAT-2",
+      "type": "START",
+      "prevLink": ""
     },
     "outputProductKey": "PROD-WC",
     "outputQty": 100,
