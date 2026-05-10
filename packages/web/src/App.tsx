@@ -5298,63 +5298,103 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                     const flashAnim = isReplayFlash && replay?.flashAction;
                     const isCritical = showCriticalPath && t.isOnCriticalPath;
                     const isDimmed = showCriticalPath && !t.isOnCriticalPath;
+                    // FLOAT tasks ship segments[]: working-time slices of the
+                    // wall-clock envelope. Render one block per segment when
+                    // present, with a thin connector line through the gap to
+                    // preserve the "this is one task" reading. FIXED tasks
+                    // and single-shift FLOATs keep the original single-block
+                    // visual (segments=null or length<=1).
+                    const hasSegments = Array.isArray(t.segments) && t.segments.length > 1;
+                    const blocks = hasSegments
+                      ? t.segments.map((s: any, i: number) => {
+                          const sl = toPct(s.start);
+                          const sr = toPct(s.end);
+                          return {
+                            left: sl,
+                            width: Math.max(sr - sl, 0.3),
+                            isFirst: i === 0,
+                            isLast: i === t.segments.length - 1,
+                          };
+                        })
+                      : [{ left, width: w, isFirst: true, isLast: true }];
+
+                    const sharedHandlers = {
+                      onMouseEnter: (e: React.MouseEvent) => { setHovered(t); setTooltipPos({ x: e.clientX, y: e.clientY }); },
+                      onMouseMove: (e: React.MouseEvent) => setTooltipPos({ x: e.clientX, y: e.clientY }),
+                      onMouseLeave: () => setHovered(null),
+                      onClick: () => onTaskClick?.(t),
+                      onContextMenu: (e: React.MouseEvent) => {
+                        if (onPinTask || onExcludeTask || onUnscheduleTask) {
+                          e.preventDefault();
+                          setHovered(null);
+                          setContextMenu({ task: t, x: e.clientX, y: e.clientY });
+                        }
+                      },
+                    };
+
                     return (
-                      <div
-                        key={t.key}
-                        onMouseEnter={e => { setHovered(t); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
-                        onMouseMove={e => setTooltipPos({ x: e.clientX, y: e.clientY })}
-                        onMouseLeave={() => setHovered(null)}
-                        onClick={() => onTaskClick?.(t)}
-                        onContextMenu={e => {
-                          if (onPinTask || onExcludeTask || onUnscheduleTask) {
-                            e.preventDefault();
-                            setHovered(null);
-                            setContextMenu({ task: t, x: e.clientX, y: e.clientY });
-                          }
-                        }}
-                        style={{
-                          position: 'absolute', left: `${left}%`, width: `${w}%`,
-                          top: 6, height: LANE_H - 12, borderRadius: 4,
-                          background: barColor,
-                          opacity: isDimmed ? 0.35 : actionLoading === t.key ? 0.45 : isExcluded ? 0.2 : 0.85,
-                          cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', paddingLeft: 4,
-                          overflow: 'hidden', fontSize: 10, color: '#fff', fontWeight: 500,
-                          transition: 'opacity 0.2s, box-shadow 0.2s, transform 0.2s, border-top 0.2s',
-                          border: willUnsched ? `2px dashed ${C.red}` : 'none',
-                          ...(isCritical && { borderTop: '2px solid #f97316', boxShadow: '0 0 6px #f9731640' }),
-                          ...(isPinned && !isCritical && { boxShadow: `0 0 0 2px ${C.accent}` }),
-                          ...(isExcluded && { filter: 'grayscale(1)' }),
-                          ...(t.commitmentLevel === 'running' && !isCritical ? { borderLeft: '4px solid #ef4444' } : {}),
-                          ...(t.commitmentLevel === 'on_hold' ? { borderLeft: '4px solid #f59e0b' } : {}),
-                          ...(t.commitmentLevel === 'dispatched' && !isCritical ? { borderLeft: '4px solid #f97316' } : {}),
-                          ...(actionLoading === t.key && { animation: 'pulse 1s ease-in-out infinite' }),
-                          ...(flashAnim === 'schedule' || flashAnim === 'retry-success'
-                            ? { boxShadow: `0 0 8px 2px ${C.green}`, transform: 'scaleY(1.1)' }
-                            : {}),
-                        }}
-                      >
-                        {willUnsched && (
+                      <Fragment key={t.key}>
+                        {hasSegments && (
                           <div style={{
-                            position: 'absolute', inset: 0, borderRadius: 'inherit',
-                            background: `repeating-linear-gradient(-45deg, transparent, transparent 4px, ${C.red}22 4px, ${C.red}22 8px)`,
+                            position: 'absolute',
+                            left: `${left}%`, width: `${w}%`,
+                            top: '50%', height: 2,
+                            background: barColor,
+                            opacity: isDimmed ? 0.2 : 0.4,
+                            pointerEvents: 'none',
+                            transform: 'translateY(-50%)',
                           }} />
                         )}
-                        {t.commitmentLevel === 'on_hold' && (
-                          <div style={{
-                            position: 'absolute', inset: 0, borderRadius: 'inherit',
-                            background: `repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(245,158,11,0.2) 4px, rgba(245,158,11,0.2) 8px)`,
-                          }} />
-                        )}
-                        {t.commitmentLevel === 'running' && t.percentComplete > 0 && (
-                          <div style={{
-                            position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 'inherit',
-                            width: `${t.percentComplete}%`, background: 'rgba(255,255,255,0.2)',
-                          }} />
-                        )}
-                        {isPinned && <span style={{ position: 'absolute', top: -6, right: -4, fontSize: 9, zIndex: 2 }}>📌</span>}
-                        {w > 3 && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'relative', zIndex: 1 }}>{t.name}</span>}
-                      </div>
+                        {blocks.map((b: any, idx: number) => (
+                          <div
+                            key={`${t.key}:${idx}`}
+                            {...sharedHandlers}
+                            style={{
+                              position: 'absolute', left: `${b.left}%`, width: `${b.width}%`,
+                              top: 6, height: LANE_H - 12, borderRadius: 4,
+                              background: barColor,
+                              opacity: isDimmed ? 0.35 : actionLoading === t.key ? 0.45 : isExcluded ? 0.2 : 0.85,
+                              cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', paddingLeft: 4,
+                              overflow: 'hidden', fontSize: 10, color: '#fff', fontWeight: 500,
+                              transition: 'opacity 0.2s, box-shadow 0.2s, transform 0.2s, border-top 0.2s',
+                              border: willUnsched ? `2px dashed ${C.red}` : 'none',
+                              ...(isCritical && { borderTop: '2px solid #f97316', boxShadow: '0 0 6px #f9731640' }),
+                              ...(isPinned && !isCritical && { boxShadow: `0 0 0 2px ${C.accent}` }),
+                              ...(isExcluded && { filter: 'grayscale(1)' }),
+                              // Status borderLeft: only on first block of a multi-segment task (visual start)
+                              ...(b.isFirst && t.commitmentLevel === 'running' && !isCritical ? { borderLeft: '4px solid #ef4444' } : {}),
+                              ...(b.isFirst && t.commitmentLevel === 'on_hold' ? { borderLeft: '4px solid #f59e0b' } : {}),
+                              ...(b.isFirst && t.commitmentLevel === 'dispatched' && !isCritical ? { borderLeft: '4px solid #f97316' } : {}),
+                              ...(actionLoading === t.key && { animation: 'pulse 1s ease-in-out infinite' }),
+                              ...(flashAnim === 'schedule' || flashAnim === 'retry-success'
+                                ? { boxShadow: `0 0 8px 2px ${C.green}`, transform: 'scaleY(1.1)' }
+                                : {}),
+                            }}
+                          >
+                            {willUnsched && (
+                              <div style={{
+                                position: 'absolute', inset: 0, borderRadius: 'inherit',
+                                background: `repeating-linear-gradient(-45deg, transparent, transparent 4px, ${C.red}22 4px, ${C.red}22 8px)`,
+                              }} />
+                            )}
+                            {t.commitmentLevel === 'on_hold' && (
+                              <div style={{
+                                position: 'absolute', inset: 0, borderRadius: 'inherit',
+                                background: `repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(245,158,11,0.2) 4px, rgba(245,158,11,0.2) 8px)`,
+                              }} />
+                            )}
+                            {b.isFirst && t.commitmentLevel === 'running' && t.percentComplete > 0 && (
+                              <div style={{
+                                position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 'inherit',
+                                width: `${t.percentComplete}%`, background: 'rgba(255,255,255,0.2)',
+                              }} />
+                            )}
+                            {b.isLast && isPinned && <span style={{ position: 'absolute', top: -6, right: -4, fontSize: 9, zIndex: 2 }}>📌</span>}
+                            {b.isFirst && b.width > 3 && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'relative', zIndex: 1 }}>{t.name}</span>}
+                          </div>
+                        ))}
+                      </Fragment>
                     );
                   })}
                   {/* WhereTo dim overlay on lane */}
@@ -6347,7 +6387,7 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
    TASK STATUS HELPERS
    ═══════════════════════════════════════════════════════════════ */
 
-function deriveTaskStatus(tk: any, taskPins?: Record<string, boolean>, taskExcludes?: Record<string, boolean>,
+function deriveTaskStatus(tk: any, _taskPins?: Record<string, boolean>, taskExcludes?: Record<string, boolean>,
   taskUnschedules?: Set<string>, orderModes?: Record<string, string>): string {
   // Pinned is intentionally NOT a status here — it's an orthogonal flag.
   // A pinned task classifies by its lifecycle (planned / running / completed)
