@@ -402,6 +402,110 @@ describe('FLOAT task duration handling', () => {
     expect(t2Assignment.workDuration()).toBe(8 * 3600);
   });
 
+  // SKIPPED: surfaces the deferred chain-FLOAT maxGap-check bug.
+  // The propagateCombo + assignStartTimes use cases are now FLOAT-aware
+  // (calls workingEndForwardW / workingStartBackwardW for end-time
+  // computation), but the maxGap CHECK at chaincontextengine.ts:951 still
+  // uses wall-clock arithmetic (`succStart > predEffectiveEnd + maxGap`).
+  // For FLOAT, the gap should be measured in working time — between Mon
+  // 15:00 and Tue 7am there's 16h wall-clock but 0 working time, so a
+  // back-to-back chain (maxGap=0) should accept it.
+  //
+  // Same issue affects the maxGap branches of propagateCombo's forward
+  // and backward passes. Fixing requires either a workingTimeBetween()
+  // helper or rethinking the maxGap semantics for FLOAT.
+  //
+  // Concrete failure: pStart=Mon 7am produces T1=Mon 7-15, but T2 must
+  // start Tue 7am (per propagated bounds). succStart-predEffectiveEnd =
+  // 16h wall-clock > maxGap=0, so the trial is rejected. Engine falls
+  // back to a placement where T1 starts Mon 15:00 (end of shift), so
+  // each task's envelope spans into the next day's shift.
+  //
+  // Removing this skip without finishing the maxGap fix will fail at the
+  // T1.start.hour assertion (gets 15, expected 7).
+  it.skip('4-link FLOAT chain on a single resource: tasks book sequentially, no segment overlap', () => {
+    // Four 8h FLOAT tasks chained T1→T2→T3→T4 with maxGap=0, all sharing
+    // FLOAT-DEMO resource. Calendar: Mon-Fri 7-15 (8h shifts). With four
+    // 8h tasks chained back-to-back, the engine should book each task on
+    // a successive shift. Total work: 32h across 4 weekday shifts.
+    //
+    // Today this test exposes the chain-FLOAT eEndW propagation bug:
+    // chaincontextengine computes succ.eEndW = succ.eStartW + duration as
+    // wall-clock arithmetic. For FLOAT predecessors this under-estimates
+    // their actual wall-clock end, so successors book too early and
+    // overlap predecessors' working segments.
+    //
+    // Expected after fix: T1=Mon 7-15, T2=Tue 7-15, T3=Wed 7-15, T4=Thu 7-15.
+    // No two tasks share a segment.
+    const horizon = makeHorizon(monday('2026-04-13'), 14);
+    const resource = makeResourceWithShifts('M1', horizon, { startHour: 7, endHour: 15 });
+    const t1 = makeFloatTask({ key: 'T1', durationHours: 8, resourceKey: 'M1', horizon });
+    const t2 = makeFloatTask({ key: 'T2', durationHours: 8, resourceKey: 'M1', horizon });
+    const t3 = makeFloatTask({ key: 'T3', durationHours: 8, resourceKey: 'M1', horizon });
+    const t4 = makeFloatTask({ key: 'T4', durationHours: 8, resourceKey: 'M1', horizon });
+    t1.linkId = new CTPLinkId('CHAIN-4', 'ES', '', null);
+    t2.linkId = new CTPLinkId('CHAIN-4', 'ES', 'T1', 0);
+    t3.linkId = new CTPLinkId('CHAIN-4', 'ES', 'T2', 0);
+    t4.linkId = new CTPLinkId('CHAIN-4', 'ES', 'T3', 0);
+    [t1, t2, t3, t4].forEach((t, i) => { t.sequence = i + 1; t.rank = i + 1; });
+
+    const result = solveScenario({ horizon, resources: [resource], tasks: [t1, t2, t3, t4] });
+
+    // All four scheduled
+    for (const k of ['T1', 'T2', 'T3', 'T4']) {
+      expect(result.get(k)!.scheduled, `${k} should be scheduled`).toBe(true);
+    }
+
+    // Each task lands on its own day (Mon, Tue, Wed, Thu). The chain's
+    // back-to-back constraint means each successor starts at the end of
+    // the previous shift; FLOAT then walks across the overnight gap into
+    // the next shift, taking 8h of work there.
+    const p1 = result.get('T1')!;
+    const p2 = result.get('T2')!;
+    const p3 = result.get('T3')!;
+    const p4 = result.get('T4')!;
+
+    // T1 starts Mon 07:00 (chain root, earliest start in calendar)
+    expect(p1.start!.weekday).toBe(1);
+    expect(p1.start!.hour).toBe(7);
+    // T1 ends Mon 15:00 (single shift, full 8h)
+    expect(p1.end!.weekday).toBe(1);
+    expect(p1.end!.hour).toBe(15);
+
+    // T2: starts Mon 15:00 (T1's wall-clock end), works Tue's shift
+    expect(p2.start!.weekday).toBe(1); expect(p2.start!.hour).toBe(15);
+    expect(p2.end!.weekday).toBe(2);   expect(p2.end!.hour).toBe(15);
+
+    // T3: starts Tue 15:00, works Wed's shift
+    expect(p3.start!.weekday).toBe(2); expect(p3.start!.hour).toBe(15);
+    expect(p3.end!.weekday).toBe(3);   expect(p3.end!.hour).toBe(15);
+
+    // T4: starts Wed 15:00, works Thu's shift
+    expect(p4.start!.weekday).toBe(3); expect(p4.start!.hour).toBe(15);
+    expect(p4.end!.weekday).toBe(4);   expect(p4.end!.hour).toBe(15);
+
+    // Resource has 4 distinct assignments
+    expect(resource.assignments?.size()).toBe(4);
+
+    // Verify no segments overlap across tasks. Collect every (start, end)
+    // pair from every task's assignment, sort by start, assert no overlap.
+    const allSegs: { task: string; start: number; end: number }[] = [];
+    let n = resource.assignments!.head;
+    while (n) {
+      n.data.segments?.forEach(s => allSegs.push({
+        task: n!.data.name ?? '?',
+        start: s.startW,
+        end: s.endW,
+      }));
+      n = n.next;
+    }
+    allSegs.sort((a, b) => a.start - b.start);
+    for (let i = 1; i < allSegs.length; i++) {
+      expect(allSegs[i].start, `${allSegs[i].task} segment overlaps ${allSegs[i - 1].task}`)
+        .toBeGreaterThanOrEqual(allSegs[i - 1].end);
+    }
+  });
+
   it('chain across mid-shift boundary: successor starts at predecessor mid-shift end, not next shift', () => {
     // T1 is a 4h FLOAT ending mid-shift Mon 11:00. T2 is its successor with
     // maxGap=0 — should start exactly Mon 11:00 (within the same shift),

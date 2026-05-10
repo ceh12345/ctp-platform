@@ -8,6 +8,7 @@ import { CTPTask, CTPTasks } from "../../Models/Entities/task";
 import { SchedulingLandscape } from "../../Models/Entities/landscape";
 import { ListNode } from "../../Models/Core/linklist";
 import { CTPStartTime, CTPStartTimes } from "../../Models/Entities/starttime";
+import { workingEndForwardW } from "../../Models/Core/interval-walker";
 
 interface ICommonStartTimesAgent extends IAIAgent {
   solve(
@@ -75,14 +76,20 @@ export class CommonStartTimesAgent
     resourceSlots.startTimes?.clear();
     if (resourceSlots.errors && resourceSlots.errors.length > 0) return false;
     if (feasibe.startTimes && feasibe.startTimes.size() > 0) {
+      // For FLOAT durations the wall-clock end depends on the start (shift
+      // gaps don't accumulate working time), so we walk the canonical
+      // resource's calendar instead of using startW + duration arithmetic.
+      // For FIXED, workingEndForwardW falls back to arithmetic — same answer.
+      const calendar = resourceSlots.resources?.at(0)?.resource?.available?.staticAvailable;
       let a: ListNode<CTPInterval> | null = feasibe.startTimes?.head;
       while (a) {
-        let dur = duration.duration();
+        const eEndW = workingEndForwardW(calendar, a.data.startW, duration);
+        const lEndW = workingEndForwardW(calendar, a.data.endW, duration);
         const st1 = new CTPStartTime(
           a.data.startW,
-          a.data.startW + dur,
+          eEndW,
           a.data.endW,
-          a.data.endW + dur,
+          lEndW,
           duration.duration()
         );
         this.createStateChanges(st, et, resourceSlots, st1);
