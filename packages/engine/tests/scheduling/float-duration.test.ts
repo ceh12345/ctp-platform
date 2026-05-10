@@ -402,6 +402,72 @@ describe('FLOAT task duration handling', () => {
     expect(t2Assignment.workDuration()).toBe(8 * 3600);
   });
 
+  it('chain across mid-shift boundary: successor starts at predecessor mid-shift end, not next shift', () => {
+    // T1 is a 4h FLOAT ending mid-shift Mon 11:00. T2 is its successor with
+    // maxGap=0 — should start exactly Mon 11:00 (within the same shift),
+    // NOT round forward to the next shift start. T2 takes Mon 11-15 (4h).
+    // Both fit Mon's single 8h shift, fully consumed by the chain.
+    const horizon = makeHorizon(monday('2026-04-13'), 14);
+    const resource = makeResourceWithShifts('M1', horizon, { startHour: 7, endHour: 15 });
+    const t1 = makeFloatTask({ key: 'T1', durationHours: 4, resourceKey: 'M1', horizon });
+    const t2 = makeFloatTask({ key: 'T2', durationHours: 4, resourceKey: 'M1', horizon });
+    t1.linkId = new CTPLinkId('CHAIN-MID', 'ES', '', null);
+    t2.linkId = new CTPLinkId('CHAIN-MID', 'ES', 'T1', 0);
+    t1.sequence = 1; t1.rank = 1;
+    t2.sequence = 2; t2.rank = 2;
+
+    const result = solveScenario({ horizon, resources: [resource], tasks: [t1, t2] });
+    const p1 = result.get('T1')!;
+    const p2 = result.get('T2')!;
+
+    expect(p1.scheduled).toBe(true);
+    expect(p2.scheduled).toBe(true);
+
+    // T1: Mon 7-11
+    expect(p1.start!.weekday).toBe(1);
+    expect(p1.start!.hour).toBe(7);
+    expect(p1.end!.weekday).toBe(1);
+    expect(p1.end!.hour).toBe(11);
+
+    // T2: starts at T1's mid-shift end (Mon 11:00), NOT next-shift Tue 7am.
+    expect(p2.start!.weekday).toBe(1);
+    expect(p2.start!.hour).toBe(11);
+    expect(p2.end!.weekday).toBe(1);
+    expect(p2.end!.hour).toBe(15);
+  });
+
+  it('predecessor unscheduled: successor is not placed when its predecessor cannot be scheduled', () => {
+    // T1 has an impossible window (lies outside any shift). T2 succeeds
+    // T1 via the chain. The scheduler should fail T1 and leave T2
+    // unscheduled rather than place it independently.
+    const horizon = makeHorizon(monday('2026-04-13'), 14);
+    const resource = makeResourceWithShifts('M1', horizon, { startHour: 7, endHour: 15 });
+
+    // T1 window: Mon 22:00 → Mon 23:00 — entirely off-shift, no feasible slot.
+    const offShiftStart = monday('2026-04-13').set({ hour: 22 });
+    const offShiftEnd = monday('2026-04-13').set({ hour: 23 });
+    const t1 = makeFloatTask({
+      key: 'T1', durationHours: 1, resourceKey: 'M1', horizon,
+      windowStart: offShiftStart, windowEnd: offShiftEnd,
+    });
+    const t2 = makeFloatTask({ key: 'T2', durationHours: 4, resourceKey: 'M1', horizon });
+    t1.linkId = new CTPLinkId('CHAIN-DEAD', 'ES', '', null);
+    t2.linkId = new CTPLinkId('CHAIN-DEAD', 'ES', 'T1', 0);
+    t1.sequence = 1; t1.rank = 1;
+    t2.sequence = 2; t2.rank = 2;
+
+    const result = solveScenario({ horizon, resources: [resource], tasks: [t1, t2] });
+    const p1 = result.get('T1')!;
+    const p2 = result.get('T2')!;
+
+    // T1 fails (no feasible slot in its tight off-shift window)
+    expect(p1.scheduled).toBe(false);
+    expect(p1.errors.length).toBeGreaterThan(0);
+
+    // T2 also unscheduled — predecessor never placed
+    expect(p2.scheduled).toBe(false);
+  });
+
   it('pinned FLOAT segments computed at the booking position', () => {
     // Lightweight check: when an assignment is created via the booking path
     // for a FLOAT task starting at a specific time, its segments reflect the
