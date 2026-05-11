@@ -8,6 +8,7 @@ import { CTPResource } from '../Models/Entities/resource';
 import { ScoringEngine } from './scoringengine';
 import { ScheduleEngine } from './scheduleengine';
 import { CTPTaskStateConstants } from '../Models/Core/constants';
+import { workingEndForwardW, workingStartBackwardW } from '../Models/Core/interval-walker';
 import {
   InfeasibilityReport,
   ConflictType,
@@ -614,13 +615,19 @@ export class ChainContextEngine {
       const duration = bounds[i]!.duration;
       // State-change offset shifts the predecessor's actual end on the resource
       const predOffset = bounds[i - 1]!.processChangeDuration;
+      const succCalendar = combo.contexts[i].slot.resources?.at(0)?.resource?.available?.staticAvailable;
 
       // Floor: successor can't start before predecessor's effective end
       const predEffectiveEEnd = pred.eEndW + predOffset;
       const predEffectiveLEnd = pred.lEndW + predOffset;
       if (predEffectiveEEnd > succ.eStartW) {
         succ.eStartW = predEffectiveEEnd;
-        succ.eEndW = succ.eStartW + duration;
+        // For FLOAT, eEndW is wall-clock end after walking succ's calendar from
+        // the new eStartW for `duration` working seconds. For FIXED, falls back
+        // to startW + duration.
+        succ.eEndW = task.duration
+          ? workingEndForwardW(succCalendar, succ.eStartW, task.duration)
+          : succ.eStartW + duration;
       }
 
       // Ceiling: if maxGap is set, successor must start within maxGap of predecessor's latest effective end
@@ -628,7 +635,9 @@ export class ChainContextEngine {
         const ceiling = predEffectiveLEnd + maxGap;
         if (ceiling < succ.lStartW) {
           succ.lStartW = ceiling;
-          succ.lEndW = succ.lStartW + duration;
+          succ.lEndW = task.duration
+            ? workingEndForwardW(succCalendar, succ.lStartW, task.duration)
+            : succ.lStartW + duration;
         }
       }
 
@@ -640,24 +649,37 @@ export class ChainContextEngine {
       const pred = working[i];
       const succ = working[i + 1];
       const succTask = tasks[i + 1];
+      const predTask = tasks[i];
       const maxGap = succTask.linkId?.maxGap ?? null;
       const predDuration = bounds[i]!.duration;
       const predOffset = bounds[i]!.processChangeDuration;
+      const predCalendar = combo.contexts[i].slot.resources?.at(0)?.resource?.available?.staticAvailable;
 
-      // Predecessor must finish (including state-change offset) before successor's latest start
-      const latestPredStart = succ.lStartW - predDuration - predOffset;
+      // Predecessor must finish (including state-change offset) before successor's latest start.
+      // For FLOAT, derive pred.lStartW by walking back from pred.lEndW (= succ.lStartW − offset).
+      const predLEndCandidate = succ.lStartW - predOffset;
+      const latestPredStart = predTask.duration
+        ? workingStartBackwardW(predCalendar, predLEndCandidate, predTask.duration)
+        : predLEndCandidate - predDuration;
       if (latestPredStart < pred.lStartW) {
         pred.lStartW = latestPredStart;
-        pred.lEndW = pred.lStartW + predDuration;
+        pred.lEndW = predTask.duration
+          ? workingEndForwardW(predCalendar, pred.lStartW, predTask.duration)
+          : pred.lStartW + predDuration;
       }
 
       // If maxGap is set: predecessor's effective end can't be earlier than succ.eStartW - maxGap
       if (maxGap !== null) {
         const earliestPredEffEnd = succ.eStartW - maxGap;
-        const earliestPredStart = earliestPredEffEnd - predDuration - predOffset;
+        const earliestPredEndCandidate = earliestPredEffEnd - predOffset;
+        const earliestPredStart = predTask.duration
+          ? workingStartBackwardW(predCalendar, earliestPredEndCandidate, predTask.duration)
+          : earliestPredEndCandidate - predDuration;
         if (earliestPredStart > pred.eStartW) {
           pred.eStartW = earliestPredStart;
-          pred.eEndW = pred.eStartW + predDuration;
+          pred.eEndW = predTask.duration
+            ? workingEndForwardW(predCalendar, pred.eStartW, predTask.duration)
+            : pred.eStartW + predDuration;
         }
       }
 
@@ -833,7 +855,10 @@ export class ChainContextEngine {
     }
 
     // 2. Predecessor-derived candidates: walk forward from each predecessor's
-    //    start-time node to compute what primary start would result
+    //    start-time node to compute what primary start would result.
+    //    For FLOAT tasks the wall-clock end depends on the calendar (working
+    //    time accumulates across shift gaps), so use workingEndForwardW
+    //    instead of arithmetic.
     for (let p = 0; p < primaryIndex; p++) {
       const predSt = combo.contexts[p].slot.startTimes;
       if (!predSt) continue;
@@ -841,9 +866,13 @@ export class ChainContextEngine {
       while (pNode) {
         let targetStart = pNode.data.eStartW;
         for (let k = p; k < primaryIndex; k++) {
-          const dur = combo.contexts[k].task.duration?.duration() ?? 0;
+          const kTask = combo.contexts[k].task;
           const offset = this.getAssignedProcessChangeDuration(combo.contexts[k], targetStart);
-          targetStart = targetStart + dur + offset;
+          const kCalendar = combo.contexts[k].slot.resources?.at(0)?.resource?.available?.staticAvailable;
+          const kEnd = kTask.duration
+            ? workingEndForwardW(kCalendar, targetStart, kTask.duration)
+            : targetStart;
+          targetStart = kEnd + offset;
         }
         if (targetStart >= propagatedEStartP && targetStart <= propagatedLStartP
             && this.isWithinStartTimeNode(primarySt, targetStart)) {
@@ -854,7 +883,8 @@ export class ChainContextEngine {
     }
 
     // 3. Successor-derived candidates: walk backward from each successor's
-    //    start-time node to compute what primary start would align the chain
+    //    start-time node to compute what primary start would align the chain.
+    //    For FLOAT use workingStartBackwardW.
     for (let s = primaryIndex + 1; s < combo.contexts.length; s++) {
       const succSt = combo.contexts[s].slot.startTimes;
       if (!succSt) continue;
@@ -862,8 +892,11 @@ export class ChainContextEngine {
       while (sNode) {
         let targetStart = sNode.data.eStartW;
         for (let k = s - 1; k >= primaryIndex; k--) {
-          const dur = combo.contexts[k].task.duration?.duration() ?? 0;
-          targetStart = targetStart - dur;
+          const kTask = combo.contexts[k].task;
+          const kCalendar = combo.contexts[k].slot.resources?.at(0)?.resource?.available?.staticAvailable;
+          targetStart = kTask.duration
+            ? workingStartBackwardW(kCalendar, targetStart, kTask.duration)
+            : targetStart;
         }
         if (targetStart >= propagatedEStartP && targetStart <= propagatedLStartP
             && this.isWithinStartTimeNode(primarySt, targetStart)) {
@@ -892,7 +925,13 @@ export class ChainContextEngine {
 
       const trial: ({ start: number; end: number } | null)[] =
         new Array(combo.contexts.length).fill(null);
-      trial[primaryIndex] = { start: pStart, end: pStart + primaryDuration };
+      // Primary trial end: walk the calendar for FLOAT, arithmetic for FIXED.
+      const primaryTask = primaryCtx.task;
+      const primaryCalendar = primaryCtx.slot.resources?.at(0)?.resource?.available?.staticAvailable;
+      const primaryEnd = primaryTask.duration
+        ? workingEndForwardW(primaryCalendar, pStart, primaryTask.duration)
+        : pStart + primaryDuration;
+      trial[primaryIndex] = { start: pStart, end: primaryEnd };
 
       let feasible = true;
 
@@ -907,8 +946,12 @@ export class ChainContextEngine {
         );
         if (predStart === null) { feasible = false; break; }
 
-        const predDuration = combo.contexts[i].task.duration?.duration() ?? 0;
-        trial[i] = { start: predStart, end: predStart + predDuration };
+        const predTask = combo.contexts[i].task;
+        const predCalendar = combo.contexts[i].slot.resources?.at(0)?.resource?.available?.staticAvailable;
+        const predEnd = predTask.duration
+          ? workingEndForwardW(predCalendar, predStart, predTask.duration)
+          : predStart;
+        trial[i] = { start: predStart, end: predEnd };
       }
 
       if (!feasible) continue;
@@ -931,8 +974,12 @@ export class ChainContextEngine {
           break;
         }
 
-        const duration = combo.contexts[i].task.duration?.duration() ?? 0;
-        trial[i] = { start: succStart, end: succStart + duration };
+        const succTask = combo.contexts[i].task;
+        const succCalendar = combo.contexts[i].slot.resources?.at(0)?.resource?.available?.staticAvailable;
+        const succEnd = succTask.duration
+          ? workingEndForwardW(succCalendar, succStart, succTask.duration)
+          : succStart;
+        trial[i] = { start: succStart, end: succEnd };
       }
 
       if (feasible && trial.every(t => t !== null)) {

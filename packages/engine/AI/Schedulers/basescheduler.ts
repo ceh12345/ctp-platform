@@ -4,7 +4,7 @@ import {
 } from "../../Engines/combinationengine";
 import { ScheduleEngine } from "../../Engines/scheduleengine";
 import { StateChangeEngine } from "../../Engines/statechangeerengine";
-import { CTPAssignmentConstants, CTPScheduleDirectionConstants, CTPTaskStateConstants, CTPTaskTypeConstants, CTPWipStateConstants } from "../../Models/Core/constants";
+import { CTPAssignmentConstants, CTPDurationConstants, CTPScheduleDirectionConstants, CTPTaskStateConstants, CTPTaskTypeConstants, CTPWipStateConstants } from "../../Models/Core/constants";
 import { CTPAssignment, CTPInterval } from "../../Models/Core/window";
 import { CTPDateTime } from "../../Models/Core/date";
 import { List } from "../../Models/Core/list";
@@ -917,6 +917,9 @@ export abstract class CTPBaseScheduler {
           assignment.type = task.commitmentLevel === 'on_hold'
             ? CTPAssignmentConstants.ONHOLD
             : CTPAssignmentConstants.PROCESS;
+          if (this.isFloatDuration(task)) {
+            assignment.segments = CTPAssignment.segmentsFromCalendar(resource.original, startW, endW);
+          }
           resource.assignments?.add(assignment);
           resource.recompute = true;
         }
@@ -933,6 +936,9 @@ export abstract class CTPBaseScheduler {
           const assignment = new CTPAssignment(startW, endW, tr.qty ?? 1);
           assignment.name = task.key;
           assignment.type = CTPAssignmentConstants.PROCESS;
+          if (this.isFloatDuration(task)) {
+            assignment.segments = CTPAssignment.segmentsFromCalendar(resource.original, startW, endW);
+          }
           resource.assignments?.add(assignment);
           resource.recompute = true;
         }
@@ -945,6 +951,12 @@ export abstract class CTPBaseScheduler {
       : null;
     this.recordStep('anchor', task, task.linkId?.name ?? null,
       primaryResourceKey, resName, startW, endW, null, task.commitmentLevel);
+  }
+
+  private isFloatDuration(task: CTPTask): boolean {
+    const dt = task.duration?.durationType;
+    return dt === CTPDurationConstants.FLOAT_DURATION
+        || dt === CTPDurationConstants.FLOAT_RUN_RATE;
   }
 
   // ── Pass 2: Manual Priority ─────────────────────────────────────

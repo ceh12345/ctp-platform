@@ -174,13 +174,26 @@ export class CTPRange extends CTPInterval implements IRangeTime {
       return true;
     }
 
+    // Clip range pointers to the scheduling window [st, et]. Without this
+    // the walker uses range.startW/range.endW (the full availability span)
+    // and ignores the window — for FLOAT tasks with a window narrower than
+    // the calendar this places work outside the deadline.
+    let estPtr = this.estPtr;
+    while (estPtr && estPtr.data.endW <= st) estPtr = estPtr.next;
+    let lstPtr = this.lstPtr;
+    while (lstPtr && lstPtr.data.startW >= et) lstPtr = lstPtr.prev;
+    if (!estPtr || !lstPtr) return false;
+
+    const rangeStart = Math.max(this.startW, st);
+    const rangeEnd = Math.min(this.endW, et);
+
     // Delegate to IntervalWalker
     const result = walkForward(
-      this.estPtr,
-      this.lstPtr,
+      estPtr,
+      lstPtr,
       policy.consumed(d),
-      this.startW,
-      this.endW,
+      rangeStart,
+      rangeEnd,
       policy.byRunRate(d),
       policy.isFixed(d),
     );
@@ -209,13 +222,25 @@ export class CTPRange extends CTPInterval implements IRangeTime {
       return true;
     }
 
+    // Clip range pointers to the scheduling window [st, et]. Otherwise
+    // walkBackward uses range.endW (the full availability span) which
+    // lets backward FLOAT scheduling place work past a window deadline.
+    let estPtr = this.estPtr;
+    while (estPtr && estPtr.data.endW <= st) estPtr = estPtr.next;
+    let lstPtr = this.lstPtr;
+    while (lstPtr && lstPtr.data.startW >= et) lstPtr = lstPtr.prev;
+    if (!estPtr || !lstPtr) return false;
+
+    const rangeStart = Math.max(this.startW, st);
+    const rangeEnd = Math.min(this.endW, et);
+
     // Delegate to IntervalWalker
     const result = walkBackward(
-      this.lstPtr,
-      this.estPtr,
+      lstPtr,
+      estPtr,
       policy.consumed(d),
-      this.startW,
-      this.endW,
+      rangeStart,
+      rangeEnd,
       policy.byRunRate(d),
       policy.isFixed(d),
     );

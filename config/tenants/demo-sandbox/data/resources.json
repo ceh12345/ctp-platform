@@ -46,5 +46,29 @@
       { "name": "maxSpeed", "dataType": "number", "value": { "type": "number", "value": 800 }, "category": "performance", "sequence": 2 },
       { "name": "certifications", "dataType": "list", "value": { "type": "list", "value": ["ISO-9001", "UL-508A"] }, "category": "compliance", "sequence": 3 }
     ]
+  },
+  {
+    "key": "FLOAT-DEMO",
+    "name": "FLOAT Demo Cell",
+    "type": "ASSEMBLY",
+    "class": "REUSABLE",
+    "hourlyRate": 100,
+    "hierarchy": {
+      "level1": "Demo",
+      "level2": "FLOAT"
+    },
+    "typedAttributes": []
+  },
+  {
+    "key": "WORKCENTER-4",
+    "name": "Pooled Workcenter (qty=4)",
+    "type": "WORKCENTER",
+    "class": "REUSABLE",
+    "hourlyRate": 75,
+    "hierarchy": {
+      "level1": "Demo",
+      "level2": "Pooled"
+    },
+    "typedAttributes": []
   }
 ]

@@ -1,5 +1,6 @@
-import { ListNode } from './linklist';
-import { CTPInterval } from './window';
+import { ListNode, LinkedList } from './linklist';
+import { CTPInterval, CTPDuration } from './window';
+import { CTPDurationConstants } from './constants';
 
 export interface WalkResult {
   start: number;
@@ -139,6 +140,62 @@ export function walkBackward(
   }
 
   return { start, end, feasible: more >= consumed, accumulated: more };
+}
+
+/**
+ * Given a resource calendar (linked list of CTPInterval) and a candidate
+ * start time, return the wall-clock end after consuming `duration` of
+ * working time. For FIXED durations this is `startW + duration` (no walk
+ * needed); for FLOAT durations this walks the calendar starting at the
+ * first interval whose end is past `startW`. Pure, no mutation.
+ *
+ * Caller passes the task's CTPDuration so the helper can short-circuit
+ * for FIXED. Used by ChainContextEngine, CommonStartTimesAgent, and
+ * ScheduleEngine wherever they currently do `endW = startW + duration`
+ * arithmetic — for FLOAT tasks that arithmetic is wrong because shift
+ * gaps don't count as working time.
+ */
+export function workingEndForwardW(
+  list: LinkedList<CTPInterval> | null | undefined,
+  startW: number,
+  duration: CTPDuration,
+): number {
+  const required = duration.duration();
+  const dt = duration.durationType;
+  // FIXED / FIXED_RUN_RATE / STATIC / UNTRACKED: wall-clock end == working end
+  if (dt !== CTPDurationConstants.FLOAT_DURATION && dt !== CTPDurationConstants.FLOAT_RUN_RATE) {
+    return startW + required;
+  }
+  if (!list || !list.head || !list.tail) return startW + required;
+  let head: ListNode<CTPInterval> | null = list.head;
+  while (head && head.data.endW <= startW) head = head.next;
+  if (!head) return startW + required;
+  const useRunRate = dt === CTPDurationConstants.FLOAT_RUN_RATE;
+  const r = walkForward(head, list.tail, required, startW, Number.MAX_SAFE_INTEGER, useRunRate, false);
+  return r.feasible ? r.end : startW + required;
+}
+
+/**
+ * Mirror of workingEndForwardW for backward direction: given an end time,
+ * return the wall-clock start after walking back `duration` of working time.
+ */
+export function workingStartBackwardW(
+  list: LinkedList<CTPInterval> | null | undefined,
+  endW: number,
+  duration: CTPDuration,
+): number {
+  const required = duration.duration();
+  const dt = duration.durationType;
+  if (dt !== CTPDurationConstants.FLOAT_DURATION && dt !== CTPDurationConstants.FLOAT_RUN_RATE) {
+    return endW - required;
+  }
+  if (!list || !list.head || !list.tail) return endW - required;
+  let tail: ListNode<CTPInterval> | null = list.tail;
+  while (tail && tail.data.startW >= endW) tail = tail.prev;
+  if (!tail) return endW - required;
+  const useRunRate = dt === CTPDurationConstants.FLOAT_RUN_RATE;
+  const r = walkBackward(tail, list.head, required, 0, endW, useRunRate, false);
+  return r.feasible ? r.start : endW - required;
 }
 
 /**

@@ -1,17 +1,20 @@
 import { TaskFactory } from "../Factories/taskfactory";
 import {
   CTPAssignmentConstants,
+  CTPDurationConstants,
   CTPScheduleDirectionConstants,
   CTPTaskStateConstants,
   CTPTaskTypeConstants,
 } from "../Models/Core/constants";
-import { CTPAssignment, CTPInterval } from "../Models/Core/window";
+import { CTPAssignment, CTPDuration, CTPInterval } from "../Models/Core/window";
+import { workingEndForwardW } from "../Models/Core/interval-walker";
 import { ILandscape } from "../Models/Entities/landscape";
 import { CTPResource } from "../Models/Entities/resource";
 import {
   BestScheduleContext,
   ScheduleContext,
 } from "../Models/Entities/schedulecontext";
+import { CTPResourceSlots } from "../Models/Entities/slot";
 import { CTPTask, CTPTaskResource } from "../Models/Entities/task";
 
 export interface IScheduleEngine {
@@ -37,12 +40,21 @@ export class ScheduleEngine implements IScheduleEngine {
     if (!schedule || !schedule.best || !schedule.best.slot || !task.duration)
       return;
 
-    let offset = (direction === CTPScheduleDirectionConstants.FORWARD) 
-                  ? schedule.startTimes.processChangeDuration 
+    let offset = (direction === CTPScheduleDirectionConstants.FORWARD)
+                  ? schedule.startTimes.processChangeDuration
                   : -schedule.startTimes.processChangeDuration;
 
     let st = schedule.startTime + offset;
-    let et = st + task.duration.duration();
+    let et: number;
+
+    // FLOAT: end time is the wall-clock moment when accumulated working
+    // time across the resource's available shifts equals task.duration.
+    // FIXED: end = start + duration (single contiguous slot, by definition).
+    if (this.isFloat(task.duration)) {
+      et = this.computeFloatEndW(schedule.best.slot, st, task.duration);
+    } else {
+      et = st + task.duration.duration();
+    }
 
     task.state = CTPTaskStateConstants.SCHEDULED;
 
@@ -54,6 +66,24 @@ export class ScheduleEngine implements IScheduleEngine {
       this.addTaskToResource(res.resource, task, st, et, CTPAssignmentConstants.PROCESS, index, schedule.subType);
       index = index + 1;
     });
+  }
+
+  private isFloat(d: CTPDuration): boolean {
+    return d.durationType === CTPDurationConstants.FLOAT_DURATION
+        || d.durationType === CTPDurationConstants.FLOAT_RUN_RATE;
+  }
+
+  // Walk the canonical resource's calendar from startW for `duration` working
+  // seconds and return the wall-clock end. Delegates to the shared helper so
+  // ChainContextEngine, CommonStartTimesAgent, and ScheduleEngine all derive
+  // FLOAT end times the same way.
+  private computeFloatEndW(
+    slot: CTPResourceSlots,
+    startW: number,
+    duration: CTPDuration,
+  ): number {
+    const list = slot.resources?.at(0)?.resource?.available?.staticAvailable;
+    return workingEndForwardW(list, startW, duration);
   }
 
   public unschedule(landscape: ILandscape, task: CTPTask): void {
@@ -116,8 +146,12 @@ export class ScheduleEngine implements IScheduleEngine {
     if (capresource) {
       t = new CTPAssignment(st, et, capresource.qty);
       t.name = task.key;
-      t.type = assType; 
+      t.type = assType;
       t.subType = subType ?? -1;
+      // Compute working-time segments only for FLOAT — FIXED's envelope IS work time.
+      if (task.duration && this.isFloat(task.duration)) {
+        t.segments = CTPAssignment.segmentsFromCalendar(resource.original, st, et);
+      }
       resource.assignments?.add(t);
       resource.recompute = true;
       capresource.scheduledResource = resource.key;

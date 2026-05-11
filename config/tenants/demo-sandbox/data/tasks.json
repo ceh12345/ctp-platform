@@ -1195,31 +1195,60 @@
     "sequence": 2
   },
   {
-    "key": "T-FLOAT-MACHINE",
-    "name": "Machine Float Part (WO-FLOAT)",
+    "key": "T-FLOAT-PRE",
+    "name": "FLOAT Demo: 2h FIXED predecessor on CNC-01",
     "type": "PROCESS",
     "process": "cnc-machine",
     "windowStart": "2026-02-10T07:00:00Z",
-    "windowEnd": "2026-02-20T07:00:00Z",
+    "windowEnd": "2026-02-25T00:00:00Z",
     "durationSeconds": 7200,
     "durationQty": 1,
     "durationType": 0,
     "capacityResources": [
       {
-        "resource": "CNC-02",
+        "resource": "CNC-01",
         "isPrimary": true,
         "qty": 1,
-        "mode": "ON",
-        "preferences": [
-          "CNC-01",
-          "CNC-02"
-        ]
+        "mode": "ON"
       }
     ],
     "linkId": {
       "name": "WO-FLOAT",
       "type": "START",
       "prevLink": ""
+    },
+    "outputProductKey": "PROD-BRACKET",
+    "outputQty": 100,
+    "outputScrapRate": 0,
+    "typedAttributes": [],
+    "sequence": 1
+  },
+  {
+    "key": "T-FLOAT-MACHINE",
+    "name": "FLOAT Demo: 16h spans 2 shifts",
+    "type": "PROCESS",
+    "process": "cnc-machine",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-25T00:00:00Z",
+    "durationSeconds": 57600,
+    "durationQty": 1,
+    "durationType": 1,
+    "capacityResources": [
+      {
+        "resource": "FLOAT-DEMO",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON",
+        "preferences": [
+          "FLOAT-DEMO"
+        ]
+      }
+    ],
+    "linkId": {
+      "name": "WO-FLOAT",
+      "type": "PROCESS",
+      "prevLink": "T-FLOAT-PRE",
+      "maxGap": 0
     },
     "outputProductKey": "PROD-BRACKET",
     "outputQty": 100,
@@ -1268,17 +1297,17 @@
   },
   {
     "key": "T-FLOAT-ASSEMBLE",
-    "name": "Assemble Float Widget (WO-FLOAT)",
+    "name": "FLOAT Demo: 12h successor of MACHINE (chained maxGap=0)",
     "type": "PROCESS",
     "process": "assembly",
     "windowStart": "2026-02-10T07:00:00Z",
-    "windowEnd": "2026-02-20T07:00:00Z",
-    "durationSeconds": 3600,
+    "windowEnd": "2026-02-25T00:00:00Z",
+    "durationSeconds": 43200,
     "durationQty": 1,
-    "durationType": 0,
+    "durationType": 1,
     "capacityResources": [
       {
-        "resource": "ASM-01",
+        "resource": "FLOAT-DEMO",
         "isPrimary": true,
         "qty": 1,
         "mode": "ON"
@@ -1286,8 +1315,9 @@
     ],
     "linkId": {
       "name": "WO-FLOAT",
-      "type": "END",
-      "prevLink": "T-FLOAT-MACHINE"
+      "type": "PROCESS",
+      "prevLink": "T-FLOAT-MACHINE",
+      "maxGap": 0
     },
     "outputProductKey": "PROD-WC",
     "outputQty": 100,
@@ -1318,6 +1348,146 @@
         "sequence": 1
       }
     ],
-    "sequence": 2
+    "sequence": 3
+  },
+  {
+    "key": "T-FLOAT-POST",
+    "name": "FLOAT Demo: 1h FIXED tail on ASM-01",
+    "type": "PROCESS",
+    "process": "assembly",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-25T00:00:00Z",
+    "durationSeconds": 3600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "ASM-01",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": {
+      "name": "WO-FLOAT",
+      "type": "END",
+      "prevLink": "T-FLOAT-ASSEMBLE",
+      "maxGap": 0
+    },
+    "outputProductKey": "PROD-WC",
+    "outputQty": 100,
+    "outputScrapRate": 0,
+    "typedAttributes": [],
+    "sequence": 4
+  },
+  {
+    "key": "T-WC4-1",
+    "name": "Pooled WC4 Task 1 (8h, qty=1 of 4)",
+    "type": "PROCESS",
+    "process": "assembly",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-25T00:00:00Z",
+    "durationSeconds": 28800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "WORKCENTER-4",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": { "name": "WO-WC4-1", "type": "START", "prevLink": "" },
+    "typedAttributes": [],
+    "sequence": 1
+  },
+  {
+    "key": "T-WC4-2",
+    "name": "Pooled WC4 Task 2 (6h, qty=1 of 4)",
+    "type": "PROCESS",
+    "process": "assembly",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-25T00:00:00Z",
+    "durationSeconds": 21600,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "WORKCENTER-4",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": { "name": "WO-WC4-2", "type": "START", "prevLink": "" },
+    "typedAttributes": [],
+    "sequence": 1
+  },
+  {
+    "key": "T-WC4-3",
+    "name": "Pooled WC4 Task 3 (4h, qty=1 of 4)",
+    "type": "PROCESS",
+    "process": "assembly",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-25T00:00:00Z",
+    "durationSeconds": 14400,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "WORKCENTER-4",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": { "name": "WO-WC4-3", "type": "START", "prevLink": "" },
+    "typedAttributes": [],
+    "sequence": 1
+  },
+  {
+    "key": "T-WC4-4",
+    "name": "Pooled WC4 Task 4 (2h, qty=1 of 4)",
+    "type": "PROCESS",
+    "process": "assembly",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-25T00:00:00Z",
+    "durationSeconds": 7200,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "WORKCENTER-4",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": { "name": "WO-WC4-4", "type": "START", "prevLink": "" },
+    "typedAttributes": [],
+    "sequence": 1
+  },
+  {
+    "key": "T-WC4-5",
+    "name": "Pooled WC4 Task 5 (8h — shifts to next day)",
+    "type": "PROCESS",
+    "process": "assembly",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-25T00:00:00Z",
+    "durationSeconds": 28800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "WORKCENTER-4",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": { "name": "WO-WC4-5", "type": "START", "prevLink": "" },
+    "typedAttributes": [],
+    "sequence": 1
   }
 ]

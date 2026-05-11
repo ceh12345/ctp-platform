@@ -3095,6 +3095,14 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
       <DetailRow label="Start" value={fmtDate(task.scheduledStart)} />
       <DetailRow label="End" value={fmtDate(task.scheduledEnd)} />
       <DetailRow label={t('duration', 'Duration')} value={fmtDuration(task.durationSeconds)} />
+      {/* For FLOAT tasks: envelope (above) and work time differ. Show work
+          time and segment count distinctly so users see both dimensions. */}
+      {task.segments && task.segments.length > 1 && (
+        <>
+          <DetailRow label="Work Time" value={fmtDuration(task.workDurationSeconds)} />
+          <DetailRow label="Segments" value={`${task.segments.length}`} />
+        </>
+      )}
       {showAt(experienceLevel, 'intermediate') && (
         <DetailRow label={t('score', 'Score')} value={task.score != null ? task.score.toFixed(2) : '—'} />
       )}
@@ -3652,20 +3660,29 @@ function buildAgendaItems(
       end: Math.min(iv.end, dayEndMs),
     }));
 
-  // Find tasks assigned to this resource on this day
-  const dayTasks = tasks
-    .filter((t: any) =>
-      t.scheduledStart && t.scheduledEnd &&
-      t.assignedResources?.some((r: any) => r.resourceKey === resource.resourceKey) &&
-      new Date(t.scheduledStart).getTime() < dayEndMs &&
-      new Date(t.scheduledEnd).getTime() > dayStartMs
-    )
-    .map((t: any) => ({
-      start: Math.max(new Date(t.scheduledStart).getTime(), dayStartMs),
-      end: Math.min(new Date(t.scheduledEnd).getTime(), dayEndMs),
-      task: t,
-    }))
-    .sort((a: any, b: any) => a.start - b.start);
+  // Find tasks (or task segments for FLOAT) assigned to this resource on this day.
+  // For FLOAT tasks the envelope spans off-shift gaps — those gaps aren't work
+  // on this resource, so iterate task.segments[] instead of envelope so the
+  // agenda shows actual work blocks plus available time between them.
+  const dayTasks: { start: number; end: number; task: any }[] = [];
+  for (const t of tasks) {
+    if (!t.scheduledStart || !t.scheduledEnd) continue;
+    if (!t.assignedResources?.some((r: any) => r.resourceKey === resource.resourceKey)) continue;
+    const blocks: { start: string; end: string }[] = (t.segments && t.segments.length > 1)
+      ? t.segments
+      : [{ start: t.scheduledStart, end: t.scheduledEnd }];
+    for (const b of blocks) {
+      const bs = new Date(b.start).getTime();
+      const be = new Date(b.end).getTime();
+      if (bs >= dayEndMs || be <= dayStartMs) continue;
+      dayTasks.push({
+        start: Math.max(bs, dayStartMs),
+        end: Math.min(be, dayEndMs),
+        task: t,
+      });
+    }
+  }
+  dayTasks.sort((a, b) => a.start - b.start);
 
   const items: AgendaItem[] = [];
   const toISO = (ms: number) => new Date(ms).toISOString();
@@ -5298,63 +5315,103 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                     const flashAnim = isReplayFlash && replay?.flashAction;
                     const isCritical = showCriticalPath && t.isOnCriticalPath;
                     const isDimmed = showCriticalPath && !t.isOnCriticalPath;
+                    // FLOAT tasks ship segments[]: working-time slices of the
+                    // wall-clock envelope. Render one block per segment when
+                    // present, with a thin connector line through the gap to
+                    // preserve the "this is one task" reading. FIXED tasks
+                    // and single-shift FLOATs keep the original single-block
+                    // visual (segments=null or length<=1).
+                    const hasSegments = Array.isArray(t.segments) && t.segments.length > 1;
+                    const blocks = hasSegments
+                      ? t.segments.map((s: any, i: number) => {
+                          const sl = toPct(s.start);
+                          const sr = toPct(s.end);
+                          return {
+                            left: sl,
+                            width: Math.max(sr - sl, 0.3),
+                            isFirst: i === 0,
+                            isLast: i === t.segments.length - 1,
+                          };
+                        })
+                      : [{ left, width: w, isFirst: true, isLast: true }];
+
+                    const sharedHandlers = {
+                      onMouseEnter: (e: React.MouseEvent) => { setHovered(t); setTooltipPos({ x: e.clientX, y: e.clientY }); },
+                      onMouseMove: (e: React.MouseEvent) => setTooltipPos({ x: e.clientX, y: e.clientY }),
+                      onMouseLeave: () => setHovered(null),
+                      onClick: () => onTaskClick?.(t),
+                      onContextMenu: (e: React.MouseEvent) => {
+                        if (onPinTask || onExcludeTask || onUnscheduleTask) {
+                          e.preventDefault();
+                          setHovered(null);
+                          setContextMenu({ task: t, x: e.clientX, y: e.clientY });
+                        }
+                      },
+                    };
+
                     return (
-                      <div
-                        key={t.key}
-                        onMouseEnter={e => { setHovered(t); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
-                        onMouseMove={e => setTooltipPos({ x: e.clientX, y: e.clientY })}
-                        onMouseLeave={() => setHovered(null)}
-                        onClick={() => onTaskClick?.(t)}
-                        onContextMenu={e => {
-                          if (onPinTask || onExcludeTask || onUnscheduleTask) {
-                            e.preventDefault();
-                            setHovered(null);
-                            setContextMenu({ task: t, x: e.clientX, y: e.clientY });
-                          }
-                        }}
-                        style={{
-                          position: 'absolute', left: `${left}%`, width: `${w}%`,
-                          top: 6, height: LANE_H - 12, borderRadius: 4,
-                          background: barColor,
-                          opacity: isDimmed ? 0.35 : actionLoading === t.key ? 0.45 : isExcluded ? 0.2 : 0.85,
-                          cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', paddingLeft: 4,
-                          overflow: 'hidden', fontSize: 10, color: '#fff', fontWeight: 500,
-                          transition: 'opacity 0.2s, box-shadow 0.2s, transform 0.2s, border-top 0.2s',
-                          border: willUnsched ? `2px dashed ${C.red}` : 'none',
-                          ...(isCritical && { borderTop: '2px solid #f97316', boxShadow: '0 0 6px #f9731640' }),
-                          ...(isPinned && !isCritical && { boxShadow: `0 0 0 2px ${C.accent}` }),
-                          ...(isExcluded && { filter: 'grayscale(1)' }),
-                          ...(t.commitmentLevel === 'running' && !isCritical ? { borderLeft: '4px solid #ef4444' } : {}),
-                          ...(t.commitmentLevel === 'on_hold' ? { borderLeft: '4px solid #f59e0b' } : {}),
-                          ...(t.commitmentLevel === 'dispatched' && !isCritical ? { borderLeft: '4px solid #f97316' } : {}),
-                          ...(actionLoading === t.key && { animation: 'pulse 1s ease-in-out infinite' }),
-                          ...(flashAnim === 'schedule' || flashAnim === 'retry-success'
-                            ? { boxShadow: `0 0 8px 2px ${C.green}`, transform: 'scaleY(1.1)' }
-                            : {}),
-                        }}
-                      >
-                        {willUnsched && (
+                      <Fragment key={t.key}>
+                        {hasSegments && (
                           <div style={{
-                            position: 'absolute', inset: 0, borderRadius: 'inherit',
-                            background: `repeating-linear-gradient(-45deg, transparent, transparent 4px, ${C.red}22 4px, ${C.red}22 8px)`,
+                            position: 'absolute',
+                            left: `${left}%`, width: `${w}%`,
+                            top: '50%', height: 2,
+                            background: barColor,
+                            opacity: isDimmed ? 0.2 : 0.4,
+                            pointerEvents: 'none',
+                            transform: 'translateY(-50%)',
                           }} />
                         )}
-                        {t.commitmentLevel === 'on_hold' && (
-                          <div style={{
-                            position: 'absolute', inset: 0, borderRadius: 'inherit',
-                            background: `repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(245,158,11,0.2) 4px, rgba(245,158,11,0.2) 8px)`,
-                          }} />
-                        )}
-                        {t.commitmentLevel === 'running' && t.percentComplete > 0 && (
-                          <div style={{
-                            position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 'inherit',
-                            width: `${t.percentComplete}%`, background: 'rgba(255,255,255,0.2)',
-                          }} />
-                        )}
-                        {isPinned && <span style={{ position: 'absolute', top: -6, right: -4, fontSize: 9, zIndex: 2 }}>📌</span>}
-                        {w > 3 && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'relative', zIndex: 1 }}>{t.name}</span>}
-                      </div>
+                        {blocks.map((b: any, idx: number) => (
+                          <div
+                            key={`${t.key}:${idx}`}
+                            {...sharedHandlers}
+                            style={{
+                              position: 'absolute', left: `${b.left}%`, width: `${b.width}%`,
+                              top: 6, height: LANE_H - 12, borderRadius: 4,
+                              background: barColor,
+                              opacity: isDimmed ? 0.35 : actionLoading === t.key ? 0.45 : isExcluded ? 0.2 : 0.85,
+                              cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', paddingLeft: 4,
+                              overflow: 'hidden', fontSize: 10, color: '#fff', fontWeight: 500,
+                              transition: 'opacity 0.2s, box-shadow 0.2s, transform 0.2s, border-top 0.2s',
+                              border: willUnsched ? `2px dashed ${C.red}` : 'none',
+                              ...(isCritical && { borderTop: '2px solid #f97316', boxShadow: '0 0 6px #f9731640' }),
+                              ...(isPinned && !isCritical && { boxShadow: `0 0 0 2px ${C.accent}` }),
+                              ...(isExcluded && { filter: 'grayscale(1)' }),
+                              // Status borderLeft: only on first block of a multi-segment task (visual start)
+                              ...(b.isFirst && t.commitmentLevel === 'running' && !isCritical ? { borderLeft: '4px solid #ef4444' } : {}),
+                              ...(b.isFirst && t.commitmentLevel === 'on_hold' ? { borderLeft: '4px solid #f59e0b' } : {}),
+                              ...(b.isFirst && t.commitmentLevel === 'dispatched' && !isCritical ? { borderLeft: '4px solid #f97316' } : {}),
+                              ...(actionLoading === t.key && { animation: 'pulse 1s ease-in-out infinite' }),
+                              ...(flashAnim === 'schedule' || flashAnim === 'retry-success'
+                                ? { boxShadow: `0 0 8px 2px ${C.green}`, transform: 'scaleY(1.1)' }
+                                : {}),
+                            }}
+                          >
+                            {willUnsched && (
+                              <div style={{
+                                position: 'absolute', inset: 0, borderRadius: 'inherit',
+                                background: `repeating-linear-gradient(-45deg, transparent, transparent 4px, ${C.red}22 4px, ${C.red}22 8px)`,
+                              }} />
+                            )}
+                            {t.commitmentLevel === 'on_hold' && (
+                              <div style={{
+                                position: 'absolute', inset: 0, borderRadius: 'inherit',
+                                background: `repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(245,158,11,0.2) 4px, rgba(245,158,11,0.2) 8px)`,
+                              }} />
+                            )}
+                            {b.isFirst && t.commitmentLevel === 'running' && t.percentComplete > 0 && (
+                              <div style={{
+                                position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 'inherit',
+                                width: `${t.percentComplete}%`, background: 'rgba(255,255,255,0.2)',
+                              }} />
+                            )}
+                            {b.isLast && isPinned && <span style={{ position: 'absolute', top: -6, right: -4, fontSize: 9, zIndex: 2 }}>📌</span>}
+                            {b.isFirst && b.width > 3 && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'relative', zIndex: 1 }}>{t.name}</span>}
+                          </div>
+                        ))}
+                      </Fragment>
                     );
                   })}
                   {/* WhereTo dim overlay on lane */}
@@ -5855,6 +5912,11 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
             {fmtDate(hovered.scheduledStart)} → {fmtDate(hovered.scheduledEnd)}
           </div>
           <div style={{ color: C.textMuted }}>{t('duration', 'Duration')}: {fmtDuration(hovered.durationSeconds)}</div>
+          {hovered.segments && hovered.segments.length > 1 && (
+            <div style={{ color: C.textMuted }}>
+              Work: {fmtDuration(hovered.workDurationSeconds)} · {hovered.segments.length} segments
+            </div>
+          )}
           {hovered.orderRef && <div style={{ color: C.textMuted }}>{t('order', 'Order')}: {hovered.orderRef}</div>}
           {hovered.outputProductKey && (
             <div style={{ color: C.textMuted }}>
@@ -6306,6 +6368,11 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
           {hovered.type && hovered.type !== 'PROCESS' && <div style={{ color: C.yellow, fontSize: 11, fontWeight: 600, marginBottom: 2 }}>{hovered.type}</div>}
           {hovered.scheduledStart && <div style={{ color: C.textMuted }}>{fmtDate(hovered.scheduledStart)} → {fmtDate(hovered.scheduledEnd)}</div>}
           <div style={{ color: C.textMuted }}>{t('duration', 'Duration')}: {fmtDuration(hovered.durationSeconds)}</div>
+          {hovered.segments && hovered.segments.length > 1 && (
+            <div style={{ color: C.textMuted }}>
+              Work: {fmtDuration(hovered.workDurationSeconds)} · {hovered.segments.length} segments
+            </div>
+          )}
           {hovered.assignedResources?.length > 0 && (
             <div style={{ color: C.textMuted }}>Resources: {hovered.assignedResources.map((r: any) => r.resourceKey).join(', ')}</div>
           )}
@@ -6347,7 +6414,7 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
    TASK STATUS HELPERS
    ═══════════════════════════════════════════════════════════════ */
 
-function deriveTaskStatus(tk: any, taskPins?: Record<string, boolean>, taskExcludes?: Record<string, boolean>,
+function deriveTaskStatus(tk: any, _taskPins?: Record<string, boolean>, taskExcludes?: Record<string, boolean>,
   taskUnschedules?: Set<string>, orderModes?: Record<string, string>): string {
   // Pinned is intentionally NOT a status here — it's an orthogonal flag.
   // A pinned task classifies by its lifecycle (planned / running / completed)

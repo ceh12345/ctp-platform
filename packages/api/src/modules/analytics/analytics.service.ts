@@ -88,7 +88,10 @@ export class AnalyticsService {
       out.push({
         start: node.data.AbsoluteStartTime.toISO()!,
         end: node.data.AbsoluteEndTime.toISO()!,
-        durationSec: node.data.duration(),
+        // workDuration() returns segment-summed time for FLOAT assignments;
+        // for calendar intervals (CTPInterval base) it equals duration().
+        // Prevents utilization from over-reporting on FLOAT-spanning tasks.
+        durationSec: node.data.workDuration(),
       });
       node = node.next;
     }

@@ -47,7 +47,10 @@ export class ResourceUtilizationScoringRule extends CTPScoringRule {
         if (assignments && assignments.atleastOne()) {
           let aPtr = assignments.head;
           while (aPtr) {
-            totalAssigned += (aPtr.data.endW - aPtr.data.startW) * (aPtr.data.qty ?? 1);
+            // workDuration() returns segment-summed working time for FLOAT
+            // assignments and falls back to envelope duration for FIXED.
+            // Prevents over-reporting utilization when FLOAT tasks span gaps.
+            totalAssigned += aPtr.data.workDuration() * (aPtr.data.qty ?? 1);
             aPtr = aPtr.next;
           }
         }
