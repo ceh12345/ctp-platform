@@ -13052,6 +13052,9 @@ interface ResourceProfileTabProps {
 }
 
 function ResourceProfileTab({ resources, tasks, colors, onTaskClick }: ResourceProfileTabProps) {
+  // View mode: heatmap (shop-wide overview) or detail (per-resource skyscraper)
+  const [mode, setMode] = useState<'heatmap' | 'detail'>('heatmap');
+
   // Default to first pooled resource (qty > 1 in any availability interval),
   // falling back to first resource overall.
   const pooledResources = useMemo(() => resources.filter((r: any) =>
@@ -13076,10 +13079,60 @@ function ResourceProfileTab({ resources, tasks, colors, onTaskClick }: ResourceP
     return <div style={{ color: C.textDim, padding: 20 }}>No resources available</div>;
   }
 
+  // View toggle bar
+  const viewToggle = (
+    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+      <button
+        onClick={() => setMode('heatmap')}
+        style={{
+          padding: '6px 12px', fontSize: 12, fontFamily: FONT,
+          border: `1px solid ${mode === 'heatmap' ? C.accent : C.border}`,
+          background: mode === 'heatmap' ? `${C.accent}22` : C.surface2,
+          color: mode === 'heatmap' ? C.text : C.textMuted,
+          borderRadius: 4, cursor: 'pointer',
+        }}
+      >Overview (Heatmap)</button>
+      <button
+        onClick={() => setMode('detail')}
+        style={{
+          padding: '6px 12px', fontSize: 12, fontFamily: FONT,
+          border: `1px solid ${mode === 'detail' ? C.accent : C.border}`,
+          background: mode === 'detail' ? `${C.accent}22` : C.surface2,
+          color: mode === 'detail' ? C.text : C.textMuted,
+          borderRadius: 4, cursor: 'pointer',
+        }}
+      >Detail (Skyscraper)</button>
+    </div>
+  );
+
+  if (mode === 'heatmap') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          {viewToggle}
+          <span style={{ fontSize: 11, color: C.textDim }}>
+            Click a cell to drill into that resource's detail
+          </span>
+        </div>
+        <ResourceHeatmap
+          resources={resources}
+          tasks={tasks}
+          onCellClick={(resourceKey: string) => {
+            setSelectedKey(resourceKey);
+            setSelectedTaskKey(null);
+            setMode('detail');
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header: resource selector */}
+      {/* Header: view toggle + resource selector */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        {viewToggle}
+        <span style={{ width: 1, height: 20, background: C.border }} />
         <label style={{ fontSize: 12, color: C.textMuted }}>Resource:</label>
         <select
           value={selectedKey ?? ''}
@@ -13118,6 +13171,208 @@ function ResourceProfileTab({ resources, tasks, colors, onTaskClick }: ResourceP
             onTaskClick={(t: any) => { setSelectedTaskKey(t.key); onTaskClick?.(t); }}
           />
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ResourceHeatmap — shop-wide utilization overview. Rows = resources,
+   columns = day bins, cell color = utilization %. */
+
+interface ResourceHeatmapProps {
+  resources: any[];
+  tasks: any[];  // accepted for symmetry; current impl reads only resource.assignments
+  onCellClick: (resourceKey: string) => void;
+}
+
+function ResourceHeatmap({ resources, onCellClick }: ResourceHeatmapProps) {
+  type SortKey = 'name' | 'peakUtil' | 'avgUtil';
+  const [sortKey, setSortKey] = useState<SortKey>('peakUtil');
+
+  // Compute time domain — union of all resource availabilities, day-aligned.
+  const { dayBins } = useMemo(() => {
+    const day = 86400000;
+    const allStarts: number[] = [];
+    const allEnds: number[] = [];
+    for (const r of resources) {
+      for (const iv of (r.availability ?? [])) {
+        allStarts.push(new Date(iv.start).getTime());
+        allEnds.push(new Date(iv.end).getTime());
+      }
+    }
+    if (allStarts.length === 0) return { dayBins: [] };
+    const start = Math.floor(Math.min(...allStarts) / day) * day;
+    const end = Math.ceil(Math.max(...allEnds) / day) * day;
+    const bins: { start: number; end: number }[] = [];
+    for (let ms = start; ms < end; ms += day) {
+      bins.push({ start: ms, end: ms + day });
+    }
+    return { dayBins: bins };
+  }, [resources]);
+
+  // For each (resource, dayBin): compute utilization %.
+  // Capacity in bin = sum over availability intervals of (qty * overlap_seconds).
+  // Used in bin = sum over assignment intervals of (qty * overlap_seconds), where
+  // assignment intervals come from resource.assignments (already exposes qty).
+  const utilMatrix = useMemo(() => {
+    const overlap = (s1: number, e1: number, s2: number, e2: number) =>
+      Math.max(0, Math.min(e1, e2) - Math.max(s1, s2));
+    return resources.map((r: any) => {
+      const avail = (r.availability ?? []).map((iv: any) => ({
+        start: new Date(iv.start).getTime(),
+        end: new Date(iv.end).getTime(),
+        qty: iv.qty ?? 1,
+      }));
+      const used = (r.assignments ?? []).map((iv: any) => ({
+        start: new Date(iv.start).getTime(),
+        end: new Date(iv.end).getTime(),
+        qty: iv.qty ?? 1,
+      }));
+      const cells = dayBins.map(bin => {
+        let cap = 0, usedSec = 0;
+        for (const a of avail) cap += a.qty * overlap(a.start, a.end, bin.start, bin.end);
+        for (const u of used) usedSec += u.qty * overlap(u.start, u.end, bin.start, bin.end);
+        const util = cap > 0 ? usedSec / cap : 0;
+        return { cap, usedSec, util, hasCap: cap > 0 };
+      });
+      const peak = cells.reduce((m, c) => Math.max(m, c.util), 0);
+      const validCells = cells.filter(c => c.hasCap);
+      const avg = validCells.length > 0
+        ? validCells.reduce((s, c) => s + c.util, 0) / validCells.length
+        : 0;
+      return { resource: r, cells, peak, avg };
+    });
+  }, [resources, dayBins]);
+
+  const sorted = useMemo(() => {
+    const arr = [...utilMatrix];
+    arr.sort((a, b) => {
+      switch (sortKey) {
+        case 'name': return a.resource.resourceName.localeCompare(b.resource.resourceName);
+        case 'peakUtil': return b.peak - a.peak;
+        case 'avgUtil': return b.avg - a.avg;
+      }
+    });
+    return arr;
+  }, [utilMatrix, sortKey]);
+
+  // Utilization → color (cool blue / green / amber / orange / red).
+  const colorForUtil = (u: number, hasCap: boolean): string => {
+    if (!hasCap) return C.surface;       // off-shift / no capacity
+    if (u <= 0.001) return C.surface2;   // available but idle
+    if (u < 0.4) return '#1e3a8a99';     // cool blue (under-utilized)
+    if (u < 0.7) return '#10b98199';     // green (healthy)
+    if (u < 0.95) return '#f59e0b99';    // amber
+    if (u <= 1.0) return '#f97316cc';    // orange (tight)
+    return '#dc2626';                    // red (overload)
+  };
+
+  const dayLabel = (ms: number) => {
+    const d = new Date(ms);
+    return d.toUTCString().slice(0, 7); // "Mon 02"
+  };
+
+  return (
+    <div style={{
+      background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+      padding: 16, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>Shop Utilization</div>
+        <label style={{ fontSize: 11, color: C.textMuted }}>Sort by:</label>
+        <select
+          value={sortKey}
+          onChange={e => setSortKey(e.target.value as SortKey)}
+          style={{
+            background: C.surface, color: C.text, border: `1px solid ${C.border}`,
+            borderRadius: 4, padding: '3px 6px', fontSize: 11, fontFamily: FONT,
+          }}
+        >
+          <option value="peakUtil">Peak utilization (high → low)</option>
+          <option value="avgUtil">Avg utilization (high → low)</option>
+          <option value="name">Name</option>
+        </select>
+      </div>
+
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <table style={{ borderCollapse: 'separate', borderSpacing: 2, fontSize: 10, width: '100%' }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left', padding: '4px 8px', color: C.textDim, minWidth: 140, fontWeight: 500 }}>Resource</th>
+              <th style={{ padding: '4px 4px', color: C.textDim, fontWeight: 500, minWidth: 32 }}>Peak</th>
+              {dayBins.map((b, i) => (
+                <th key={i} style={{
+                  padding: '4px 2px', color: C.textDim, fontWeight: 500, minWidth: 40, fontSize: 9,
+                }}>{dayLabel(b.start)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map(row => (
+              <tr key={row.resource.resourceKey}>
+                <td
+                  onClick={() => onCellClick(row.resource.resourceKey)}
+                  style={{
+                    padding: '4px 8px', cursor: 'pointer',
+                    color: C.text, fontSize: 11,
+                  }}
+                >
+                  <div>{row.resource.resourceName}</div>
+                  <div style={{ fontSize: 9, color: C.textDim }}>
+                    {row.resource.workCenter ?? '—'} › {row.resource.line ?? '—'}
+                  </div>
+                </td>
+                <td style={{
+                  padding: '4px 4px', textAlign: 'center', fontWeight: 600,
+                  color: row.peak > 1 ? '#dc2626' : C.text,
+                }}>{(row.peak * 100).toFixed(0)}%</td>
+                {row.cells.map((cell, ci) => (
+                  <td
+                    key={ci}
+                    onClick={() => onCellClick(row.resource.resourceKey)}
+                    title={cell.hasCap
+                      ? `${row.resource.resourceName} · ${dayLabel(dayBins[ci].start)}\nUtil: ${(cell.util * 100).toFixed(1)}%\nUsed: ${(cell.usedSec / 3600).toFixed(1)}h of ${(cell.cap / 3600).toFixed(1)}h`
+                      : `${row.resource.resourceName} · ${dayLabel(dayBins[ci].start)}\nNo capacity`}
+                    style={{
+                      padding: '6px 2px', textAlign: 'center',
+                      background: colorForUtil(cell.util, cell.hasCap),
+                      color: cell.util >= 0.7 ? '#fff' : C.text,
+                      cursor: 'pointer', borderRadius: 2,
+                      fontSize: 10, fontWeight: cell.util > 1 ? 700 : 400,
+                    }}
+                  >
+                    {cell.hasCap ? `${Math.round(cell.util * 100)}` : ''}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {sorted.length === 0 && (
+              <tr><td colSpan={dayBins.length + 2} style={{ padding: 20, textAlign: 'center', color: C.textDim }}>
+                No resources to display
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12, fontSize: 10, color: C.textDim, flexWrap: 'wrap' }}>
+        <span>Util %:</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 16, height: 12, background: '#1e3a8a99', borderRadius: 2 }} /> &lt;40 under
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 16, height: 12, background: '#10b98199', borderRadius: 2 }} /> 40-70 healthy
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 16, height: 12, background: '#f59e0b99', borderRadius: 2 }} /> 70-95 busy
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 16, height: 12, background: '#f97316cc', borderRadius: 2 }} /> 95-100 tight
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 16, height: 12, background: '#dc2626', borderRadius: 2 }} /> &gt;100 overload
+        </span>
       </div>
     </div>
   );
@@ -13245,16 +13500,27 @@ function StackedLoadProfile({ resource, tasks, colors, selectedTaskKey, onTaskCl
 
       {/* Y-axis + chart area */}
       <div style={{ display: 'flex', flex: 1, minHeight: CHART_H, position: 'relative' }}>
-        {/* Y-axis labels */}
+        {/* Y-axis labels — 1..maxCapacity at lane tops (capacity used after
+            that lane fills). 0 is the implicit baseline at the bottom. The
+            overload lane shows ">" above the capacity line. */}
         <div style={{ width: 32, position: 'relative', height: CHART_H }}>
-          {Array.from({ length: maxCapacity + 1 }).map((_, i) => {
-            const top = CHART_H - (i + 1) * laneH + laneH / 2;
+          {/* Baseline 0 at bottom */}
+          <div style={{
+            position: 'absolute', bottom: -4, right: 4, fontSize: 10, color: C.textDim,
+          }}>0</div>
+          {Array.from({ length: maxCapacity }).map((_, i) => {
+            const top = CHART_H - (i + 1) * laneH;
             return (
               <div key={i} style={{
-                position: 'absolute', top, right: 4, fontSize: 10, color: C.textDim,
-              }}>{i}</div>
+                position: 'absolute', top: top - 6, right: 4, fontSize: 10, color: C.textDim,
+              }}>{i + 1}</div>
             );
           })}
+          {/* Overload lane top */}
+          <div style={{
+            position: 'absolute', top: CHART_H - (maxCapacity + 1) * laneH - 6,
+            right: 4, fontSize: 10, color: '#dc2626', fontWeight: 600,
+          }}>!</div>
         </div>
 
         {/* Chart area */}
