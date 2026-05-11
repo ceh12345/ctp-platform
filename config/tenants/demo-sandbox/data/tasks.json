@@ -1267,10 +1267,10 @@
   },
   {
     "key": "T-FLOAT-ASSEMBLE",
-    "name": "FLOAT Demo: 12h skips weekend (independent)",
+    "name": "FLOAT Demo: 12h successor of MACHINE (chained maxGap=0)",
     "type": "PROCESS",
     "process": "assembly",
-    "windowStart": "2026-02-13T07:00:00Z",
+    "windowStart": "2026-02-10T07:00:00Z",
     "windowEnd": "2026-02-25T00:00:00Z",
     "durationSeconds": 43200,
     "durationQty": 1,
@@ -1284,9 +1284,10 @@
       }
     ],
     "linkId": {
-      "name": "WO-FLOAT-2",
-      "type": "START",
-      "prevLink": ""
+      "name": "WO-FLOAT",
+      "type": "END",
+      "prevLink": "T-FLOAT-MACHINE",
+      "maxGap": 0
     },
     "outputProductKey": "PROD-WC",
     "outputQty": 100,
