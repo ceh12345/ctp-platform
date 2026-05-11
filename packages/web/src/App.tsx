@@ -13037,10 +13037,386 @@ function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput, onC
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   RESOURCE PROFILE TAB — pooled-resource visualization (Phase 1)
+
+   StackedLoadProfile ("skyscraper"): time on X, capacity on Y. Each
+   task block stacks within the resource's capacity. Overload (stack
+   above capacity line) renders in red. Companion task list synced.
+   ═══════════════════════════════════════════════════════════════ */
+
+interface ResourceProfileTabProps {
+  resources: any[];
+  tasks: any[];
+  colors: any;
+  onTaskClick?: (t: any) => void;
+}
+
+function ResourceProfileTab({ resources, tasks, colors, onTaskClick }: ResourceProfileTabProps) {
+  // Default to first pooled resource (qty > 1 in any availability interval),
+  // falling back to first resource overall.
+  const pooledResources = useMemo(() => resources.filter((r: any) =>
+    Array.isArray(r.availability) && r.availability.some((iv: any) => (iv.qty ?? 1) > 1)
+  ), [resources]);
+
+  const [selectedKey, setSelectedKey] = useState<string | null>(
+    pooledResources[0]?.resourceKey ?? resources[0]?.resourceKey ?? null
+  );
+  const [selectedTaskKey, setSelectedTaskKey] = useState<string | null>(null);
+
+  const resource = resources.find((r: any) => r.resourceKey === selectedKey);
+  const resourceTasks = useMemo(() => {
+    if (!resource) return [];
+    return tasks.filter((t: any) =>
+      t.scheduledStart && t.scheduledEnd &&
+      t.assignedResources?.some((r: any) => r.resourceKey === resource.resourceKey)
+    );
+  }, [tasks, resource]);
+
+  if (!resource) {
+    return <div style={{ color: C.textDim, padding: 20 }}>No resources available</div>;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Header: resource selector */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <label style={{ fontSize: 12, color: C.textMuted }}>Resource:</label>
+        <select
+          value={selectedKey ?? ''}
+          onChange={e => { setSelectedKey(e.target.value); setSelectedTaskKey(null); }}
+          style={{
+            background: C.surface2, color: C.text, border: `1px solid ${C.border}`,
+            borderRadius: 4, padding: '6px 10px', fontSize: 13, fontFamily: FONT, minWidth: 280,
+          }}
+        >
+          {resources.map((r: any) => {
+            const maxQty = Math.max(1, ...(r.availability?.map((iv: any) => iv.qty ?? 1) ?? [1]));
+            const label = maxQty > 1 ? `${r.resourceName} (qty=${maxQty})` : r.resourceName;
+            return <option key={r.resourceKey} value={r.resourceKey}>{label}</option>;
+          })}
+        </select>
+        <span style={{ fontSize: 11, color: C.textDim }}>
+          {resourceTasks.length} task{resourceTasks.length === 1 ? '' : 's'} scheduled
+        </span>
+      </div>
+
+      {/* Main: chart + task list */}
+      <div style={{ display: 'flex', gap: 16, flex: 1, minHeight: 0 }}>
+        <div style={{ flex: 2, minWidth: 0 }}>
+          <StackedLoadProfile
+            resource={resource}
+            tasks={resourceTasks}
+            colors={colors}
+            selectedTaskKey={selectedTaskKey}
+            onTaskClick={(t: any) => { setSelectedTaskKey(t.key); onTaskClick?.(t); }}
+          />
+        </div>
+        <div style={{ flex: 1, minWidth: 280, maxWidth: 480 }}>
+          <ResourceTaskList
+            tasks={resourceTasks}
+            selectedTaskKey={selectedTaskKey}
+            onTaskClick={(t: any) => { setSelectedTaskKey(t.key); onTaskClick?.(t); }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* StackedLoadProfile — the "skyscraper" chart. */
+
+interface StackedLoadProfileProps {
+  resource: any;
+  tasks: any[];
+  colors: any;
+  selectedTaskKey: string | null;
+  onTaskClick: (t: any) => void;
+}
+
+function StackedLoadProfile({ resource, tasks, colors, selectedTaskKey, onTaskClick }: StackedLoadProfileProps) {
+  // Compute capacity step function from availability intervals.
+  const capacityPoints = useMemo(() => {
+    return (resource.availability ?? [])
+      .map((iv: any) => ({
+        start: new Date(iv.start).getTime(),
+        end: new Date(iv.end).getTime(),
+        qty: iv.qty ?? 1,
+      }))
+      .sort((a: any, b: any) => a.start - b.start);
+  }, [resource.availability]);
+
+  const maxCapacity = useMemo(() =>
+    Math.max(1, ...capacityPoints.map((c: any) => c.qty), 1)
+  , [capacityPoints]);
+
+  // Time domain: span from earliest capacity start to latest end, or task span if wider.
+  const { hStartMs, hEndMs } = useMemo(() => {
+    const capStarts = capacityPoints.map((c: any) => c.start);
+    const capEnds = capacityPoints.map((c: any) => c.end);
+    const taskStarts = tasks.map((t: any) => new Date(t.scheduledStart).getTime());
+    const taskEnds = tasks.map((t: any) => new Date(t.scheduledEnd).getTime());
+    const allStarts = [...capStarts, ...taskStarts];
+    const allEnds = [...capEnds, ...taskEnds];
+    if (allStarts.length === 0) return { hStartMs: 0, hEndMs: 1 };
+    return {
+      hStartMs: Math.min(...allStarts),
+      hEndMs: Math.max(...allEnds),
+    };
+  }, [capacityPoints, tasks]);
+
+  const totalMs = hEndMs - hStartMs;
+  if (totalMs <= 0) {
+    return <div style={{ color: C.textDim, padding: 20 }}>No timeline data</div>;
+  }
+
+  const toPctX = (ms: number) => ((ms - hStartMs) / totalMs) * 100;
+
+  // Lane assignment: greedy. Sort tasks by start; for each task, find lowest
+  // free lane (0..maxCapacity-1) at its start time, considering tasks already
+  // placed. Each task occupies `qty` consecutive lanes.
+  const placements = useMemo(() => {
+    // For multi-segment FLOAT tasks, render each segment as its own block on
+    // the chart (per the FLOAT visual story). All segments of the same task
+    // share lane assignment.
+    interface Block { task: any; lane: number; start: number; end: number; }
+    const sorted = [...tasks].sort((a, b) =>
+      new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime()
+    );
+    // Track per-lane end times: laneEnds[i] = latest end time of any block placed on lane i
+    const laneEnds: number[] = new Array(maxCapacity).fill(0);
+    const blocks: Block[] = [];
+    for (const t of sorted) {
+      const taskQty = t.assignedResources?.find((r: any) => r.resourceKey === resource.resourceKey)?.qty ?? 1;
+      const startMs = new Date(t.scheduledStart).getTime();
+      const endMs = new Date(t.scheduledEnd).getTime();
+      // Find `taskQty` consecutive lanes whose laneEnds <= startMs.
+      let foundLane = -1;
+      for (let i = 0; i + taskQty <= maxCapacity; i++) {
+        let ok = true;
+        for (let j = 0; j < taskQty; j++) {
+          if (laneEnds[i + j] > startMs) { ok = false; break; }
+        }
+        if (ok) { foundLane = i; break; }
+      }
+      // If no fit, overload — stack above maxCapacity (use lane = maxCapacity).
+      const lane = foundLane === -1 ? maxCapacity : foundLane;
+      // Push segments (or envelope for FIXED / single-segment FLOAT).
+      const segs: { start: number; end: number }[] =
+        Array.isArray(t.segments) && t.segments.length > 1
+          ? t.segments.map((s: any) => ({ start: new Date(s.start).getTime(), end: new Date(s.end).getTime() }))
+          : [{ start: startMs, end: endMs }];
+      for (const s of segs) {
+        blocks.push({ task: t, lane, start: s.start, end: s.end });
+      }
+      // Mark lanes as occupied up to endMs (envelope, not just segments — pool occupancy spans the full envelope)
+      if (foundLane !== -1) {
+        for (let j = 0; j < taskQty; j++) {
+          laneEnds[foundLane + j] = endMs;
+        }
+      }
+    }
+    return blocks;
+  }, [tasks, maxCapacity, resource.resourceKey]);
+
+  const CHART_H = 360;
+  const laneH = CHART_H / Math.max(maxCapacity + 1, 5); // +1 to leave room for overload lane
+
+  // Time axis: day labels
+  const axisLabels = useMemo(() => {
+    const labels: { ms: number; label: string }[] = [];
+    const day = 86400000;
+    const startDay = Math.floor(hStartMs / day) * day;
+    for (let ms = startDay; ms < hEndMs; ms += day) {
+      if (ms >= hStartMs) {
+        labels.push({ ms, label: new Date(ms).toUTCString().slice(0, 11) });
+      }
+    }
+    return labels;
+  }, [hStartMs, hEndMs]);
+
+  return (
+    <div style={{
+      background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+      padding: 16, height: '100%', display: 'flex', flexDirection: 'column',
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+        {resource.resourceName} <span style={{ color: C.textDim, fontWeight: 400, fontSize: 11 }}>(capacity: {maxCapacity})</span>
+      </div>
+
+      {/* Y-axis + chart area */}
+      <div style={{ display: 'flex', flex: 1, minHeight: CHART_H, position: 'relative' }}>
+        {/* Y-axis labels */}
+        <div style={{ width: 32, position: 'relative', height: CHART_H }}>
+          {Array.from({ length: maxCapacity + 1 }).map((_, i) => {
+            const top = CHART_H - (i + 1) * laneH + laneH / 2;
+            return (
+              <div key={i} style={{
+                position: 'absolute', top, right: 4, fontSize: 10, color: C.textDim,
+              }}>{i}</div>
+            );
+          })}
+        </div>
+
+        {/* Chart area */}
+        <div style={{ flex: 1, position: 'relative', height: CHART_H, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 4 }}>
+          {/* Lane separators */}
+          {Array.from({ length: maxCapacity + 1 }).map((_, i) => {
+            const top = CHART_H - (i + 1) * laneH;
+            return (
+              <div key={`lane-${i}`} style={{
+                position: 'absolute', left: 0, right: 0, top,
+                borderTop: i === maxCapacity ? `2px solid ${C.accent}` : `1px dashed ${C.border}`,
+                opacity: i === maxCapacity ? 1 : 0.3,
+              }} />
+            );
+          })}
+
+          {/* Time axis at bottom */}
+          <div style={{ position: 'absolute', bottom: -22, left: 0, right: 0, height: 20, fontSize: 10, color: C.textDim }}>
+            {axisLabels.map((l, i) => (
+              <div key={i} style={{
+                position: 'absolute', left: `${toPctX(l.ms)}%`, borderLeft: `1px solid ${C.border}`,
+                paddingLeft: 4, top: 0, height: '100%',
+              }}>{l.label}</div>
+            ))}
+          </div>
+
+          {/* Task blocks */}
+          {placements.map((b: any, i: number) => {
+            const left = toPctX(b.start);
+            const right = toPctX(b.end);
+            const w = Math.max(right - left, 0.3);
+            const isOverload = b.lane >= maxCapacity;
+            const top = CHART_H - (b.lane + 1) * laneH + 2;
+            const height = laneH - 4;
+            const chainKey = b.task.linkId?.name ?? b.task.orderRef ?? b.task.key;
+            const baseColor = isOverload ? '#dc2626' : (colors ? getTaskColor(b.task, colors) : C.accent);
+            const isSelected = b.task.key === selectedTaskKey;
+            return (
+              <div
+                key={`${b.task.key}-${i}`}
+                onClick={() => onTaskClick(b.task)}
+                title={`${b.task.name}\n${chainKey}\n${new Date(b.start).toUTCString()} → ${new Date(b.end).toUTCString()}`}
+                style={{
+                  position: 'absolute', left: `${left}%`, width: `${w}%`,
+                  top, height,
+                  background: baseColor,
+                  border: isSelected ? `2px solid ${C.text}` : (isOverload ? `1px solid #fca5a5` : `1px solid rgba(0,0,0,0.2)`),
+                  borderRadius: 3,
+                  opacity: 0.85,
+                  cursor: 'pointer',
+                  fontSize: 9, color: '#fff', fontWeight: 500,
+                  padding: '0 4px',
+                  overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                  display: 'flex', alignItems: 'center',
+                }}
+              >
+                {w > 3 && b.task.key}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ fontSize: 10, color: C.textDim, marginTop: 28 }}>
+        Blocks colored by chain. Capacity line at top. Overload renders in red above.
+      </div>
+    </div>
+  );
+}
+
+/* ResourceTaskList — companion synced task list. */
+
+interface ResourceTaskListProps {
+  tasks: any[];
+  selectedTaskKey: string | null;
+  onTaskClick: (t: any) => void;
+}
+
+function ResourceTaskList({ tasks, selectedTaskKey, onTaskClick }: ResourceTaskListProps) {
+  const [sortKey, setSortKey] = useState<'start' | 'name' | 'duration' | 'chain'>('start');
+  const sorted = useMemo(() => {
+    const arr = [...tasks];
+    arr.sort((a, b) => {
+      switch (sortKey) {
+        case 'start':
+          return new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime();
+        case 'name': return a.name.localeCompare(b.name);
+        case 'duration': return (a.durationSeconds || 0) - (b.durationSeconds || 0);
+        case 'chain': return (a.linkId?.name || a.orderRef || '').localeCompare(b.linkId?.name || b.orderRef || '');
+      }
+    });
+    return arr;
+  }, [tasks, sortKey]);
+
+  const sortBtn = (k: typeof sortKey, label: string) => (
+    <th
+      onClick={() => setSortKey(k)}
+      style={{
+        textAlign: 'left', padding: '6px 8px', fontSize: 10, color: C.textDim,
+        borderBottom: `1px solid ${C.border}`, cursor: 'pointer',
+        background: sortKey === k ? C.surface2 : 'transparent',
+      }}
+    >{label}{sortKey === k ? ' ↑' : ''}</th>
+  );
+
+  return (
+    <div style={{
+      background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+      height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 600, padding: '12px 16px', borderBottom: `1px solid ${C.border}` }}>
+        Tasks ({tasks.length})
+      </div>
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+          <thead>
+            <tr>
+              {sortBtn('name', 'Task')}
+              {sortBtn('chain', 'Chain')}
+              {sortBtn('start', 'Start')}
+              {sortBtn('duration', 'Dur')}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map(t => (
+              <tr
+                key={t.key}
+                onClick={() => onTaskClick(t)}
+                style={{
+                  cursor: 'pointer',
+                  background: t.key === selectedTaskKey ? `${C.accent}33` : 'transparent',
+                  borderBottom: `1px solid ${C.border}`,
+                }}
+              >
+                <td style={{ padding: '6px 8px', color: C.text }}>
+                  <div>{t.name}</div>
+                  <div style={{ fontSize: 9, color: C.textDim }}>{t.key}</div>
+                </td>
+                <td style={{ padding: '6px 8px', color: C.textMuted }}>{t.linkId?.name || t.orderRef || '—'}</td>
+                <td style={{ padding: '6px 8px', color: C.textMuted }}>
+                  {fmtDate(t.scheduledStart)?.replace(/T.*$/, '')}
+                </td>
+                <td style={{ padding: '6px 8px', color: C.textMuted }}>{fmtDuration(t.durationSeconds)}</td>
+              </tr>
+            ))}
+            {sorted.length === 0 && (
+              <tr><td colSpan={4} style={{ padding: 16, textAlign: 'center', color: C.textDim }}>
+                No tasks scheduled on this resource.
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    MAIN APP
    ═══════════════════════════════════════════════════════════════ */
 
-const TABS = ['Overview', 'Schedule', 'Orders', 'Conflicts', 'Materials', 'Analytics', 'Configurations'];
+const TABS = ['Overview', 'Schedule', 'Resources', 'Orders', 'Conflicts', 'Materials', 'Analytics', 'Configurations'];
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -15235,6 +15611,14 @@ export default function App() {
             onReplayExit={handleReplayExit} onReplayJumpToStep={handleReplayJumpToStep}
             ctpGhostBars={ctpGhostBars} isQueuing={isQueuing}
             onToolbarAction={handleToolbarAction} />
+        )}
+        {activeTab === 'Resources' && (
+          <ResourceProfileTab
+            resources={resources}
+            tasks={tasks}
+            colors={colors}
+            onTaskClick={handleTaskClick}
+          />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} tasks={tasks}
           orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}
