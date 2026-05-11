@@ -3095,6 +3095,14 @@ function TaskDetailPanel({ task, tasks, products, colors, onClose, onResourceCli
       <DetailRow label="Start" value={fmtDate(task.scheduledStart)} />
       <DetailRow label="End" value={fmtDate(task.scheduledEnd)} />
       <DetailRow label={t('duration', 'Duration')} value={fmtDuration(task.durationSeconds)} />
+      {/* For FLOAT tasks: envelope (above) and work time differ. Show work
+          time and segment count distinctly so users see both dimensions. */}
+      {task.segments && task.segments.length > 1 && (
+        <>
+          <DetailRow label="Work Time" value={fmtDuration(task.workDurationSeconds)} />
+          <DetailRow label="Segments" value={`${task.segments.length}`} />
+        </>
+      )}
       {showAt(experienceLevel, 'intermediate') && (
         <DetailRow label={t('score', 'Score')} value={task.score != null ? task.score.toFixed(2) : '—'} />
       )}
@@ -3652,20 +3660,29 @@ function buildAgendaItems(
       end: Math.min(iv.end, dayEndMs),
     }));
 
-  // Find tasks assigned to this resource on this day
-  const dayTasks = tasks
-    .filter((t: any) =>
-      t.scheduledStart && t.scheduledEnd &&
-      t.assignedResources?.some((r: any) => r.resourceKey === resource.resourceKey) &&
-      new Date(t.scheduledStart).getTime() < dayEndMs &&
-      new Date(t.scheduledEnd).getTime() > dayStartMs
-    )
-    .map((t: any) => ({
-      start: Math.max(new Date(t.scheduledStart).getTime(), dayStartMs),
-      end: Math.min(new Date(t.scheduledEnd).getTime(), dayEndMs),
-      task: t,
-    }))
-    .sort((a: any, b: any) => a.start - b.start);
+  // Find tasks (or task segments for FLOAT) assigned to this resource on this day.
+  // For FLOAT tasks the envelope spans off-shift gaps — those gaps aren't work
+  // on this resource, so iterate task.segments[] instead of envelope so the
+  // agenda shows actual work blocks plus available time between them.
+  const dayTasks: { start: number; end: number; task: any }[] = [];
+  for (const t of tasks) {
+    if (!t.scheduledStart || !t.scheduledEnd) continue;
+    if (!t.assignedResources?.some((r: any) => r.resourceKey === resource.resourceKey)) continue;
+    const blocks: { start: string; end: string }[] = (t.segments && t.segments.length > 1)
+      ? t.segments
+      : [{ start: t.scheduledStart, end: t.scheduledEnd }];
+    for (const b of blocks) {
+      const bs = new Date(b.start).getTime();
+      const be = new Date(b.end).getTime();
+      if (bs >= dayEndMs || be <= dayStartMs) continue;
+      dayTasks.push({
+        start: Math.max(bs, dayStartMs),
+        end: Math.min(be, dayEndMs),
+        task: t,
+      });
+    }
+  }
+  dayTasks.sort((a, b) => a.start - b.start);
 
   const items: AgendaItem[] = [];
   const toISO = (ms: number) => new Date(ms).toISOString();
@@ -5895,6 +5912,11 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
             {fmtDate(hovered.scheduledStart)} → {fmtDate(hovered.scheduledEnd)}
           </div>
           <div style={{ color: C.textMuted }}>{t('duration', 'Duration')}: {fmtDuration(hovered.durationSeconds)}</div>
+          {hovered.segments && hovered.segments.length > 1 && (
+            <div style={{ color: C.textMuted }}>
+              Work: {fmtDuration(hovered.workDurationSeconds)} · {hovered.segments.length} segments
+            </div>
+          )}
           {hovered.orderRef && <div style={{ color: C.textMuted }}>{t('order', 'Order')}: {hovered.orderRef}</div>}
           {hovered.outputProductKey && (
             <div style={{ color: C.textMuted }}>
@@ -6346,6 +6368,11 @@ function CaseGanttChart({ tasks, orders, products: _products, colors, onTaskClic
           {hovered.type && hovered.type !== 'PROCESS' && <div style={{ color: C.yellow, fontSize: 11, fontWeight: 600, marginBottom: 2 }}>{hovered.type}</div>}
           {hovered.scheduledStart && <div style={{ color: C.textMuted }}>{fmtDate(hovered.scheduledStart)} → {fmtDate(hovered.scheduledEnd)}</div>}
           <div style={{ color: C.textMuted }}>{t('duration', 'Duration')}: {fmtDuration(hovered.durationSeconds)}</div>
+          {hovered.segments && hovered.segments.length > 1 && (
+            <div style={{ color: C.textMuted }}>
+              Work: {fmtDuration(hovered.workDurationSeconds)} · {hovered.segments.length} segments
+            </div>
+          )}
           {hovered.assignedResources?.length > 0 && (
             <div style={{ color: C.textMuted }}>Resources: {hovered.assignedResources.map((r: any) => r.resourceKey).join(', ')}</div>
           )}
