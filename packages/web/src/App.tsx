@@ -13181,11 +13181,11 @@ function ResourceProfileTab({ resources, tasks, colors, onTaskClick }: ResourceP
 
 interface ResourceHeatmapProps {
   resources: any[];
-  tasks: any[];  // accepted for symmetry; current impl reads only resource.assignments
+  tasks: any[];
   onCellClick: (resourceKey: string) => void;
 }
 
-function ResourceHeatmap({ resources, onCellClick }: ResourceHeatmapProps) {
+function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps) {
   type SortKey = 'name' | 'peakUtil' | 'avgUtil';
   const [sortKey, setSortKey] = useState<SortKey>('peakUtil');
 
@@ -13211,9 +13211,10 @@ function ResourceHeatmap({ resources, onCellClick }: ResourceHeatmapProps) {
   }, [resources]);
 
   // For each (resource, dayBin): compute utilization %.
-  // Capacity in bin = sum over availability intervals of (qty * overlap_seconds).
-  // Used in bin = sum over assignment intervals of (qty * overlap_seconds), where
-  // assignment intervals come from resource.assignments (already exposes qty).
+  // - capacity in bin = Σ availability.qty × overlap_with_bin
+  // - used in bin     = Σ task_usage.qty × overlap_with_bin, where task_usage
+  //   is task.segments[] for FLOAT (so off-shift envelope gaps don't count as
+  //   "used"), or the envelope for FIXED.
   const utilMatrix = useMemo(() => {
     const overlap = (s1: number, e1: number, s2: number, e2: number) =>
       Math.max(0, Math.min(e1, e2) - Math.max(s1, s2));
@@ -13223,11 +13224,26 @@ function ResourceHeatmap({ resources, onCellClick }: ResourceHeatmapProps) {
         end: new Date(iv.end).getTime(),
         qty: iv.qty ?? 1,
       }));
-      const used = (r.assignments ?? []).map((iv: any) => ({
-        start: new Date(iv.start).getTime(),
-        end: new Date(iv.end).getTime(),
-        qty: iv.qty ?? 1,
-      }));
+      // Build per-task usage blocks for tasks scheduled on this resource. For
+      // FLOAT (segments.length > 1), each segment is a usage block; otherwise
+      // the envelope is the single block.
+      const used: { start: number; end: number; qty: number }[] = [];
+      for (const t of tasks) {
+        if (!t.scheduledStart || !t.scheduledEnd) continue;
+        const ar = t.assignedResources?.find((x: any) => x.resourceKey === r.resourceKey);
+        if (!ar) continue;
+        const taskQty = ar.qty ?? 1;
+        const blocks = (Array.isArray(t.segments) && t.segments.length > 1)
+          ? t.segments
+          : [{ start: t.scheduledStart, end: t.scheduledEnd }];
+        for (const b of blocks) {
+          used.push({
+            start: new Date(b.start).getTime(),
+            end: new Date(b.end).getTime(),
+            qty: taskQty,
+          });
+        }
+      }
       const cells = dayBins.map(bin => {
         let cap = 0, usedSec = 0;
         for (const a of avail) cap += a.qty * overlap(a.start, a.end, bin.start, bin.end);
@@ -13242,7 +13258,7 @@ function ResourceHeatmap({ resources, onCellClick }: ResourceHeatmapProps) {
         : 0;
       return { resource: r, cells, peak, avg };
     });
-  }, [resources, dayBins]);
+  }, [resources, tasks, dayBins]);
 
   const sorted = useMemo(() => {
     const arr = [...utilMatrix];
