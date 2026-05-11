@@ -13037,10 +13037,1005 @@ function ChatPanel({ solveResult, open, onClose, selectedTask, initialInput, onC
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   RESOURCE PROFILE TAB — pooled-resource visualization (Phase 1)
+
+   StackedLoadProfile ("skyscraper"): time on X, capacity on Y. Each
+   task block stacks within the resource's capacity. Overload (stack
+   above capacity line) renders in red. Companion task list synced.
+   ═══════════════════════════════════════════════════════════════ */
+
+interface ResourceProfileTabProps {
+  resources: any[];
+  tasks: any[];
+  colors: any;
+  onTaskClick?: (t: any) => void;
+}
+
+function ResourceProfileTab({ resources, tasks, colors, onTaskClick }: ResourceProfileTabProps) {
+  // View mode: heatmap (shop-wide overview), detail (per-resource skyscraper),
+  // or histogram (per-resource binned load).
+  const [mode, setMode] = useState<'heatmap' | 'detail' | 'histogram'>('heatmap');
+
+  // Default to first pooled resource (qty > 1 in any availability interval),
+  // falling back to first resource overall.
+  const pooledResources = useMemo(() => resources.filter((r: any) =>
+    Array.isArray(r.availability) && r.availability.some((iv: any) => (iv.qty ?? 1) > 1)
+  ), [resources]);
+
+  const [selectedKey, setSelectedKey] = useState<string | null>(
+    pooledResources[0]?.resourceKey ?? resources[0]?.resourceKey ?? null
+  );
+  const [selectedTaskKey, setSelectedTaskKey] = useState<string | null>(null);
+
+  const resource = resources.find((r: any) => r.resourceKey === selectedKey);
+  const resourceTasks = useMemo(() => {
+    if (!resource) return [];
+    return tasks.filter((t: any) =>
+      t.scheduledStart && t.scheduledEnd &&
+      t.assignedResources?.some((r: any) => r.resourceKey === resource.resourceKey)
+    );
+  }, [tasks, resource]);
+
+  if (!resource) {
+    return <div style={{ color: C.textDim, padding: 20 }}>No resources available</div>;
+  }
+
+  // View toggle bar
+  const tabBtn = (k: typeof mode, label: string) => (
+    <button
+      onClick={() => setMode(k)}
+      style={{
+        padding: '6px 12px', fontSize: 12, fontFamily: FONT,
+        border: `1px solid ${mode === k ? C.accent : C.border}`,
+        background: mode === k ? `${C.accent}22` : C.surface2,
+        color: mode === k ? C.text : C.textMuted,
+        borderRadius: 4, cursor: 'pointer',
+      }}
+    >{label}</button>
+  );
+  const viewToggle = (
+    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+      {tabBtn('heatmap', 'Overview (Heatmap)')}
+      {tabBtn('detail', 'Detail (Skyscraper)')}
+      {tabBtn('histogram', 'Histogram')}
+    </div>
+  );
+
+  if (mode === 'heatmap') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          {viewToggle}
+          <span style={{ fontSize: 11, color: C.textDim }}>
+            Click a cell to drill into that resource's detail
+          </span>
+        </div>
+        <ResourceHeatmap
+          resources={resources}
+          tasks={tasks}
+          onCellClick={(resourceKey: string) => {
+            setSelectedKey(resourceKey);
+            setSelectedTaskKey(null);
+            setMode('detail');
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Header: view toggle + resource selector */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        {viewToggle}
+        <span style={{ width: 1, height: 20, background: C.border }} />
+        <label style={{ fontSize: 12, color: C.textMuted }}>Resource:</label>
+        <select
+          value={selectedKey ?? ''}
+          onChange={e => { setSelectedKey(e.target.value); setSelectedTaskKey(null); }}
+          style={{
+            background: C.surface2, color: C.text, border: `1px solid ${C.border}`,
+            borderRadius: 4, padding: '6px 10px', fontSize: 13, fontFamily: FONT, minWidth: 280,
+          }}
+        >
+          {resources.map((r: any) => {
+            const maxQty = Math.max(1, ...(r.availability?.map((iv: any) => iv.qty ?? 1) ?? [1]));
+            const label = maxQty > 1 ? `${r.resourceName} (qty=${maxQty})` : r.resourceName;
+            return <option key={r.resourceKey} value={r.resourceKey}>{label}</option>;
+          })}
+        </select>
+        <span style={{ fontSize: 11, color: C.textDim }}>
+          {resourceTasks.length} task{resourceTasks.length === 1 ? '' : 's'} scheduled
+        </span>
+      </div>
+
+      {/* Main: chart + task list */}
+      <div style={{ display: 'flex', gap: 16, flex: 1, minHeight: 0 }}>
+        <div style={{ flex: 2, minWidth: 0 }}>
+          {mode === 'detail' ? (
+            <StackedLoadProfile
+              resource={resource}
+              tasks={resourceTasks}
+              colors={colors}
+              selectedTaskKey={selectedTaskKey}
+              onTaskClick={(t: any) => { setSelectedTaskKey(t.key); onTaskClick?.(t); }}
+            />
+          ) : (
+            <CapacityHistogram
+              resource={resource}
+              tasks={resourceTasks}
+              onBinClick={() => setMode('detail')}
+            />
+          )}
+        </div>
+        <div style={{ flex: 1, minWidth: 280, maxWidth: 480 }}>
+          <ResourceTaskList
+            tasks={resourceTasks}
+            selectedTaskKey={selectedTaskKey}
+            onTaskClick={(t: any) => { setSelectedTaskKey(t.key); onTaskClick?.(t); }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* CapacityHistogram — binned load bars for a single resource.
+   Y axis = % capacity (0–150% range so overload is visible), X = day bins,
+   100% line drawn prominently, overload portion in red above. */
+
+interface CapacityHistogramProps {
+  resource: any;
+  tasks: any[];
+  onBinClick?: () => void;
+}
+
+function CapacityHistogram({ resource, tasks, onBinClick }: CapacityHistogramProps) {
+  // Same bin math as the heatmap, applied to a single resource. Compute day
+  // bins from this resource's availability span (or task span if wider).
+  const { bins, peak } = useMemo(() => {
+    const day = 86400000;
+    const overlap = (s1: number, e1: number, s2: number, e2: number) =>
+      Math.max(0, Math.min(e1, e2) - Math.max(s1, s2));
+    const avail = (resource.availability ?? []).map((iv: any) => ({
+      start: new Date(iv.start).getTime(),
+      end: new Date(iv.end).getTime(),
+      qty: iv.qty ?? 1,
+    }));
+    // Usage blocks per task — segments for FLOAT, envelope for FIXED.
+    const used: { start: number; end: number; qty: number; taskKey: string }[] = [];
+    for (const t of tasks) {
+      if (!t.scheduledStart || !t.scheduledEnd) continue;
+      const ar = t.assignedResources?.find((x: any) => x.resourceKey === resource.resourceKey);
+      if (!ar) continue;
+      const taskQty = ar.qty ?? 1;
+      const blocks = (Array.isArray(t.segments) && t.segments.length > 1)
+        ? t.segments
+        : [{ start: t.scheduledStart, end: t.scheduledEnd }];
+      for (const b of blocks) {
+        used.push({
+          start: new Date(b.start).getTime(),
+          end: new Date(b.end).getTime(),
+          qty: taskQty,
+          taskKey: t.key,
+        });
+      }
+    }
+    const allStarts = [...avail.map((a: any) => a.start), ...used.map(u => u.start)];
+    const allEnds = [...avail.map((a: any) => a.end), ...used.map(u => u.end)];
+    if (allStarts.length === 0) return { bins: [], peak: 0 };
+    const start = Math.floor(Math.min(...allStarts) / day) * day;
+    const end = Math.ceil(Math.max(...allEnds) / day) * day;
+    const result: { start: number; cap: number; used: number; util: number; taskCount: number }[] = [];
+    let p = 0;
+    for (let ms = start; ms < end; ms += day) {
+      const binEnd = ms + day;
+      let cap = 0, usedSec = 0;
+      const touchedTasks = new Set<string>();
+      for (const a of avail) cap += a.qty * overlap(a.start, a.end, ms, binEnd);
+      for (const u of used) {
+        const o = u.qty * overlap(u.start, u.end, ms, binEnd);
+        if (o > 0) {
+          usedSec += o;
+          touchedTasks.add(u.taskKey);
+        }
+      }
+      const util = cap > 0 ? usedSec / cap : 0;
+      if (util > p) p = util;
+      result.push({ start: ms, cap, used: usedSec, util, taskCount: touchedTasks.size });
+    }
+    return { bins: result, peak: p };
+  }, [resource, tasks]);
+
+  if (bins.length === 0) {
+    return (
+      <div style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8, padding: 16, color: C.textDim }}>
+        No data for histogram
+      </div>
+    );
+  }
+
+  // Y axis: 0% to max(100%, peak+10%), tick at 25/50/75/100/125/150 as needed.
+  const yMax = Math.max(1.05, Math.ceil((peak + 0.1) * 4) / 4);
+  const CHART_H = 320;
+  const yToPct = (u: number) => (1 - u / yMax) * 100;
+
+  const colorForUtil = (u: number): string => {
+    if (u <= 0.001) return C.surface;
+    if (u < 0.4) return '#1e3a8a';
+    if (u < 0.7) return '#10b981';
+    if (u < 0.95) return '#f59e0b';
+    if (u <= 1.0) return '#f97316';
+    return '#dc2626';
+  };
+
+  // Vertical ticks at 25% intervals (skip 0)
+  const yTicks: number[] = [];
+  for (let v = 0.25; v <= yMax + 0.001; v += 0.25) yTicks.push(v);
+
+  const dayLabel = (ms: number) => new Date(ms).toUTCString().slice(0, 7);
+
+  // Capacity at 100% line position
+  const hundredPct = yToPct(1);
+
+  return (
+    <div style={{
+      background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+      padding: 16, height: '100%', display: 'flex', flexDirection: 'column',
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+        {resource.resourceName} — daily utilization
+        <span style={{ color: C.textDim, fontWeight: 400, fontSize: 11, marginLeft: 8 }}>
+          peak {Math.round(peak * 100)}%
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flex: 1, minHeight: CHART_H, position: 'relative' }}>
+        {/* Y-axis labels */}
+        <div style={{ width: 42, position: 'relative', height: CHART_H }}>
+          <div style={{ position: 'absolute', bottom: -4, right: 4, fontSize: 10, color: C.textDim }}>0%</div>
+          {yTicks.map((v, i) => (
+            <div key={i} style={{
+              position: 'absolute', top: `${yToPct(v)}%`, right: 4,
+              fontSize: 10, color: v === 1 ? C.text : C.textDim,
+              fontWeight: v === 1 ? 600 : 400,
+              transform: 'translateY(-50%)',
+            }}>{Math.round(v * 100)}%</div>
+          ))}
+        </div>
+
+        {/* Chart area */}
+        <div style={{
+          flex: 1, position: 'relative', height: CHART_H,
+          background: C.bg, border: `1px solid ${C.border}`, borderRadius: 4,
+        }}>
+          {/* Y-axis grid lines */}
+          {yTicks.map((v, i) => (
+            <div key={`grid-${i}`} style={{
+              position: 'absolute', left: 0, right: 0, top: `${yToPct(v)}%`,
+              borderTop: v === 1 ? `2px solid ${C.accent}` : `1px dashed ${C.border}`,
+              opacity: v === 1 ? 1 : 0.25,
+            }} />
+          ))}
+
+          {/* Bars */}
+          {bins.map((b, i) => {
+            if (b.cap === 0) return null; // skip no-capacity days
+            const w = 100 / bins.length;
+            const left = i * w;
+            const barWPct = 0.8;
+            const barLeft = left + (w - w * barWPct) / 2;
+            // Bar splits into <=100% portion and >100% overflow portion
+            const utilClamped = Math.min(b.util, 1);
+            const overload = Math.max(0, b.util - 1);
+            const mainTop = yToPct(utilClamped);
+            const mainHeight = 100 - mainTop;
+            const overloadTop = yToPct(b.util);
+            const overloadHeight = hundredPct - overloadTop;
+            return (
+              <div key={i} title={`${dayLabel(b.start)}\nUtil: ${(b.util * 100).toFixed(1)}%\nUsed: ${(b.used/3600).toFixed(1)}h of ${(b.cap/3600).toFixed(1)}h\nTasks: ${b.taskCount}`}>
+                {/* Main bar (≤100% portion) */}
+                <div
+                  onClick={() => onBinClick?.()}
+                  style={{
+                    position: 'absolute',
+                    left: `${barLeft}%`, width: `${w * barWPct}%`,
+                    top: `${mainTop}%`, height: `${mainHeight}%`,
+                    background: colorForUtil(utilClamped),
+                    border: `1px solid rgba(0,0,0,0.2)`,
+                    borderRadius: '3px 3px 0 0', cursor: 'pointer',
+                  }}
+                />
+                {/* Overload portion (above 100% in red) */}
+                {overload > 0 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: `${barLeft}%`, width: `${w * barWPct}%`,
+                      top: `${overloadTop}%`, height: `${overloadHeight}%`,
+                      background: '#dc2626',
+                      border: `1px solid #fca5a5`,
+                      borderRadius: '3px 3px 0 0',
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })}
+
+          {/* X-axis labels at bottom */}
+          <div style={{ position: 'absolute', bottom: -22, left: 0, right: 0, height: 20, fontSize: 9, color: C.textDim }}>
+            {bins.map((b, i) => {
+              const w = 100 / bins.length;
+              const left = i * w;
+              return (
+                <div key={i} style={{
+                  position: 'absolute', left: `${left}%`, width: `${w}%`,
+                  textAlign: 'center', top: 4,
+                }}>{dayLabel(b.start)}</div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ fontSize: 10, color: C.textDim, marginTop: 28 }}>
+        100% line bold. Overload portion of each bar renders red above. Click a bar to drill into Skyscraper.
+      </div>
+    </div>
+  );
+}
+
+/* ResourceHeatmap — shop-wide utilization overview. Rows = resources,
+   columns = day bins, cell color = utilization %. */
+
+interface ResourceHeatmapProps {
+  resources: any[];
+  tasks: any[];
+  onCellClick: (resourceKey: string) => void;
+}
+
+function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps) {
+  type SortKey = 'name' | 'peakUtil' | 'avgUtil';
+  const [sortKey, setSortKey] = useState<SortKey>('peakUtil');
+
+  // Two-level hierarchy filtering: group (workCenter) → resource.
+  // Default: all groups selected. Search is free-text across resource names.
+  const allGroups = useMemo(() => {
+    const set = new Set<string>();
+    resources.forEach((r: any) => set.add(r.workCenter || '—'));
+    return Array.from(set).sort();
+  }, [resources]);
+  const [selectedGroups, setSelectedGroups] = useState<Set<string>>(() => new Set(allGroups));
+  // Keep selectedGroups in sync if the underlying groups change (tenant switch etc).
+  useEffect(() => {
+    setSelectedGroups(prev => {
+      const next = new Set<string>();
+      for (const g of allGroups) if (prev.has(g)) next.add(g);
+      // First load: select all
+      return next.size === 0 ? new Set(allGroups) : next;
+    });
+  }, [allGroups]);
+  const [searchText, setSearchText] = useState('');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = (g: string) => {
+    setSelectedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(g)) next.delete(g); else next.add(g);
+      return next;
+    });
+  };
+  const toggleCollapsed = (g: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(g)) next.delete(g); else next.add(g);
+      return next;
+    });
+  };
+
+  // Compute time domain — union of all resource availabilities, day-aligned.
+  const { dayBins } = useMemo(() => {
+    const day = 86400000;
+    const allStarts: number[] = [];
+    const allEnds: number[] = [];
+    for (const r of resources) {
+      for (const iv of (r.availability ?? [])) {
+        allStarts.push(new Date(iv.start).getTime());
+        allEnds.push(new Date(iv.end).getTime());
+      }
+    }
+    if (allStarts.length === 0) return { dayBins: [] };
+    const start = Math.floor(Math.min(...allStarts) / day) * day;
+    const end = Math.ceil(Math.max(...allEnds) / day) * day;
+    const bins: { start: number; end: number }[] = [];
+    for (let ms = start; ms < end; ms += day) {
+      bins.push({ start: ms, end: ms + day });
+    }
+    return { dayBins: bins };
+  }, [resources]);
+
+  // For each (resource, dayBin): compute utilization %.
+  // - capacity in bin = Σ availability.qty × overlap_with_bin
+  // - used in bin     = Σ task_usage.qty × overlap_with_bin, where task_usage
+  //   is task.segments[] for FLOAT (so off-shift envelope gaps don't count as
+  //   "used"), or the envelope for FIXED.
+  const utilMatrix = useMemo(() => {
+    const overlap = (s1: number, e1: number, s2: number, e2: number) =>
+      Math.max(0, Math.min(e1, e2) - Math.max(s1, s2));
+    return resources.map((r: any) => {
+      const avail = (r.availability ?? []).map((iv: any) => ({
+        start: new Date(iv.start).getTime(),
+        end: new Date(iv.end).getTime(),
+        qty: iv.qty ?? 1,
+      }));
+      // Build per-task usage blocks for tasks scheduled on this resource. For
+      // FLOAT (segments.length > 1), each segment is a usage block; otherwise
+      // the envelope is the single block.
+      const used: { start: number; end: number; qty: number }[] = [];
+      for (const t of tasks) {
+        if (!t.scheduledStart || !t.scheduledEnd) continue;
+        const ar = t.assignedResources?.find((x: any) => x.resourceKey === r.resourceKey);
+        if (!ar) continue;
+        const taskQty = ar.qty ?? 1;
+        const blocks = (Array.isArray(t.segments) && t.segments.length > 1)
+          ? t.segments
+          : [{ start: t.scheduledStart, end: t.scheduledEnd }];
+        for (const b of blocks) {
+          used.push({
+            start: new Date(b.start).getTime(),
+            end: new Date(b.end).getTime(),
+            qty: taskQty,
+          });
+        }
+      }
+      const cells = dayBins.map(bin => {
+        let cap = 0, usedSec = 0;
+        for (const a of avail) cap += a.qty * overlap(a.start, a.end, bin.start, bin.end);
+        for (const u of used) usedSec += u.qty * overlap(u.start, u.end, bin.start, bin.end);
+        const util = cap > 0 ? usedSec / cap : 0;
+        return { cap, usedSec, util, hasCap: cap > 0 };
+      });
+      const peak = cells.reduce((m, c) => Math.max(m, c.util), 0);
+      const validCells = cells.filter(c => c.hasCap);
+      const avg = validCells.length > 0
+        ? validCells.reduce((s, c) => s + c.util, 0) / validCells.length
+        : 0;
+      return { resource: r, cells, peak, avg };
+    });
+  }, [resources, tasks, dayBins]);
+
+  const sorted = useMemo(() => {
+    const search = searchText.trim().toLowerCase();
+    const arr = utilMatrix.filter(row => {
+      if (!selectedGroups.has(row.resource.workCenter || '—')) return false;
+      if (search && !row.resource.resourceName.toLowerCase().includes(search)
+          && !(row.resource.resourceKey || '').toLowerCase().includes(search)) return false;
+      return true;
+    });
+    arr.sort((a, b) => {
+      switch (sortKey) {
+        case 'name': return a.resource.resourceName.localeCompare(b.resource.resourceName);
+        case 'peakUtil': return b.peak - a.peak;
+        case 'avgUtil': return b.avg - a.avg;
+      }
+    });
+    return arr;
+  }, [utilMatrix, sortKey, selectedGroups, searchText]);
+
+  // Group sorted rows by workCenter for the render. Within each group, the
+  // current sort applies. Groups are listed in alphabetical order.
+  const grouped = useMemo(() => {
+    const map = new Map<string, typeof sorted>();
+    for (const row of sorted) {
+      const g = row.resource.workCenter || '—';
+      if (!map.has(g)) map.set(g, []);
+      map.get(g)!.push(row);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [sorted]);
+
+  // Utilization → color (cool blue / green / amber / orange / red).
+  const colorForUtil = (u: number, hasCap: boolean): string => {
+    if (!hasCap) return C.surface;       // off-shift / no capacity
+    if (u <= 0.001) return C.surface2;   // available but idle
+    if (u < 0.4) return '#1e3a8a99';     // cool blue (under-utilized)
+    if (u < 0.7) return '#10b98199';     // green (healthy)
+    if (u < 0.95) return '#f59e0b99';    // amber
+    if (u <= 1.0) return '#f97316cc';    // orange (tight)
+    return '#dc2626';                    // red (overload)
+  };
+
+  const dayLabel = (ms: number) => {
+    const d = new Date(ms);
+    return d.toUTCString().slice(0, 7); // "Mon 02"
+  };
+
+  return (
+    <div style={{
+      background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+      padding: 16, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>Shop Utilization</div>
+        <label style={{ fontSize: 11, color: C.textMuted }}>Sort by:</label>
+        <select
+          value={sortKey}
+          onChange={e => setSortKey(e.target.value as SortKey)}
+          style={{
+            background: C.surface, color: C.text, border: `1px solid ${C.border}`,
+            borderRadius: 4, padding: '3px 6px', fontSize: 11, fontFamily: FONT,
+          }}
+        >
+          <option value="peakUtil">Peak utilization (high → low)</option>
+          <option value="avgUtil">Avg utilization (high → low)</option>
+          <option value="name">Name</option>
+        </select>
+        <input
+          type="text"
+          placeholder="Search resource..."
+          value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+          style={{
+            background: C.surface, color: C.text, border: `1px solid ${C.border}`,
+            borderRadius: 4, padding: '3px 8px', fontSize: 11, fontFamily: FONT, minWidth: 160,
+          }}
+        />
+      </div>
+
+      {/* Group filter chips — primary filter (level-1 hierarchy = workCenter). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11, color: C.textMuted }}>Groups:</span>
+        {allGroups.map(g => {
+          const active = selectedGroups.has(g);
+          return (
+            <button
+              key={g}
+              onClick={() => toggleGroup(g)}
+              style={{
+                padding: '3px 10px', fontSize: 11, fontFamily: FONT,
+                border: `1px solid ${active ? C.accent : C.border}`,
+                background: active ? `${C.accent}22` : C.surface,
+                color: active ? C.text : C.textMuted,
+                borderRadius: 12, cursor: 'pointer',
+              }}
+            >{g}</button>
+          );
+        })}
+        {selectedGroups.size < allGroups.length && (
+          <button
+            onClick={() => setSelectedGroups(new Set(allGroups))}
+            style={{
+              padding: '3px 8px', fontSize: 10, fontFamily: FONT,
+              border: `1px solid ${C.border}`, background: 'transparent',
+              color: C.textDim, borderRadius: 12, cursor: 'pointer',
+            }}
+          >Select all</button>
+        )}
+      </div>
+
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <table style={{ borderCollapse: 'separate', borderSpacing: 2, fontSize: 10, width: '100%' }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left', padding: '4px 8px', color: C.textDim, minWidth: 140, fontWeight: 500 }}>Resource</th>
+              <th style={{ padding: '4px 4px', color: C.textDim, fontWeight: 500, minWidth: 32 }}>Peak</th>
+              {dayBins.map((b, i) => (
+                <th key={i} style={{
+                  padding: '4px 2px', color: C.textDim, fontWeight: 500, minWidth: 40, fontSize: 9,
+                }}>{dayLabel(b.start)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {grouped.map(([groupName, rows]) => {
+              const collapsed = collapsedGroups.has(groupName);
+              // Group-level roll-up: peak/avg across rows in this group's cells.
+              const groupPeak = rows.reduce((m, r) => Math.max(m, r.peak), 0);
+              return (
+                <Fragment key={groupName}>
+                  {/* Group header row: clickable to collapse. */}
+                  <tr>
+                    <td
+                      onClick={() => toggleCollapsed(groupName)}
+                      colSpan={2}
+                      style={{
+                        padding: '6px 8px', cursor: 'pointer',
+                        background: C.surface, color: C.text, fontSize: 11, fontWeight: 600,
+                        borderTop: `1px solid ${C.border}`,
+                      }}
+                    >
+                      <span style={{ display: 'inline-block', width: 12, color: C.textDim }}>
+                        {collapsed ? '▸' : '▾'}
+                      </span>
+                      {groupName}
+                      <span style={{ marginLeft: 8, fontSize: 10, color: C.textDim, fontWeight: 400 }}>
+                        {rows.length} resource{rows.length === 1 ? '' : 's'} · peak {Math.round(groupPeak * 100)}%
+                      </span>
+                    </td>
+                    {dayBins.map((_, ci) => (
+                      <td key={ci} style={{ background: C.surface, borderTop: `1px solid ${C.border}` }} />
+                    ))}
+                  </tr>
+                  {/* Resource rows within group (if not collapsed) */}
+                  {!collapsed && rows.map(row => (
+                    <tr key={row.resource.resourceKey}>
+                      <td
+                        onClick={() => onCellClick(row.resource.resourceKey)}
+                        style={{
+                          padding: '4px 8px 4px 24px', cursor: 'pointer',
+                          color: C.text, fontSize: 11,
+                        }}
+                      >
+                        <div>{row.resource.resourceName}</div>
+                        <div style={{ fontSize: 9, color: C.textDim }}>
+                          {row.resource.line ?? '—'}
+                        </div>
+                      </td>
+                      <td style={{
+                        padding: '4px 4px', textAlign: 'center', fontWeight: 600,
+                        color: row.peak > 1 ? '#dc2626' : C.text,
+                      }}>{(row.peak * 100).toFixed(0)}%</td>
+                      {row.cells.map((cell, ci) => (
+                        <td
+                          key={ci}
+                          onClick={() => onCellClick(row.resource.resourceKey)}
+                          title={cell.hasCap
+                            ? `${row.resource.resourceName} · ${dayLabel(dayBins[ci].start)}\nUtil: ${(cell.util * 100).toFixed(1)}%\nUsed: ${(cell.usedSec / 3600).toFixed(1)}h of ${(cell.cap / 3600).toFixed(1)}h`
+                            : `${row.resource.resourceName} · ${dayLabel(dayBins[ci].start)}\nNo capacity`}
+                          style={{
+                            padding: '6px 2px', textAlign: 'center',
+                            background: colorForUtil(cell.util, cell.hasCap),
+                            color: cell.util >= 0.7 ? '#fff' : C.text,
+                            cursor: 'pointer', borderRadius: 2,
+                            fontSize: 10, fontWeight: cell.util > 1 ? 700 : 400,
+                          }}
+                        >
+                          {cell.hasCap ? `${Math.round(cell.util * 100)}` : ''}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </Fragment>
+              );
+            })}
+            {grouped.length === 0 && (
+              <tr><td colSpan={dayBins.length + 2} style={{ padding: 20, textAlign: 'center', color: C.textDim }}>
+                No resources match the current filters
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12, fontSize: 10, color: C.textDim, flexWrap: 'wrap' }}>
+        <span>Util %:</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 16, height: 12, background: '#1e3a8a99', borderRadius: 2 }} /> &lt;40 under
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 16, height: 12, background: '#10b98199', borderRadius: 2 }} /> 40-70 healthy
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 16, height: 12, background: '#f59e0b99', borderRadius: 2 }} /> 70-95 busy
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 16, height: 12, background: '#f97316cc', borderRadius: 2 }} /> 95-100 tight
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 16, height: 12, background: '#dc2626', borderRadius: 2 }} /> &gt;100 overload
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* StackedLoadProfile — the "skyscraper" chart. */
+
+interface StackedLoadProfileProps {
+  resource: any;
+  tasks: any[];
+  colors: any;
+  selectedTaskKey: string | null;
+  onTaskClick: (t: any) => void;
+}
+
+function StackedLoadProfile({ resource, tasks, colors, selectedTaskKey, onTaskClick }: StackedLoadProfileProps) {
+  // Compute capacity step function from availability intervals.
+  const capacityPoints = useMemo(() => {
+    return (resource.availability ?? [])
+      .map((iv: any) => ({
+        start: new Date(iv.start).getTime(),
+        end: new Date(iv.end).getTime(),
+        qty: iv.qty ?? 1,
+      }))
+      .sort((a: any, b: any) => a.start - b.start);
+  }, [resource.availability]);
+
+  const maxCapacity = useMemo(() =>
+    Math.max(1, ...capacityPoints.map((c: any) => c.qty), 1)
+  , [capacityPoints]);
+
+  // Time domain: span from earliest capacity start to latest end, or task span if wider.
+  const { hStartMs, hEndMs } = useMemo(() => {
+    const capStarts = capacityPoints.map((c: any) => c.start);
+    const capEnds = capacityPoints.map((c: any) => c.end);
+    const taskStarts = tasks.map((t: any) => new Date(t.scheduledStart).getTime());
+    const taskEnds = tasks.map((t: any) => new Date(t.scheduledEnd).getTime());
+    const allStarts = [...capStarts, ...taskStarts];
+    const allEnds = [...capEnds, ...taskEnds];
+    if (allStarts.length === 0) return { hStartMs: 0, hEndMs: 1 };
+    return {
+      hStartMs: Math.min(...allStarts),
+      hEndMs: Math.max(...allEnds),
+    };
+  }, [capacityPoints, tasks]);
+
+  const totalMs = hEndMs - hStartMs;
+  if (totalMs <= 0) {
+    return <div style={{ color: C.textDim, padding: 20 }}>No timeline data</div>;
+  }
+
+  const toPctX = (ms: number) => ((ms - hStartMs) / totalMs) * 100;
+
+  // Lane assignment: greedy. Sort tasks by start; for each task, find lowest
+  // free lane (0..maxCapacity-1) at its start time, considering tasks already
+  // placed. Each task occupies `qty` consecutive lanes.
+  const placements = useMemo(() => {
+    // For multi-segment FLOAT tasks, render each segment as its own block on
+    // the chart (per the FLOAT visual story). All segments of the same task
+    // share lane assignment.
+    interface Block { task: any; lane: number; start: number; end: number; }
+    const sorted = [...tasks].sort((a, b) =>
+      new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime()
+    );
+    // Track per-lane end times: laneEnds[i] = latest end time of any block placed on lane i
+    const laneEnds: number[] = new Array(maxCapacity).fill(0);
+    const blocks: Block[] = [];
+    for (const t of sorted) {
+      const taskQty = t.assignedResources?.find((r: any) => r.resourceKey === resource.resourceKey)?.qty ?? 1;
+      const startMs = new Date(t.scheduledStart).getTime();
+      const endMs = new Date(t.scheduledEnd).getTime();
+      // Find `taskQty` consecutive lanes whose laneEnds <= startMs.
+      let foundLane = -1;
+      for (let i = 0; i + taskQty <= maxCapacity; i++) {
+        let ok = true;
+        for (let j = 0; j < taskQty; j++) {
+          if (laneEnds[i + j] > startMs) { ok = false; break; }
+        }
+        if (ok) { foundLane = i; break; }
+      }
+      // If no fit, overload — stack above maxCapacity (use lane = maxCapacity).
+      const lane = foundLane === -1 ? maxCapacity : foundLane;
+      // Push segments (or envelope for FIXED / single-segment FLOAT).
+      const segs: { start: number; end: number }[] =
+        Array.isArray(t.segments) && t.segments.length > 1
+          ? t.segments.map((s: any) => ({ start: new Date(s.start).getTime(), end: new Date(s.end).getTime() }))
+          : [{ start: startMs, end: endMs }];
+      for (const s of segs) {
+        blocks.push({ task: t, lane, start: s.start, end: s.end });
+      }
+      // Mark lanes as occupied up to endMs (envelope, not just segments — pool occupancy spans the full envelope)
+      if (foundLane !== -1) {
+        for (let j = 0; j < taskQty; j++) {
+          laneEnds[foundLane + j] = endMs;
+        }
+      }
+    }
+    return blocks;
+  }, [tasks, maxCapacity, resource.resourceKey]);
+
+  const CHART_H = 360;
+  const laneH = CHART_H / Math.max(maxCapacity + 1, 5); // +1 to leave room for overload lane
+
+  // Time axis: day labels
+  const axisLabels = useMemo(() => {
+    const labels: { ms: number; label: string }[] = [];
+    const day = 86400000;
+    const startDay = Math.floor(hStartMs / day) * day;
+    for (let ms = startDay; ms < hEndMs; ms += day) {
+      if (ms >= hStartMs) {
+        labels.push({ ms, label: new Date(ms).toUTCString().slice(0, 11) });
+      }
+    }
+    return labels;
+  }, [hStartMs, hEndMs]);
+
+  return (
+    <div style={{
+      background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+      padding: 16, height: '100%', display: 'flex', flexDirection: 'column',
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+        {resource.resourceName} <span style={{ color: C.textDim, fontWeight: 400, fontSize: 11 }}>(capacity: {maxCapacity})</span>
+      </div>
+
+      {/* Y-axis + chart area */}
+      <div style={{ display: 'flex', flex: 1, minHeight: CHART_H, position: 'relative' }}>
+        {/* Y-axis labels — 1..maxCapacity at lane tops (capacity used after
+            that lane fills). 0 is the implicit baseline at the bottom. The
+            overload lane shows ">" above the capacity line. */}
+        <div style={{ width: 32, position: 'relative', height: CHART_H }}>
+          {/* Baseline 0 at bottom */}
+          <div style={{
+            position: 'absolute', bottom: -4, right: 4, fontSize: 10, color: C.textDim,
+          }}>0</div>
+          {Array.from({ length: maxCapacity }).map((_, i) => {
+            const top = CHART_H - (i + 1) * laneH;
+            return (
+              <div key={i} style={{
+                position: 'absolute', top: top - 6, right: 4, fontSize: 10, color: C.textDim,
+              }}>{i + 1}</div>
+            );
+          })}
+          {/* Overload lane top */}
+          <div style={{
+            position: 'absolute', top: CHART_H - (maxCapacity + 1) * laneH - 6,
+            right: 4, fontSize: 10, color: '#dc2626', fontWeight: 600,
+          }}>!</div>
+        </div>
+
+        {/* Chart area */}
+        <div style={{ flex: 1, position: 'relative', height: CHART_H, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 4 }}>
+          {/* Lane separators */}
+          {Array.from({ length: maxCapacity + 1 }).map((_, i) => {
+            const top = CHART_H - (i + 1) * laneH;
+            return (
+              <div key={`lane-${i}`} style={{
+                position: 'absolute', left: 0, right: 0, top,
+                borderTop: i === maxCapacity ? `2px solid ${C.accent}` : `1px dashed ${C.border}`,
+                opacity: i === maxCapacity ? 1 : 0.3,
+              }} />
+            );
+          })}
+
+          {/* Time axis at bottom */}
+          <div style={{ position: 'absolute', bottom: -22, left: 0, right: 0, height: 20, fontSize: 10, color: C.textDim }}>
+            {axisLabels.map((l, i) => (
+              <div key={i} style={{
+                position: 'absolute', left: `${toPctX(l.ms)}%`, borderLeft: `1px solid ${C.border}`,
+                paddingLeft: 4, top: 0, height: '100%',
+              }}>{l.label}</div>
+            ))}
+          </div>
+
+          {/* Task blocks */}
+          {placements.map((b: any, i: number) => {
+            const left = toPctX(b.start);
+            const right = toPctX(b.end);
+            const w = Math.max(right - left, 0.3);
+            const isOverload = b.lane >= maxCapacity;
+            const top = CHART_H - (b.lane + 1) * laneH + 2;
+            const height = laneH - 4;
+            const chainKey = b.task.linkId?.name ?? b.task.orderRef ?? b.task.key;
+            const baseColor = isOverload ? '#dc2626' : (colors ? getTaskColor(b.task, colors) : C.accent);
+            const isSelected = b.task.key === selectedTaskKey;
+            return (
+              <div
+                key={`${b.task.key}-${i}`}
+                onClick={() => onTaskClick(b.task)}
+                title={`${b.task.name}\n${chainKey}\n${new Date(b.start).toUTCString()} → ${new Date(b.end).toUTCString()}`}
+                style={{
+                  position: 'absolute', left: `${left}%`, width: `${w}%`,
+                  top, height,
+                  background: baseColor,
+                  border: isSelected ? `2px solid ${C.text}` : (isOverload ? `1px solid #fca5a5` : `1px solid rgba(0,0,0,0.2)`),
+                  borderRadius: 3,
+                  opacity: 0.85,
+                  cursor: 'pointer',
+                  fontSize: 9, color: '#fff', fontWeight: 500,
+                  padding: '0 4px',
+                  overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                  display: 'flex', alignItems: 'center',
+                }}
+              >
+                {w > 3 && b.task.key}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ fontSize: 10, color: C.textDim, marginTop: 28 }}>
+        Blocks colored by chain. Capacity line at top. Overload renders in red above.
+      </div>
+    </div>
+  );
+}
+
+/* ResourceTaskList — companion synced task list. */
+
+interface ResourceTaskListProps {
+  tasks: any[];
+  selectedTaskKey: string | null;
+  onTaskClick: (t: any) => void;
+}
+
+function ResourceTaskList({ tasks, selectedTaskKey, onTaskClick }: ResourceTaskListProps) {
+  const [sortKey, setSortKey] = useState<'start' | 'name' | 'duration' | 'chain'>('start');
+  const sorted = useMemo(() => {
+    const arr = [...tasks];
+    arr.sort((a, b) => {
+      switch (sortKey) {
+        case 'start':
+          return new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime();
+        case 'name': return a.name.localeCompare(b.name);
+        case 'duration': return (a.durationSeconds || 0) - (b.durationSeconds || 0);
+        case 'chain': return (a.linkId?.name || a.orderRef || '').localeCompare(b.linkId?.name || b.orderRef || '');
+      }
+    });
+    return arr;
+  }, [tasks, sortKey]);
+
+  const sortBtn = (k: typeof sortKey, label: string) => (
+    <th
+      onClick={() => setSortKey(k)}
+      style={{
+        textAlign: 'left', padding: '6px 8px', fontSize: 10, color: C.textDim,
+        borderBottom: `1px solid ${C.border}`, cursor: 'pointer',
+        background: sortKey === k ? C.surface2 : 'transparent',
+      }}
+    >{label}{sortKey === k ? ' ↑' : ''}</th>
+  );
+
+  return (
+    <div style={{
+      background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+      height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 600, padding: '12px 16px', borderBottom: `1px solid ${C.border}` }}>
+        Tasks ({tasks.length})
+      </div>
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+          <thead>
+            <tr>
+              {sortBtn('name', 'Task')}
+              {sortBtn('chain', 'Chain')}
+              {sortBtn('start', 'Start')}
+              {sortBtn('duration', 'Dur')}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map(t => (
+              <tr
+                key={t.key}
+                onClick={() => onTaskClick(t)}
+                style={{
+                  cursor: 'pointer',
+                  background: t.key === selectedTaskKey ? `${C.accent}33` : 'transparent',
+                  borderBottom: `1px solid ${C.border}`,
+                }}
+              >
+                <td style={{ padding: '6px 8px', color: C.text }}>
+                  <div>{t.name}</div>
+                  <div style={{ fontSize: 9, color: C.textDim }}>{t.key}</div>
+                </td>
+                <td style={{ padding: '6px 8px', color: C.textMuted }}>{t.linkId?.name || t.orderRef || '—'}</td>
+                <td style={{ padding: '6px 8px', color: C.textMuted }}>
+                  {fmtDate(t.scheduledStart)?.replace(/T.*$/, '')}
+                </td>
+                <td style={{ padding: '6px 8px', color: C.textMuted }}>{fmtDuration(t.durationSeconds)}</td>
+              </tr>
+            ))}
+            {sorted.length === 0 && (
+              <tr><td colSpan={4} style={{ padding: 16, textAlign: 'center', color: C.textDim }}>
+                No tasks scheduled on this resource.
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    MAIN APP
    ═══════════════════════════════════════════════════════════════ */
 
-const TABS = ['Overview', 'Schedule', 'Orders', 'Conflicts', 'Materials', 'Analytics', 'Configurations'];
+const TABS = ['Overview', 'Schedule', 'Resources', 'Orders', 'Conflicts', 'Materials', 'Analytics', 'Configurations'];
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -15235,6 +16230,14 @@ export default function App() {
             onReplayExit={handleReplayExit} onReplayJumpToStep={handleReplayJumpToStep}
             ctpGhostBars={ctpGhostBars} isQueuing={isQueuing}
             onToolbarAction={handleToolbarAction} />
+        )}
+        {activeTab === 'Resources' && (
+          <ResourceProfileTab
+            resources={resources}
+            tasks={tasks}
+            colors={colors}
+            onTaskClick={handleTaskClick}
+          />
         )}
         {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} tasks={tasks}
           orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}

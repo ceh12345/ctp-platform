@@ -13,6 +13,7 @@ export interface IntervalOut {
   start: string;
   end: string;
   durationSec: number;
+  qty?: number;   // capacity (pooled resources have qty > 1); null/undefined treated as 1
 }
 
 export interface ResourceDaily {
@@ -92,6 +93,9 @@ export class AnalyticsService {
         // for calendar intervals (CTPInterval base) it equals duration().
         // Prevents utilization from over-reporting on FLOAT-spanning tasks.
         durationSec: node.data.workDuration(),
+        // Pooled resources have qty > 1 (e.g., WORKCENTER-4). Exposed so the
+        // UI can render stacked-load profiles against actual capacity.
+        qty: node.data.qty ?? 1,
       });
       node = node.next;
     }

@@ -3306,8 +3306,10 @@ export class CTPService {
         }
       }
 
-      // Extract interval linked list → array of { start, end, durationSec }
-      type IvOut = { start: string; end: string; durationSec: number };
+      // Extract interval linked list → array of { start, end, durationSec, qty }
+      // qty is the capacity for calendar intervals (pooled resources have qty>1)
+      // and the consumed capacity for assignment intervals.
+      type IvOut = { start: string; end: string; durationSec: number; qty: number };
       const extractIntervals = (list: any): IvOut[] => {
         const out: IvOut[] = [];
         if (!list) return out;
@@ -3317,6 +3319,7 @@ export class CTPService {
             start: node.data.AbsoluteStartTime.toISO()!,
             end: node.data.AbsoluteEndTime.toISO()!,
             durationSec: node.data.duration(),
+            qty: node.data.qty ?? 1,
           });
           node = node.next;
         }
@@ -3375,6 +3378,7 @@ export class CTPService {
               start: DateTime.fromMillis(sl.s).toISO()!,
               end: DateTime.fromMillis(sl.e).toISO()!,
               durationSec: durSec,
+              qty: 1,
             });
           }
         }
