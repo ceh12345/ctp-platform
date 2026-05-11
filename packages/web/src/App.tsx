@@ -13399,6 +13399,41 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
   type SortKey = 'name' | 'peakUtil' | 'avgUtil';
   const [sortKey, setSortKey] = useState<SortKey>('peakUtil');
 
+  // Two-level hierarchy filtering: group (workCenter) → resource.
+  // Default: all groups selected. Search is free-text across resource names.
+  const allGroups = useMemo(() => {
+    const set = new Set<string>();
+    resources.forEach((r: any) => set.add(r.workCenter || '—'));
+    return Array.from(set).sort();
+  }, [resources]);
+  const [selectedGroups, setSelectedGroups] = useState<Set<string>>(() => new Set(allGroups));
+  // Keep selectedGroups in sync if the underlying groups change (tenant switch etc).
+  useEffect(() => {
+    setSelectedGroups(prev => {
+      const next = new Set<string>();
+      for (const g of allGroups) if (prev.has(g)) next.add(g);
+      // First load: select all
+      return next.size === 0 ? new Set(allGroups) : next;
+    });
+  }, [allGroups]);
+  const [searchText, setSearchText] = useState('');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = (g: string) => {
+    setSelectedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(g)) next.delete(g); else next.add(g);
+      return next;
+    });
+  };
+  const toggleCollapsed = (g: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(g)) next.delete(g); else next.add(g);
+      return next;
+    });
+  };
+
   // Compute time domain — union of all resource availabilities, day-aligned.
   const { dayBins } = useMemo(() => {
     const day = 86400000;
@@ -13471,7 +13506,13 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
   }, [resources, tasks, dayBins]);
 
   const sorted = useMemo(() => {
-    const arr = [...utilMatrix];
+    const search = searchText.trim().toLowerCase();
+    const arr = utilMatrix.filter(row => {
+      if (!selectedGroups.has(row.resource.workCenter || '—')) return false;
+      if (search && !row.resource.resourceName.toLowerCase().includes(search)
+          && !(row.resource.resourceKey || '').toLowerCase().includes(search)) return false;
+      return true;
+    });
     arr.sort((a, b) => {
       switch (sortKey) {
         case 'name': return a.resource.resourceName.localeCompare(b.resource.resourceName);
@@ -13480,7 +13521,19 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
       }
     });
     return arr;
-  }, [utilMatrix, sortKey]);
+  }, [utilMatrix, sortKey, selectedGroups, searchText]);
+
+  // Group sorted rows by workCenter for the render. Within each group, the
+  // current sort applies. Groups are listed in alphabetical order.
+  const grouped = useMemo(() => {
+    const map = new Map<string, typeof sorted>();
+    for (const row of sorted) {
+      const g = row.resource.workCenter || '—';
+      if (!map.has(g)) map.set(g, []);
+      map.get(g)!.push(row);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [sorted]);
 
   // Utilization → color (cool blue / green / amber / orange / red).
   const colorForUtil = (u: number, hasCap: boolean): string => {
@@ -13503,7 +13556,7 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
       background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
       padding: 16, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 13, fontWeight: 600 }}>Shop Utilization</div>
         <label style={{ fontSize: 11, color: C.textMuted }}>Sort by:</label>
         <select
@@ -13518,6 +13571,47 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
           <option value="avgUtil">Avg utilization (high → low)</option>
           <option value="name">Name</option>
         </select>
+        <input
+          type="text"
+          placeholder="Search resource..."
+          value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+          style={{
+            background: C.surface, color: C.text, border: `1px solid ${C.border}`,
+            borderRadius: 4, padding: '3px 8px', fontSize: 11, fontFamily: FONT, minWidth: 160,
+          }}
+        />
+      </div>
+
+      {/* Group filter chips — primary filter (level-1 hierarchy = workCenter). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11, color: C.textMuted }}>Groups:</span>
+        {allGroups.map(g => {
+          const active = selectedGroups.has(g);
+          return (
+            <button
+              key={g}
+              onClick={() => toggleGroup(g)}
+              style={{
+                padding: '3px 10px', fontSize: 11, fontFamily: FONT,
+                border: `1px solid ${active ? C.accent : C.border}`,
+                background: active ? `${C.accent}22` : C.surface,
+                color: active ? C.text : C.textMuted,
+                borderRadius: 12, cursor: 'pointer',
+              }}
+            >{g}</button>
+          );
+        })}
+        {selectedGroups.size < allGroups.length && (
+          <button
+            onClick={() => setSelectedGroups(new Set(allGroups))}
+            style={{
+              padding: '3px 8px', fontSize: 10, fontFamily: FONT,
+              border: `1px solid ${C.border}`, background: 'transparent',
+              color: C.textDim, borderRadius: 12, cursor: 'pointer',
+            }}
+          >Select all</button>
+        )}
       </div>
 
       <div style={{ flex: 1, overflow: 'auto' }}>
@@ -13534,47 +13628,80 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
             </tr>
           </thead>
           <tbody>
-            {sorted.map(row => (
-              <tr key={row.resource.resourceKey}>
-                <td
-                  onClick={() => onCellClick(row.resource.resourceKey)}
-                  style={{
-                    padding: '4px 8px', cursor: 'pointer',
-                    color: C.text, fontSize: 11,
-                  }}
-                >
-                  <div>{row.resource.resourceName}</div>
-                  <div style={{ fontSize: 9, color: C.textDim }}>
-                    {row.resource.workCenter ?? '—'} › {row.resource.line ?? '—'}
-                  </div>
-                </td>
-                <td style={{
-                  padding: '4px 4px', textAlign: 'center', fontWeight: 600,
-                  color: row.peak > 1 ? '#dc2626' : C.text,
-                }}>{(row.peak * 100).toFixed(0)}%</td>
-                {row.cells.map((cell, ci) => (
-                  <td
-                    key={ci}
-                    onClick={() => onCellClick(row.resource.resourceKey)}
-                    title={cell.hasCap
-                      ? `${row.resource.resourceName} · ${dayLabel(dayBins[ci].start)}\nUtil: ${(cell.util * 100).toFixed(1)}%\nUsed: ${(cell.usedSec / 3600).toFixed(1)}h of ${(cell.cap / 3600).toFixed(1)}h`
-                      : `${row.resource.resourceName} · ${dayLabel(dayBins[ci].start)}\nNo capacity`}
-                    style={{
-                      padding: '6px 2px', textAlign: 'center',
-                      background: colorForUtil(cell.util, cell.hasCap),
-                      color: cell.util >= 0.7 ? '#fff' : C.text,
-                      cursor: 'pointer', borderRadius: 2,
-                      fontSize: 10, fontWeight: cell.util > 1 ? 700 : 400,
-                    }}
-                  >
-                    {cell.hasCap ? `${Math.round(cell.util * 100)}` : ''}
-                  </td>
-                ))}
-              </tr>
-            ))}
-            {sorted.length === 0 && (
+            {grouped.map(([groupName, rows]) => {
+              const collapsed = collapsedGroups.has(groupName);
+              // Group-level roll-up: peak/avg across rows in this group's cells.
+              const groupPeak = rows.reduce((m, r) => Math.max(m, r.peak), 0);
+              return (
+                <Fragment key={groupName}>
+                  {/* Group header row: clickable to collapse. */}
+                  <tr>
+                    <td
+                      onClick={() => toggleCollapsed(groupName)}
+                      colSpan={2}
+                      style={{
+                        padding: '6px 8px', cursor: 'pointer',
+                        background: C.surface, color: C.text, fontSize: 11, fontWeight: 600,
+                        borderTop: `1px solid ${C.border}`,
+                      }}
+                    >
+                      <span style={{ display: 'inline-block', width: 12, color: C.textDim }}>
+                        {collapsed ? '▸' : '▾'}
+                      </span>
+                      {groupName}
+                      <span style={{ marginLeft: 8, fontSize: 10, color: C.textDim, fontWeight: 400 }}>
+                        {rows.length} resource{rows.length === 1 ? '' : 's'} · peak {Math.round(groupPeak * 100)}%
+                      </span>
+                    </td>
+                    {dayBins.map((_, ci) => (
+                      <td key={ci} style={{ background: C.surface, borderTop: `1px solid ${C.border}` }} />
+                    ))}
+                  </tr>
+                  {/* Resource rows within group (if not collapsed) */}
+                  {!collapsed && rows.map(row => (
+                    <tr key={row.resource.resourceKey}>
+                      <td
+                        onClick={() => onCellClick(row.resource.resourceKey)}
+                        style={{
+                          padding: '4px 8px 4px 24px', cursor: 'pointer',
+                          color: C.text, fontSize: 11,
+                        }}
+                      >
+                        <div>{row.resource.resourceName}</div>
+                        <div style={{ fontSize: 9, color: C.textDim }}>
+                          {row.resource.line ?? '—'}
+                        </div>
+                      </td>
+                      <td style={{
+                        padding: '4px 4px', textAlign: 'center', fontWeight: 600,
+                        color: row.peak > 1 ? '#dc2626' : C.text,
+                      }}>{(row.peak * 100).toFixed(0)}%</td>
+                      {row.cells.map((cell, ci) => (
+                        <td
+                          key={ci}
+                          onClick={() => onCellClick(row.resource.resourceKey)}
+                          title={cell.hasCap
+                            ? `${row.resource.resourceName} · ${dayLabel(dayBins[ci].start)}\nUtil: ${(cell.util * 100).toFixed(1)}%\nUsed: ${(cell.usedSec / 3600).toFixed(1)}h of ${(cell.cap / 3600).toFixed(1)}h`
+                            : `${row.resource.resourceName} · ${dayLabel(dayBins[ci].start)}\nNo capacity`}
+                          style={{
+                            padding: '6px 2px', textAlign: 'center',
+                            background: colorForUtil(cell.util, cell.hasCap),
+                            color: cell.util >= 0.7 ? '#fff' : C.text,
+                            cursor: 'pointer', borderRadius: 2,
+                            fontSize: 10, fontWeight: cell.util > 1 ? 700 : 400,
+                          }}
+                        >
+                          {cell.hasCap ? `${Math.round(cell.util * 100)}` : ''}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </Fragment>
+              );
+            })}
+            {grouped.length === 0 && (
               <tr><td colSpan={dayBins.length + 2} style={{ padding: 20, textAlign: 'center', color: C.textDim }}>
-                No resources to display
+                No resources match the current filters
               </td></tr>
             )}
           </tbody>
