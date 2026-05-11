@@ -1467,5 +1467,27 @@
     "linkId": { "name": "WO-WC4-4", "type": "START", "prevLink": "" },
     "typedAttributes": [],
     "sequence": 1
+  },
+  {
+    "key": "T-WC4-5",
+    "name": "Pooled WC4 Task 5 (8h — shifts to next day)",
+    "type": "PROCESS",
+    "process": "assembly",
+    "windowStart": "2026-02-10T07:00:00Z",
+    "windowEnd": "2026-02-25T00:00:00Z",
+    "durationSeconds": 28800,
+    "durationQty": 1,
+    "durationType": 0,
+    "capacityResources": [
+      {
+        "resource": "WORKCENTER-4",
+        "isPrimary": true,
+        "qty": 1,
+        "mode": "ON"
+      }
+    ],
+    "linkId": { "name": "WO-WC4-5", "type": "START", "prevLink": "" },
+    "typedAttributes": [],
+    "sequence": 1
   }
 ]
