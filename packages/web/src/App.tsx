@@ -13052,8 +13052,9 @@ interface ResourceProfileTabProps {
 }
 
 function ResourceProfileTab({ resources, tasks, colors, onTaskClick }: ResourceProfileTabProps) {
-  // View mode: heatmap (shop-wide overview) or detail (per-resource skyscraper)
-  const [mode, setMode] = useState<'heatmap' | 'detail'>('heatmap');
+  // View mode: heatmap (shop-wide overview), detail (per-resource skyscraper),
+  // or histogram (per-resource binned load).
+  const [mode, setMode] = useState<'heatmap' | 'detail' | 'histogram'>('heatmap');
 
   // Default to first pooled resource (qty > 1 in any availability interval),
   // falling back to first resource overall.
@@ -13080,28 +13081,23 @@ function ResourceProfileTab({ resources, tasks, colors, onTaskClick }: ResourceP
   }
 
   // View toggle bar
+  const tabBtn = (k: typeof mode, label: string) => (
+    <button
+      onClick={() => setMode(k)}
+      style={{
+        padding: '6px 12px', fontSize: 12, fontFamily: FONT,
+        border: `1px solid ${mode === k ? C.accent : C.border}`,
+        background: mode === k ? `${C.accent}22` : C.surface2,
+        color: mode === k ? C.text : C.textMuted,
+        borderRadius: 4, cursor: 'pointer',
+      }}
+    >{label}</button>
+  );
   const viewToggle = (
     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-      <button
-        onClick={() => setMode('heatmap')}
-        style={{
-          padding: '6px 12px', fontSize: 12, fontFamily: FONT,
-          border: `1px solid ${mode === 'heatmap' ? C.accent : C.border}`,
-          background: mode === 'heatmap' ? `${C.accent}22` : C.surface2,
-          color: mode === 'heatmap' ? C.text : C.textMuted,
-          borderRadius: 4, cursor: 'pointer',
-        }}
-      >Overview (Heatmap)</button>
-      <button
-        onClick={() => setMode('detail')}
-        style={{
-          padding: '6px 12px', fontSize: 12, fontFamily: FONT,
-          border: `1px solid ${mode === 'detail' ? C.accent : C.border}`,
-          background: mode === 'detail' ? `${C.accent}22` : C.surface2,
-          color: mode === 'detail' ? C.text : C.textMuted,
-          borderRadius: 4, cursor: 'pointer',
-        }}
-      >Detail (Skyscraper)</button>
+      {tabBtn('heatmap', 'Overview (Heatmap)')}
+      {tabBtn('detail', 'Detail (Skyscraper)')}
+      {tabBtn('histogram', 'Histogram')}
     </div>
   );
 
@@ -13156,13 +13152,21 @@ function ResourceProfileTab({ resources, tasks, colors, onTaskClick }: ResourceP
       {/* Main: chart + task list */}
       <div style={{ display: 'flex', gap: 16, flex: 1, minHeight: 0 }}>
         <div style={{ flex: 2, minWidth: 0 }}>
-          <StackedLoadProfile
-            resource={resource}
-            tasks={resourceTasks}
-            colors={colors}
-            selectedTaskKey={selectedTaskKey}
-            onTaskClick={(t: any) => { setSelectedTaskKey(t.key); onTaskClick?.(t); }}
-          />
+          {mode === 'detail' ? (
+            <StackedLoadProfile
+              resource={resource}
+              tasks={resourceTasks}
+              colors={colors}
+              selectedTaskKey={selectedTaskKey}
+              onTaskClick={(t: any) => { setSelectedTaskKey(t.key); onTaskClick?.(t); }}
+            />
+          ) : (
+            <CapacityHistogram
+              resource={resource}
+              tasks={resourceTasks}
+              onBinClick={() => setMode('detail')}
+            />
+          )}
         </div>
         <div style={{ flex: 1, minWidth: 280, maxWidth: 480 }}>
           <ResourceTaskList
@@ -13171,6 +13175,212 @@ function ResourceProfileTab({ resources, tasks, colors, onTaskClick }: ResourceP
             onTaskClick={(t: any) => { setSelectedTaskKey(t.key); onTaskClick?.(t); }}
           />
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* CapacityHistogram — binned load bars for a single resource.
+   Y axis = % capacity (0–150% range so overload is visible), X = day bins,
+   100% line drawn prominently, overload portion in red above. */
+
+interface CapacityHistogramProps {
+  resource: any;
+  tasks: any[];
+  onBinClick?: () => void;
+}
+
+function CapacityHistogram({ resource, tasks, onBinClick }: CapacityHistogramProps) {
+  // Same bin math as the heatmap, applied to a single resource. Compute day
+  // bins from this resource's availability span (or task span if wider).
+  const { bins, peak } = useMemo(() => {
+    const day = 86400000;
+    const overlap = (s1: number, e1: number, s2: number, e2: number) =>
+      Math.max(0, Math.min(e1, e2) - Math.max(s1, s2));
+    const avail = (resource.availability ?? []).map((iv: any) => ({
+      start: new Date(iv.start).getTime(),
+      end: new Date(iv.end).getTime(),
+      qty: iv.qty ?? 1,
+    }));
+    // Usage blocks per task — segments for FLOAT, envelope for FIXED.
+    const used: { start: number; end: number; qty: number; taskKey: string }[] = [];
+    for (const t of tasks) {
+      if (!t.scheduledStart || !t.scheduledEnd) continue;
+      const ar = t.assignedResources?.find((x: any) => x.resourceKey === resource.resourceKey);
+      if (!ar) continue;
+      const taskQty = ar.qty ?? 1;
+      const blocks = (Array.isArray(t.segments) && t.segments.length > 1)
+        ? t.segments
+        : [{ start: t.scheduledStart, end: t.scheduledEnd }];
+      for (const b of blocks) {
+        used.push({
+          start: new Date(b.start).getTime(),
+          end: new Date(b.end).getTime(),
+          qty: taskQty,
+          taskKey: t.key,
+        });
+      }
+    }
+    const allStarts = [...avail.map((a: any) => a.start), ...used.map(u => u.start)];
+    const allEnds = [...avail.map((a: any) => a.end), ...used.map(u => u.end)];
+    if (allStarts.length === 0) return { bins: [], peak: 0 };
+    const start = Math.floor(Math.min(...allStarts) / day) * day;
+    const end = Math.ceil(Math.max(...allEnds) / day) * day;
+    const result: { start: number; cap: number; used: number; util: number; taskCount: number }[] = [];
+    let p = 0;
+    for (let ms = start; ms < end; ms += day) {
+      const binEnd = ms + day;
+      let cap = 0, usedSec = 0;
+      const touchedTasks = new Set<string>();
+      for (const a of avail) cap += a.qty * overlap(a.start, a.end, ms, binEnd);
+      for (const u of used) {
+        const o = u.qty * overlap(u.start, u.end, ms, binEnd);
+        if (o > 0) {
+          usedSec += o;
+          touchedTasks.add(u.taskKey);
+        }
+      }
+      const util = cap > 0 ? usedSec / cap : 0;
+      if (util > p) p = util;
+      result.push({ start: ms, cap, used: usedSec, util, taskCount: touchedTasks.size });
+    }
+    return { bins: result, peak: p };
+  }, [resource, tasks]);
+
+  if (bins.length === 0) {
+    return (
+      <div style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8, padding: 16, color: C.textDim }}>
+        No data for histogram
+      </div>
+    );
+  }
+
+  // Y axis: 0% to max(100%, peak+10%), tick at 25/50/75/100/125/150 as needed.
+  const yMax = Math.max(1.05, Math.ceil((peak + 0.1) * 4) / 4);
+  const CHART_H = 320;
+  const yToPct = (u: number) => (1 - u / yMax) * 100;
+
+  const colorForUtil = (u: number): string => {
+    if (u <= 0.001) return C.surface;
+    if (u < 0.4) return '#1e3a8a';
+    if (u < 0.7) return '#10b981';
+    if (u < 0.95) return '#f59e0b';
+    if (u <= 1.0) return '#f97316';
+    return '#dc2626';
+  };
+
+  // Vertical ticks at 25% intervals (skip 0)
+  const yTicks: number[] = [];
+  for (let v = 0.25; v <= yMax + 0.001; v += 0.25) yTicks.push(v);
+
+  const dayLabel = (ms: number) => new Date(ms).toUTCString().slice(0, 7);
+
+  // Capacity at 100% line position
+  const hundredPct = yToPct(1);
+
+  return (
+    <div style={{
+      background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8,
+      padding: 16, height: '100%', display: 'flex', flexDirection: 'column',
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+        {resource.resourceName} — daily utilization
+        <span style={{ color: C.textDim, fontWeight: 400, fontSize: 11, marginLeft: 8 }}>
+          peak {Math.round(peak * 100)}%
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flex: 1, minHeight: CHART_H, position: 'relative' }}>
+        {/* Y-axis labels */}
+        <div style={{ width: 42, position: 'relative', height: CHART_H }}>
+          <div style={{ position: 'absolute', bottom: -4, right: 4, fontSize: 10, color: C.textDim }}>0%</div>
+          {yTicks.map((v, i) => (
+            <div key={i} style={{
+              position: 'absolute', top: `${yToPct(v)}%`, right: 4,
+              fontSize: 10, color: v === 1 ? C.text : C.textDim,
+              fontWeight: v === 1 ? 600 : 400,
+              transform: 'translateY(-50%)',
+            }}>{Math.round(v * 100)}%</div>
+          ))}
+        </div>
+
+        {/* Chart area */}
+        <div style={{
+          flex: 1, position: 'relative', height: CHART_H,
+          background: C.bg, border: `1px solid ${C.border}`, borderRadius: 4,
+        }}>
+          {/* Y-axis grid lines */}
+          {yTicks.map((v, i) => (
+            <div key={`grid-${i}`} style={{
+              position: 'absolute', left: 0, right: 0, top: `${yToPct(v)}%`,
+              borderTop: v === 1 ? `2px solid ${C.accent}` : `1px dashed ${C.border}`,
+              opacity: v === 1 ? 1 : 0.25,
+            }} />
+          ))}
+
+          {/* Bars */}
+          {bins.map((b, i) => {
+            if (b.cap === 0) return null; // skip no-capacity days
+            const w = 100 / bins.length;
+            const left = i * w;
+            const barWPct = 0.8;
+            const barLeft = left + (w - w * barWPct) / 2;
+            // Bar splits into <=100% portion and >100% overflow portion
+            const utilClamped = Math.min(b.util, 1);
+            const overload = Math.max(0, b.util - 1);
+            const mainTop = yToPct(utilClamped);
+            const mainHeight = 100 - mainTop;
+            const overloadTop = yToPct(b.util);
+            const overloadHeight = hundredPct - overloadTop;
+            return (
+              <div key={i} title={`${dayLabel(b.start)}\nUtil: ${(b.util * 100).toFixed(1)}%\nUsed: ${(b.used/3600).toFixed(1)}h of ${(b.cap/3600).toFixed(1)}h\nTasks: ${b.taskCount}`}>
+                {/* Main bar (≤100% portion) */}
+                <div
+                  onClick={() => onBinClick?.()}
+                  style={{
+                    position: 'absolute',
+                    left: `${barLeft}%`, width: `${w * barWPct}%`,
+                    top: `${mainTop}%`, height: `${mainHeight}%`,
+                    background: colorForUtil(utilClamped),
+                    border: `1px solid rgba(0,0,0,0.2)`,
+                    borderRadius: '3px 3px 0 0', cursor: 'pointer',
+                  }}
+                />
+                {/* Overload portion (above 100% in red) */}
+                {overload > 0 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: `${barLeft}%`, width: `${w * barWPct}%`,
+                      top: `${overloadTop}%`, height: `${overloadHeight}%`,
+                      background: '#dc2626',
+                      border: `1px solid #fca5a5`,
+                      borderRadius: '3px 3px 0 0',
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })}
+
+          {/* X-axis labels at bottom */}
+          <div style={{ position: 'absolute', bottom: -22, left: 0, right: 0, height: 20, fontSize: 9, color: C.textDim }}>
+            {bins.map((b, i) => {
+              const w = 100 / bins.length;
+              const left = i * w;
+              return (
+                <div key={i} style={{
+                  position: 'absolute', left: `${left}%`, width: `${w}%`,
+                  textAlign: 'center', top: 4,
+                }}>{dayLabel(b.start)}</div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ fontSize: 10, color: C.textDim, marginTop: 28 }}>
+        100% line bold. Overload portion of each bar renders red above. Click a bar to drill into Skyscraper.
       </div>
     </div>
   );
