@@ -58,5 +58,17 @@
       "level2": "FLOAT"
     },
     "typedAttributes": []
+  },
+  {
+    "key": "WORKCENTER-4",
+    "name": "Pooled Workcenter (qty=4)",
+    "type": "WORKCENTER",
+    "class": "REUSABLE",
+    "hourlyRate": 75,
+    "hierarchy": {
+      "level1": "Demo",
+      "level2": "Pooled"
+    },
+    "typedAttributes": []
   }
 ]
