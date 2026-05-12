@@ -130,7 +130,9 @@ export class CommonStartTimesAgent
     // Remove Changeovers
     const combinedStarts = feasible.startTimes;
 
-    let error = !starts || (starts && starts.size() === 0);
+    const initialEmpty = !starts || starts.size() === 0;
+    let error = initialEmpty;
+    let intersectionEmpty = false;
 
     // If Resource is not feasible add to error list
     if (combinedStarts && !error && starts) {
@@ -144,12 +146,64 @@ export class CommonStartTimesAgent
         error =
           !feasible.startTimes ||
           (feasible.startTimes && feasible.startTimes.size() === 0);
+        intersectionEmpty = error;
       }
     }
     if (error) {
-      resourceSlots.addToErrors(
-        this.NO_RESOURCE_AVAILABILTY + rs.resource?.name,
-      );
+      // Distinguish the failure mode so the surfaced reason matches reality.
+      // The primary case ("no starts came back at all") was previously always
+      // attributed to a resource availability gap, even when the real cause
+      // was window-too-tight or no-slot-large-enough-for-duration.
+      const resourceName = rs.resource?.name ?? "Unknown Resource";
+      let msg = this.NO_RESOURCE_AVAILABILTY + resourceName;
+      if (intersectionEmpty) {
+        // Multi-resource conflict — this resource had starts, but they don't
+        // overlap a previously evaluated slot's starts.
+        msg = `Conflicting start times across resources on ${resourceName}`;
+      } else if (initialEmpty && rs.resource) {
+        const required = duration.duration();
+        const windowSpan = et - st;
+        if (windowSpan < required) {
+          msg =
+            `${this.INVALID_WINDOW} on ${resourceName}: window ` +
+            `${(windowSpan / 3600).toFixed(1)}h < duration ` +
+            `${(required / 3600).toFixed(1)}h`;
+        } else {
+          // Walk the resource's net availability (post-assignment) to
+          // characterize what's there. Prefer staticAvailable; fall back to
+          // staticOriginal (raw calendar) when net hasn't been computed.
+          const matrix = rs.resource.available;
+          const availList =
+            matrix?.staticAvailable ?? matrix?.staticOriginal ?? null;
+          let hasAnyInWindow = false;
+          let largestSlot = 0;
+          let totalWorking = 0;
+          let n = availList?.head ?? null;
+          while (n) {
+            const s = Math.max(n.data.startW, st);
+            const e = Math.min(n.data.endW, et);
+            if (s < e) {
+              hasAnyInWindow = true;
+              const span = e - s;
+              if (span > largestSlot) largestSlot = span;
+              totalWorking += span;
+            }
+            n = n.next;
+          }
+          if (!hasAnyInWindow) {
+            msg = `${this.NO_RESOURCE_AVAILABILTY}${resourceName} (no available intervals overlap the task window)`;
+          } else if (largestSlot < required) {
+            msg =
+              `No slot large enough on ${resourceName}: largest contiguous ` +
+              `${(largestSlot / 3600).toFixed(1)}h, total working ` +
+              `${(totalWorking / 3600).toFixed(1)}h, duration needs ` +
+              `${(required / 3600).toFixed(1)}h`;
+          }
+          // else: intervals exist and total covers duration but startTime engine
+          // still rejected — fall through to legacy message
+        }
+      }
+      resourceSlots.addToErrors(msg);
       feasible.startTimes?.clear();
     }
   }

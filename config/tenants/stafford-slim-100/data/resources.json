@@ -1,0 +1,1172 @@
+[
+  {
+    "key": "2",
+    "name": "ASSEMBLY & FITTING",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 84,
+    "efficiency": 75,
+    "parallelCapacity": 4,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FIT",
+      "level2": "A"
+    }
+  },
+  {
+    "key": "32",
+    "name": "HAYDEN",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 0,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FIT",
+      "level2": "A"
+    }
+  },
+  {
+    "key": "33",
+    "name": "ADRIAN",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 0,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FIT",
+      "level2": "A"
+    }
+  },
+  {
+    "key": "34",
+    "name": "NICK C",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 0,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FIT",
+      "level2": "A"
+    }
+  },
+  {
+    "key": "35",
+    "name": "KALEB M",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 0,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FIT",
+      "level2": "A"
+    }
+  },
+  {
+    "key": "3",
+    "name": "CUTTING MATERIALS",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 70,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "OTH",
+      "level2": "C"
+    }
+  },
+  {
+    "key": "74",
+    "name": "FELAYNE",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 70,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "OTH",
+      "level2": "C"
+    }
+  },
+  {
+    "key": "4",
+    "name": "ENGINEERING DESIGN",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 105,
+    "efficiency": 75,
+    "parallelCapacity": 3,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "ENG",
+      "level2": "D"
+    }
+  },
+  {
+    "key": "36",
+    "name": "BRYAN",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 105,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "ENG",
+      "level2": "D"
+    }
+  },
+  {
+    "key": "37",
+    "name": "JAMES",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 105,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "ENG",
+      "level2": "D"
+    }
+  },
+  {
+    "key": "38",
+    "name": "KATHRYN",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 105,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "ENG",
+      "level2": "D"
+    }
+  },
+  {
+    "key": "70",
+    "name": "GRAEME",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 105,
+    "efficiency": 90,
+    "parallelCapacity": 0,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "ENG",
+      "level2": "D"
+    }
+  },
+  {
+    "key": "71",
+    "name": "MAX",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 105,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "ENG",
+      "level2": "D"
+    }
+  },
+  {
+    "key": "78",
+    "name": "MIKE",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 105,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "ENG",
+      "level2": "D"
+    }
+  },
+  {
+    "key": "5",
+    "name": "DRAWING & DETAILING",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 91,
+    "efficiency": 75,
+    "parallelCapacity": 2,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "ENG",
+      "level2": "DR"
+    }
+  },
+  {
+    "key": "39",
+    "name": "GRAEME",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 91,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "ENG",
+      "level2": "D"
+    }
+  },
+  {
+    "key": "40",
+    "name": "CORT",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 91,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "ENG",
+      "level2": "D"
+    }
+  },
+  {
+    "key": "6",
+    "name": "FABRICATION & WELDING",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 84,
+    "efficiency": 75,
+    "parallelCapacity": 11,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "41",
+    "name": "GRANT",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "42",
+    "name": "ADRIAN",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "43",
+    "name": "JACK P",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "44",
+    "name": "DYLAN",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "45",
+    "name": "LUKE",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "46",
+    "name": "DWAYNE",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "47",
+    "name": "JOSH",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "48",
+    "name": "ADAM",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "49",
+    "name": "JACK R",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "50",
+    "name": "NA",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "51",
+    "name": "SAM O",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "52",
+    "name": "COOPER",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "53",
+    "name": "NA",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "54",
+    "name": "NA",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "55",
+    "name": "NA",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "7",
+    "name": "NC FOLDING",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 84,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "PRE",
+      "level2": "FO"
+    }
+  },
+  {
+    "key": "72",
+    "name": "NICK T",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 84,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "PRE",
+      "level2": "FO"
+    }
+  },
+  {
+    "key": "8",
+    "name": "GENERAL ENGINEERING",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 70,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "OTH",
+      "level2": "G"
+    }
+  },
+  {
+    "key": "75",
+    "name": "CONRAD",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 70,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "OTH",
+      "level2": "G"
+    }
+  },
+  {
+    "key": "9",
+    "name": "NC KAOMING",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 168,
+    "efficiency": 75,
+    "parallelCapacity": 2,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "K"
+    }
+  },
+  {
+    "key": "56",
+    "name": "PHIL",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 168,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "K"
+    }
+  },
+  {
+    "key": "57",
+    "name": "WERNER",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 168,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "K"
+    }
+  },
+  {
+    "key": "10",
+    "name": "LASER CUTTING",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 210,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "PRE",
+      "level2": "L"
+    }
+  },
+  {
+    "key": "73",
+    "name": "MUSTO",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 210,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "PRE",
+      "level2": "L"
+    }
+  },
+  {
+    "key": "11",
+    "name": "LASER ETCHING",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 84,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "OTH",
+      "level2": "LE"
+    }
+  },
+  {
+    "key": "12",
+    "name": "LASER PROGRAMMING",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 84,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "PRE",
+      "level2": "LP"
+    }
+  },
+  {
+    "key": "13",
+    "name": "GENERAL MILLING",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 84,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "M"
+    }
+  },
+  {
+    "key": "58",
+    "name": "ANDREW BARRY",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "M"
+    }
+  },
+  {
+    "key": "59",
+    "name": "NA",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "M"
+    }
+  },
+  {
+    "key": "60",
+    "name": "NA",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "M"
+    }
+  },
+  {
+    "key": "61",
+    "name": "NA",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "M"
+    }
+  },
+  {
+    "key": "1",
+    "name": "NOT APPLICABLE",
+    "type": "SUBCONTRACT",
+    "class": "SUBCONTRACT",
+    "hourlyRate": 0,
+    "efficiency": 100,
+    "parallelCapacity": 9999,
+    "isFinite": false,
+    "calendarCode": "",
+    "hierarchy": {
+      "level1": "NA",
+      "level2": "NA"
+    }
+  },
+  {
+    "key": "14",
+    "name": "NC MILLING",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 98,
+    "efficiency": 75,
+    "parallelCapacity": 3,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "NM"
+    }
+  },
+  {
+    "key": "26",
+    "name": "DARREN",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 98,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "NM"
+    }
+  },
+  {
+    "key": "27",
+    "name": "JORDYN",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 98,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "NM"
+    }
+  },
+  {
+    "key": "28",
+    "name": "MARK",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 98,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "NM"
+    }
+  },
+  {
+    "key": "76",
+    "name": "UNMANNED KITTY",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 50,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "NM"
+    }
+  },
+  {
+    "key": "15",
+    "name": "NC TURNING",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 98,
+    "efficiency": 75,
+    "parallelCapacity": 3,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "NT"
+    }
+  },
+  {
+    "key": "29",
+    "name": "DAVID",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 98,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "NT"
+    }
+  },
+  {
+    "key": "30",
+    "name": "NICK W",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 98,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "NT"
+    }
+  },
+  {
+    "key": "31",
+    "name": "PRATIK",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 98,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "NT"
+    }
+  },
+  {
+    "key": "25",
+    "name": "OUTWORK",
+    "type": "SUBCONTRACT",
+    "class": "SUBCONTRACT",
+    "hourlyRate": 0,
+    "efficiency": 100,
+    "parallelCapacity": 9999,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "OTH",
+      "level2": "OUT"
+    }
+  },
+  {
+    "key": "16",
+    "name": "POLISHING",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 84,
+    "efficiency": 75,
+    "parallelCapacity": 4,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "P"
+    }
+  },
+  {
+    "key": "62",
+    "name": "SAM R",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "P"
+    }
+  },
+  {
+    "key": "63",
+    "name": "PAUL",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "P"
+    }
+  },
+  {
+    "key": "64",
+    "name": "DEAN",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "P"
+    }
+  },
+  {
+    "key": "65",
+    "name": "AUNG",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "P"
+    }
+  },
+  {
+    "key": "69",
+    "name": "ELIJAH",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "P"
+    }
+  },
+  {
+    "key": "17",
+    "name": "PROJECT MANAGEMENT",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 84,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "ENG",
+      "level2": "PM"
+    }
+  },
+  {
+    "key": "18",
+    "name": "NC PROGRAMMING",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 84,
+    "efficiency": 100,
+    "parallelCapacity": 1,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "PR"
+    }
+  },
+  {
+    "key": "19",
+    "name": "QUALITY INSPECTION",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 0,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "QMS",
+      "level2": "QC"
+    }
+  },
+  {
+    "key": "77",
+    "name": "MURRAY",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 0,
+    "efficiency": 100,
+    "parallelCapacity": 0,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "QMS",
+      "level2": "QC"
+    }
+  },
+  {
+    "key": "20",
+    "name": "REWORK OF PRODUCT",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 70,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "QMS",
+      "level2": "R"
+    }
+  },
+  {
+    "key": "21",
+    "name": "SITE WORK",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 98,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "ENG",
+      "level2": "S"
+    }
+  },
+  {
+    "key": "22",
+    "name": "GENERAL TURNING",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 84,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "T"
+    }
+  },
+  {
+    "key": "66",
+    "name": "ANDY H",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "T"
+    }
+  },
+  {
+    "key": "67",
+    "name": "NA",
+    "type": "MACHINE",
+    "class": "MACHINE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "T"
+    }
+  },
+  {
+    "key": "23",
+    "name": "NC VICTOR",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 98,
+    "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "V"
+    }
+  },
+  {
+    "key": "68",
+    "name": "JIMMY",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 98,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "MAC",
+      "level2": "V"
+    }
+  },
+  {
+    "key": "24",
+    "name": "INDIRECT LABOUR",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 0,
+    "efficiency": 75,
+    "parallelCapacity": 0,
+    "isFinite": false,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "OTH",
+      "level2": "ZIND"
+    }
+  }
+]
