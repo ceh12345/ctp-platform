@@ -6,5 +6,5 @@
     "composite": true
   },
   "include": ["**/*.ts"],
-  "exclude": ["node_modules", "dist", "tests", "Unit Testing"]
+  "exclude": ["node_modules", "dist", "tests", "Unit Testing", "benchmarks"]
 }
