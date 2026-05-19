@@ -299,21 +299,27 @@ describe('CTPUnionSetEngine.union()', () => {
     const list = makeIntervals([{ s: 0, e: 30 }]);
     engine.union(list, new CTPInterval(20, 50));
     const arr = intervalsToArray(list);
-    // union() absorbs the overlapping portion; remaining [30,50] is not extended
+    // Updated for Ticket 1 union right-overhang fix: previously this test
+    // pinned [0,30] (the buggy "right-overhang dropped" outcome). After the
+    // setengine.ts fix the new interval [20,50] correctly extends the tail
+    // to endW=50, producing the proper union [0,50].
     expect(arr.length).toBe(1);
     expect(arr[0].s).toBe(0);
-    expect(arr[0].e).toBe(30);
+    expect(arr[0].e).toBe(50);
   });
 
-  it('adjacent interval (startW == endW) — not merged', () => {
+  it('adjacent interval at boundary is now merged (Ticket 1 fix)', () => {
     const engine = new CTPUnionSetEngine();
     const list = makeIntervals([{ s: 0, e: 20 }]);
     engine.union(list, new CTPInterval(20, 40));
     const arr = intervalsToArray(list);
-    // Adjacent intervals at exact boundary are not merged by union()
+    // Updated for Ticket 1: this test previously pinned [0,20] (the buggy
+    // "adjacent dropped at tail" outcome — startW == aPtr.endW fell through
+    // the catch-all else and b was lost). After the fix, adjacent-touching
+    // at tail correctly extends to produce [0,40].
     expect(arr.length).toBe(1);
     expect(arr[0].s).toBe(0);
-    expect(arr[0].e).toBe(20);
+    expect(arr[0].e).toBe(40);
   });
 
   it('non-overlapping stays separate', () => {
@@ -355,15 +361,19 @@ describe('CTPUnionSetEngine.union()', () => {
     expect(arr[0].e).toBe(100);
   });
 
-  it('interval containing existing — expands startW only', () => {
+  it('interval containing existing — expands both startW and endW (Ticket 1 fix)', () => {
     const engine = new CTPUnionSetEngine();
     const list = makeIntervals([{ s: 20, e: 50 }]);
     engine.union(list, new CTPInterval(0, 100));
     const arr = intervalsToArray(list);
-    // union() expands startW to 0 but endW stays at 50
+    // Updated for Ticket 1: this test previously pinned [0,50] (buggy —
+    // existing branch (4) at setengine.ts:765 extended startW left but
+    // advanced aPtr.next to null and dropped the right-overhang [50,100]).
+    // After the fix, "new contains tail" at tail correctly extends both
+    // ends to produce [0,100].
     expect(arr.length).toBe(1);
     expect(arr[0].s).toBe(0);
-    expect(arr[0].e).toBe(50);
+    expect(arr[0].e).toBe(100);
   });
 
   it('new interval before all existing — inserted at start', () => {

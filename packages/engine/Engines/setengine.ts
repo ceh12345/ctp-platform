@@ -760,6 +760,19 @@ export class CTPUnionSetEngine extends CTPAddSetEngine implements IUnionEngine {
           a.insertAtEnd(b);
           this.aPtr = null;
         }
+        // Tail right-overhang: b reaches the last existing node and extends
+        // past its endW. Without this branch, partial-overlap / adjacent-
+        // touching / new-contains-tail all advance aPtr to null and drop the
+        // remainder. Fires only at the tail so non-tail behaviour is unchanged.
+        else if (
+          !this.aPtr.next &&
+          startW <= this.aPtr.data.endW &&
+          endW > this.aPtr.data.endW
+        ) {
+          if (startW < this.aPtr.data.startW) this.aPtr.data.startW = startW;
+          this.aPtr.data.endW = endW;
+          this.aPtr = null;
+        }
         //   |----|
         // |---------|
         else if (

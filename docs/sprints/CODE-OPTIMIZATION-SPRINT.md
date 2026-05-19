@@ -37,11 +37,11 @@ LEGEND — COND: CONDITIONAL ON `getEntity` BEING NON-O(1)
 
 # 🔴 P0 — INNER LOOP / QUADRATIC FIXES
 
-## TICKET 1 — `feasibleStartTimes` APPEND-WITH-MERGE
+## TICKET 1 — `feasibleStartTimes` APPEND-WITH-MERGE (+ LATENT UNION BUG FIX)
 
-**FILE:** `starttimeengine.ts` (LINES ~89–115)
+**FILE:** `starttimeengine.ts` (LINES ~89–115), `setengine.ts` (LINES ~782–788)
 
-**PROBLEM:**
+**PROBLEM (PERF):**
 ```ts
 if (st <= et)
   theEngines.unionEngine.union(results, new CTPInterval(st, et));
@@ -50,7 +50,21 @@ if (st <= et)
 
 **COMPLEXITY:** O(M²) PER RANGE → O(R · M²) PER TASK CONTEXT → MULTIPLIED BY CONTEXTS PER SOLVE.
 
-**FIX — INLINE TAIL-MERGE:**
+**PROBLEM (LATENT BUG IN `CTPUnionSetEngine.union`):**
+THE PARTIAL-RIGHT-OVERLAP BRANCH AT `setengine.ts:782–788` SILENTLY DROPS DATA WHEN THE NEW INTERVAL HAS A RIGHT-OVERHANG PAST THE LAST EXISTING NODE:
+
+```
+input list: [10, 20]
+new b:      [15, 30]
+expected:   [10, 30]
+actual:     [10, 20]      ← b's [20,30] remainder is lost
+```
+
+THE BRANCH ADVANCES `startW = aPtr.data.endW; aPtr = aPtr.next`. WHEN `aPtr.next` IS NULL THE LOOP EXITS WITHOUT INSERTING THE REMAINDER. SAME FOR ADJACENT-TOUCHING (`startW === aPtr.endW` AT TAIL) — IT FALLS THROUGH THE `else` AT LINE 801–803 AND IS DROPPED.
+
+THE ONLY LIVE CALLER OF `union` IS `feasibleStartTimes` (THE CALL IN `statechangeerengine.ts:108` IS INSIDE A `/* */` BLOCK). WITHIN A SINGLE `aRangePtr` ITERATION INPUTS ARE NON-OVERLAPPING, BUT **ACROSS** OUTER ITERATIONS RANGES CAN PRODUCE OVERLAPPING SEGMENTS — SO THE BUG IS REACHABLE IN PRODUCTION.
+
+**FIX (PERF) — INLINE TAIL-MERGE:**
 ```ts
 const tail = results.tail;
 if (tail && tail.data.endW >= st) {
@@ -60,10 +74,19 @@ if (tail && tail.data.endW >= st) {
 }
 ```
 
+**FIX (BUG) — EXTEND THE PARTIAL-OVERLAP BRANCH IN `CTPUnionSetEngine.union`:**
+WHEN THE BRANCH FIRES AND `!aPtr.next && endW > aPtr.endW`, EXTEND `aPtr.endW = endW` AND TERMINATE THE LOOP INSTEAD OF ADVANCING. ALSO HANDLE ADJACENT-TOUCHING (`startW === aPtr.endW`) AT TAIL BY EXTENDING RATHER THAN FALLING THROUGH.
+
 **ACCEPTANCE:**
-- `feasibleStartTimes` OUTPUT IDENTICAL ON A REPRESENTATIVE LANDSCAPE (REGRESSION VS. CURRENT)
+- `feasibleStartTimes` OUTPUT IDENTICAL TO REGRESSION CASES (AFTER UNION BUG FIX) ON ALL FIXTURES INCLUDING OVERLAPPING-BOUNDARY SEGMENTS
+- `CTPUnionSetEngine.union` ON `[10,20] + [15,30]` PRODUCES `[10,30]` (NEW VITEST TEST)
+- `CTPUnionSetEngine.union` ON `[10,20] + [20,30]` PRODUCES `[10,30]` (ADJACENT-TOUCHING, NEW VITEST TEST)
+- ALL EXISTING `setengine.test.ts` CASES STILL PASS, EXCEPT THREE CASES THAT PREVIOUSLY *CODIFIED* THE BUG AS EXPECTED BEHAVIOR (THE COMMENTS ON THOSE CASES ACKNOWLEDGED IT). THESE THREE ARE UPDATED IN THE SAME PR TO ASSERT THE CORRECT POST-FIX OUTPUT:
+  - `absorbs overlap within existing interval`: was `[0,30]`, now `[0,50]`
+  - `adjacent interval at boundary`: was `[0,20]` (not merged), now `[0,40]` (merged)
+  - `interval containing existing — expands startW only`: was `[0,50]`, now `[0,100]`
 - BENCHMARK: ≥ 5X SPEEDUP ON A TASK WITH 200+ FEASIBLE SEGMENTS
-- KEEP `CTPUnionSetEngine.union` INTACT FOR CALLERS THAT REQUIRE GENERAL UNION
+- THE HARNESS CORRECTNESS GATE PASSES ON A FIXTURE THAT EXERCISES THE OVERLAP BRANCH
 
 ---
 
