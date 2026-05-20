@@ -2,22 +2,22 @@
   "ticketId": "ticket-01",
   "description": "feasibleStartTimes append-with-merge (vs general union)",
   "fixture": "260 start-ordered segments, ~25% overlapping",
-  "timestamp": "2026-05-19T12:41:36.512Z",
+  "timestamp": "2026-05-19T13:35:19.126Z",
   "node": "v22.14.0",
   "correctness": "PASS",
   "old": {
-    "medianMs": 0.2675,
-    "p95Ms": 0.4592,
-    "minMs": 0.1945,
-    "heapDeltaBytes": -17696
+    "medianMs": 0.4058,
+    "p95Ms": 0.5632,
+    "minMs": 0.2389,
+    "heapDeltaBytes": -18736
   },
   "new": {
-    "medianMs": 0.006,
-    "p95Ms": 0.0096,
-    "minMs": 0.004,
+    "medianMs": 0.0065,
+    "p95Ms": 0.0093,
+    "minMs": 0.0046,
     "heapDeltaBytes": 3656
   },
-  "speedup": 44.58333,
+  "speedup": 62.43077,
   "minSpeedupRequired": 5,
   "acceptancePass": true
 }

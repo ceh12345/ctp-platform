@@ -67,10 +67,13 @@ function oldImpl(): Array<[number, number]> {
 }
 
 // ---------------------------------------------------------------------------
-// NEW: Ticket 1 fix — inline tail-merge. This is the EXACT snippet from the
-// sprint ticket. When the ticket lands in starttimeengine.ts this block is
-// deleted and replaced by a call to the real method; until then it lives here
-// so old and new are measured in one process.
+// NEW: Ticket 1 fix — inline tail-merge. This snippet is now a frozen mirror
+// of the production code in starttimeengine.ts (the line-117 union call has
+// been replaced with this exact block). The bench keeps the snippet inline
+// rather than calling feasibleStartTimes() directly because that method is
+// `protected` and requires AvailableMatrix + SchedulingLandscape scaffolding
+// to exercise — see the file header for the integration-noise rationale.
+// If you update one, update the other.
 // ---------------------------------------------------------------------------
 function newImpl(): Array<[number, number]> {
   const results = new CTPIntervals();
