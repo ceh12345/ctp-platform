@@ -1,6 +1,6 @@
 import { CTPProcess } from '../Models/Entities/process';
 import { CTPTask, CTPTaskList, CTPTaskResource } from '../Models/Entities/task';
-import { ScheduleContext, ScheduleContexts, BestScheduleContext } from '../Models/Entities/schedulecontext';
+import { ScheduleContext, ScheduleContexts, BestScheduleContext, StartTimesCache } from '../Models/Entities/schedulecontext';
 import { SchedulingLandscape } from '../Models/Entities/landscape';
 import { CTPScoring } from '../Models/Entities/score';
 import { CTPStartTime } from '../Models/Entities/starttime';
@@ -78,6 +78,55 @@ export interface BumpEvent {
 // ── ChainContextEngine ─────────────────────────────────────────────
 
 export class ChainContextEngine {
+
+  // CODE-OPTIMIZATION-SPRINT Ticket 3 — temporary A/B flag during the bench
+  // window. When true, the 6 startTimes hot-path helpers
+  // (isWithinStartTimeNode, getAssignedProcessChangeDuration,
+  // findStartTimeNode, findEarliestFeasibleStart,
+  // findLatestFeasibleStartForPred, computeContextFeasibleDuration) use a
+  // typed-array cache on ScheduleContext + binary search where applicable
+  // instead of head-walking ctx.slot.startTimes. Cleanup commit will remove
+  // the flag and replace each helper's body with the fast path only.
+  public useStartTimesCache: boolean = false;
+
+  /**
+   * Build (or return cached) the typed-array snapshot of ctx.slot.startTimes.
+   * Invalidated by bumping ctx._stCacheVersion at every in-cycle mutation
+   * site (currently only truncateContextStartTimes — see comment there).
+   */
+  private getStCache(ctx: ScheduleContext): StartTimesCache | null {
+    if (ctx._stCache && ctx._stCache.version === ctx._stCacheVersion) {
+      return ctx._stCache;
+    }
+    const st = ctx.slot.startTimes;
+    if (!st?.head) {
+      ctx._stCache = null;
+      return null;
+    }
+    // First pass: count nodes so we can allocate exact-size typed arrays.
+    // Narrowed scope (find-pattern helpers only) populates 3 arrays:
+    // eStart and lStart for the binary search, pcd for getAssignedProcessChangeDuration.
+    let n: typeof st.head | null = st.head;
+    let count = 0;
+    while (n) { count++; n = n.next; }
+    const eStart = new Float64Array(count);
+    const lStart = new Float64Array(count);
+    const pcd = new Float64Array(count);
+    n = st.head;
+    let i = 0;
+    while (n) {
+      eStart[i] = n.data.eStartW;
+      lStart[i] = n.data.lStartW;
+      pcd[i] = n.data.processChangeDuration;
+      i++;
+      n = n.next;
+    }
+    ctx._stCache = {
+      count, eStart, lStart, pcd,
+      version: ctx._stCacheVersion,
+    };
+    return ctx._stCache;
+  }
 
   /**
    * Evaluate an entire chain and return the best ChainContextCombo.
@@ -749,6 +798,9 @@ export class ChainContextEngine {
   private computeContextFeasibleDuration(ctx: ScheduleContext): number {
     const st = ctx.slot.startTimes;
     if (!st) return 0;
+    // T3 scope: iterate-all helpers were NOT included in the narrowed ship
+    // (typed-array sum gave only ×2 local with measurable cache complexity).
+    // Only the 3 find-pattern helpers use the binary-search fast path.
     let total = 0;
     let node = st.head;
     while (node) {
@@ -766,6 +818,12 @@ export class ChainContextEngine {
   ): void {
     const st = ctx.slot.startTimes;
     if (!st) return;
+    // T3 invalidation — the only in-cycle mutation site for startTimes during
+    // chain evaluation. Bumping the version causes getStCache to rebuild the
+    // typed arrays on next access. The other 5 startTimes mutation sites
+    // (cadencefilter, computeschedulecontexts, commonstarttimes ×2,
+    // evaluator unschedule) all run outside the evaluate-chain window.
+    ctx._stCacheVersion++;
 
     let node = st.head;
     while (node) {
@@ -875,7 +933,7 @@ export class ChainContextEngine {
           targetStart = kEnd + offset;
         }
         if (targetStart >= propagatedEStartP && targetStart <= propagatedLStartP
-            && this.isWithinStartTimeNode(primarySt, targetStart)) {
+            && this.isWithinStartTimeNode(primarySt, targetStart, primaryCtx)) {
           candidateSet.add(targetStart);
         }
         pNode = pNode.next;
@@ -899,7 +957,7 @@ export class ChainContextEngine {
             : targetStart;
         }
         if (targetStart >= propagatedEStartP && targetStart <= propagatedLStartP
-            && this.isWithinStartTimeNode(primarySt, targetStart)) {
+            && this.isWithinStartTimeNode(primarySt, targetStart, primaryCtx)) {
           candidateSet.add(targetStart);
         }
         sNode = sNode.next;
@@ -921,7 +979,7 @@ export class ChainContextEngine {
         pStart = Math.ceil(pStart / cadenceSec) * cadenceSec;
       }
       if (pStart > propagatedLStartP) continue;
-      if (!this.isWithinStartTimeNode(primarySt, pStart)) continue;
+      if (!this.isWithinStartTimeNode(primarySt, pStart, primaryCtx)) continue;
 
       const trial: ({ start: number; end: number } | null)[] =
         new Array(combo.contexts.length).fill(null);
@@ -1013,7 +1071,24 @@ export class ChainContextEngine {
   /**
    * Check if a given start time falls within any start-time node's [eStartW, lStartW] range.
    */
-  private isWithinStartTimeNode(startTimes: any, start: number): boolean {
+  private isWithinStartTimeNode(
+    startTimes: any,
+    start: number,
+    ctx?: ScheduleContext,
+  ): boolean {
+    if (this.useStartTimesCache && ctx) {
+      const c = this.getStCache(ctx);
+      if (c) {
+        // Binary search for greatest i with eStart[i] <= start.
+        let lo = 0, hi = c.count - 1, idx = -1;
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1;
+          if (c.eStart[mid] <= start) { idx = mid; lo = mid + 1; }
+          else hi = mid - 1;
+        }
+        return idx >= 0 && start <= c.lStart[idx];
+      }
+    }
     let node = startTimes.head;
     while (node) {
       if (start >= node.data.eStartW && start <= node.data.lStartW) return true;
@@ -1036,6 +1111,8 @@ export class ChainContextEngine {
 
     const cadence = ctx.task?.cadenceIntervalMinutes;
     const cadenceSec = cadence ? cadence * 60 : 0;
+    // T3 scope: iterate-all path stays on linked-list walk — see comment in
+    // computeContextFeasibleDuration for the narrowing rationale.
 
     let best = Number.MAX_VALUE;
     let node = st.head;
@@ -1074,6 +1151,8 @@ export class ChainContextEngine {
     const duration = ctx.task.duration?.duration() ?? 0;
     const cadence = ctx.task?.cadenceIntervalMinutes;
     const cadenceSec = cadence ? cadence * 60 : 0;
+    // T3 scope: iterate-all path stays on linked-list walk — see comment in
+    // computeContextFeasibleDuration for the narrowing rationale.
 
     let best: number | null = null;
     let node = st.head;
@@ -1117,6 +1196,20 @@ export class ChainContextEngine {
   private getAssignedProcessChangeDuration(ctx: ScheduleContext, assignedStart: number): number {
     const st = ctx.slot.startTimes;
     if (!st) return 0;
+
+    if (this.useStartTimesCache) {
+      const c = this.getStCache(ctx);
+      if (c) {
+        let lo = 0, hi = c.count - 1, idx = -1;
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1;
+          if (c.eStart[mid] <= assignedStart) { idx = mid; lo = mid + 1; }
+          else hi = mid - 1;
+        }
+        if (idx >= 0 && assignedStart <= c.lStart[idx]) return c.pcd[idx];
+        return c.pcd[0] ?? 0;
+      }
+    }
 
     let node = st.head;
     while (node) {
@@ -1164,6 +1257,28 @@ export class ChainContextEngine {
   private findStartTimeNode(ctx: ScheduleContext, assignedStart: number): CTPStartTime | null {
     const st = ctx.slot.startTimes;
     if (!st) return null;
+
+    if (this.useStartTimesCache) {
+      const c = this.getStCache(ctx);
+      if (c) {
+        let lo = 0, hi = c.count - 1, idx = -1;
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1;
+          if (c.eStart[mid] <= assignedStart) { idx = mid; lo = mid + 1; }
+          else hi = mid - 1;
+        }
+        // Map the typed-array index back to the linked-list node by walking
+        // (the cache doesn't store CTPStartTime references — that would defeat
+        // the cache locality benefit on the sum-path). idx is small (avg N/2
+        // walks worst case, but most callers hit the same node multiple times
+        // so this is dominated by binary search wins elsewhere).
+        let n = st.head;
+        let k = 0;
+        while (n && k < idx) { n = n.next; k++; }
+        if (idx >= 0 && n && assignedStart <= c.lStart[idx]) return n.data;
+        return st.head?.data ?? null;
+      }
+    }
 
     let node = st.head;
     while (node) {

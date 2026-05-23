@@ -10,12 +10,36 @@ import { CTPStateChanges } from "./statechange";
 import { CTPStartTime } from "./starttime";
 import { RecomputeTracker } from "./recompute-tracker";
 
+// CODE-OPTIMIZATION-SPRINT Ticket 3 — typed-array cache of the per-context
+// startTimes list, used by the 3 find-pattern helpers in ChainContextEngine
+// (isWithinStartTimeNode, getAssignedProcessChangeDuration, findStartTimeNode)
+// to replace head-walks with binary search. Iterate-all helpers
+// (computeContextFeasibleDuration, findEarliestFeasibleStart,
+// findLatestFeasibleStartForPred) stay on linked-list walks — the narrowed
+// scope intentionally trades a smaller cache footprint for those callers' ×2
+// cache-locality win. See ticket-03 evidence in the spec.
+//
+// Lazily built by ChainContextEngine.getStCache. Invalidated by bumping
+// ctx._stCacheVersion at the single in-cycle mutation site
+// (truncateContextStartTimes).
+export interface StartTimesCache {
+  count: number;
+  eStart: Float64Array;
+  lStart: Float64Array;
+  pcd: Float64Array; // processChangeDuration per node
+  version: number;   // captured at build; compared against ctx._stCacheVersion
+}
+
 export class ScheduleContext extends CTPEntityHashed {
   public landscape: ILandscape;
   public task: CTPTask;
   public slot: CTPResourceSlots;
   public scores: CTPScores;
   public blendedScore: IScore;
+
+  // T3 cache state — managed by ChainContextEngine, not used elsewhere.
+  public _stCache: StartTimesCache | null = null;
+  public _stCacheVersion: number = 0;
 
   constructor(l: ILandscape, t: CTPTask, s: CTPResourceSlots) {
     super();
