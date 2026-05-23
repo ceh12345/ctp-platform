@@ -75,6 +75,11 @@ export class StagingService {
     await this.safeRename(handle.tmpDir, dest);
   }
 
+  /** Manually re-point a tenant's `current` at an existing snapshot dir. CLI use. */
+  async repointAt(tenant: string, snapshotPath: string): Promise<void> {
+    await this.pointerFor(tenant).point(snapshotPath);
+  }
+
   async current(tenant: string): Promise<string | null> {
     return this.pointerFor(tenant).resolve();
   }
