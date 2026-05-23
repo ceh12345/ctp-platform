@@ -401,11 +401,17 @@ The BaseX shape allows a future refinement — streaming enumeration (generator 
 
 ---
 
-## TICKET 7 — CACHE PER-CONTEXT RESOURCE-SET HASH
+## TICKET 7 — CACHE PER-CONTEXT RESOURCE-SET HASH ⛔ INVESTIGATED, DISMISSED (CURRENT WORKLOAD)
 
-**FILE:** `chaincontextengine.ts` (LINES 269–277, dedup BLOCK IN `evaluateChainAll`)
+**FILE:** `chaincontextengine.ts` (dedup block in `evaluateChainAll`)
 
-**PROBLEM:**
+**STATUS:** Investigated via 5-scenario probe bench. The optimization is correct and the algorithmic win is real (×3-4× at multi-resource scenarios), but two structural facts make it not worth shipping for the current workload:
+1. The dedup block runs **only in `evaluateChainAll`** — the `/ctp` query endpoint path. The batch scheduler's `evaluateChain` (basescheduler.ts) doesn't run this dedup at all. Cold path for batch-solve users.
+2. Speedup depends heavily on **resources-per-context**. With 1 resource per context (single-machine tasks — the most common pattern), the inner `sort` is a no-op and the cache gives ×0.99 cold / ×1.96 warm. The big wins materialize at 2-3 resources per context (multi-resource OR-style chains).
+
+Revisit if (a) `/ctp` query rate climbs significantly, OR (b) workload shifts to multi-resource chains with high context duplication across combos.
+
+**ORIGINAL PROBLEM (still valid):**
 ```ts
 const resourceHash = combo.contexts.map(ctx => {
   const keys: string[] = [];
@@ -413,33 +419,29 @@ const resourceHash = combo.contexts.map(ctx => {
   return keys.sort().join('+');
 }).join('|');
 ```
-RECOMPUTED PER COMBO. SORT IS THE OBVIOUS WASTE — RESOURCE SET IS FIXED PER CONTEXT.
+Recomputed per combo. Sort is the obvious waste — resource set is fixed per context.
 
-**FIX — LAZY FIELD ON `ScheduleContext`:**
-```ts
-class ScheduleContext {
-  private _resourceHash: string | null = null;
-  get resourceHash(): string {
-    if (this._resourceHash === null) {
-      const keys: string[] = [];
-      this.slot.resources?.forEach(r => { if (r.resource) keys.push(r.resource.key); });
-      keys.sort();
-      this._resourceHash = keys.join('+');
-    }
-    return this._resourceHash;
-  }
-}
-```
-THEN:
-```ts
-const resourceHash = combo.contexts.map(c => c.resourceHash).join('|');
-```
+**PROPOSED FIX (NOT SHIPPED):**
+Lazy `_resourceHash: string | null` field on `ScheduleContext`, computed once per unique context, reset to `null` if slot.resources ever mutates.
 
-**INVALIDATION:** RESET `_resourceHash = null` IF SLOT RESOURCES CHANGE (TIE TO RECOMPUTE PATH).
+**MEASURED SCALING** (synthetic probe, deduplicated multiset preserved on every scenario):
 
-**ACCEPTANCE:**
-- DEDUP RESULTS IDENTICAL
-- BENCHMARK: ≥ 3X SPEEDUP IN DEDUP PHASE FOR LARGE COMBO SETS
+| Scenario | combos | unique | ctx/combo | res/ctx | dup | Old | New cold | New warm | Speedup cold | Speedup warm |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Small chain, 1 res | 100 | 20 | 3 | 1 | 15× | 0.076ms | 0.044ms | 0.014ms | ×1.74 | ×5.37 |
+| **Typical, 1 res/ctx** | 500 | 20 | 3 | 1 | 75× | 0.173ms | 0.174ms | 0.088ms | **×0.99** | ×1.96 |
+| Typical, 3 res/ctx | 500 | 20 | 3 | 3 | 75× | 0.421ms | 0.129ms | 0.113ms | ×3.26 | ×3.71 |
+| Spec-realistic | 1000 | 30 | 5 | 2 | 167× | 1.153ms | 0.276ms | 0.283ms | ×4.18 | ×4.07 |
+| Stress | 2000 | 30 | 5 | 3 | 333× | 2.744ms | 0.662ms | 0.648ms | ×4.14 | ×4.23 |
+
+Cold = cache cleared per call (realistic — each `evaluateChainAll` invocation could start with fresh context instances). Warm = cache survived across iterations.
+
+**WHY NOT SHIPPED:**
+- For the "typical 1 res/ctx" row (likely the dominant Stafford-class pattern), the cold-cache speedup is **×0.99 — within noise of unchanged**. Hash construction is already fast enough that allocating + caching strings doesn't pay back at this scale.
+- Absolute work is sub-millisecond even on the stress scenario (saves ~2ms per `evaluateChainAll` call). Below user-perceptible noise floor on a query endpoint.
+- Carry cost: adds another mutable cache field to `ScheduleContext` (already carries `_stCache`/`_stCacheVersion` from T3) plus an invalidation surface that has to track `slot.resources` mutations.
+
+**DECISION:** No engine change. Spec section retained as evidence so the optimization isn't re-proposed. Threshold for revisit: multi-resource OR-style chains becoming dominant, OR `/ctp` query rate becoming hot.
 
 ---
 
