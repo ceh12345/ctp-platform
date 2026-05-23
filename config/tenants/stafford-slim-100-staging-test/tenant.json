@@ -1,0 +1,9 @@
+{
+  "tenantId": "stafford-slim-100-staging-test",
+  "name": "Stafford Slim 100 — Staging Test",
+  "vertical": "manufacturing",
+  "createdAt": "2026-05-23T00:00:00Z",
+  "updatedAt": "2026-05-23T00:00:00Z",
+  "clonedFrom": "stafford-slim-100",
+  "description": "Staging-architecture activation test tenant. Same data as stafford-slim-100 but routes through the staging layer: integration/adapter.json sets adapterType=staging-read, so SyncService reads from staging/<tenant>/current/raw/ instead of the flat files. Seed via `staging seed stafford-slim-100-staging-test config/tenants/stafford-slim-100/data` before first use."
+}

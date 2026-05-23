@@ -1,9 +1,12 @@
 /* eslint-disable no-console */
+import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 import { ConfigService } from '../config/config.service';
 import { FileConfigStore } from '../config/file-config-store';
 import { StagingService } from '../modules/integration/staging/staging.service';
+import { defaultRules } from '../modules/integration/staging/validation/rules';
+import { ValidationRunner } from '../modules/integration/staging/validation/validation-runner';
 
 interface Args {
   command: string;
@@ -17,6 +20,7 @@ const USAGE = `Usage:
   staging promote <tenant> <ts> [--yes]
   staging inspect <tenant> <ts>
   staging rollback <tenant> [--yes]
+  staging seed <tenant> <source-dir> [--yes]
 
 Environment:
   CONFIG_ROOT   override default config root (defaults to ../../config from cwd)
@@ -25,7 +29,7 @@ Environment:
 export function parseArgs(argv: string[]): Args | null {
   if (argv.length < 2) return null;
   const command = argv[0];
-  if (!['list', 'promote', 'inspect', 'rollback'].includes(command)) return null;
+  if (!['list', 'promote', 'inspect', 'rollback', 'seed'].includes(command)) return null;
   const tenant = argv[1];
   const rest = argv.slice(2);
   const positional = rest.filter((a) => !a.startsWith('--'));
@@ -154,6 +158,112 @@ export async function cmdRollback(
   return 0;
 }
 
+// IRawDataPayload top-level keys. Matches what SyncOrchestrator writes.
+const ARRAY_ENTITIES = [
+  'resources',
+  'tasks',
+  'calendars',
+  'stateChanges',
+  'products',
+  'orders',
+  'materials',
+  'processes',
+  'cadences',
+] as const;
+const SINGLE_ENTITY = 'uomConversions';
+
+// Filename variants to try for each entity. camelCase first, kebab fallback for
+// multi-word names (matches conventions on disk in tenant config dirs).
+function sourceCandidates(key: string): string[] {
+  const variants = [`${key}.json`];
+  if (/[A-Z]/.test(key)) {
+    variants.push(`${key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}.json`);
+  }
+  return variants;
+}
+
+async function readSource(sourceDir: string, key: string): Promise<unknown | null> {
+  for (const name of sourceCandidates(key)) {
+    const file = path.join(sourceDir, name);
+    try {
+      const text = await fs.promises.readFile(file, 'utf8');
+      return JSON.parse(text);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') continue;
+      throw err;
+    }
+  }
+  return null;
+}
+
+export async function cmdSeed(
+  staging: StagingService,
+  tenant: string,
+  sourceDir: string,
+  yes: boolean,
+  confirmFn: (prompt: string) => Promise<boolean> = confirm,
+): Promise<number> {
+  const sourceExists = await fs.promises
+    .stat(sourceDir)
+    .then((s) => s.isDirectory())
+    .catch(() => false);
+  if (!sourceExists) {
+    console.error(`error: source dir not found: ${sourceDir}`);
+    return 1;
+  }
+
+  if (!yes && !(await confirmFn(`Seed staging for '${tenant}' from '${sourceDir}'?`))) {
+    console.log('aborted.');
+    return 1;
+  }
+
+  const handle = staging.createSnapshot(tenant);
+  const recordCounts: Record<string, number> = {};
+
+  for (const key of ARRAY_ENTITIES) {
+    const raw = await readSource(sourceDir, key);
+    const arr = Array.isArray(raw) ? raw : [];
+    await staging.writeRaw(handle, key, arr);
+    recordCounts[key] = arr.length;
+  }
+
+  const uom = await readSource(sourceDir, SINGLE_ENTITY);
+  if (uom != null) {
+    const arr = Array.isArray(uom) ? uom : [uom];
+    await staging.writeRaw(handle, SINGLE_ENTITY, arr);
+    recordCounts[SINGLE_ENTITY] = 1;
+  } else {
+    recordCounts[SINGLE_ENTITY] = 0;
+  }
+
+  await staging.writeMetadata(handle, {
+    capturedAt: new Date().toISOString(),
+    adapterType: 'fixture-seed',
+    recordCounts,
+  });
+
+  const runner = new ValidationRunner(defaultRules());
+  const previous = await staging.current(tenant);
+  const previousRawDir = previous ? path.join(previous, 'raw') : null;
+  const report = await runner.run({ rawDir: handle.rawDir, previousRawDir });
+  await staging.writeReport(handle, report);
+
+  if (!report.passed) {
+    await staging.markFailed(handle);
+    console.error(`error: validation failed for seed; snapshot left at .failed/`);
+    console.error(`failed rules: ${report.failedRules.join(', ')}`);
+    return 1;
+  }
+
+  await staging.promote(handle);
+  const summary = Object.entries(recordCounts)
+    .filter(([, n]) => n > 0)
+    .map(([k, n]) => `${k}=${n}`)
+    .join(' ');
+  console.log(`seeded '${handle.ts}' for tenant '${tenant}': ${summary}`);
+  return 0;
+}
+
 export async function run(argv: string[]): Promise<number> {
   const args = parseArgs(argv);
   if (!args) {
@@ -184,6 +294,14 @@ export async function run(argv: string[]): Promise<number> {
     }
     case 'rollback':
       return cmdRollback(staging, args.tenant, yes);
+    case 'seed': {
+      const sourceDir = args.positional[0];
+      if (!sourceDir) {
+        console.error('error: seed requires a source directory argument');
+        return 1;
+      }
+      return cmdSeed(staging, args.tenant, sourceDir, yes);
+    }
     default:
       console.error(USAGE);
       return 1;
