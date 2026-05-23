@@ -6,6 +6,8 @@ import { CTPScoring } from '../Models/Entities/score';
 import { CTPStartTime } from '../Models/Entities/starttime';
 import { CTPResource } from '../Models/Entities/resource';
 import { ScoringEngine } from './scoringengine';
+import { ScoringFactory } from '../Factories/scorefactory';
+import { CTPScoreObjectiveConstants } from '../Models/Core/constants';
 import { ScheduleEngine } from './scheduleengine';
 import { CTPTaskStateConstants } from '../Models/Core/constants';
 import { workingEndForwardW, workingStartBackwardW } from '../Models/Core/interval-walker';
@@ -80,14 +82,21 @@ export interface BumpEvent {
 export class ChainContextEngine {
 
   // CODE-OPTIMIZATION-SPRINT Ticket 3 — temporary A/B flag during the bench
-  // window. When true, the 6 startTimes hot-path helpers
+  // window. When true, the 3 startTimes find-pattern helpers
   // (isWithinStartTimeNode, getAssignedProcessChangeDuration,
-  // findStartTimeNode, findEarliestFeasibleStart,
-  // findLatestFeasibleStartForPred, computeContextFeasibleDuration) use a
-  // typed-array cache on ScheduleContext + binary search where applicable
-  // instead of head-walking ctx.slot.startTimes. Cleanup commit will remove
-  // the flag and replace each helper's body with the fast path only.
+  // findStartTimeNode) use a typed-array cache on ScheduleContext + binary
+  // search instead of head-walking ctx.slot.startTimes. Cleanup commit will
+  // remove the flag and replace each helper's body with the fast path only.
   public useStartTimesCache: boolean = false;
+
+  // CODE-OPTIMIZATION-SPRINT Ticket 4 — temporary A/B flag during the bench
+  // window. When true, scoreChainCombos dispatches to a PATH-B implementation
+  // that scores raw rule values ONCE per unique context (across all combos)
+  // and blends per-combo. Preserves the existing per-combo min/max
+  // normalization semantics — the spec's "global normalization" variant was
+  // explicitly NOT used because it changed combo rankings. Cleanup commit
+  // will remove the flag and the original head-walk path.
+  public useUniqueContextScoring: boolean = false;
 
   /**
    * Build (or return cached) the typed-array snapshot of ctx.slot.startTimes.
@@ -856,6 +865,10 @@ export class ChainContextEngine {
     landscape: SchedulingLandscape,
     scoring: CTPScoring,
   ): void {
+    if (this.useUniqueContextScoring) {
+      this.scoreChainCombosWithUnique(combos, landscape, scoring);
+      return;
+    }
     const scoringEngine = new ScoringEngine();
 
     for (const combo of combos) {
@@ -877,6 +890,105 @@ export class ChainContextEngine {
 
       // Restore original scores so shared contexts aren't mutated
       combo.contexts.forEach((ctx, i) => { ctx.blendedScore.score = savedScores[i]; });
+    }
+  }
+
+  /**
+   * T4 PATH-B — score raw rule values ONCE per unique context, then re-blend
+   * per-combo using THIS combo's own min/max. Preserves the per-combo
+   * normalization semantics of the original (the spec's "global
+   * normalization" variant changed combo rankings — explicitly NOT used).
+   *
+   * Skips the expensive `rule.compute(ctx)` work for duplicated contexts;
+   * still pays per-combo blending cost. Speedup ≈ duplication ratio when
+   * scoring dominates blending (compute() walks startTimes / calendar;
+   * blending is just min/max arithmetic).
+   */
+  private scoreChainCombosWithUnique(
+    combos: ChainContextCombo[],
+    landscape: SchedulingLandscape,
+    scoring: CTPScoring,
+  ): void {
+    // Build rule instances ONCE — was repeated per-combo in the old path.
+    const rules: { name: string; rule: import('../AI/Scoring/scoringrule').IScoringRule }[] = [];
+    let cum = 0;
+    scoring.rules.forEach((r) => {
+      if (r.includeInSolve) {
+        try {
+          const inst = ScoringFactory.createScoringRule(
+            r.ruleName, r.weight, r.objective, r.penaltyFactor,
+          );
+          rules.push({ name: r.ruleName, rule: inst });
+          cum += inst.weight;
+        } catch (err) {
+          // Scoring rule creation failed — skip this rule (matches original behavior)
+        }
+      }
+    });
+    if (cum <= 0.99 || cum > 1.0) throw "Scoring Rules must sum to 100 %";
+
+    // Compute raw rule scores ONCE for each unique context. rawScores[ctx][r]
+    // = raw score for rule r on ctx, or NaN if ctx has no startTimes / rule
+    // threw. NaN values are skipped during blending (matches original which
+    // skipped on exception via the try/catch in computeScores).
+    const uniqueSet = new Set<ScheduleContext>();
+    for (const combo of combos) for (const ctx of combo.contexts) uniqueSet.add(ctx);
+    const rawScores = new Map<ScheduleContext, number[]>();
+    for (const ctx of uniqueSet) {
+      const arr: number[] = new Array(rules.length);
+      const hasSt = ctx.slot?.hasStartTimes();
+      for (let r = 0; r < rules.length; r++) {
+        if (!hasSt) { arr[r] = NaN; continue; }
+        try { arr[r] = rules[r].rule.compute(ctx).score; }
+        catch { arr[r] = NaN; }
+      }
+      rawScores.set(ctx, arr);
+    }
+
+    // Per-combo: derive min/max from THIS combo's contexts, blend per ctx.
+    for (const combo of combos) {
+      // Per-combo min/max per rule
+      const mins = new Array<number>(rules.length).fill(Number.MAX_SAFE_INTEGER);
+      const maxs = new Array<number>(rules.length).fill(Number.MIN_SAFE_INTEGER);
+      for (const ctx of combo.contexts) {
+        const raw = rawScores.get(ctx)!;
+        for (let r = 0; r < rules.length; r++) {
+          const v = raw[r];
+          if (!isNaN(v)) {
+            if (v < mins[r]) mins[r] = v;
+            if (v > maxs[r]) maxs[r] = v;
+          }
+        }
+      }
+
+      // Blend each context using this combo's min/max; sum into chainScore.
+      // Note: original code initializes blendedScore = Number.MAX_VALUE and
+      // only overwrites if hasStartTimes — so a context without startTimes
+      // contributed MAX_VALUE to the sum, effectively pricing the combo out.
+      // We preserve that here.
+      let chainScore = 0;
+      for (const ctx of combo.contexts) {
+        if (!ctx.slot?.hasStartTimes()) {
+          chainScore += Number.MAX_VALUE;
+          continue;
+        }
+        const raw = rawScores.get(ctx)!;
+        let n = 0;
+        for (let r = 0; r < rules.length; r++) {
+          const v = raw[r];
+          if (isNaN(v)) continue;
+          const range = maxs[r] - mins[r];
+          let s = range !== 0 ? (v - mins[r]) / range : 1.0;
+          s = s * rules[r].rule.weight;
+          if (rules[r].rule.objective === CTPScoreObjectiveConstants.MAXIMIZE) s *= -1.0;
+          if (rules[r].rule.penaltyFactor) s += s * rules[r].rule.penaltyFactor;
+          n += s;
+        }
+        chainScore += n;
+      }
+      // Gap penalty: identical to original
+      chainScore += (combo.totalGap / 60) * 0.1;
+      combo.chainScore = chainScore;
     }
   }
 
