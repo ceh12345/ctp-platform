@@ -1,0 +1,23 @@
+{
+  "ticketId": "ticket-02",
+  "description": "addToFloat range lookup (Map vs linear scan), measured via calculate() end-to-end on a calendar-style workload",
+  "fixture": "1000 nodes × 40 distinct qtys, all qty>0 (single addToFloat call covers full list; addToFixed/addToUntracked dominate total time)",
+  "timestamp": "2026-05-23T13:14:59.016Z",
+  "node": "v22.14.0",
+  "correctness": "PASS",
+  "old": {
+    "medianMs": 32.9453,
+    "p95Ms": 53.5514,
+    "minMs": 18.4801,
+    "heapDeltaBytes": -2800
+  },
+  "new": {
+    "medianMs": 27.6377,
+    "p95Ms": 32.0323,
+    "minMs": 12.8864,
+    "heapDeltaBytes": -1981008
+  },
+  "speedup": 1.19204,
+  "minSpeedupRequired": 10,
+  "acceptancePass": false
+}

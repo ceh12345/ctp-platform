@@ -90,40 +90,44 @@ WHEN THE BRANCH FIRES AND `!aPtr.next && endW > aPtr.endW`, EXTEND `aPtr.endW = 
 
 ---
 
-## TICKET 2 — INDEX `addToFloat` RANGES BY QTY
+## TICKET 2 — INDEX `addToFloat` RANGES BY QTY ⛔ INVESTIGATED, DISMISSED
 
 **FILE:** `availableengine.ts` (LINES ~180–210)
 
-**PROBLEM:**
+**STATUS:** Investigated end-to-end with a sibling-method A/B bench against the existing implementation. No measurable speedup at any fixture scale tested; marginally *slower* at production-realistic K. Engine reverted in the same investigation cycle. See `packages/engine/benchmarks/results/ticket-02.json` and `ticket-02-stress.json` for the committed evidence.
+
+**ORIGINAL PROBLEM (as written):**
 ```ts
 for (let a of ranges) {
   if (a.qty == this.cPtr.data.qty) { found = true; break; }
 }
 ```
-LINEAR SCAN OVER `ranges[]` PER POSITION OF `cPtr`. CALLED FROM `processPtrs` → `calculate` → `recalculate`. RUNS EVERY TIME `matrix.recalc === true`.
+Linear scan over `ranges[]` per position of `cPtr`. Estimated O(N · K) per `addToFloat`, claimed O(N² · K) per resource recalc.
 
-**COMPLEXITY:** O(N · K) PER `addToFloat`, OUTER WALK IS O(N), → O(N² · K) PER RESOURCE RECALC.
+**WHY THE FIX DID NOT MOVE THE NEEDLE:**
+1. **The spec's complexity model was wrong about call frequency.** `addToFloat` only fires when `aPtr.prev === null || aPtr.data.qty === null || (aPtr.data.qty <= 0 && !flowAround)`. In any realistic calendar (all qty>0, `flowAround()` hardcoded to `false` at `baseengine.ts:57`), `addToFloat` runs **once** per `calculate()` — not N times. So the spec's `O(N · K)` ceiling is **per resource recalc**, not per outer iteration. The outer `N` factor never materialized.
+2. **Within `addToFloat`, the scan is not the bottleneck.** The dPtr inner loop walks the entire window once per fresh-`r` creation (= K times), giving O(K · W). The scan gives the same O(K · W). They are equal in complexity; the Map can at best ~halve `addToFloat`'s work, not 10× it.
+3. **`addToFloat` is a small fraction of `calculate()` total.** Per-iteration timing is dominated by per-node `addToFixed`/`addToUntracked` calls + their `list.add` sorted-insertions (which are actually O(1) per call on sorted input — see `CTPIntervals.add` line 140 fast-path via `atOrAfterStartTime`'s tail-check at `intervals.ts:26`).
+4. **Constant factors invert the win at production K.** Realistic per-resource cardinality is ~50–500 intervals × ~1–5 distinct qty levels. At K=5, a JIT'd `for...of` over 5 numbers is faster than `Map.get` + hash + bucket lookup. The Map *only starts to break even around K≈20-50*; below that it is consistently slower.
 
-**FIX — KEEP `Map<qty, CTPRange>` ALONGSIDE `ranges[]`:**
-```ts
-const byQty = new Map<number, CTPRange>();
-// ...
-const qtyVal = this.cPtr.data.qty;
-if (qtyVal != null && qtyVal > 0) {
-  let r = byQty.get(qtyVal) ?? null;
-  const found = r !== null;
-  if (!found) {
-    r = new CTPRange(this.cPtr, this.cPtr, qtyVal, 0, 0);
-    ranges.push(r);
-    byQty.set(qtyVal, r);
-  }
-  // ... rest unchanged
-}
-```
+**MEASURED RESULTS** (committed JSON artifacts):
 
-**ACCEPTANCE:**
-- `recalculate` PRODUCES IDENTICAL `availableTimes` LISTS
-- BENCHMARK: ≥ 10X SPEEDUP ON A 1000-INTERVAL CALENDAR WITH 5+ DISTINCT QTYS
+| Fixture | Scope | Speedup | Verdict |
+|---|---|---|---|
+| `ticket-02.json` (1000 × 40) | `calculate()` end-to-end, calendar-style | ×1.02 | Within run-to-run noise of ×1.0 |
+| `ticket-02-stress.json` (3000 × 300) | `calculate()` end-to-end, deliberately scaled past realistic K | ×0.978 | Marginally *slower* (Map allocation + hash overhead) |
+
+Both fixtures: correctness gate PASSed (Map and linear-scan produce deep-equal `FLOAT` ranges).
+
+Earlier stress attempts: 10000×1000 OOM'd in the harness's 1000-iter heap-delta phase; 5000×500 was killed at ~25-min wall-clock projection.
+
+**REALISTIC PRODUCTION SCALE** (Stafford-class workload, confirmed with stakeholder): 100 resources × 30 tasks avg × 2-week horizon → per-resource ~50–500 intervals × ~1–5 distinct qtys × 100 `calculate()` invocations totalling ~1–2 s. T2 would push this slightly upward, not down.
+
+**DECISION:** Engine reverted to pre-T2 state. Bench files and JSON artifacts retained as evidence so a future contributor doesn't re-propose this optimization without first reading the analysis.
+
+**NOT-INVALIDATED SUBSIDIARY FINDINGS** (still worth a follow-up, separate ticket if pursued):
+- The existing `addToFloat` has a latent foot-gun where `r` stays as last-created-range when `found===true` (works by accident via the `r.processed` gate; the spec's proposed fix would have cleaned this up). Pure refactor, no perf benefit. Not in this sprint.
+- `addToFixed`/`addToUntracked` together run N times per `calculate()` and consume the majority of wall-clock. If a real recalc-cycle speedup is wanted, that's where the budget actually is — but `list.add` is already O(1)-per-call on sorted input, so the win would come from a different shape entirely (e.g. batching the index population, or eliding the index when the matrix hasn't been mutated).
 
 ---
 
