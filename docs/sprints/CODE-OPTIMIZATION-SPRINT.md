@@ -477,32 +477,55 @@ COMBINE WITH TICKET 3 SO `getAssignedProcessChangeDuration` IS O(LOG N) INSTEAD 
 
 ---
 
-## TICKET 9 — TAIL-FIRST FAST PATH IN `CTPIntervals.add`
+## TICKET 9 — TAIL-FIRST FAST PATH IN `CTPIntervals.add` ⛔ INVESTIGATED, DISMISSED
 
-**FILE:** `intervals.ts` (LINES 138–147, AND `CTPAvailableTimes.add` ~285)
+**FILE:** `intervals.ts` (LINES 22–36, 140–146)
 
-**PROBLEM:**
-EVERY `add` SCANS FROM HEAD. SET-ENGINE OUTPUT IS BUILT LEFT-TO-RIGHT, SO THE INSERTION POINT IS ALMOST ALWAYS THE TAIL.
+**STATUS:** Investigated via 15-min code read + 3-pattern probe bench. T9 is effectively a no-op for every production caller traced; the existing `atOrAfterStartTime` already has two fast-paths that together cover the input shapes those callers produce. The spec's proposed change as written also has a correctness bug on tied `startW`. No engine change landed.
 
-**FIX:**
+**THE PREMISE WAS WRONG: TWO FAST-PATHS ALREADY EXIST**
+
+Reading `intervals.ts:22–36`:
+
+1. **Tail-disjoint fast-path** (line 26): `if (this.tail && startW > this.tail.data.endW) return null;` → caller does `insertAtEnd` in O(1). Fires when new interval is strictly after the tail.
+2. **Head-side implicit exit** (lines 28–29): the walk `while (i && i.data.startW < startW) i = i.next` exits immediately when `new.startW <= head.data.startW`. Returns head; caller does `insertBefore(head)` in O(1). Fires when new interval starts at or before the current head.
+
+Combined, these two fast-paths cover *both* monotone insertion orders: ascending non-overlapping (#1) and descending of any kind (#2).
+
+**WHAT T9 ACTUALLY EXPANDS COVERAGE FOR**
+
+T9's proposed `startW >= tail.startW` adds a *third* fast-path: `tail.startW <= startW <= tail.endW` (ascending with tail overlap). This is the only input shape the existing code walks from head for.
+
+**MEASURED IMPACT** (3-pattern probe, N=1000 inserts × 200 iterations, current vs T9-with-strict-`>`):
+
+| Input pattern | Production caller? | Old | New | Speedup |
+|---|---|---|---|---|
+| Ascending non-overlapping | `addToFloat` range push (line 284) | 8.52 ms | 8.58 ms | ×0.99 |
+| Descending | `addToFixed` (line 164), `addToUntracked` (line 371) | 8.49 ms | 8.59 ms | ×0.99 |
+| Ascending with tail overlap | None traced | 10.09 ms | 8.90 ms | **×1.13** |
+
+All three correctness=PASS.
+
+**CALLER SURVEY** (production paths grep'd via `\.add\(new CTP`):
+
+- `availableengine.ts:164` (`addToFixed`): aPtr walks backward via `moveABackward` → descending startW → covered by head-side fast-path.
+- `availableengine.ts:284` (`addToFloat` final `ranges.forEach`): ranges built during forward cPtr walk → ascending non-overlapping → covered by tail-disjoint fast-path.
+- `availableengine.ts:312, 340` (`addToFloat1`, an alternate float method): same pattern as 284.
+- `availableengine.ts:371` (`addToUntracked`): same as 164.
+- `commonstarttimes.ts:229`: single-shot `feasible.startTimes?.add(...)` in the pure-duration branch — not a hot loop, perf irrelevant.
+
+No production caller produces the ascending-with-tail-overlap pattern. The ×1.13 win T9 buys has no consumer.
+
+**CORRECTNESS BUG IN THE SPEC'S `>=` FORMULATION**
+
+The original spec wrote:
 ```ts
-public add(node: CTPInterval): void {
-  // Fast path: append in monotone order
-  if (this.tail && node.startW >= this.tail.data.startW) {
-    this.insertAtEnd(node);
-    this.resetMiddle();
-    return;
-  }
-  const i = this.atOrAfterStartTime(node.startW, node.endW);
-  if (i) this.insertBefore(node, i);
-  else this.insertAtEnd(node);
-  this.resetMiddle();
-}
+if (this.tail && node.startW >= this.tail.data.startW) { this.insertAtEnd(node); ... }
 ```
 
-**ACCEPTANCE:**
-- IDENTICAL ORDERING ON A SUITE OF MIXED ADD-ORDER TESTS
-- INTERMEDIATE LIST CORRECTNESS PRESERVED
+`atOrAfterStartTime` (lines 30–34) orders tied `startW` by ascending `endW`. The spec's `>=` would put a new node at the tail regardless of `endW`, breaking that ordering. The strict-`>` form (used in the probe above) is correctness-preserving but the spec needs amending if T9 is ever revisited.
+
+**DECISION:** No engine change. Section retained as evidence so a future contributor doesn't reproduce the investigation. Revisit if a profile surfaces a caller producing ascending-with-tail-overlap input.
 
 ---
 
