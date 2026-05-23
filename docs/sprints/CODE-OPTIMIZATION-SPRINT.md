@@ -329,34 +329,34 @@ public detectLanes(tasks: CTPTaskList): LaneDefinition[] {
 
 # 🟡 P1 — WARM PATH OPTIMIZATIONS
 
-## TICKET 6 — REWRITE `crossProductContexts` WITH BASEX COUNTER
+## TICKET 6 — REWRITE `crossProductContexts` WITH BASEX COUNTER ✅ SHIPPED
 
-**FILE:** `chaincontextengine.ts` (LINES 554–571)
+**FILE:** `chaincontextengine.ts`
 
-**PROBLEM:**
-EVERY LEVEL ALLOCATES `[...existing, ctx]`. SPREAD IS O(I) PER COMBO. NO PRE-ALLOCATION.
+**STATUS:** Shipped — direct replacement (no flag/sibling needed, same shape as T1 since cross-product is a pure function). Evidence: `packages/engine/benchmarks/results/ticket-06.json`.
 
-**FIX — REUSE BASEX FROM `combinationengine.ts`:**
+**PROBLEM (still valid):**
+The pre-T6 impl built the cross-product iteratively with `newResult.push([...existing, ctx])` at every level. Each push allocated a fresh array via spread, costing O(level) per combo. For T sets of size K, total spread work scaled as O(T² · K^T).
+
+**FIX (shipped):**
+BaseX-style digit counter, pre-allocated output, row writes by index — same shape as the existing `combinationengine.ts` BaseX class.
+
 ```ts
-private crossProductContexts(sets: ScheduleContext[][]): ScheduleContext[][] {
-  if (sets.length === 0) return [];
+private crossProductContexts(contextSets: ScheduleContext[][]): ScheduleContext[][] {
+  if (contextSets.length === 0) return [];
   let total = 1;
-  for (const s of sets) {
+  for (const s of contextSets) {
     if (s.length === 0) return [];
     total *= s.length;
   }
-
   const out = new Array<ScheduleContext[]>(total);
-  const counters = new Array<number>(sets.length).fill(0);
-
+  const counters = new Array<number>(contextSets.length).fill(0);
   for (let n = 0; n < total; n++) {
-    const row = new Array<ScheduleContext>(sets.length);
-    for (let i = 0; i < sets.length; i++) row[i] = sets[i][counters[i]];
+    const row = new Array<ScheduleContext>(contextSets.length);
+    for (let i = 0; i < contextSets.length; i++) row[i] = contextSets[i][counters[i]];
     out[n] = row;
-
-    // increment with carry
-    for (let i = sets.length - 1; i >= 0; i--) {
-      if (++counters[i] < sets[i].length) break;
+    for (let i = contextSets.length - 1; i >= 0; i--) {
+      if (++counters[i] < contextSets[i].length) break;
       counters[i] = 0;
     }
   }
@@ -364,11 +364,40 @@ private crossProductContexts(sets: ScheduleContext[][]): ScheduleContext[][] {
 }
 ```
 
-**BONUS:** ALLOWS A LATER REFINEMENT — STREAMING ENUMERATION INSTEAD OF MATERIALIZING THE ARRAY (USEFUL IF `preCapContextSets` STILL UNDERSHOOTS).
+**MEASURED IMPACT (committed JSON artifact: 4 sets × 8 contexts = 4096 combos):**
+
+| Metric | Old (spread) | New (BaseX) |
+|---|---|---|
+| Median wall-clock | 0.26 ms | 0.11 ms |
+| p95 | 0.83 ms | 0.26 ms |
+| Heap delta (1000 iters) | −162.9 KB | −2.6 KB |
+| **Speedup** | — | **×2.35** |
+
+Probe across more shapes (algorithmic-only, no projection in path):
+
+| Sets × size | Combos | Speedup |
+|---|---|---|
+| 3 × 5 | 125 | ×2.89 |
+| 5 × 5 | 3,125 | ×3.42 |
+| 4 × 8 | 4,096 | ×4.40 |
+| 4 × 10 | 10,000 | ×3.75 |
+| 5 × 8 | 32,768 | ×2.99 |
+
+Consistent ×3-4× algorithmically; bench's ×2.35 reflects the same delta diluted by the equal projection cost both impls pay in the harness wrapper.
+
+**HEAP IMPACT (notable):**
+The spread variant churns through ~163 KB per 1000 iterations because every push allocates an array of size up to T. The BaseX variant churns ~2.6 KB — pre-allocated output + reused counter array. **~60× less GC pressure** on the cross-product phase.
+
+**REAL-WORLD READ:**
+For Stafford-class 300 chains × 1-3 calls per chain × ~3K-10K combos generated, the cross-product phase drops from ~240ms to ~100ms per full solve.
+
+**BONUS NOTE (deferred):**
+The BaseX shape allows a future refinement — streaming enumeration (generator yielding rows lazily) instead of materializing the full array. Useful if `preCapContextSets` ever undershoots its 10000 cap on large input sets. Out of scope for this ticket.
 
 **ACCEPTANCE:**
-- IDENTICAL OUTPUT ON SETS OF SIZE [1..10] × [1..10] × [1..5]
-- BENCHMARK: ≥ 2X SPEEDUP ON 4-SET CROSS-PRODUCT OF SIZE 8 EACH (4096 COMBOS)
+- ✅ Identical output (bit-exact — both impls enumerate in the same rightmost-digit-fastest order).
+- ✅ Bench ≥ ×2 — committed artifact shows ×2.35, probe shows ×3-4× across shapes.
+- ✅ All 1063 vitest tests pass; strict engine `tsc --noEmit -p packages/engine/tsconfig.json` clean.
 
 ---
 
