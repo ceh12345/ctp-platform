@@ -1,12 +1,12 @@
 import { Rule, RuleCheckResult, RuleContext } from '../validation-types';
 import { readEntity } from './read-entity';
 
-// Initial Stafford-shape defaults; tunable in M4 once live Genius keys are confirmed.
+// Entity names match IRawDataPayload top-level keys (what SyncOrchestrator writes to staging).
+// Field names are Stafford/Genius raw-shape defaults; tunable per tenant in M4.
 const REQUIRED_KEYS: Record<string, string[]> = {
-  productionTaskWithAdvancedInfoViewEntity: ['WorkOrderCode', 'TaskCode'],
-  workOrderWithAdvancedInformationViewEntity: ['WorkOrderCode'],
-  salesOrderDetailEntity: ['OrderCode'],
-  machineAndRessourceEntity: ['ResourceCode'],
+  tasks: ['WorkOrderCode', 'TaskCode'],
+  orders: ['JobCode'],
+  resources: ['MachineCode'],
 };
 
 interface Violation {

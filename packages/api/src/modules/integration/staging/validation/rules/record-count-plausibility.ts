@@ -37,8 +37,16 @@ export class RecordCountPlausibilityRule implements Rule {
         }
       }
     } else {
-      for (const entity of entities) {
-        if (currentCounts[entity] === 0) zeroNow.push(entity);
+      // First sync: nothing to compare to. Only fail if every entity is empty —
+      // a totally blank sync is implausible. A few empty entities (calendars,
+      // processes, etc.) is normal for fresh tenants.
+      const anyPopulated = Object.values(currentCounts).some((n) => n > 0);
+      if (!anyPopulated) {
+        return {
+          ok: false,
+          message: 'all entities have zero records on first sync',
+          details: { currentCounts },
+        };
       }
     }
 

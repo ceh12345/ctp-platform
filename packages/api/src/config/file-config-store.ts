@@ -23,6 +23,7 @@ import {
   IUOMConversionsFileData,
   IAdapterConfig,
   IMappingProfile,
+  IStagingConfigFile,
 } from './interfaces/config-store.interface';
 import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
 
@@ -356,6 +357,14 @@ export class FileConfigStore implements IConfigStore {
     return this.getCached('mappingProfile', () =>
       this.readJsonFile<IMappingProfile>(
         path.join(this.tenantDir, 'integration', 'mapping.json'),
+      ),
+    );
+  }
+
+  getStagingConfigFile(): IStagingConfigFile | null {
+    return this.getCached('stagingConfig', () =>
+      this.readJsonFile<IStagingConfigFile>(
+        path.join(this.tenantDir, 'integration', 'staging.json'),
       ),
     );
   }

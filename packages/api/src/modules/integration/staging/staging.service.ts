@@ -65,14 +65,14 @@ export class StagingService {
 
   async promote(handle: SnapshotHandle): Promise<void> {
     const final = snapshotDir(this.rootDir, handle.tenant, handle.ts);
-    await fs.promises.rename(handle.tmpDir, final);
+    await this.safeRename(handle.tmpDir, final);
     const pointer = this.pointerFor(handle.tenant);
     await pointer.point(final);
   }
 
   async markFailed(handle: SnapshotHandle): Promise<void> {
     const dest = failedDir(this.rootDir, handle.tenant, handle.ts);
-    await fs.promises.rename(handle.tmpDir, dest);
+    await this.safeRename(handle.tmpDir, dest);
   }
 
   async current(tenant: string): Promise<string | null> {
@@ -176,6 +176,24 @@ export class StagingService {
       } catch (err) {
         if (attempt === 1) throw err;
         await new Promise((r) => setTimeout(r, 50));
+      }
+    }
+  }
+
+  private async safeRename(src: string, dest: string): Promise<void> {
+    // Windows EPERM on rename can fire when a recently-closed file handle is
+    // still draining (validation just read JSON from the dir we're renaming).
+    // Retry with short backoff before giving up.
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        await fs.promises.rename(src, dest);
+        return;
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (attempt === 3 || (code !== 'EPERM' && code !== 'EBUSY' && code !== 'EACCES')) {
+          throw err;
+        }
+        await new Promise((r) => setTimeout(r, 50 * (attempt + 1)));
       }
     }
   }

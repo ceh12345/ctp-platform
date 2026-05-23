@@ -1,4 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
+import * as os from 'os';
+import * as path from 'path';
 import {
   IConfigStore,
   ITenantConfig,
@@ -21,9 +23,18 @@ import {
   IUOMConversionsFileData,
   IAdapterConfig,
   IMappingProfile,
+  IStagingConfig,
 } from './interfaces/config-store.interface';
 import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
 import { FileConfigStore } from './file-config-store';
+
+function platformDefaultStagingRoot(): string {
+  if (process.platform === 'win32') {
+    const base = process.env.LOCALAPPDATA ?? path.join(os.homedir(), 'AppData', 'Local');
+    return path.join(base, 'ctp', 'staging');
+  }
+  return '/var/ctp/staging';
+}
 
 @Injectable()
 export class ConfigService {
@@ -148,6 +159,15 @@ export class ConfigService {
 
   getMappingProfile(): IMappingProfile | null {
     return this.store.getMappingProfile?.() ?? null;
+  }
+
+  getStagingConfig(): IStagingConfig {
+    const raw = this.store.getStagingConfigFile?.() ?? null;
+    return {
+      enabled: raw?.enabled ?? false,
+      rootDir: raw?.rootDir ?? platformDefaultStagingRoot(),
+      retentionDays: raw?.retentionDays ?? 30,
+    };
   }
 
   reloadConfig(): void {

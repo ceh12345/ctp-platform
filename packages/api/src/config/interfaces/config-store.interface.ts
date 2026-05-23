@@ -275,6 +275,20 @@ export interface IMappingProfile {
   [key: string]: any;
 }
 
+// Staging config — raw on-disk shape (all optional; ConfigService resolves defaults).
+export interface IStagingConfigFile {
+  enabled?: boolean;
+  rootDir?: string;
+  retentionDays?: number;
+}
+
+// Staging config — fully resolved (what consumers see).
+export interface IStagingConfig {
+  enabled: boolean;
+  rootDir: string;
+  retentionDays: number;
+}
+
 export interface IConfigStore {
   // Tenant
   getTenant(): ITenantConfig | null;
@@ -340,6 +354,7 @@ export interface IConfigStore {
   // Integration
   getAdapterConfig?(): IAdapterConfig | null;
   getMappingProfile?(): IMappingProfile | null;
+  getStagingConfigFile?(): IStagingConfigFile | null;
 
   // Reload from disk
   reload(): void;

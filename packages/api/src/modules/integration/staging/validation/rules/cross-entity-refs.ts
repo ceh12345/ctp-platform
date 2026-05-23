@@ -1,14 +1,16 @@
 import { Rule, RuleCheckResult, RuleContext } from '../validation-types';
 import { readEntity } from './read-entity';
 
-const TASKS_ENTITY = 'productionTaskWithAdvancedInfoViewEntity';
-const WORK_ORDERS_ENTITY = 'workOrderWithAdvancedInformationViewEntity';
-const TASK_REF_FIELD = 'WorkOrderCode';
-const WO_KEY_FIELD = 'WorkOrderCode';
+// Entity names match IRawDataPayload top-level keys. Stafford raw shape joins tasks to
+// orders via `JobCode`. Configurable per tenant in M4.
+const TASKS_ENTITY = 'tasks';
+const ORDERS_ENTITY = 'orders';
+const TASK_REF_FIELD = 'JobCode';
+const ORDER_KEY_FIELD = 'JobCode';
 
 interface DanglingRef {
   recordIdx: number;
-  workOrderCode: unknown;
+  ref: unknown;
 }
 
 export class CrossEntityRefsRule implements Rule {
@@ -17,17 +19,17 @@ export class CrossEntityRefsRule implements Rule {
 
   async check(ctx: RuleContext): Promise<RuleCheckResult> {
     const tasks = await readEntity(ctx.rawDir, TASKS_ENTITY);
-    const workOrders = await readEntity(ctx.rawDir, WORK_ORDERS_ENTITY);
+    const orders = await readEntity(ctx.rawDir, ORDERS_ENTITY);
 
-    if (tasks.length === 0 || workOrders.length === 0) {
-      return { ok: true, message: 'no tasks or no work-orders; skipping cross-entity check' };
+    if (tasks.length === 0 || orders.length === 0) {
+      return { ok: true, message: 'no tasks or no orders; skipping cross-entity check' };
     }
 
-    const woKeys = new Set<string>();
-    for (const wo of workOrders) {
-      if (wo !== null && typeof wo === 'object') {
-        const key = (wo as Record<string, unknown>)[WO_KEY_FIELD];
-        if (key !== undefined && key !== null) woKeys.add(String(key));
+    const orderKeys = new Set<string>();
+    for (const order of orders) {
+      if (order !== null && typeof order === 'object') {
+        const key = (order as Record<string, unknown>)[ORDER_KEY_FIELD];
+        if (key !== undefined && key !== null) orderKeys.add(String(key));
       }
     }
 
@@ -36,15 +38,15 @@ export class CrossEntityRefsRule implements Rule {
       if (task === null || typeof task !== 'object') return;
       const ref = (task as Record<string, unknown>)[TASK_REF_FIELD];
       if (ref === undefined || ref === null) return;
-      if (!woKeys.has(String(ref))) {
-        dangling.push({ recordIdx: idx, workOrderCode: ref });
+      if (!orderKeys.has(String(ref))) {
+        dangling.push({ recordIdx: idx, ref });
       }
     });
 
     if (dangling.length > 0) {
       return {
         ok: false,
-        message: `${dangling.length} task(s) reference unknown WorkOrderCode`,
+        message: `${dangling.length} task(s) reference unknown ${TASK_REF_FIELD}`,
         details: { dangling: dangling.slice(0, 50), total: dangling.length },
       };
     }

@@ -1,26 +1,20 @@
 import { Module } from '@nestjs/common';
-import * as os from 'os';
-import * as path from 'path';
+import { ConfigModule } from '../../../config/config.module';
+import { ConfigService } from '../../../config/config.service';
 import { STAGING_ROOT_DIR, StagingService } from './staging.service';
+import { SyncOrchestrator } from './sync-orchestrator';
 
-function platformDefaultStagingRoot(): string {
-  if (process.platform === 'win32') {
-    const base = process.env.LOCALAPPDATA ?? path.join(os.homedir(), 'AppData', 'Local');
-    return path.join(base, 'ctp', 'staging');
-  }
-  return '/var/ctp/staging';
-}
-
-// StagingModule is intentionally NOT imported into IntegrationModule in Milestone 1.
-// The dormancy gate: no production code outside `staging/` imports this module yet.
 @Module({
+  imports: [ConfigModule],
   providers: [
     {
       provide: STAGING_ROOT_DIR,
-      useFactory: platformDefaultStagingRoot,
+      useFactory: (config: ConfigService) => config.getStagingConfig().rootDir,
+      inject: [ConfigService],
     },
     StagingService,
+    SyncOrchestrator,
   ],
-  exports: [StagingService],
+  exports: [StagingService, SyncOrchestrator],
 })
 export class StagingModule {}

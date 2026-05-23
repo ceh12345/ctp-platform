@@ -23,15 +23,25 @@ describe('RecordCountPlausibilityRule', () => {
     expect(result.ok).toBe(true);
   });
 
-  it('fails when any entity has zero records on first sync', async () => {
+  it('passes on first sync when at least one entity is populated', async () => {
     const dir = await makeRawDir();
     dirs.push(dir);
-    await writeEntity(dir, 'salesOrderDetailEntity', []);
-    await writeEntity(dir, 'machineAndRessourceEntity', [{ ResourceCode: 'M1' }]);
+    await writeEntity(dir, 'orders', []);
+    await writeEntity(dir, 'resources', [{ MachineCode: 'M1' }]);
+
+    const result = await new RecordCountPlausibilityRule().check({ rawDir: dir, previousRawDir: null });
+    expect(result.ok).toBe(true);
+  });
+
+  it('fails on first sync when every entity is empty', async () => {
+    const dir = await makeRawDir();
+    dirs.push(dir);
+    await writeEntity(dir, 'orders', []);
+    await writeEntity(dir, 'resources', []);
 
     const result = await new RecordCountPlausibilityRule().check({ rawDir: dir, previousRawDir: null });
     expect(result.ok).toBe(false);
-    expect(result.message).toMatch(/salesOrderDetailEntity/);
+    expect(result.message).toMatch(/zero records/);
   });
 
   it('fails when an entity drops to zero compared to previous', async () => {
