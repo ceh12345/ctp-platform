@@ -1009,6 +1009,16 @@ export class ChainContextEngine {
     const propagatedLStartP = combo.startTimes[primaryIndex].lStartW;
     const primaryDuration = primarySt.head.data.duration;
 
+    // T8: hoist the per-context calendar lookup out of all inner loops below.
+    // combo.contexts[i].slot.resources?.at(0)?.resource?.available?.staticAvailable
+    // is invariant within one assignStartTimes call but was previously refetched
+    // 5 different places: predecessor walk, successor walk, primary placement,
+    // backward placement walk, forward placement walk. The chain is a 7-step
+    // optional-property dereference each time; doing it once is a strict win.
+    const calendars = combo.contexts.map((c) =>
+      c.slot.resources?.at(0)?.resource?.available?.staticAvailable,
+    );
+
     // Collect candidate starts for the primary task
     const candidateSet = new Set<number>();
 
@@ -1038,9 +1048,8 @@ export class ChainContextEngine {
         for (let k = p; k < primaryIndex; k++) {
           const kTask = combo.contexts[k].task;
           const offset = this.getAssignedProcessChangeDuration(combo.contexts[k], targetStart);
-          const kCalendar = combo.contexts[k].slot.resources?.at(0)?.resource?.available?.staticAvailable;
           const kEnd = kTask.duration
-            ? workingEndForwardW(kCalendar, targetStart, kTask.duration)
+            ? workingEndForwardW(calendars[k], targetStart, kTask.duration)
             : targetStart;
           targetStart = kEnd + offset;
         }
@@ -1063,9 +1072,8 @@ export class ChainContextEngine {
         let targetStart = sNode.data.eStartW;
         for (let k = s - 1; k >= primaryIndex; k--) {
           const kTask = combo.contexts[k].task;
-          const kCalendar = combo.contexts[k].slot.resources?.at(0)?.resource?.available?.staticAvailable;
           targetStart = kTask.duration
-            ? workingStartBackwardW(kCalendar, targetStart, kTask.duration)
+            ? workingStartBackwardW(calendars[k], targetStart, kTask.duration)
             : targetStart;
         }
         if (targetStart >= propagatedEStartP && targetStart <= propagatedLStartP
@@ -1097,9 +1105,8 @@ export class ChainContextEngine {
         new Array(combo.contexts.length).fill(null);
       // Primary trial end: walk the calendar for FLOAT, arithmetic for FIXED.
       const primaryTask = primaryCtx.task;
-      const primaryCalendar = primaryCtx.slot.resources?.at(0)?.resource?.available?.staticAvailable;
       const primaryEnd = primaryTask.duration
-        ? workingEndForwardW(primaryCalendar, pStart, primaryTask.duration)
+        ? workingEndForwardW(calendars[primaryIndex], pStart, primaryTask.duration)
         : pStart + primaryDuration;
       trial[primaryIndex] = { start: pStart, end: primaryEnd };
 
@@ -1117,9 +1124,8 @@ export class ChainContextEngine {
         if (predStart === null) { feasible = false; break; }
 
         const predTask = combo.contexts[i].task;
-        const predCalendar = combo.contexts[i].slot.resources?.at(0)?.resource?.available?.staticAvailable;
         const predEnd = predTask.duration
-          ? workingEndForwardW(predCalendar, predStart, predTask.duration)
+          ? workingEndForwardW(calendars[i], predStart, predTask.duration)
           : predStart;
         trial[i] = { start: predStart, end: predEnd };
       }
@@ -1145,9 +1151,8 @@ export class ChainContextEngine {
         }
 
         const succTask = combo.contexts[i].task;
-        const succCalendar = combo.contexts[i].slot.resources?.at(0)?.resource?.available?.staticAvailable;
         const succEnd = succTask.duration
-          ? workingEndForwardW(succCalendar, succStart, succTask.duration)
+          ? workingEndForwardW(calendars[i], succStart, succTask.duration)
           : succStart;
         trial[i] = { start: succStart, end: succEnd };
       }

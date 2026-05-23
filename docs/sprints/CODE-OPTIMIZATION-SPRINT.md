@@ -414,44 +414,48 @@ const resourceHash = combo.contexts.map(c => c.resourceHash).join('|');
 
 ---
 
-## TICKET 8 — HOIST CUMULATIVE DURATIONS IN `assignStartTimes`
+## TICKET 8 — HOIST LOOP-INVARIANT CALENDAR LOOKUP IN `assignStartTimes` ✅ SHIPPED (REDIRECTED)
 
-**FILE:** `chaincontextengine.ts` (LINES 859–896)
+**FILE:** `chaincontextengine.ts` (`assignStartTimes`)
 
-**PROBLEM:**
+**STATUS:** Shipped — but the spec's target was already obsolete. The spec proposed hoisting `combo.contexts[k].task.duration?.duration() ?? 0` out of the inner loop. The current code no longer makes that call inside any loop (it passes the `CTPDuration` object directly to `workingEndForwardW` / `workingStartBackwardW`). T8 was redirected to hoist a different — and significantly more expensive — invariant: the per-context calendar lookup.
+
+**ACTUAL TARGET (what was hoisted):**
+
+The chain `combo.contexts[i].slot.resources?.at(0)?.resource?.available?.staticAvailable` is a 7-step optional-property dereference. The value is invariant within one `assignStartTimes` call (contexts don't mutate during placement), yet it was recomputed at 5 distinct sites inside loops:
+
+1. Predecessor walk inner loop (`for k inside while pNode inside for p`) — `kCalendar`
+2. Successor walk inner loop (same shape, mirror direction) — `kCalendar`
+3. Per-primary-candidate primary placement — `primaryCalendar`
+4. Backward placement walk (`for i inside for rawStart of candidates`) — `predCalendar`
+5. Forward placement walk (same shape, forward direction) — `succCalendar`
+
+For chain length T, K candidates, N startTimes per context, the recomputed dereferences scale as `O(T² · N + T · K)` per assignStartTimes call. Realistic: ~5000-50000 dereferences per call. Each is short (microseconds), but cumulative.
+
+**FIX:**
 ```ts
-for (let p = 0; p < primaryIndex; p++) {
-  while (pNode) {
-    let targetStart = pNode.data.eStartW;
-    for (let k = p; k < primaryIndex; k++) {
-      const dur = combo.contexts[k].task.duration?.duration() ?? 0;  // RECOMPUTED PER pNode
-      const offset = this.getAssignedProcessChangeDuration(combo.contexts[k], targetStart);
-      targetStart = targetStart + dur + offset;
-    }
-  }
+public assignStartTimes(combo: ChainContextCombo): void {
+  // ... existing setup ...
+
+  // Hoist: invariant within this call, refetched at 5 sites below.
+  const calendars = combo.contexts.map((c) =>
+    c.slot.resources?.at(0)?.resource?.available?.staticAvailable,
+  );
+
+  // ... 5 sites now use calendars[k] / calendars[i] / calendars[primaryIndex] ...
 }
 ```
 
-**FIX — PRECOMPUTE DURATIONS ONCE PER COMBO:**
-```ts
-// before predecessor walk
-const durations = combo.contexts.map(c => c.task.duration?.duration() ?? 0);
-
-for (let p = 0; p < primaryIndex; p++) {
-  while (pNode) {
-    let targetStart = pNode.data.eStartW;
-    for (let k = p; k < primaryIndex; k++) {
-      const offset = this.getAssignedProcessChangeDuration(combo.contexts[k], targetStart);
-      targetStart += durations[k] + offset;
-    }
-  }
-}
-```
-COMBINE WITH TICKET 3 SO `getAssignedProcessChangeDuration` IS O(LOG N) INSTEAD OF O(N).
+**WHY NOT BENCHED:**
+Pure correctness-preserving refactor. The expected wall-clock improvement is below noise floor of any bench (microsecond-level constant-factor work per call). Spec explicitly says "no benchmark needed" for this kind of refactor. Validated by the vitest suite passing unchanged at 1063 passed / 0 failed.
 
 **ACCEPTANCE:**
-- IDENTICAL `assignedStart`/`assignedEnd` OUTPUT
-- NO BENCHMARK NEEDED — CORRECTNESS-PRESERVING REFACTOR
+- ✅ Identical `assignedStart`/`assignedEnd` output (no behavior change — values weren't being mutated, just refetched).
+- ✅ All 1063 vitest tests pass; strict engine `tsc --noEmit -p packages/engine/tsconfig.json` clean.
+- ✅ 5 recomputation sites removed; 1 hoist line added at function top.
+
+**RELATED LATENT FINDING (NOT FIXED):**
+`propagateCombo` also fetches the same calendar chain twice (lines 676 / 714), once in the forward pass and once in the backward pass. Each is per-task in a single-pass loop, so it's already O(T) not nested — much less impactful than the assignStartTimes hoist. Left as-is to keep T8 narrowly scoped.
 
 ---
 
