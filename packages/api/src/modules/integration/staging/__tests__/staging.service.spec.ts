@@ -183,7 +183,10 @@ describe('StagingService', () => {
       await service.cleanupOrphans(TENANT);
 
       const remaining = await fs.promises.readdir(tenantDir);
-      expect(remaining.sort()).toEqual(['2026-05-22-1000', '2026-05-23-1200.failed']);
+      // _history.log gets written when cleanupOrphans removes something — filter it
+      // out so the assertion stays focused on which snapshot dirs survived.
+      const dirsOnly = remaining.filter((n) => !n.startsWith('_'));
+      expect(dirsOnly.sort()).toEqual(['2026-05-22-1000', '2026-05-23-1200.failed']);
     });
 
     it('is a no-op when tenant dir does not exist', async () => {

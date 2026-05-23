@@ -21,31 +21,63 @@ export class SyncOrchestrator {
 
   async runSync(tenant: string, adapter: IDataAdapter): Promise<SyncResult> {
     const handle = this.staging.createSnapshot(tenant);
-    const raw = await adapter.fetchRawData();
-
-    await this.writeAllEntities(handle, raw);
-
-    const recordCounts = this.countRecords(raw);
-    const meta: SnapshotMetadata = {
-      capturedAt: new Date().toISOString(),
+    await this.staging.appendHistory(tenant, {
+      event: 'sync-started',
       adapterType: adapter.adapterType,
-      recordCounts,
-    };
-    await this.staging.writeMetadata(handle, meta);
+      ts: handle.ts,
+    });
 
-    const previousRawDir = await this.previousRawDir(tenant);
-    const runner = new ValidationRunner(defaultRules());
-    const report = await runner.run({ rawDir: handle.rawDir, previousRawDir });
-    await this.staging.writeReport(handle, report);
+    let phase = 'fetch';
+    try {
+      const raw = await adapter.fetchRawData();
 
-    if (!report.passed) {
-      await this.staging.markFailed(handle);
-      return { ok: false, ts: handle.ts, report, snapshotPath: null };
+      phase = 'writeRaw';
+      await this.writeAllEntities(handle, raw);
+
+      const recordCounts = this.countRecords(raw);
+      const meta: SnapshotMetadata = {
+        capturedAt: new Date().toISOString(),
+        adapterType: adapter.adapterType,
+        recordCounts,
+      };
+      phase = 'writeMetadata';
+      await this.staging.writeMetadata(handle, meta);
+
+      phase = 'validation';
+      const previousRawDir = await this.previousRawDir(tenant);
+      const runner = new ValidationRunner(defaultRules());
+      const report = await runner.run({ rawDir: handle.rawDir, previousRawDir });
+      await this.staging.writeReport(handle, report);
+
+      if (!report.passed) {
+        phase = 'markFailed';
+        await this.staging.markFailed(handle);
+        await this.staging.appendHistory(tenant, {
+          event: 'sync-marked-failed',
+          ts: handle.ts,
+          failedRules: report.failedRules,
+        });
+        return { ok: false, ts: handle.ts, report, snapshotPath: null };
+      }
+
+      phase = 'promote';
+      await this.staging.promote(handle);
+      const promoted = await this.staging.current(tenant);
+      await this.staging.appendHistory(tenant, {
+        event: 'sync-promoted',
+        ts: handle.ts,
+        recordCounts,
+      });
+      return { ok: true, ts: handle.ts, report, snapshotPath: promoted };
+    } catch (err) {
+      await this.staging.appendHistory(tenant, {
+        event: 'sync-errored',
+        ts: handle.ts,
+        phase,
+        error: (err as Error).message ?? String(err),
+      });
+      throw err;
     }
-
-    await this.staging.promote(handle);
-    const promoted = await this.staging.current(tenant);
-    return { ok: true, ts: handle.ts, report, snapshotPath: promoted };
   }
 
   private async writeAllEntities(handle: SnapshotHandle, raw: IRawDataPayload): Promise<void> {

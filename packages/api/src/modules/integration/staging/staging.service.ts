@@ -25,6 +25,11 @@ import {
 } from './staging-types';
 import { createPointer } from './pointer/create-pointer';
 import { IStagingPointer } from './pointer/staging-pointer.interface';
+import {
+  appendHistoryEvent,
+  readHistory,
+  StagingHistoryEvent,
+} from './staging-history';
 import { ValidationReport } from './validation/validation-types';
 
 export const STAGING_ROOT_DIR = 'STAGING_ROOT_DIR';
@@ -78,6 +83,15 @@ export class StagingService {
   /** Manually re-point a tenant's `current` at an existing snapshot dir. CLI use. */
   async repointAt(tenant: string, snapshotPath: string): Promise<void> {
     await this.pointerFor(tenant).point(snapshotPath);
+  }
+
+  /** Append one JSONL line to {rootDir}/{tenant}/_history.log. */
+  async appendHistory(tenant: string, event: StagingHistoryEvent): Promise<void> {
+    await appendHistoryEvent(this.rootDir, tenant, event);
+  }
+
+  async readHistory(tenant: string) {
+    return readHistory(this.rootDir, tenant);
   }
 
   async current(tenant: string): Promise<string | null> {
@@ -140,6 +154,14 @@ export class StagingService {
       result.deleted.push(snap.ts);
     }
 
+    if (result.deleted.length > 0) {
+      await this.appendHistory(tenant, {
+        event: 'retention-prune',
+        deleted: result.deleted,
+        skipped: result.skipped.length,
+      });
+    }
+
     return result;
   }
 
@@ -152,10 +174,15 @@ export class StagingService {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
       throw err;
     }
+    const removed: string[] = [];
     for (const name of entries) {
       if (!isTmpDirName(name)) continue;
       if (isFailedDirName(name)) continue;
       await this.safeRm(path.join(root, name));
+      removed.push(name);
+    }
+    if (removed.length > 0) {
+      await this.appendHistory(tenant, { event: 'orphan-cleanup', removed });
     }
   }
 

@@ -14,8 +14,8 @@ const TENANT = 'acme';
 
 function payload(): IRawDataPayload {
   return {
-    resources: [{ MachineCode: 'M1' }],
-    tasks: [{ WorkOrderCode: 'WO1', TaskCode: 'T1', JobCode: 'J1' }],
+    resources: [{ Code: 'R1' }],
+    tasks: [{ WorkOrderCode: 'WO1', OperationCode: 'OP1', JobCode: 'J1' }],
     calendars: [],
     stateChanges: [],
     products: [],

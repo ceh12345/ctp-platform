@@ -194,10 +194,10 @@ describe('staging CLI — command handlers', () => {
 
     it('happy path: slim-100-shape source produces a promoted snapshot', async () => {
       const src = await makeSourceDir({
-        'resources.json': [{ MachineCode: 'M1' }, { MachineCode: 'M2' }],
+        'resources.json': [{ Code: 'R1' }, { Code: 'R2' }],
         'tasks.json': [
-          { WorkOrderCode: 'WO1', TaskCode: 'T1', JobCode: 'J1' },
-          { WorkOrderCode: 'WO2', TaskCode: 'T2', JobCode: 'J2' },
+          { WorkOrderCode: 'WO1', OperationCode: 'OP1', JobCode: 'J1' },
+          { WorkOrderCode: 'WO2', OperationCode: 'OP2', JobCode: 'J2' },
         ],
         'orders.json': [{ JobCode: 'J1' }, { JobCode: 'J2' }],
         'calendars.json': [],
@@ -228,8 +228,8 @@ describe('staging CLI — command handlers', () => {
 
     it('matches kebab-case source filenames for camelCase entities', async () => {
       const src = await makeSourceDir({
-        'resources.json': [{ MachineCode: 'M1' }],
-        'tasks.json': [{ WorkOrderCode: 'WO1', TaskCode: 'T1', JobCode: 'J1' }],
+        'resources.json': [{ Code: 'R1' }],
+        'tasks.json': [{ WorkOrderCode: 'WO1', OperationCode: 'OP1', JobCode: 'J1' }],
         'orders.json': [{ JobCode: 'J1' }],
         'state-changes.json': [{ from: 'A', to: 'B' }],
         'uom-conversions.json': { globalConversions: [{ from: 'HR', to: 's', factor: 3600 }] },
@@ -256,8 +256,8 @@ describe('staging CLI — command handlers', () => {
 
     it('writes empty arrays for entities not present in source', async () => {
       const src = await makeSourceDir({
-        'resources.json': [{ MachineCode: 'M1' }],
-        'tasks.json': [{ WorkOrderCode: 'WO1', TaskCode: 'T1', JobCode: 'J1' }],
+        'resources.json': [{ Code: 'R1' }],
+        'tasks.json': [{ WorkOrderCode: 'WO1', OperationCode: 'OP1', JobCode: 'J1' }],
         'orders.json': [{ JobCode: 'J1' }],
       });
 
@@ -275,8 +275,8 @@ describe('staging CLI — command handlers', () => {
 
     it('fails (returns 1) when validation does not pass', async () => {
       const src = await makeSourceDir({
-        // Bad data: task is missing TaskCode (required-fields rule fails).
-        'resources.json': [{ MachineCode: 'M1' }],
+        // Bad data: task is missing OperationCode (required-fields rule fails).
+        'resources.json': [{ Code: 'R1' }],
         'tasks.json': [{ WorkOrderCode: 'WO1', JobCode: 'J1' }],
         'orders.json': [{ JobCode: 'J1' }],
       });
@@ -299,8 +299,8 @@ describe('staging CLI — command handlers', () => {
 
     it('aborts when confirmation declined', async () => {
       const src = await makeSourceDir({
-        'resources.json': [{ MachineCode: 'M1' }],
-        'tasks.json': [{ WorkOrderCode: 'WO1', TaskCode: 'T1', JobCode: 'J1' }],
+        'resources.json': [{ Code: 'R1' }],
+        'tasks.json': [{ WorkOrderCode: 'WO1', OperationCode: 'OP1', JobCode: 'J1' }],
         'orders.json': [{ JobCode: 'J1' }],
       });
       const code = await cmdSeed(staging, TENANT, src, false, async () => false);

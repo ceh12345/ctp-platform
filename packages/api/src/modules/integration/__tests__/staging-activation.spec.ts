@@ -57,16 +57,16 @@ describe('staging activation — pre-seeded read-only path', () => {
     await fs.promises.mkdir(sourceDir, { recursive: true });
     staging = new StagingService(rootDir);
 
-    // Author a slim-100-shape source directory.
+    // Author a WORK7-shape source directory (matches Stafford Genius capture).
     await fs.promises.writeFile(
       path.join(sourceDir, 'resources.json'),
-      JSON.stringify([{ MachineCode: 'M1' }, { MachineCode: 'M2' }]),
+      JSON.stringify([{ Code: 'R1' }, { Code: 'R2' }]),
     );
     await fs.promises.writeFile(
       path.join(sourceDir, 'tasks.json'),
       JSON.stringify([
-        { WorkOrderCode: 'WO1', TaskCode: 'T1', JobCode: 'J1' },
-        { WorkOrderCode: 'WO2', TaskCode: 'T2', JobCode: 'J2' },
+        { WorkOrderCode: 'WO1', OperationCode: 'OP1', JobCode: 'J1' },
+        { WorkOrderCode: 'WO2', OperationCode: 'OP2', JobCode: 'J2' },
       ]),
     );
     await fs.promises.writeFile(
@@ -105,12 +105,12 @@ describe('staging activation — pre-seeded read-only path', () => {
 
     expect(result.errors).toEqual([]);
     expect(result.payload.tasks).toEqual([
-      { WorkOrderCode: 'WO1', TaskCode: 'T1', JobCode: 'J1' },
-      { WorkOrderCode: 'WO2', TaskCode: 'T2', JobCode: 'J2' },
+      { WorkOrderCode: 'WO1', OperationCode: 'OP1', JobCode: 'J1' },
+      { WorkOrderCode: 'WO2', OperationCode: 'OP2', JobCode: 'J2' },
     ]);
     expect(result.payload.resources).toEqual([
-      { MachineCode: 'M1' },
-      { MachineCode: 'M2' },
+      { Code: 'R1' },
+      { Code: 'R2' },
     ]);
     expect(result.payload.orders).toEqual([{ JobCode: 'J1' }, { JobCode: 'J2' }]);
   });

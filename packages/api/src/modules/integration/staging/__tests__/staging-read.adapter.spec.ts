@@ -36,8 +36,8 @@ describe('StagingReadAdapter', () => {
 
   it('reads back the same payload the orchestrator wrote', async () => {
     const payload: IRawDataPayload = {
-      resources: [{ MachineCode: 'M1' }],
-      tasks: [{ WorkOrderCode: 'WO1', TaskCode: 'T1', JobCode: 'J1' }],
+      resources: [{ Code: 'R1' }],
+      tasks: [{ WorkOrderCode: 'WO1', OperationCode: 'OP1', JobCode: 'J1' }],
       calendars: [{ Id: 1 }],
       stateChanges: [],
       products: [{ ItemCode: 'P1' }],

@@ -20,7 +20,12 @@ const USAGE = `Usage:
   staging promote <tenant> <ts> [--yes]
   staging inspect <tenant> <ts>
   staging rollback <tenant> [--yes]
-  staging seed <tenant> <source-dir> [--yes]
+  staging seed <tenant> <source-dir> [--yes] [--force-promote]
+  staging history <tenant>
+
+Flags:
+  --yes              skip confirmation prompts
+  --force-promote    on seed, promote even if validation has failures (report still attached)
 
 Environment:
   CONFIG_ROOT   override default config root (defaults to ../../config from cwd)
@@ -29,7 +34,7 @@ Environment:
 export function parseArgs(argv: string[]): Args | null {
   if (argv.length < 2) return null;
   const command = argv[0];
-  if (!['list', 'promote', 'inspect', 'rollback', 'seed'].includes(command)) return null;
+  if (!['list', 'promote', 'inspect', 'rollback', 'seed', 'history'].includes(command)) return null;
   const tenant = argv[1];
   const rest = argv.slice(2);
   const positional = rest.filter((a) => !a.startsWith('--'));
@@ -127,6 +132,18 @@ export async function cmdPromote(
   return 0;
 }
 
+export async function cmdHistory(staging: StagingService, tenant: string): Promise<number> {
+  const events = await staging.readHistory(tenant);
+  if (events.length === 0) {
+    console.log(`(no history for tenant '${tenant}')`);
+    return 0;
+  }
+  for (const e of events) {
+    console.log(JSON.stringify(e));
+  }
+  return 0;
+}
+
 export async function cmdRollback(
   staging: StagingService,
   tenant: string,
@@ -172,13 +189,24 @@ const ARRAY_ENTITIES = [
 ] as const;
 const SINGLE_ENTITY = 'uomConversions';
 
+// Stafford Genius API entity names for seeding from a captured fixture.
+// Tenant-specific; promote to per-tenant config in a future sprint.
+const GENIUS_ENTITY_FALLBACKS: Record<string, string> = {
+  resources: 'machineAndRessourceEntity',
+  tasks: 'productionTaskWithAdvancedInfoViewEntity',
+  orders: 'salesOrderDetailEntity',
+};
+
 // Filename variants to try for each entity. camelCase first, kebab fallback for
-// multi-word names (matches conventions on disk in tenant config dirs).
+// multi-word names (matches conventions on disk in tenant config dirs), then
+// Genius entity-name fallback for seeding from captured API fixtures.
 function sourceCandidates(key: string): string[] {
   const variants = [`${key}.json`];
   if (/[A-Z]/.test(key)) {
     variants.push(`${key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}.json`);
   }
+  const geniusName = GENIUS_ENTITY_FALLBACKS[key];
+  if (geniusName) variants.push(`${geniusName}.json`);
   return variants;
 }
 
@@ -202,6 +230,7 @@ export async function cmdSeed(
   sourceDir: string,
   yes: boolean,
   confirmFn: (prompt: string) => Promise<boolean> = confirm,
+  forcePromote = false,
 ): Promise<number> {
   const sourceExists = await fs.promises
     .stat(sourceDir)
@@ -218,6 +247,11 @@ export async function cmdSeed(
   }
 
   const handle = staging.createSnapshot(tenant);
+  await staging.appendHistory(tenant, {
+    event: 'seed-started',
+    sourceDir,
+    ts: handle.ts,
+  });
   const recordCounts: Record<string, number> = {};
 
   for (const key of ARRAY_ENTITIES) {
@@ -249,13 +283,35 @@ export async function cmdSeed(
   await staging.writeReport(handle, report);
 
   if (!report.passed) {
-    await staging.markFailed(handle);
-    console.error(`error: validation failed for seed; snapshot left at .failed/`);
-    console.error(`failed rules: ${report.failedRules.join(', ')}`);
-    return 1;
+    if (!forcePromote) {
+      await staging.markFailed(handle);
+      await staging.appendHistory(tenant, {
+        event: 'sync-marked-failed',
+        ts: handle.ts,
+        failedRules: report.failedRules,
+      });
+      console.error(`error: validation failed for seed; snapshot left at .failed/`);
+      console.error(`failed rules: ${report.failedRules.join(', ')}`);
+      console.error(`pass --force-promote to promote anyway (report stays attached)`);
+      return 1;
+    }
+    console.warn(`warning: validation failed but --force-promote set; promoting anyway`);
+    console.warn(`failed rules: ${report.failedRules.join(', ')}`);
+    await staging.promote(handle);
+    await staging.appendHistory(tenant, {
+      event: 'sync-force-promoted',
+      ts: handle.ts,
+      failedRules: report.failedRules,
+    });
+  } else {
+    await staging.promote(handle);
+    await staging.appendHistory(tenant, {
+      event: 'sync-promoted',
+      ts: handle.ts,
+      recordCounts,
+    });
   }
 
-  await staging.promote(handle);
   const summary = Object.entries(recordCounts)
     .filter(([, n]) => n > 0)
     .map(([k, n]) => `${k}=${n}`)
@@ -294,13 +350,16 @@ export async function run(argv: string[]): Promise<number> {
     }
     case 'rollback':
       return cmdRollback(staging, args.tenant, yes);
+    case 'history':
+      return cmdHistory(staging, args.tenant);
     case 'seed': {
       const sourceDir = args.positional[0];
       if (!sourceDir) {
         console.error('error: seed requires a source directory argument');
         return 1;
       }
-      return cmdSeed(staging, args.tenant, sourceDir, yes);
+      const forcePromote = args.flags['force-promote'] === true;
+      return cmdSeed(staging, args.tenant, sourceDir, yes, undefined, forcePromote);
     }
     default:
       console.error(USAGE);

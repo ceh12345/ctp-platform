@@ -25,8 +25,10 @@ export class DateParseabilityRule implements Rule {
         for (const [field, value] of Object.entries(record as Record<string, unknown>)) {
           if (!DATE_KEY_PATTERN.test(field)) continue;
           if (value === null || value === undefined || value === '') continue;
-          if (typeof value !== 'string' && typeof value !== 'number') continue;
-          const parsed = Date.parse(String(value));
+          // Only check string values. Numbers (e.g., CycleTime hours-per-unit) are
+          // not date-like even if their field name happens to end in "Time".
+          if (typeof value !== 'string') continue;
+          const parsed = Date.parse(value);
           if (Number.isNaN(parsed)) {
             unparseable.push({ entity, recordIdx: idx, field, value });
           }

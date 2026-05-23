@@ -16,9 +16,9 @@ describe('RequiredFieldsRule', () => {
   it('passes when all required keys present', async () => {
     const dir = await makeRawDir();
     dirs.push(dir);
-    await writeEntity(dir, 'tasks', [{ WorkOrderCode: 'WO1', TaskCode: 'T1' }]);
+    await writeEntity(dir, 'tasks', [{ WorkOrderCode: 'WO1', OperationCode: 'OP1' }]);
     await writeEntity(dir, 'orders', [{ JobCode: 'J1' }]);
-    await writeEntity(dir, 'resources', [{ MachineCode: 'M1' }]);
+    await writeEntity(dir, 'resources', [{ Code: 'R1' }]);
 
     const result = await new RequiredFieldsRule().check({ rawDir: dir, previousRawDir: null });
     expect(result.ok).toBe(true);
@@ -27,12 +27,12 @@ describe('RequiredFieldsRule', () => {
   it('fails when a record is missing a required key', async () => {
     const dir = await makeRawDir();
     dirs.push(dir);
-    await writeEntity(dir, 'tasks', [{ WorkOrderCode: 'WO1' }]); // missing TaskCode
+    await writeEntity(dir, 'tasks', [{ WorkOrderCode: 'WO1' }]); // missing OperationCode
 
     const result = await new RequiredFieldsRule().check({ rawDir: dir, previousRawDir: null });
     expect(result.ok).toBe(false);
     const details = result.details as { violations: Array<{ missing: string[] }> };
-    expect(details.violations[0].missing).toContain('TaskCode');
+    expect(details.violations[0].missing).toContain('OperationCode');
   });
 
   it('handles missing entity files (treated as zero records)', async () => {
@@ -45,7 +45,7 @@ describe('RequiredFieldsRule', () => {
   it('caps violation details at 50 but reports total', async () => {
     const dir = await makeRawDir();
     dirs.push(dir);
-    const bad = Array.from({ length: 100 }, () => ({ WorkOrderCode: 'WO1' })); // all missing TaskCode
+    const bad = Array.from({ length: 100 }, () => ({ WorkOrderCode: 'WO1' })); // all missing OperationCode
     await writeEntity(dir, 'tasks', bad);
 
     const result = await new RequiredFieldsRule().check({ rawDir: dir, previousRawDir: null });

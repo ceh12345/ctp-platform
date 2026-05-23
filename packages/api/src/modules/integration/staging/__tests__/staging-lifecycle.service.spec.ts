@@ -67,7 +67,8 @@ describe('StagingLifecycleService', () => {
     await svc.onModuleInit();
 
     const remaining = await fs.promises.readdir(tenantDir);
-    expect(remaining.sort()).toEqual(['2026-05-22-1100', '2026-05-22-1200.failed']);
+    const dirsOnly = remaining.filter((n) => !n.startsWith('_'));
+    expect(dirsOnly.sort()).toEqual(['2026-05-22-1100', '2026-05-22-1200.failed']);
     svc.onModuleDestroy();
   });
 

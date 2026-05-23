@@ -50,9 +50,9 @@ describe('SyncOrchestrator', () => {
 
   it('happy path: writes raw, metadata, report; promotes; current resolves', async () => {
     const payload = emptyPayload();
-    payload.tasks = [{ WorkOrderCode: 'WO1', TaskCode: 'T1', JobCode: 'J1' }];
+    payload.tasks = [{ WorkOrderCode: 'WO1', OperationCode: 'OP1', JobCode: 'J1' }];
     payload.orders = [{ JobCode: 'J1' }];
-    payload.resources = [{ MachineCode: 'M1' }];
+    payload.resources = [{ Code: 'R1' }];
 
     const result = await orch.runSync(TENANT, new FakeAdapter(payload));
 
@@ -81,17 +81,17 @@ describe('SyncOrchestrator', () => {
   it('failure path: validation fails, snapshot marked .failed, current untouched', async () => {
     // First sync: clean snapshot to establish "previous".
     const good = emptyPayload();
-    good.tasks = [{ WorkOrderCode: 'WO1', TaskCode: 'T1', JobCode: 'J1' }];
+    good.tasks = [{ WorkOrderCode: 'WO1', OperationCode: 'OP1', JobCode: 'J1' }];
     good.orders = [{ JobCode: 'J1' }];
-    good.resources = [{ MachineCode: 'M1' }];
+    good.resources = [{ Code: 'R1' }];
     await orch.runSync(TENANT, new FakeAdapter(good));
     const firstCurrent = await staging.current(TENANT);
 
-    // Second sync: bad data — task missing TaskCode (required-fields fails).
+    // Second sync: bad data — task missing OperationCode (required-fields fails).
     const bad = emptyPayload();
-    bad.tasks = [{ WorkOrderCode: 'WO1', JobCode: 'J1' }]; // missing TaskCode
+    bad.tasks = [{ WorkOrderCode: 'WO1', JobCode: 'J1' }]; // missing OperationCode
     bad.orders = [{ JobCode: 'J1' }];
-    bad.resources = [{ MachineCode: 'M1' }];
+    bad.resources = [{ Code: 'R1' }];
 
     const result = await orch.runSync(TENANT, new FakeAdapter(bad));
 
@@ -119,9 +119,9 @@ describe('SyncOrchestrator', () => {
 
   it('records uomConversions when present', async () => {
     const payload = emptyPayload();
-    payload.tasks = [{ WorkOrderCode: 'WO1', TaskCode: 'T1', JobCode: 'J1' }];
+    payload.tasks = [{ WorkOrderCode: 'WO1', OperationCode: 'OP1', JobCode: 'J1' }];
     payload.orders = [{ JobCode: 'J1' }];
-    payload.resources = [{ MachineCode: 'M1' }];
+    payload.resources = [{ Code: 'R1' }];
     payload.uomConversions = { globalConversions: [{ from: 'HR', to: 's', factor: 3600 }] };
 
     const result = await orch.runSync(TENANT, new FakeAdapter(payload));
