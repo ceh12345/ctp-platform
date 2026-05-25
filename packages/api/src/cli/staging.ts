@@ -190,11 +190,14 @@ const ARRAY_ENTITIES = [
 const SINGLE_ENTITY = 'uomConversions';
 
 // Stafford Genius API entity names for seeding from a captured fixture.
+// CTP `orders` = work-orders for Stafford (matches the mapping.json convention:
+// demandQty ← QuantityPlanned, dueDate ← JobEndDate are work-order fields).
+// Sales orders aren't used at the CTP layer for this tenant.
 // Tenant-specific; promote to per-tenant config in a future sprint.
 const GENIUS_ENTITY_FALLBACKS: Record<string, string> = {
   resources: 'machineAndRessourceEntity',
   tasks: 'productionTaskWithAdvancedInfoViewEntity',
-  orders: 'salesOrderDetailEntity',
+  orders: 'workOrderWithAdvancedInformationViewEntity',
 };
 
 // Filename variants to try for each entity. camelCase first, kebab fallback for

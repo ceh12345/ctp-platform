@@ -42,12 +42,15 @@ export class StateService {
     return this.buildSyncResult(landscape, mappingErrors);
   }
 
-  // Sync via the configured adapter (REST or file).
-  // REST tenants: fetch → map → hydrate from payload.
-  // File tenants with no adapter.json: falls back to syncFromConfig().
+  // Sync via the configured adapter when the tenant uses an adapter-driven type.
+  // 'rest':         live HTTP fetch → map → hydrate from payload.
+  // 'staging-read': read pre-staged raw/ JSON → map → hydrate from payload.
+  // anything else (no adapter.json, or adapterType: 'file'): syncFromConfig().
   async syncFromAdapter(): Promise<SyncResult> {
     const adapterConfig = this.configService.getAdapterConfig();
-    if (!adapterConfig || adapterConfig.adapterType !== 'rest') {
+    const adapterType = adapterConfig?.adapterType;
+    const isAdapterDriven = adapterType === 'rest' || adapterType === 'staging-read';
+    if (!isAdapterDriven) {
       return this.syncFromConfig();
     }
     const { payload, errors: mappingErrors } = await this.syncService.sync();
