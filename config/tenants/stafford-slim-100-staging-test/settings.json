@@ -1,9 +1,0 @@
-{
-  "flowAround": false,
-  "maxLateness": 0,
-  "tasksPerLoop": 50,
-  "topTasksToSchedule": 2,
-  "resetUsageAfterProcessChange": true,
-  "scheduleDirection": 1,
-  "solverStrategy": "Greedy"
-}

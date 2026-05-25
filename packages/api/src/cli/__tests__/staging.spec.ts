@@ -245,7 +245,7 @@ describe('staging CLI — command handlers', () => {
       expect(stateChanges).toEqual([{ from: 'A', to: 'B' }]);
 
       // uomConversions is a single object, wrapped in a 1-element array on disk
-      // (matches SyncOrchestrator's convention; StagingReadAdapter unwraps it).
+      // (the cleanse pipeline's convention; consumers unwrap it on read).
       const uom = JSON.parse(
         await fs.promises.readFile(path.join(current!, 'raw', 'uomConversions.json'), 'utf8'),
       );

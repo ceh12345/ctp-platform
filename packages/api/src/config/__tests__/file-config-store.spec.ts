@@ -112,7 +112,11 @@ function writeSampleTenant(tenantDir: string): void {
   fs.writeFileSync(path.join(kpisDir, 'kpis.json'), JSON.stringify(kpis));
 
   // Data
-  const dataDir = path.join(tenantDir, 'data');
+  // Tenant data lives under data/initial-fixture/. FileConfigStore reads through
+  // data/current/<file> which the lifecycle service materializes as a symlink
+  // pointing here. When that symlink doesn't exist (test runs without Nest
+  // boot), readJsonFile falls back to initial-fixture/ automatically.
+  const dataDir = path.join(tenantDir, 'data', 'initial-fixture');
   fs.mkdirSync(dataDir, { recursive: true });
 
   const resources: IResourceData[] = [
@@ -260,7 +264,7 @@ describe('FileConfigStore', () => {
       { key: 'T3', name: 'Task 3', durationSeconds: 1800 },
     ];
     fs.writeFileSync(
-      path.join(tenantDir, 'data', 'tasks.json'),
+      path.join(tenantDir, 'data', 'initial-fixture', 'tasks.json'),
       JSON.stringify(newTasks),
     );
 

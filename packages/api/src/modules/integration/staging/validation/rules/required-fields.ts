@@ -1,10 +1,10 @@
 import { Rule, RuleCheckResult, RuleContext } from '../validation-types';
 import { readEntity } from './read-entity';
 
-// Entity names match IRawDataPayload top-level keys (what SyncOrchestrator writes to staging).
-// Field names are Stafford WORK7 raw-shape defaults, verified against a real Genius capture
-// (`tools/mock-genius/fixtures/stafford-work7-100tasks-may8/`). Tunable per-tenant in a
-// future sprint by promoting REQUIRED_KEYS into staging.json overrides.
+// Entity names match IRawDataPayload top-level keys (what the cleanse pipeline writes
+// to a snapshot's raw input). Field names are Stafford WORK7 raw-shape defaults,
+// verified against `tools/mock-genius/fixtures/stafford-work7-100tasks-may8/`.
+// Tunable per-tenant in a future sprint by moving REQUIRED_KEYS into per-tenant config.
 const REQUIRED_KEYS: Record<string, string[]> = {
   tasks: ['WorkOrderCode', 'OperationCode'],
   orders: ['JobCode'],

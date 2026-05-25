@@ -45,12 +45,25 @@ export function parseArgs(argv: string[]): Args | null {
   return { command, tenant, positional, flags };
 }
 
-function makeService(tenant: string): StagingService {
+// CLI operates on the tenant's data directory directly. The "root" we hand
+// StagingService is the tenant config dir itself; StagingService treats
+// `<root>/<tenant>/...` as its working area, which maps onto
+// `<configRoot>/tenants/<tenant>/data/<snapshot>/`. Beta has no separate
+// staging area; everything lives under the tenant's data dir.
+function makeService(tenant: string): { service: StagingService; tenant: string } {
   const configRoot =
     process.env.CONFIG_ROOT ?? path.join(process.cwd(), '..', '..', 'config');
-  const store = new FileConfigStore(configRoot, tenant);
-  const config = new ConfigService(store);
-  return new StagingService(config.getStagingConfig().rootDir);
+  // tenants live at <configRoot>/tenants/<tenant>; we want StagingService to
+  // operate inside <tenants>/<tenant>/data. Pass the "data" subdir of "tenants"
+  // as the root, with the tenant id appended at use time — i.e., the staging
+  // primitives' `<rootDir>/<tenant>/<snapshot>/` becomes
+  // `<configRoot>/tenants/<tenant>/data/<snapshot>/`.
+  return {
+    service: new StagingService(path.join(configRoot, 'tenants')),
+    // StagingService takes tenant in each method call; the "tenant" here is
+    // actually the path under <rootDir> that holds the snapshot subdirs.
+    tenant: path.join(tenant, 'data'),
+  };
 }
 
 async function confirm(prompt: string): Promise<boolean> {
@@ -175,7 +188,7 @@ export async function cmdRollback(
   return 0;
 }
 
-// IRawDataPayload top-level keys. Matches what SyncOrchestrator writes.
+// IRawDataPayload top-level keys.
 const ARRAY_ENTITIES = [
   'resources',
   'tasks',
@@ -329,19 +342,19 @@ export async function run(argv: string[]): Promise<number> {
     console.error(USAGE);
     return 1;
   }
-  const staging = makeService(args.tenant);
+  const { service: staging, tenant: tenantPath } = makeService(args.tenant);
   const yes = args.flags.yes === true;
 
   switch (args.command) {
     case 'list':
-      return cmdList(staging, args.tenant);
+      return cmdList(staging, tenantPath);
     case 'inspect': {
       const ts = args.positional[0];
       if (!ts) {
         console.error('error: inspect requires a timestamp argument');
         return 1;
       }
-      return cmdInspect(staging, args.tenant, ts);
+      return cmdInspect(staging, tenantPath, ts);
     }
     case 'promote': {
       const ts = args.positional[0];
@@ -349,12 +362,12 @@ export async function run(argv: string[]): Promise<number> {
         console.error('error: promote requires a timestamp argument');
         return 1;
       }
-      return cmdPromote(staging, args.tenant, ts, yes);
+      return cmdPromote(staging, tenantPath, ts, yes);
     }
     case 'rollback':
-      return cmdRollback(staging, args.tenant, yes);
+      return cmdRollback(staging, tenantPath, yes);
     case 'history':
-      return cmdHistory(staging, args.tenant);
+      return cmdHistory(staging, tenantPath);
     case 'seed': {
       const sourceDir = args.positional[0];
       if (!sourceDir) {
@@ -362,7 +375,7 @@ export async function run(argv: string[]): Promise<number> {
         return 1;
       }
       const forcePromote = args.flags['force-promote'] === true;
-      return cmdSeed(staging, args.tenant, sourceDir, yes, undefined, forcePromote);
+      return cmdSeed(staging, tenantPath, sourceDir, yes, undefined, forcePromote);
     }
     default:
       console.error(USAGE);

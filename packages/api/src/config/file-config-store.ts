@@ -23,7 +23,6 @@ import {
   IUOMConversionsFileData,
   IAdapterConfig,
   IMappingProfile,
-  IStagingConfigFile,
 } from './interfaces/config-store.interface';
 import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
 
@@ -55,6 +54,22 @@ export class FileConfigStore implements IConfigStore {
       const content = fs.readFileSync(filePath, 'utf-8');
       return JSON.parse(content) as T;
     } catch {
+      // Fallback: paths under data/current/ resolve to data/initial-fixture/ when
+      // the symlink hasn't been materialized yet (test runs without Nest boot,
+      // or freshly-cloned worktree before first API start). The lifecycle service
+      // creates the symlink in production; this keeps reads working without it.
+      const fallback = filePath.replace(
+        `${path.sep}data${path.sep}current${path.sep}`,
+        `${path.sep}data${path.sep}initial-fixture${path.sep}`,
+      );
+      if (fallback !== filePath) {
+        try {
+          const content = fs.readFileSync(fallback, 'utf-8');
+          return JSON.parse(content) as T;
+        } catch {
+          return null;
+        }
+      }
       return null;
     }
   }
@@ -224,7 +239,7 @@ export class FileConfigStore implements IConfigStore {
   getResources(): IResourceData[] {
     return this.getCached('resources', () =>
       this.readJsonFile<IResourceData[]>(
-        path.join(this.tenantDir, 'data', 'resources.json'),
+        path.join(this.tenantDir, 'data', 'current', 'resources.json'),
       ) ?? [],
     );
   }
@@ -232,7 +247,7 @@ export class FileConfigStore implements IConfigStore {
   getTasks(): ITaskData[] {
     return this.getCached('tasks', () =>
       this.readJsonFile<ITaskData[]>(
-        path.join(this.tenantDir, 'data', 'tasks.json'),
+        path.join(this.tenantDir, 'data', 'current', 'tasks.json'),
       ) ?? [],
     );
   }
@@ -240,7 +255,7 @@ export class FileConfigStore implements IConfigStore {
   getCalendars(): ICalendarData[] {
     return this.getCached('calendars', () =>
       this.readJsonFile<ICalendarData[]>(
-        path.join(this.tenantDir, 'data', 'calendars.json'),
+        path.join(this.tenantDir, 'data', 'current', 'calendars.json'),
       ) ?? [],
     );
   }
@@ -248,7 +263,7 @@ export class FileConfigStore implements IConfigStore {
   getStateChanges(): IStateChangeData[] {
     return this.getCached('stateChanges', () =>
       this.readJsonFile<IStateChangeData[]>(
-        path.join(this.tenantDir, 'data', 'state-changes.json'),
+        path.join(this.tenantDir, 'data', 'current', 'state-changes.json'),
       ) ?? [],
     );
   }
@@ -256,7 +271,7 @@ export class FileConfigStore implements IConfigStore {
   getProducts(): IProductData[] {
     return this.getCached('products', () =>
       this.readJsonFile<IProductData[]>(
-        path.join(this.tenantDir, 'data', 'products.json'),
+        path.join(this.tenantDir, 'data', 'current', 'products.json'),
       ) ?? [],
     );
   }
@@ -264,7 +279,7 @@ export class FileConfigStore implements IConfigStore {
   getOrders(): IOrderData[] {
     return this.getCached('orders', () =>
       this.readJsonFile<IOrderData[]>(
-        path.join(this.tenantDir, 'data', 'orders.json'),
+        path.join(this.tenantDir, 'data', 'current', 'orders.json'),
       ) ?? [],
     );
   }
@@ -272,7 +287,7 @@ export class FileConfigStore implements IConfigStore {
   getMaterials(): IMaterialData[] {
     return this.getCached('materials', () =>
       this.readJsonFile<IMaterialData[]>(
-        path.join(this.tenantDir, 'data', 'materials.json'),
+        path.join(this.tenantDir, 'data', 'current', 'materials.json'),
       ) ?? [],
     );
   }
@@ -280,7 +295,7 @@ export class FileConfigStore implements IConfigStore {
   getProcesses(): IProcessData[] {
     return this.getCached('processes', () =>
       this.readJsonFile<IProcessData[]>(
-        path.join(this.tenantDir, 'data', 'processes.json'),
+        path.join(this.tenantDir, 'data', 'current', 'processes.json'),
       ) ?? [],
     );
   }
@@ -296,7 +311,7 @@ export class FileConfigStore implements IConfigStore {
   getUomConversions(): IUOMConversionsFileData | null {
     return this.getCached('uomConversions', () =>
       this.readJsonFile<IUOMConversionsFileData>(
-        path.join(this.tenantDir, 'data', 'uom-conversions.json'),
+        path.join(this.tenantDir, 'data', 'current', 'uom-conversions.json'),
       ) ?? null,
     );
   }
@@ -304,25 +319,25 @@ export class FileConfigStore implements IConfigStore {
   // ── Save entity data ───────────────────────────────────────────────
 
   saveResources(resources: IResourceData[]): void {
-    const filePath = path.join(this.tenantDir, 'data', 'resources.json');
+    const filePath = path.join(this.tenantDir, 'data', 'current', 'resources.json');
     this.writeJsonFile(filePath, resources);
     this.cache.delete('resources');
   }
 
   saveTasks(tasks: ITaskData[]): void {
-    const filePath = path.join(this.tenantDir, 'data', 'tasks.json');
+    const filePath = path.join(this.tenantDir, 'data', 'current', 'tasks.json');
     this.writeJsonFile(filePath, tasks);
     this.cache.delete('tasks');
   }
 
   saveCalendars(calendars: ICalendarData[]): void {
-    const filePath = path.join(this.tenantDir, 'data', 'calendars.json');
+    const filePath = path.join(this.tenantDir, 'data', 'current', 'calendars.json');
     this.writeJsonFile(filePath, calendars);
     this.cache.delete('calendars');
   }
 
   saveStateChanges(stateChanges: IStateChangeData[]): void {
-    const filePath = path.join(this.tenantDir, 'data', 'state-changes.json');
+    const filePath = path.join(this.tenantDir, 'data', 'current', 'state-changes.json');
     this.writeJsonFile(filePath, stateChanges);
     this.cache.delete('stateChanges');
   }
@@ -357,14 +372,6 @@ export class FileConfigStore implements IConfigStore {
     return this.getCached('mappingProfile', () =>
       this.readJsonFile<IMappingProfile>(
         path.join(this.tenantDir, 'integration', 'mapping.json'),
-      ),
-    );
-  }
-
-  getStagingConfigFile(): IStagingConfigFile | null {
-    return this.getCached('stagingConfig', () =>
-      this.readJsonFile<IStagingConfigFile>(
-        path.join(this.tenantDir, 'integration', 'staging.json'),
       ),
     );
   }

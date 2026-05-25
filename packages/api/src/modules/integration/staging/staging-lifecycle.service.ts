@@ -1,52 +1,57 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import { ConfigService } from '../../../config/config.service';
-import { StagingService } from './staging.service';
+import { createPointer } from './pointer/create-pointer';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+const INITIAL_FIXTURE = 'initial-fixture';
 
+// Ensures every tenant on boot has a `data/current` junction/symlink pointing
+// at a snapshot directory. Symlinks aren't committed (Windows+git incompatibility)
+// — they're generated locally at first boot and persist on disk afterward.
 @Injectable()
-export class StagingLifecycleService implements OnModuleInit, OnModuleDestroy {
-  private retentionTimer: NodeJS.Timeout | null = null;
-
-  constructor(
-    private readonly staging: StagingService,
-    private readonly config: ConfigService,
-  ) {}
+export class StagingLifecycleService implements OnModuleInit {
+  constructor(private readonly config: ConfigService) {}
 
   async onModuleInit(): Promise<void> {
-    const cfg = this.config.getStagingConfig();
-    if (!cfg.enabled) return;
+    const tenantId = this.config.getTenantId();
+    const tenantDir = path.join(this.config.getConfigRoot(), 'tenants', tenantId);
+    const dataDir = path.join(tenantDir, 'data');
+    const currentLink = path.join(dataDir, 'current');
 
-    const tenant = this.config.getTenantId();
+    if (!fs.existsSync(dataDir)) return; // tenant has no data dir; nothing to do
 
-    // Recover from unclean shutdowns: drop *.tmp/ and *.new/ that survived
-    // a kill-9 mid-sync. Promoted snapshots and *.failed/ are preserved.
-    await this.staging.cleanupOrphans(tenant);
+    if (fs.existsSync(currentLink)) return; // operator already pointed it somewhere; leave alone
 
-    this.retentionTimer = setInterval(() => {
-      this.runPrune(tenant, cfg.retentionDays).catch((err) => {
-        // Log via console; the main logging pipeline isn't wired here yet.
-        // eslint-disable-next-line no-console
-        console.error('[staging] retention prune failed:', err);
-      });
-    }, DAY_MS);
-
-    // setInterval's first tick is in DAY_MS; run once at startup too so
-    // a long-running process doesn't wait a full day for the first prune.
-    await this.runPrune(tenant, cfg.retentionDays).catch((err) => {
+    const target = this.pickInitialTarget(dataDir);
+    if (target == null) {
       // eslint-disable-next-line no-console
-      console.error('[staging] initial retention prune failed:', err);
-    });
-  }
-
-  onModuleDestroy(): void {
-    if (this.retentionTimer != null) {
-      clearInterval(this.retentionTimer);
-      this.retentionTimer = null;
+      console.warn(`[staging] tenant '${tenantId}' has no snapshot directory under data/; current pointer not created`);
+      return;
     }
+
+    const targetPath = path.join(dataDir, target);
+    const pointer = createPointer(currentLink);
+    await pointer.point(targetPath);
   }
 
-  private async runPrune(tenant: string, retentionDays: number): Promise<void> {
-    await this.staging.pruneOld(tenant, retentionDays);
+  private pickInitialTarget(dataDir: string): string | null {
+    const entries = fs
+      .readdirSync(dataDir, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && e.name !== 'current')
+      .map((e) => e.name);
+
+    if (entries.length === 0) return null;
+    if (entries.includes(INITIAL_FIXTURE) && entries.length === 1) return INITIAL_FIXTURE;
+
+    // Multiple subdirs (initial-fixture + cleanse-tool-produced timestamps).
+    // Prefer the lex-greatest timestamped one; YYYY-MM-DD-HHMM sorts correctly.
+    // Fall back to initial-fixture if nothing better exists.
+    const timestamped = entries
+      .filter((n) => n !== INITIAL_FIXTURE)
+      .sort()
+      .reverse();
+    if (timestamped.length > 0) return timestamped[0];
+    return INITIAL_FIXTURE;
   }
 }

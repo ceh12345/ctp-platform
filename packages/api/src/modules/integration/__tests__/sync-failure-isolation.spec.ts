@@ -13,12 +13,8 @@ import { StateService } from '../../state/state.service';
 import { StateHydratorService } from '../../state/state-hydrator.service';
 import { ConfigService } from '../../../config/config.service';
 import { FileConfigStore } from '../../../config/file-config-store';
-import * as os from 'os';
-import * as crypto from 'crypto';
 import { AdapterFactory } from '../adapter-factory';
 import { MappingEngine } from '../mapping-engine';
-import { StagingService } from '../staging/staging.service';
-import { SyncOrchestrator } from '../staging/sync-orchestrator';
 import { SyncService } from '../sync.service';
 
 const CONFIG_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..', '..', 'config');
@@ -29,19 +25,8 @@ function createServices() {
   const configService = new ConfigService(store);
   const hydrator = new StateHydratorService(configService);
   const mappingEngine = new MappingEngine();
-  // Staging is disabled by default (no staging.json in tenant); these instances
-  // are present to satisfy SyncService's constructor and stay dormant at runtime.
-  const stagingRoot = path.join(os.tmpdir(), `sync-fi-${crypto.randomUUID()}`);
-  const stagingService = new StagingService(stagingRoot);
-  const syncOrchestrator = new SyncOrchestrator(stagingService);
-  const adapterFactory = new AdapterFactory(configService, stagingService);
-  const syncService = new SyncService(
-    adapterFactory,
-    mappingEngine,
-    configService,
-    syncOrchestrator,
-    stagingService,
-  );
+  const adapterFactory = new AdapterFactory(configService);
+  const syncService = new SyncService(adapterFactory, mappingEngine, configService);
   const stateService = new StateService(hydrator, configService, syncService);
   return { stateService };
 }

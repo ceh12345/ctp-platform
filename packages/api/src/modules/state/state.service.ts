@@ -43,14 +43,12 @@ export class StateService {
   }
 
   // Sync via the configured adapter when the tenant uses an adapter-driven type.
-  // 'rest':         live HTTP fetch → map → hydrate from payload.
-  // 'staging-read': read pre-staged raw/ JSON → map → hydrate from payload.
-  // anything else (no adapter.json, or adapterType: 'file'): syncFromConfig().
+  // 'rest': live HTTP fetch → map → hydrate from payload.
+  // anything else (no adapter.json, or adapterType: 'file'): syncFromConfig() reads
+  // tenant files via FileConfigStore (which now resolves through data/current/).
   async syncFromAdapter(): Promise<SyncResult> {
     const adapterConfig = this.configService.getAdapterConfig();
-    const adapterType = adapterConfig?.adapterType;
-    const isAdapterDriven = adapterType === 'rest' || adapterType === 'staging-read';
-    if (!isAdapterDriven) {
+    if (adapterConfig?.adapterType !== 'rest') {
       return this.syncFromConfig();
     }
     const { payload, errors: mappingErrors } = await this.syncService.sync();
