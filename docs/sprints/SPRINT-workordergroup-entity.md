@@ -195,7 +195,7 @@ Mapping rules to populate each field from Genius data. All from `workOrderWithAd
 | `cancelledWorkOrders` | count where `Wostatus` indicates cancellation | Confirm enum |
 | `totalDemandQty` | `sum(QuantityPlanned)` | Rollup engine |
 | `totalProducedQty` | `sum(QuantityProduced)` | Rollup engine |
-| `hierarchy.first` (Customer) | **Missing — not in current endpoints** | See Decision 4 |
+| `hierarchy.first` (Customer) | **Live mode:** `BillToCustomerName` from `salesOrderHeaderEntity`, joined via `SalesOrderHeaderCode`. **Synthetic mode:** deterministic assignment from a fixed pool, hashed off `SalesOrderHeaderCode`. | Mode controlled by tenant config `customerSource.mode`. Live mode deferred to follow-up sprint (requires VPN); this sprint ships synthetic. |
 | `hierarchy.second` (Project) | `ProjectNumber` / `ProjectName` | |
 | `hierarchy.third` (Sales Order) | `SalesOrderNo` | |
 | `attributes` | `Strategy`, `JobType`, `JobRiskCode`, `ProjectManagerCode`, `ProjectManagerName`, `DbrEndDate`, `JobIsReserved`, `JobWarehouseCode` | Pass-through |
@@ -218,7 +218,7 @@ From the WORK7 sample (member WO 23898):
   "totalWorkOrders": 0,
   "completedWorkOrders": 0,
   "hierarchy": {
-    "first":  { "name": "Customer",     "value": "<missing>" },
+    "first":  { "name": "Customer",     "value": "CEM INTERNATIONAL P/L (NZ A/C)" },
     "second": { "name": "Project",      "value": "MI 252525 - 1 x C1000R" },
     "third":  { "name": "Sales Order",  "value": "00011698" }
   },
@@ -233,6 +233,8 @@ From the WORK7 sample (member WO 23898):
 ```
 
 The single sample we have shows WO 23898 with `ParentWorkOrder = "23872"`, meaning 23898 is *not* the head — 23872 is. We don't have 23872's record in the sample to confirm `ParentWorkOrder = null` for it. Worth pulling against the live endpoint before the session.
+
+Customer value `"CEM INTERNATIONAL P/L (NZ A/C)"` shown for illustration. In practice, the Stafford test tenant runs in **synthetic-customer mode** for this sprint (offline-friendly, no VPN required): customer values come from a small fixed pool, deterministically assigned by hash of `SalesOrderHeaderCode`. Live mode — calling `salesOrderHeaderEntity` to retrieve real `BillToCustomerName` — is wired in a follow-up sprint that runs against the live Genius server. CEM happens to be a real Stafford customer (visible in the original tree screenshot), so it's included in the synthetic pool as a plausible-looking name.
 
 ---
 
@@ -335,13 +337,13 @@ Either way, A is the right v1.
 
 New files:
 
-- `Core/workordergroup.ts` — entity, list, hashmap (mirrors `order.ts`)
+- `Models/Entities/workordergroup.ts` — entity, list, hashmap (mirrors `order.ts`)
 - `Engines/rollupengine.ts` — rollup engine
 
 Modified files:
 
-- `Core/order.ts` — add `groupKey`, `parentOrderKey` to `CTPOrder`
-- `Core/task.ts` — add `groupKey` to `CTPTask`
+- `Models/Entities/order.ts` — add `groupKey`, `parentOrderKey` to `CTPOrder`
+- `Models/Entities/task.ts` — add `groupKey` to `CTPTask`
 - `engines.ts` — register `RollupEngine`
 - `ctp_service.ts` — wire rollup invocation into sync + post-solve flows
 - `schedulecontext.ts` — add `groups: CTPWorkOrderGroups` to the context
@@ -398,6 +400,16 @@ For Stafford's WORK7 (956 work orders across however many jobs), the rollup engi
 
 For larger tenants (10k+ WOs), need to verify. Probably fine — it's a single pass — but worth a smoke test before declaring victory.
 
+### OI-6: Inventory-fulfilled SO lines
+
+Allan flagged that `salesOrderDetailEntity.JobCode` is sometimes null because that SO line is fulfilled from inventory rather than production. These lines have no Job, no WO, and therefore no WorkOrderGroup. They represent real customer commitments but don't participate in scheduling.
+
+**Decision for this sprint:** filter them out at the mapping layer. Mapping rule: only ingest SO lines where `JobCode` is non-null. They don't appear in groups, don't consume scheduling capacity, don't appear in the solver's view of demand.
+
+**Deferred:** representing inventory commitments in the model so that customer- and project-level KPIs are complete (e.g. "this project is 80% complete, but the inventory-fulfilled half isn't counted in our view"). Likely a separate `Demand` or `Commitment` entity in a future sprint — not WorkOrderGroup's job to represent these.
+
+**Action:** CC review sprint should report how many SO lines have null `JobCode` in the May 8 fixture, so we know the scale of what's being filtered. If the proportion is high, the deferred follow-up becomes more urgent.
+
 ---
 
 ## Decisions to bring to Stafford
@@ -428,12 +440,18 @@ The structural one. Frame to Kaleb:
 
 If Job: we plan toward Option B for the solver. If WO: Option A is sufficient.
 
-### Decision 4 — Customer endpoint
+### Decision 4 — Customer endpoint (resolved for this sprint, deferred for live)
 
-Confirm:
-- Which Genius endpoint returns customer code/name?
-- Join key from sales order → customer (presumably via `salesOrderHeaderEntity`)?
-- Sample payload available?
+Allan has confirmed the live path: `salesOrderHeaderEntity.BillToCustomerName`, joined via `SalesOrderHeaderCode` (which we already pull on `salesOrderDetailEntity`).
+
+**Decision for this sprint:** ship with synthetic-customer mode only. The Customer hierarchy slot is populated by deterministic assignment from a small fixed pool, hashed off `SalesOrderHeaderCode`. This decouples the sprint from VPN/live-Genius access and lets the full feature path (mapping → entity → rollup → KPI) be exercised offline against the May 8 fixture.
+
+**Deferred to follow-up sprint** (`SPRINT-workordergroup-customer-live`, or folded into whichever sprint next exercises a live sync): wire the `salesOrderHeaderEntity` call into the live sync path. The mapping config slot exists from this sprint; only the live-mode implementation is deferred.
+
+Open sub-questions for the Stafford session (relevant to the live wire-up, not blocking this sprint):
+- Walk through a real `salesOrderHeaderEntity` payload to confirm field shape.
+- Confirm `BillToCustomerName` is the right field for the hierarchy slot, vs. ship-to or parent customer.
+- Decide whether the extra endpoint call runs in the main sync flow or on demand.
 
 ### Decision 5 — Cancelled / superseded WOs
 
@@ -459,7 +477,7 @@ The CEM screenshot shows at least one strikethrough WO (`26864 SEAL HOUSING`). C
 
 ### In scope
 
-- New entity: `CTPWorkOrderGroup`, `CTPWorkOrderGroups` (file: `Core/workordergroup.ts`)
+- New entity: `CTPWorkOrderGroup`, `CTPWorkOrderGroups` (file: `Models/Entities/workordergroup.ts`)
 - `groupKey` and `parentOrderKey` fields added to `CTPOrder`
 - `groupKey` field added to `CTPTask`
 - `groups: CTPWorkOrderGroups` added to `CTPScheduleContext`
@@ -467,6 +485,9 @@ The CEM screenshot shows at least one strikethrough WO (`26864 SEAL HOUSING`). C
 - Status derivation logic per the table above (buffer-days default 3, tenant-configurable)
 - Mapping config schema additions for `workOrderGroups` section
 - Stafford tenant mapping rules: derive group membership from `Job` field, populate from WO record fields per the field-sourcing table
+- Customer hierarchy slot populated via **synthetic-customer mode** — deterministic hash-based assignment from a small fixed pool (5 names, including "CEM International P/L (NZ A/C)" as a plausible-looking entry, hashed off `SalesOrderHeaderCode`). Lets the full feature path be exercised offline against the May 8 fixture without VPN access.
+- Tenant config schema gains `customerSource: { mode: "synthetic" | "live", syntheticPool?: string[], endpoint?: ..., field?: ..., joinKey?: ... }` — both modes specified in schema; only synthetic implemented this sprint.
+- Filter inventory-fulfilled SO lines at the mapping layer (SO lines with null `JobCode`) — they don't have WOs to bundle into groups
 - Wire `RollupEngine.rebuildGroups()` into `ctp_service.ts` sync flow (after orders/tasks loaded)
 - Wire `RollupEngine.refreshRollups()` into `ctp_service.ts` post-solve flow
 - Expose `WorkOrderGroup` records in the API response payload (read-only)
@@ -481,7 +502,8 @@ The CEM screenshot shows at least one strikethrough WO (`26864 SEAL HOUSING`). C
 - **Material-availability rollups.** Parallel track.
 - **Multi-group membership.** A WO belongs to exactly one group; not enforced in v1, but the design assumes it.
 - **Group membership mutation via UI/API.** Membership is reset on each sync; planner overrides deferred.
-- **Customer endpoint integration.** Decision 4 — depends on Stafford providing the endpoint. Customer hierarchy slot stays empty until then; sprint ships without it.
+- **Inventory commitments as a model entity.** Inventory-fulfilled SO lines (null `JobCode`) are filtered at mapping layer for this sprint. Representing them in the model as a separate `Demand` or `Commitment` entity — so customer- and project-level KPIs are complete — deferred to a future sprint. See OI-6.
+- **Live customer endpoint wire-up.** Calling `salesOrderHeaderEntity` for real `BillToCustomerName` is deferred to a follow-up sprint that runs against the live Genius server (requires VPN). This sprint ships synthetic-customer mode only. Config schema accommodates both modes; switching mode is a tenant config change, not a code change. See Decision 4.
 
 ### Branch & merge plan
 
@@ -498,7 +520,10 @@ The CEM screenshot shows at least one strikethrough WO (`26864 SEAL HOUSING`). C
 5. Group `status` derives correctly from the worst-case-wins table.
 6. `CTPWorkOrderGroups.lateGroups()` returns the expected set for a deliberately late synthetic case.
 7. Performance: rollup engine completes in < 100ms for the full Stafford WORK7 dataset.
-8. No regression in existing solver behaviour (solver doesn't know groups exist).
+8. SO lines with null `JobCode` are filtered at mapping ingest — confirm count of filtered records against May 8 fixture.
+9. Synthetic-customer mode produces a deterministic, stable assignment of synthetic customers to jobs across repeated runs against the same fixture.
+10. Group-by-customer rollup yields multiple non-empty buckets — verifies the customer-level rollup mechanic works without depending on the live endpoint.
+11. No regression in existing solver behaviour (solver doesn't know groups exist).
 
 ### Sequencing inside the sprint
 
@@ -515,6 +540,7 @@ The CEM screenshot shows at least one strikethrough WO (`26864 SEAL HOUSING`). C
 ### Follow-up sprints (not in this one)
 
 - `SPRINT-workordergroup-review` — CC reviews May 8 WORK7 fixture against this design, validates field-sourcing assumptions, surfaces data-quality questions for Stafford. Runs *before* implementation begins, in parallel with Stafford session prep.
+- `SPRINT-workordergroup-customer-live` — wire `salesOrderHeaderEntity` into live sync flow to replace synthetic-customer mode with real `BillToCustomerName`. Requires VPN/live Genius access. May fold into whichever sprint next exercises a live sync.
 - `SPRINT-workordergroup-ui` — Jobs page rebuild around groups. Rollup table view, group-by hierarchy, attribute filter chips.
 - `SPRINT-workordergroup-solver` — only if Decision 3 lands as "Job is the customer-facing commitment." Implements Option B: solver respects group `promiseDate` as a soft constraint. Scoring rule updates.
 - `SPRINT-workordergroup-material` — material-availability KPIs at group level.
