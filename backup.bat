@@ -6,7 +6,7 @@ robocopy "C:\Users\ussbo\FAST\VS 2022\CTP\Typescript\ctp-platform" "D:\ctp-platf
 
 echo.
 echo Writing git commit marker...
-git log --format="commit: %%H%%nbranch: %%D%%ndate: %%ci%%nmessage: %%s" -1 > "D:\ctp-platform\GIT_COMMIT.txt"
+git -C "C:\Users\ussbo\FAST\VS 2022\CTP\Typescript\ctp-platform" log --format="commit: %%H%%nbranch: %%D%%ndate: %%ci%%nmessage: %%s" -1 > "D:\ctp-platform\GIT_COMMIT.txt"
 type "D:\ctp-platform\GIT_COMMIT.txt"
 
 echo.
