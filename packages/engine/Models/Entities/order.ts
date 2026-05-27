@@ -22,6 +22,9 @@ export class CTPOrder extends CTPKeyEntity implements IOrder {
   public latenessPenaltyPerDay: number = 0;
   public validationErrors: IValidationError[] = [];
 
+  public groupKey: string | null = null;       // → CTPWorkOrderGroup.key
+  public parentOrderKey: string | null = null; // → another CTPOrder.key, for the WO tree
+
   constructor(t?: string, n?: string, k?: string) {
     super(t, n, k);
   }
