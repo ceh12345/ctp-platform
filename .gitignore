@@ -13,3 +13,7 @@ packages/engine/**/*.d.ts
 
 # Auto-generated version file
 packages/api/src/version.json
+
+# Python bytecode cache
+__pycache__/
+*.pyc
