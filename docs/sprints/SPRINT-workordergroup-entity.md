@@ -346,7 +346,7 @@ Modified files:
 - `Models/Entities/task.ts` — add `groupKey` to `CTPTask`
 - `engines.ts` — register `RollupEngine`
 - `ctp_service.ts` — wire rollup invocation into sync + post-solve flows
-- `schedulecontext.ts` — add `groups: CTPWorkOrderGroups` to the context
+- `Models/Entities/landscape.ts` — add `groups: CTPWorkOrderGroups` to `SchedulingLandscape` alongside `orders` / `tasks` / `resources`
 
 Mapping config:
 
@@ -480,7 +480,7 @@ The CEM screenshot shows at least one strikethrough WO (`26864 SEAL HOUSING`). C
 - New entity: `CTPWorkOrderGroup`, `CTPWorkOrderGroups` (file: `Models/Entities/workordergroup.ts`)
 - `groupKey` and `parentOrderKey` fields added to `CTPOrder`
 - `groupKey` field added to `CTPTask`
-- `groups: CTPWorkOrderGroups` added to `CTPScheduleContext`
+- `groups: CTPWorkOrderGroups` added to `SchedulingLandscape` (alongside `orders`, `tasks`, `resources` — the natural home for engine-wide collections; `ScheduleContext` is per-task-per-slot and the wrong granularity)
 - `RollupEngine` class (file: `Engines/rollupengine.ts`) with `rebuildGroups()` and `refreshRollups()` methods
 - Status derivation logic per the table above (buffer-days default 3, tenant-configurable)
 - Mapping config schema additions for `workOrderGroups` section
@@ -529,7 +529,7 @@ The CEM screenshot shows at least one strikethrough WO (`26864 SEAL HOUSING`). C
 
 1. Entity classes (`workordergroup.ts`) — standalone, no dependencies.
 2. `CTPOrder` and `CTPTask` field additions — adds nullable fields, doesn't break existing code.
-3. `CTPScheduleContext` extension.
+3. `SchedulingLandscape` extension — add `groups` collection alongside `orders` and `tasks`.
 4. `RollupEngine` — uses the new entity, implements rebuild + refresh logic.
 5. Mapping config schema extension.
 6. Stafford mapping rules.
