@@ -32,7 +32,20 @@ export class StagingLifecycleService implements OnModuleInit {
 
     const targetPath = path.join(dataDir, target);
     const pointer = createPointer(currentLink);
-    await pointer.point(targetPath);
+    try {
+      await pointer.point(targetPath);
+      // eslint-disable-next-line no-console
+      console.log(`[staging] tenant '${tenantId}' created data/current -> ${target}`);
+    } catch (err) {
+      // Symlink/junction creation can fail in restrictive environments (e.g.,
+      // read-only Azure filesystem). FileConfigStore falls back to
+      // initial-fixture/ so reads still work; surface the failure for ops.
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[staging] tenant '${tenantId}' could NOT create data/current (${(err as Error).message}); ` +
+          `reads will fall back to initial-fixture/. CLI snapshot ops unavailable until resolved.`,
+      );
+    }
   }
 
   private pickInitialTarget(dataDir: string): string | null {
