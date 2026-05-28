@@ -105,6 +105,21 @@ describe('RollupEngine.rebuildGroups', () => {
     expect(groups.getEntity('G1')?.headWorkOrderKey).toBe('WO1');
   });
 
+  it('treats self-parent as head — Stafford convention (ParentWorkOrder == WorkOrder)', () => {
+    const engine = new RollupEngine();
+    const orders = new CTPOrders();
+    orders.addEntity(makeOrder('WO1', 'G1', 'WO1'));       // self-parent = head
+    orders.addEntity(makeOrder('WO2', 'G1', 'WO1'));
+    orders.addEntity(makeOrder('WO3', 'G1', 'WO1'));
+
+    const groups = new CTPWorkOrderGroups();
+    groups.addEntity(makeGroup('G1'));
+
+    engine.rebuildGroups(orders, groups);
+
+    expect(groups.getEntity('G1')?.headWorkOrderKey).toBe('WO1');
+  });
+
   it('leaves headWorkOrderKey null when 2+ candidates exist (OI-2 fallback)', () => {
     const engine = new RollupEngine();
     const orders = new CTPOrders();

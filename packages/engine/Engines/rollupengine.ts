@@ -14,9 +14,11 @@ export class RollupEngine {
   // this method resets membership and re-attaches every order with a
   // non-null groupKey to its matching group.
   //
-  // Head WO rule (per sprint OI-2): a group's headWorkOrderKey is set to
-  // the single order whose parentOrderKey is null. If 0 or 2+ candidates
-  // exist, headWorkOrderKey stays null (group is "flat").
+  // Head WO rule (per sprint OI-2): an order is a head candidate when
+  // either its parentOrderKey is null OR it's self-parent (parentOrderKey
+  // equals own key — Stafford's convention). A group's headWorkOrderKey
+  // is set when exactly one head candidate exists; if 0 or 2+, the head
+  // stays null and the group is "flat".
   public rebuildGroups(orders: CTPOrders, groups: CTPWorkOrderGroups): void {
     groups.forEach((g) => {
       g.workOrderKeys = [];
@@ -30,7 +32,9 @@ export class RollupEngine {
       const group = groups.getEntity(order.groupKey);
       if (!group) return;
       group.workOrderKeys.push(order.key);
-      if (order.parentOrderKey === null) {
+      const isHeadCandidate =
+        order.parentOrderKey === null || order.parentOrderKey === order.key;
+      if (isHeadCandidate) {
         const arr = headCandidates.get(order.groupKey) ?? [];
         arr.push(order.key);
         headCandidates.set(order.groupKey, arr);
