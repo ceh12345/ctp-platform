@@ -1,10 +1,13 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import * as versionInfo from '../../version.json';
+import { TenantHealthService } from './tenant-health.service';
 
 @Controller('health')
 export class HealthController {
   private readonly startTime = Date.now();
+
+  constructor(private readonly tenantHealth: TenantHealthService) {}
 
   @Get()
   @ApiOperation({ summary: 'Health check' })
@@ -14,6 +17,13 @@ export class HealthController {
       status: 'ok',
       timestamp: new Date().toISOString(),
     };
+  }
+
+  @Get('tenant')
+  @ApiOperation({ summary: 'Per-tenant runtime health: config, data layout, entity files, engine landscape' })
+  @ApiResponse({ status: 200, description: 'Health report; check `status` field for healthy/degraded/unhealthy' })
+  tenant() {
+    return this.tenantHealth.build();
   }
 
   @Get('version')
