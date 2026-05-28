@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { IMappingProfile } from '../../config/interfaces/config-store.interface';
+import {
+  AttributeMapping,
+  EntityMapping,
+  HierarchySlotMapping,
+  ValueSource,
+  ValueTransform,
+} from '../../config/interfaces/hierarchy-mapping.interface';
 import { IRawDataPayload } from './adapter.interface';
 import { MappingError } from './mapping-error';
 
@@ -270,5 +277,100 @@ export class MappingEngine {
     }
 
     return prevLinkMap;
+  }
+
+  // ── Hierarchy + attribute resolution (SPRINT-workordergroup step 5) ──────
+  //
+  // Generic resolver dispatched on ValueSource.kind. Four kinds live this
+  // sprint (field/constant/composite/synthetic); `join` is schema-present
+  // but throws — wired in the live-customer sprint. Per design choice (a)
+  // the resolver has no knowledge of tenant-level configs like
+  // customerSource — step 6's mapping rules inject pool/hashOn into the
+  // synthetic source at config-load time.
+
+  /** Resolve a single ValueSource against a raw record. Returns null when the source has no value (e.g. missing field, empty pool). */
+  public resolveValue(source: ValueSource, record: Record<string, any>): string | null {
+    switch (source.kind) {
+      case 'field': {
+        const raw = record[source.field];
+        if (raw === undefined || raw === null) return null;
+        const str = String(raw);
+        return source.transform ? this.applyValueTransform(str, source.transform) : str;
+      }
+      case 'constant':
+        return source.value;
+      case 'composite':
+        return this.fillTemplate(source.template, record);
+      case 'synthetic':
+        if (source.pool.length === 0) return null;
+        return this.hashToPool(record[source.hashOn], source.pool);
+      case 'join':
+        throw new Error(
+          `ValueSource kind 'join' resolver not yet implemented — wired in the live-customer sprint (via=${source.via}, endpoint=${source.endpoint}, field=${source.field})`,
+        );
+    }
+  }
+
+  /** Resolve every hierarchy mapping on an entity, returning the populated slots. Step 7 maps these onto CTPHierarchies. */
+  public resolveHierarchies(
+    entity: EntityMapping,
+    record: Record<string, any>,
+  ): { slot: HierarchySlotMapping['slot']; name: string; value: string | null }[] {
+    if (!entity.hierarchies) return [];
+    return entity.hierarchies.map((h) => ({
+      slot: h.slot,
+      name: h.name,
+      value: this.resolveValue(h.source, record),
+    }));
+  }
+
+  /** Resolve every attribute mapping on an entity, returning the populated entries. Respects includeIfEmpty per mapping. */
+  public resolveAttributes(
+    entity: EntityMapping,
+    record: Record<string, any>,
+  ): { name: string; value: string }[] {
+    if (!entity.attributes) return [];
+    const out: { name: string; value: string }[] = [];
+    for (const a of entity.attributes) {
+      const v = this.resolveValue(a.source, record);
+      if (v === null || v === '') {
+        if (a.includeIfEmpty) out.push({ name: a.name, value: '' });
+        continue;
+      }
+      out.push({ name: a.name, value: v });
+    }
+    return out;
+  }
+
+  // ── helpers ──────────────────────────────────────────────────────────────
+
+  private applyValueTransform(v: string, t: ValueTransform): string {
+    switch (t) {
+      case 'trim':      return v.trim();
+      case 'uppercase': return v.toUpperCase();
+      case 'lowercase': return v.toLowerCase();
+      case 'dateToIso': {
+        const dt = DateTime.fromISO(v);
+        return dt.isValid ? (dt.toUTC().toISO() ?? v) : v;
+      }
+    }
+  }
+
+  /** Replace {field} tokens in a template with values from the record. Missing fields render as empty string. */
+  private fillTemplate(template: string, record: Record<string, any>): string {
+    return template.replace(/\{(\w+)\}/g, (_, key: string) => {
+      const v = record[key];
+      return v === undefined || v === null ? '' : String(v);
+    });
+  }
+
+  /** DJB2 hash modulo pool length — stable across runs, gives even distribution for typical key strings. */
+  private hashToPool(raw: unknown, pool: string[]): string {
+    const s = raw === undefined || raw === null ? '' : String(raw);
+    let h = 5381;
+    for (let i = 0; i < s.length; i++) {
+      h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;   // h * 33 + c, kept unsigned
+    }
+    return pool[h % pool.length];
   }
 }

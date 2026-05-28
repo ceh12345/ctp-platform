@@ -1,5 +1,6 @@
 import { ITypedAttribute } from '@ctp/engine';
 import { TenantStrategyOverride, TenantCustomStrategy } from './strategy.interface';
+import { EntityMapping } from './hierarchy-mapping.interface';
 
 // Schema types
 export interface IAttributeSchemaDefinition {
@@ -271,6 +272,10 @@ export interface IMappingProfile {
   tasks?: Record<string, any>;
   resources?: Record<string, any>;
   calendars?: Record<string, any>;
+
+  /** Mapping block for WorkOrderGroup. Typed (EntityMapping) — sets the precedent for tightening other entities later. */
+  workOrderGroups?: EntityMapping;
+
   transforms?: Record<string, any>;
   [key: string]: any;
 }
