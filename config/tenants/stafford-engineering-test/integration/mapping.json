@@ -14,12 +14,67 @@
 
       "priority":    { "from": "Strategy", "lookup": { "JIT": 10, "ASAP": 5, "_default": 50 } },
 
+      "groupKey":       { "from": "Job" },
+      "parentOrderKey": { "from": "ParentWorkOrder" },
+
       "jobCode":      { "from": "Job" },
       "jobType":      { "from": "JobType" },
       "customerCode": { "from": "CustomerCode" },
       "customerName": { "from": "CustomerName" },
       "itemFamily":   { "from": "ItemFamily" },
       "wostatus":     { "from": "Wostatus" }
+    }
+  },
+
+  "workOrderGroups": {
+    "sourceEndpoint": "workOrderWithAdvancedInformationViewEntity",
+    "mappings": {
+      "key":         { "from": "Job" },
+      "name":        { "from": ["ProjectName", "ItemDescription1"], "sep": " / " },
+      "sourceStart": { "from": "JobStartDate", "toUTC": true },
+      "sourceEnd":   { "from": "JobEndDate",   "toUTC": true },
+      "promiseDate": { "from": "DeliveryDate", "toUTC": true }
+    },
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "source": {
+          "kind": "synthetic",
+          "strategy": "hash-pool",
+          "pool": [
+            "CEM International P/L (NZ A/C)",
+            "Pacific Engineering Ltd",
+            "Tasman Industries",
+            "Bayside Manufacturing",
+            "Southern Cross Machining"
+          ],
+          "hashOn": "SalesOrderNo",
+          "_note": "Pool order and contents must stay stable — DJB2 hash assignments are positional. Editing the pool reshuffles every job's assigned customer."
+        }
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "source": { "kind": "field", "field": "ProjectName" }
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "source": { "kind": "field", "field": "SalesOrderNo" }
+      }
+    ],
+    "attributes": [
+      { "name": "Strategy",           "source": { "kind": "field", "field": "Strategy" } },
+      { "name": "JobType",            "source": { "kind": "field", "field": "JobType" } },
+      { "name": "ProjectManagerCode", "source": { "kind": "field", "field": "ProjectManagerCode" } },
+      { "name": "ProjectManagerName", "source": { "kind": "field", "field": "ProjectManagerName", "transform": "trim" } },
+      { "name": "JobRiskCode",        "source": { "kind": "field", "field": "JobRiskCode" } },
+      { "name": "DbrEndDate",         "source": { "kind": "field", "field": "DbrEndDate", "transform": "dateToIso" } }
+    ],
+    "cancellationPredicate": {
+      "field": "Wostatus",
+      "values": []
     }
   },
 

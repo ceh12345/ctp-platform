@@ -141,5 +141,21 @@ export interface EntityMapping {
 
   /** Attribute population. */
   attributes?: AttributeMapping[];
+
+  /**
+   * Predicate for marking records as cancelled at rollup time. Wired by
+   * step 7. An empty `values` array intentionally matches nothing —
+   * preserves the current "0 cancelled" behaviour until Decision 5 with
+   * Stafford confirms which `Wostatus` strings indicate cancellation,
+   * after which resolving it is a one-line config edit.
+   */
+  cancellationPredicate?: CancellationPredicate;
+}
+
+export interface CancellationPredicate {
+  /** Source-record field whose value is tested. */
+  field: string;
+  /** Cancellation-marker values; an exact match counts the record as cancelled. */
+  values: string[];
 }
 
