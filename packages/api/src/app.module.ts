@@ -9,10 +9,11 @@ import { AIModule } from './modules/ai/ai.module';
 import { LoggingModule } from './logging/logging.module';
 import { DebugModule } from './debug/debug.module';
 import { IntegrationModule } from './modules/integration/integration.module';
+import { InspectorModule } from './modules/inspector/inspector.module';
 import { TenantMiddleware } from './config/tenant.middleware';
 
 @Module({
-  imports: [LoggingModule, HealthModule, StateModule, ConfigModule, CTPModule, DataModule, AnalyticsModule, AIModule, DebugModule, IntegrationModule],
+  imports: [LoggingModule, HealthModule, StateModule, ConfigModule, CTPModule, DataModule, AnalyticsModule, AIModule, DebugModule, IntegrationModule, InspectorModule],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
