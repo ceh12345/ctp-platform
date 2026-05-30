@@ -163,6 +163,105 @@ export class OrderResultDto {
 
   @ApiProperty({ description: 'Order priority' })
   priority!: number;
+
+  @ApiPropertyOptional({ description: 'WorkOrderGroup this order belongs to (null when ungrouped)' })
+  groupKey!: string | null;
+
+  @ApiPropertyOptional({ description: 'Parent order key for the WO tree. Equal to orderKey for head WOs (Stafford convention); null for tenants that use null for heads.' })
+  parentOrderKey!: string | null;
+}
+
+export class HierarchySlotDto {
+  @ApiProperty({ description: 'Slot position (1-5)' })
+  slot!: number;
+
+  @ApiProperty({ description: 'Dimension label (e.g. "Customer", "Project")' })
+  name!: string;
+
+  @ApiProperty({ description: 'Resolved value for this slot. Null is reserved for live-mode resolver failures (not currently emitted — synthetic and field resolvers always produce a string).' })
+  value!: string | null;
+}
+
+export class NamedValueDto {
+  @ApiProperty({ description: 'Attribute name' })
+  name!: string;
+
+  @ApiProperty({ description: 'Attribute value' })
+  value!: string;
+}
+
+export class WorkOrderGroupResultDto {
+  @ApiProperty({ description: 'Group key (e.g. Stafford Job number)' })
+  key!: string;
+
+  @ApiProperty({ description: 'Display name composed by the mapping (tenant-specific)' })
+  name!: string;
+
+  @ApiPropertyOptional({ description: 'Head work-order key (null when no single head was identified)' })
+  headWorkOrderKey!: string | null;
+
+  @ApiProperty({ description: 'Keys of all member orders', type: [String] })
+  workOrderKeys!: string[];
+
+  @ApiPropertyOptional({ description: 'Source-of-truth start date from the ERP (ISO 8601). Null when not provided.' })
+  sourceStart!: string | null;
+
+  @ApiPropertyOptional({ description: 'Source-of-truth end date from the ERP (ISO 8601). Null when not provided.' })
+  sourceEnd!: string | null;
+
+  @ApiPropertyOptional({ description: 'Customer-facing promise date (ISO 8601). Null when not provided.' })
+  promiseDate!: string | null;
+
+  @ApiPropertyOptional({ description: 'Computed start from the post-solve rollup — min(task.scheduled.start) across members. Null when nothing is scheduled.' })
+  computedStart!: string | null;
+
+  @ApiPropertyOptional({ description: 'Computed end from the post-solve rollup — max(task.scheduled.end) across members. Null when nothing is scheduled.' })
+  computedEnd!: string | null;
+
+  @ApiProperty({ description: 'Status code: 0=ON_TRACK, 1=AT_RISK, 2=LATE, 3=BLOCKED, 4=COMPLETED, 5=CANCELLED' })
+  status!: number;
+
+  @ApiProperty({ description: 'Status label (matches the enum name)' })
+  statusLabel!: string;
+
+  @ApiProperty({ description: 'Total work orders in the group' })
+  totalWorkOrders!: number;
+
+  @ApiProperty({ description: 'Members marked completed (pending Decision 5)' })
+  completedWorkOrders!: number;
+
+  @ApiProperty({ description: 'Members in process (pending Decision 5)' })
+  inProcessWorkOrders!: number;
+
+  @ApiProperty({ description: 'Members not started (pending Decision 5)' })
+  notStartedWorkOrders!: number;
+
+  @ApiProperty({ description: 'Members matched by the tenant cancellation predicate' })
+  cancelledWorkOrders!: number;
+
+  @ApiProperty({ description: 'Sum of demandQty across members' })
+  totalDemandQty!: number;
+
+  @ApiProperty({ description: 'Sum of scheduledQty across members' })
+  totalScheduledQty!: number;
+
+  @ApiProperty({ description: 'Sum of producedQty across members (pending source-field exposure)' })
+  totalProducedQty!: number;
+
+  @ApiProperty({ description: 'completedWorkOrders / totalWorkOrders. Returns 0 when totalWorkOrders is 0.' })
+  completionRatio!: number;
+
+  @ApiProperty({ description: 'True when every member is completed (and totalWorkOrders > 0).' })
+  isFullyComplete!: boolean;
+
+  @ApiProperty({ description: 'True when computedEnd > sourceEnd. Returns false when either is null.' })
+  isLate!: boolean;
+
+  @ApiProperty({ description: 'Populated hierarchy slots (empty slots omitted)', type: [HierarchySlotDto] })
+  hierarchies!: HierarchySlotDto[];
+
+  @ApiProperty({ description: 'Tenant-defined attributes', type: [NamedValueDto] })
+  attributes!: NamedValueDto[];
 }
 
 export class MaterialStatusDto {
@@ -259,6 +358,9 @@ export class CTPSolveResultDto {
 
   @ApiProperty({ description: 'Material consumption status', type: [MaterialStatusDto] })
   materials!: MaterialStatusDto[];
+
+  @ApiPropertyOptional({ description: 'Rolled-up WorkOrderGroups (e.g. Stafford Jobs). Empty when the tenant has no workOrderGroups mapping configured.', type: [WorkOrderGroupResultDto] })
+  workOrderGroups?: WorkOrderGroupResultDto[];
 
   @ApiPropertyOptional({ description: 'Solve statistics (depth varies by detailLevel)' })
   stats?: any;
