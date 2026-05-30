@@ -42,6 +42,7 @@ import {
 } from '@ctp/engine';
 import { ErrorCodes } from '../../common/error-codes';
 import { StateService } from '../state/state.service';
+import { WorkOrderGroupService } from '../state/workordergroup.service';
 import { ConfigService } from '../../config/config.service';
 import { StrategyConfigService } from '../../config/strategy-config.service';
 import { LoggerService } from '../../logging/logger.service';
@@ -142,13 +143,21 @@ export interface CTPSolveResult {
 export class CTPService {
   private results = new Map<string, CTPSolveResult>();
 
+  private readonly workOrderGroupService: WorkOrderGroupService;
+
   constructor(
     private readonly stateService: StateService,
     private readonly configService: ConfigService,
     private readonly strategyConfigService: StrategyConfigService,
     private readonly logger: LoggerService,
     private readonly scheduleConfigService: ScheduleConfigurationService,
-  ) {}
+    workOrderGroupService?: WorkOrderGroupService,
+  ) {
+    // Optional injection — Nest supplies it in production; tests that
+    // don't touch group rollups can omit. Falls back to a service
+    // built from the same configService.
+    this.workOrderGroupService = workOrderGroupService ?? new WorkOrderGroupService(configService);
+  }
 
   // ═══════════════════════════════════════
   // Endpoint 1: Solve with Overrides
@@ -471,6 +480,12 @@ export class CTPService {
         },
       });
     }
+
+    // Post-solve rollup — refresh computedStart/End, status, cancellation
+    // counts on each WorkOrderGroup using the new task scheduled times.
+    // Reads bufferDays + cancellationPredicate from tenant config via the
+    // injected service. Empty groups collection: this is a no-op.
+    this.workOrderGroupService.refreshRollups(landscape, Math.floor(Date.now() / 1000));
 
     return result;
   }

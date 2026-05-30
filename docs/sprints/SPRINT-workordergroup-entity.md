@@ -520,7 +520,7 @@ The CEM screenshot shows at least one strikethrough WO (`26864 SEAL HOUSING`). C
 5. Group `status` derives correctly from the worst-case-wins table.
 6. `CTPWorkOrderGroups.lateGroups()` returns the expected set for a deliberately late synthetic case.
 7. Performance: rollup engine completes in < 100ms for the full Stafford WORK7 dataset.
-8. SO lines with null `JobCode` are filtered at mapping ingest — confirm count of filtered records against May 8 fixture.
+8. **(N/A this sprint, deferred)** SO lines with null `JobCode` filter at mapping ingest. The Stafford test tenant pulls only the WO endpoint (`workOrderWithAdvancedInformationViewEntity`) — `salesOrderDetailEntity` records aren't fetched, so no `JobCode IS NULL` records flow through and there's nothing to filter. Activates when SO line ingestion lands in the inventory-commitment sprint (see Follow-ups).
 9. Synthetic-customer mode produces a deterministic, stable assignment of synthetic customers to jobs across repeated runs against the same fixture.
 10. Group-by-customer rollup yields multiple non-empty buckets — verifies the customer-level rollup mechanic works without depending on the live endpoint.
 11. No regression in existing solver behaviour (solver doesn't know groups exist).
@@ -541,5 +541,6 @@ The CEM screenshot shows at least one strikethrough WO (`26864 SEAL HOUSING`). C
 
 - `SPRINT-workordergroup-review` — CC reviews May 8 WORK7 fixture against this design, validates field-sourcing assumptions, surfaces data-quality questions for Stafford. Runs *before* implementation begins, in parallel with Stafford session prep.
 - `SPRINT-workordergroup-ui` — Jobs page rebuild around groups. Rollup table view, group-by hierarchy, attribute filter chips.
+- `SPRINT-workordergroup-so-filter` — adds `salesOrderDetailEntity` ingestion (new endpoint, new IRawDataPayload slot, new entity mapping block) and the generic `dropWhen` filter mechanism that drops records when a configured field is null. Activates AC #8 of this sprint. Likely folds into the inventory-commitment entity work (OI-6 future), since that's where the real motivation for SO line ingestion lives.
 - `SPRINT-workordergroup-solver` — only if Decision 3 lands as "Job is the customer-facing commitment." Implements Option B: solver respects group `promiseDate` as a soft constraint. Scoring rule updates.
 - `SPRINT-workordergroup-material` — material-availability KPIs at group level.

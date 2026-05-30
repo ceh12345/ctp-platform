@@ -25,6 +25,7 @@ import {
   IMappingProfile,
 } from './interfaces/config-store.interface';
 import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
+import { IRollupEngineConfig } from '@ctp/engine';
 
 const DEFAULT_SETTINGS: ISettingsConfig = {
   flowAround: false,
@@ -348,6 +349,14 @@ export class FileConfigStore implements IConfigStore {
     return this.getCached('adapterConfig', () =>
       this.readJsonFile<IAdapterConfig>(
         path.join(this.tenantDir, 'integration', 'adapter.json'),
+      ),
+    );
+  }
+
+  getWorkOrderGroupsConfig(): IRollupEngineConfig | null {
+    return this.getCached('workOrderGroupsConfig', () =>
+      this.readJsonFile<IRollupEngineConfig>(
+        path.join(this.tenantDir, 'integration', 'workordergroups.json'),
       ),
     );
   }

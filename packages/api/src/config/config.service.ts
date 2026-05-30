@@ -22,6 +22,7 @@ import {
   IAdapterConfig,
   IMappingProfile,
 } from './interfaces/config-store.interface';
+import { IRollupEngineConfig } from '@ctp/engine';
 import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
 import { FileConfigStore } from './file-config-store';
 
@@ -148,6 +149,10 @@ export class ConfigService {
 
   getMappingProfile(): IMappingProfile | null {
     return this.store.getMappingProfile?.() ?? null;
+  }
+
+  getWorkOrderGroupsConfig(): IRollupEngineConfig | null {
+    return this.store.getWorkOrderGroupsConfig?.() ?? null;
   }
 
   reloadConfig(): void {

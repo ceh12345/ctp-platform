@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RollupEngine } from '../../Engines/rollupengine';
+import { IRollupEngineConfig, RollupEngine } from '../../Engines/rollupengine';
 import { CTPOrder, CTPOrders } from '../../Models/Entities/order';
 import { CTPTask, CTPTasks } from '../../Models/Entities/task';
 import {
@@ -15,6 +15,15 @@ import { InfeasibilityReport } from '../../Models/Entities/infeasibilityreport';
 
 const T0 = 1700000000;   // base epoch seconds (~Nov 2023) — arbitrary anchor
 const DAY = 86400;
+
+const DEFAULT_CONFIG: IRollupEngineConfig = {
+  bufferDays: 3,
+  cancellationPredicate: { field: 'wostatus', values: [] },
+};
+
+function makeEngine(overrides: Partial<IRollupEngineConfig> = {}): RollupEngine {
+  return new RollupEngine({ ...DEFAULT_CONFIG, ...overrides });
+}
 
 function makeOrder(
   key: string,
@@ -56,11 +65,11 @@ function makeGroup(
   return g;
 }
 
-// ─── rebuildGroups ────────────────────────────────────────────────────────
+// ─── rebuildGroups: membership ────────────────────────────────────────────
 
-describe('RollupEngine.rebuildGroups', () => {
+describe('RollupEngine.rebuildGroups — membership', () => {
   it('attaches orders to their groups by groupKey', () => {
-    const engine = new RollupEngine();
+    const engine = makeEngine();
     const orders = new CTPOrders();
     orders.addEntity(makeOrder('WO1', 'G1', null));
     orders.addEntity(makeOrder('WO2', 'G1', 'WO1'));
@@ -70,72 +79,72 @@ describe('RollupEngine.rebuildGroups', () => {
     groups.addEntity(makeGroup('G1'));
     groups.addEntity(makeGroup('G2'));
 
-    engine.rebuildGroups(orders, groups);
+    engine.rebuildGroups(orders, new CTPTasks(), groups);
 
     expect(groups.getEntity('G1')?.workOrderKeys.sort()).toEqual(['WO1', 'WO2']);
     expect(groups.getEntity('G2')?.workOrderKeys).toEqual(['WO3']);
   });
 
   it('ignores orders with null groupKey', () => {
-    const engine = new RollupEngine();
+    const engine = makeEngine();
     const orders = new CTPOrders();
     orders.addEntity(makeOrder('WO1', 'G1', null));
-    orders.addEntity(makeOrder('WOX', null));    // ungrouped
+    orders.addEntity(makeOrder('WOX', null));
 
     const groups = new CTPWorkOrderGroups();
     groups.addEntity(makeGroup('G1'));
 
-    engine.rebuildGroups(orders, groups);
+    engine.rebuildGroups(orders, new CTPTasks(), groups);
 
     expect(groups.getEntity('G1')?.workOrderKeys).toEqual(['WO1']);
   });
 
   it('sets headWorkOrderKey when exactly one order has null parent', () => {
-    const engine = new RollupEngine();
+    const engine = makeEngine();
     const orders = new CTPOrders();
-    orders.addEntity(makeOrder('WO1', 'G1', null));        // head
+    orders.addEntity(makeOrder('WO1', 'G1', null));
     orders.addEntity(makeOrder('WO2', 'G1', 'WO1'));
     orders.addEntity(makeOrder('WO3', 'G1', 'WO1'));
 
     const groups = new CTPWorkOrderGroups();
     groups.addEntity(makeGroup('G1'));
 
-    engine.rebuildGroups(orders, groups);
+    engine.rebuildGroups(orders, new CTPTasks(), groups);
 
     expect(groups.getEntity('G1')?.headWorkOrderKey).toBe('WO1');
   });
 
   it('treats self-parent as head — Stafford convention (ParentWorkOrder == WorkOrder)', () => {
-    const engine = new RollupEngine();
+    const engine = makeEngine();
     const orders = new CTPOrders();
-    orders.addEntity(makeOrder('WO1', 'G1', 'WO1'));       // self-parent = head
+    orders.addEntity(makeOrder('WO1', 'G1', 'WO1'));
     orders.addEntity(makeOrder('WO2', 'G1', 'WO1'));
     orders.addEntity(makeOrder('WO3', 'G1', 'WO1'));
 
     const groups = new CTPWorkOrderGroups();
     groups.addEntity(makeGroup('G1'));
 
-    engine.rebuildGroups(orders, groups);
+    engine.rebuildGroups(orders, new CTPTasks(), groups);
 
     expect(groups.getEntity('G1')?.headWorkOrderKey).toBe('WO1');
   });
 
   it('leaves headWorkOrderKey null when 2+ candidates exist (OI-2 fallback)', () => {
-    const engine = new RollupEngine();
+    const engine = makeEngine();
     const orders = new CTPOrders();
-    orders.addEntity(makeOrder('WO1', 'G1', null));        // candidate 1
-    orders.addEntity(makeOrder('WO2', 'G1', null));        // candidate 2
+    orders.addEntity(makeOrder('WO1', 'G1', null));
+    orders.addEntity(makeOrder('WO2', 'G1', null));
 
     const groups = new CTPWorkOrderGroups();
     groups.addEntity(makeGroup('G1'));
 
-    engine.rebuildGroups(orders, groups);
+    engine.rebuildGroups(orders, new CTPTasks(), groups);
 
     expect(groups.getEntity('G1')?.headWorkOrderKey).toBeNull();
   });
 
   it('clears stale membership on repeated calls (idempotent)', () => {
-    const engine = new RollupEngine();
+    const engine = makeEngine();
     const orders = new CTPOrders();
     orders.addEntity(makeOrder('WO1', 'G1', null));
 
@@ -145,10 +154,69 @@ describe('RollupEngine.rebuildGroups', () => {
     g1.headWorkOrderKey = 'STALE_HEAD';
     groups.addEntity(g1);
 
-    engine.rebuildGroups(orders, groups);
+    engine.rebuildGroups(orders, new CTPTasks(), groups);
 
     expect(groups.getEntity('G1')?.workOrderKeys).toEqual(['WO1']);
     expect(groups.getEntity('G1')?.headWorkOrderKey).toBe('WO1');
+  });
+});
+
+// ─── rebuildGroups: denormalisation ───────────────────────────────────────
+
+describe('RollupEngine.rebuildGroups — denormalisation', () => {
+  it('copies group hierarchy reference onto each member order', () => {
+    const engine = makeEngine();
+    const orders = new CTPOrders();
+    orders.addEntity(makeOrder('WO1', 'G1', null));
+    orders.addEntity(makeOrder('WO2', 'G1', 'WO1'));
+
+    const groups = new CTPWorkOrderGroups();
+    const g1 = makeGroup('G1');
+    g1.hierarchy.first = 'CEM International';
+    g1.hierarchy.second = 'MI 252208';
+    g1.hierarchy.third = '12118';
+    groups.addEntity(g1);
+
+    engine.rebuildGroups(orders, new CTPTasks(), groups);
+
+    expect(orders.getEntity('WO1')?.hierarchy).toBe(g1.hierarchy);   // reference share
+    expect(orders.getEntity('WO2')?.hierarchy).toBe(g1.hierarchy);
+    expect(orders.getEntity('WO1')?.hierarchy.first).toBe('CEM International');
+  });
+
+  it('copies group hierarchy down to tasks via their linked order, sets task.groupKey', () => {
+    const engine = makeEngine();
+    const orders = new CTPOrders();
+    orders.addEntity(makeOrder('WO1', 'G1', null));
+
+    const tasks = new CTPTasks();
+    tasks.addEntity(makeTask('T1', 'WO1'));
+    tasks.addEntity(makeTask('T2', 'WO1'));
+
+    const groups = new CTPWorkOrderGroups();
+    const g1 = makeGroup('G1');
+    g1.hierarchy.first = 'CEM International';
+    groups.addEntity(g1);
+
+    engine.rebuildGroups(orders, tasks, groups);
+
+    expect(tasks.getEntity('T1')?.groupKey).toBe('G1');
+    expect(tasks.getEntity('T2')?.groupKey).toBe('G1');
+    expect(tasks.getEntity('T1')?.hierarchy.first).toBe('CEM International');
+  });
+
+  it('does not crash for tasks whose linked order has no group', () => {
+    const engine = makeEngine();
+    const orders = new CTPOrders();
+    orders.addEntity(makeOrder('WOX', null));    // ungrouped order
+
+    const tasks = new CTPTasks();
+    tasks.addEntity(makeTask('TX', 'WOX'));
+
+    const groups = new CTPWorkOrderGroups();
+
+    expect(() => engine.rebuildGroups(orders, tasks, groups)).not.toThrow();
+    expect(tasks.getEntity('TX')?.groupKey).toBeNull();
   });
 });
 
@@ -156,7 +224,7 @@ describe('RollupEngine.rebuildGroups', () => {
 
 describe('RollupEngine.refreshRollups', () => {
   it('computes min start / max end across member tasks', () => {
-    const engine = new RollupEngine();
+    const engine = makeEngine();
     const orders = new CTPOrders();
     orders.addEntity(makeOrder('WO1', 'G1', null, 50, 25));
     orders.addEntity(makeOrder('WO2', 'G1', 'WO1', 30, 15));
@@ -169,29 +237,29 @@ describe('RollupEngine.refreshRollups', () => {
     const groups = new CTPWorkOrderGroups();
     groups.addEntity(makeGroup('G1', T0, T0 + 30 * DAY));
 
-    engine.rebuildGroups(orders, groups);
+    engine.rebuildGroups(orders, tasks, groups);
     engine.refreshRollups(groups, orders, tasks, T0);
 
     const g = groups.getEntity('G1');
-    expect(g?.computedStart).toBe(T0);                 // T3 earliest start
-    expect(g?.computedEnd).toBe(T0 + 5 * DAY);         // T2 latest end
+    expect(g?.computedStart).toBe(T0);
+    expect(g?.computedEnd).toBe(T0 + 5 * DAY);
     expect(g?.totalWorkOrders).toBe(2);
     expect(g?.totalDemandQty).toBe(80);
     expect(g?.totalScheduledQty).toBe(40);
   });
 
   it('leaves computed dates null when no tasks are scheduled', () => {
-    const engine = new RollupEngine();
+    const engine = makeEngine();
     const orders = new CTPOrders();
     orders.addEntity(makeOrder('WO1', 'G1', null));
 
     const tasks = new CTPTasks();
-    tasks.addEntity(makeTask('T1', 'WO1'));   // unscheduled
+    tasks.addEntity(makeTask('T1', 'WO1'));
 
     const groups = new CTPWorkOrderGroups();
     groups.addEntity(makeGroup('G1', T0, T0 + 10 * DAY));
 
-    engine.rebuildGroups(orders, groups);
+    engine.rebuildGroups(orders, tasks, groups);
     engine.refreshRollups(groups, orders, tasks, T0);
 
     const g = groups.getEntity('G1');
@@ -200,11 +268,11 @@ describe('RollupEngine.refreshRollups', () => {
   });
 });
 
-// ─── refreshRollups: deriveStatus ─────────────────────────────────────────
+// ─── deriveStatus ─────────────────────────────────────────────────────────
 
 describe('RollupEngine.deriveStatus (via refreshRollups)', () => {
   it('LATE when computedEnd > sourceEnd', () => {
-    const engine = new RollupEngine();
+    const engine = makeEngine();
     const orders = new CTPOrders();
     orders.addEntity(makeOrder('WO1', 'G1', null));
 
@@ -214,32 +282,31 @@ describe('RollupEngine.deriveStatus (via refreshRollups)', () => {
     const groups = new CTPWorkOrderGroups();
     groups.addEntity(makeGroup('G1', T0, T0 + 10 * DAY));
 
-    engine.rebuildGroups(orders, groups);
+    engine.rebuildGroups(orders, tasks, groups);
     engine.refreshRollups(groups, orders, tasks, T0);
 
     expect(groups.getEntity('G1')?.status).toBe(WorkOrderGroupStatus.LATE);
   });
 
   it('AT_RISK when computedEnd within bufferDays of sourceEnd', () => {
-    const engine = new RollupEngine();
+    const engine = makeEngine();   // default bufferDays = 3
     const orders = new CTPOrders();
     orders.addEntity(makeOrder('WO1', 'G1', null));
 
     const tasks = new CTPTasks();
-    // sourceEnd = T0+10d; default buffer = 3 days; AT_RISK if computedEnd > T0+7d
     tasks.addEntity(makeTask('T1', 'WO1', T0, T0 + 8 * DAY));
 
     const groups = new CTPWorkOrderGroups();
     groups.addEntity(makeGroup('G1', T0, T0 + 10 * DAY));
 
-    engine.rebuildGroups(orders, groups);
+    engine.rebuildGroups(orders, tasks, groups);
     engine.refreshRollups(groups, orders, tasks, T0);
 
     expect(groups.getEntity('G1')?.status).toBe(WorkOrderGroupStatus.AT_RISK);
   });
 
   it('ON_TRACK when computedEnd safely within sourceEnd - bufferDays', () => {
-    const engine = new RollupEngine();
+    const engine = makeEngine();
     const orders = new CTPOrders();
     orders.addEntity(makeOrder('WO1', 'G1', null));
 
@@ -249,48 +316,108 @@ describe('RollupEngine.deriveStatus (via refreshRollups)', () => {
     const groups = new CTPWorkOrderGroups();
     groups.addEntity(makeGroup('G1', T0, T0 + 10 * DAY));
 
-    engine.rebuildGroups(orders, groups);
+    engine.rebuildGroups(orders, tasks, groups);
     engine.refreshRollups(groups, orders, tasks, T0);
 
     expect(groups.getEntity('G1')?.status).toBe(WorkOrderGroupStatus.ON_TRACK);
   });
 
   it('BLOCKED when any member task has an infeasibility report', () => {
-    const engine = new RollupEngine();
+    const engine = makeEngine();
     const orders = new CTPOrders();
     orders.addEntity(makeOrder('WO1', 'G1', null));
 
     const tasks = new CTPTasks();
     const t = makeTask('T1', 'WO1', T0, T0 + 2 * DAY);
-    // Stub — engine only checks for non-null, doesn't read contents
     t.infeasibilityReport = { slots: [] } as unknown as InfeasibilityReport;
     tasks.addEntity(t);
 
     const groups = new CTPWorkOrderGroups();
     groups.addEntity(makeGroup('G1', T0, T0 + 10 * DAY));
 
-    engine.rebuildGroups(orders, groups);
+    engine.rebuildGroups(orders, tasks, groups);
     engine.refreshRollups(groups, orders, tasks, T0);
 
     expect(groups.getEntity('G1')?.status).toBe(WorkOrderGroupStatus.BLOCKED);
   });
 
-  it('respects custom bufferDays', () => {
-    const engine = new RollupEngine();
+  it('respects custom bufferDays via injected config', () => {
+    const engine = makeEngine({ bufferDays: 7 });
     const orders = new CTPOrders();
     orders.addEntity(makeOrder('WO1', 'G1', null));
 
     const tasks = new CTPTasks();
-    // sourceEnd = T0+10d; buffer = 7 days; AT_RISK if computedEnd > T0+3d
     tasks.addEntity(makeTask('T1', 'WO1', T0, T0 + 5 * DAY));
 
     const groups = new CTPWorkOrderGroups();
     groups.addEntity(makeGroup('G1', T0, T0 + 10 * DAY));
 
-    engine.rebuildGroups(orders, groups);
-    engine.refreshRollups(groups, orders, tasks, T0, 7);   // 7-day buffer
+    engine.rebuildGroups(orders, tasks, groups);
+    engine.refreshRollups(groups, orders, tasks, T0);
 
     expect(groups.getEntity('G1')?.status).toBe(WorkOrderGroupStatus.AT_RISK);
+  });
+});
+
+// ─── cancellation predicate ───────────────────────────────────────────────
+
+describe('RollupEngine — cancellation predicate', () => {
+  it('does not count any orders cancelled when values is empty (Stafford default)', () => {
+    const engine = makeEngine();   // empty predicate values
+    const orders = new CTPOrders();
+    const o1 = makeOrder('WO1', 'G1', null);
+    o1.rawFields = { wostatus: 'CANCELLED' };
+    orders.addEntity(o1);
+
+    const groups = new CTPWorkOrderGroups();
+    groups.addEntity(makeGroup('G1', T0, T0 + 10 * DAY));
+
+    engine.rebuildGroups(orders, new CTPTasks(), groups);
+    engine.refreshRollups(groups, orders, new CTPTasks(), T0);
+
+    expect(groups.getEntity('G1')?.cancelledWorkOrders).toBe(0);
+  });
+
+  it('counts orders whose rawFields field matches a predicate value', () => {
+    const engine = makeEngine({
+      cancellationPredicate: { field: 'wostatus', values: ['CANCELLED'] },
+    });
+    const orders = new CTPOrders();
+    const o1 = makeOrder('WO1', 'G1', null);
+    o1.rawFields = { wostatus: 'CANCELLED' };
+    const o2 = makeOrder('WO2', 'G1', 'WO1');
+    o2.rawFields = { wostatus: 'IN_PROCESS' };
+    orders.addEntity(o1);
+    orders.addEntity(o2);
+
+    const groups = new CTPWorkOrderGroups();
+    groups.addEntity(makeGroup('G1', T0, T0 + 10 * DAY));
+
+    engine.rebuildGroups(orders, new CTPTasks(), groups);
+    engine.refreshRollups(groups, orders, new CTPTasks(), T0);
+
+    expect(groups.getEntity('G1')?.cancelledWorkOrders).toBe(1);
+  });
+
+  it('returns CANCELLED status when every member matches the predicate', () => {
+    const engine = makeEngine({
+      cancellationPredicate: { field: 'wostatus', values: ['CANCELLED', 'VOID'] },
+    });
+    const orders = new CTPOrders();
+    const o1 = makeOrder('WO1', 'G1', null);
+    o1.rawFields = { wostatus: 'CANCELLED' };
+    const o2 = makeOrder('WO2', 'G1', 'WO1');
+    o2.rawFields = { wostatus: 'VOID' };
+    orders.addEntity(o1);
+    orders.addEntity(o2);
+
+    const groups = new CTPWorkOrderGroups();
+    groups.addEntity(makeGroup('G1', T0, T0 + 10 * DAY));
+
+    engine.rebuildGroups(orders, new CTPTasks(), groups);
+    engine.refreshRollups(groups, orders, new CTPTasks(), T0);
+
+    expect(groups.getEntity('G1')?.status).toBe(WorkOrderGroupStatus.CANCELLED);
   });
 });
 
@@ -298,23 +425,23 @@ describe('RollupEngine.deriveStatus (via refreshRollups)', () => {
 
 describe('CTPWorkOrderGroups.lateGroups', () => {
   it('returns the groups whose computedEnd exceeds sourceEnd', () => {
-    const engine = new RollupEngine();
+    const engine = makeEngine();
     const orders = new CTPOrders();
     orders.addEntity(makeOrder('WO1', 'G1', null));
     orders.addEntity(makeOrder('WO2', 'G2', null));
     orders.addEntity(makeOrder('WO3', 'G3', null));
 
     const tasks = new CTPTasks();
-    tasks.addEntity(makeTask('T1', 'WO1', T0, T0 + 5 * DAY));      // G1 on track
-    tasks.addEntity(makeTask('T2', 'WO2', T0, T0 + 11 * DAY));     // G2 late
-    tasks.addEntity(makeTask('T3', 'WO3', T0, T0 + 12 * DAY));     // G3 late
+    tasks.addEntity(makeTask('T1', 'WO1', T0, T0 + 5 * DAY));
+    tasks.addEntity(makeTask('T2', 'WO2', T0, T0 + 11 * DAY));
+    tasks.addEntity(makeTask('T3', 'WO3', T0, T0 + 12 * DAY));
 
     const groups = new CTPWorkOrderGroups();
     groups.addEntity(makeGroup('G1', T0, T0 + 10 * DAY));
     groups.addEntity(makeGroup('G2', T0, T0 + 10 * DAY));
     groups.addEntity(makeGroup('G3', T0, T0 + 10 * DAY));
 
-    engine.rebuildGroups(orders, groups);
+    engine.rebuildGroups(orders, tasks, groups);
     engine.refreshRollups(groups, orders, tasks, T0);
 
     const lateKeys = groups.lateGroups().map(g => g.key).sort();

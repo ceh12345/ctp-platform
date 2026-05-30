@@ -71,11 +71,7 @@
       { "name": "ProjectManagerName", "source": { "kind": "field", "field": "ProjectManagerName", "transform": "trim" } },
       { "name": "JobRiskCode",        "source": { "kind": "field", "field": "JobRiskCode" } },
       { "name": "DbrEndDate",         "source": { "kind": "field", "field": "DbrEndDate", "transform": "dateToIso" } }
-    ],
-    "cancellationPredicate": {
-      "field": "Wostatus",
-      "values": []
-    }
+    ]
   },
 
   "resources": {

@@ -1,4 +1,4 @@
-import { ITypedAttribute } from '@ctp/engine';
+import { ITypedAttribute, IRollupEngineConfig } from '@ctp/engine';
 import { TenantStrategyOverride, TenantCustomStrategy } from './strategy.interface';
 import { EntityMapping } from './hierarchy-mapping.interface';
 
@@ -131,6 +131,19 @@ export interface IOrderData {
   lateDueDate?: string;
   priority?: number;
   latenessPenaltyPerDay?: number;
+  [key: string]: unknown;   // mapping engine may emit extra scalar fields (wostatus, customerName, etc.); hydrator stashes them on CTPOrder.rawFields
+}
+
+// WorkOrderGroup data — mapping engine output, consumed by hydrator.
+export interface IWorkOrderGroupData {
+  key: string;
+  name?: string;
+  sourceStart?: string;
+  sourceEnd?: string;
+  promiseDate?: string;
+  hierarchies?: { slot: 1 | 2 | 3 | 4 | 5; name: string; value: string | null }[];
+  attributes?: { name: string; value: string }[];
+  [key: string]: unknown;
 }
 
 // Material inventory data
@@ -345,6 +358,8 @@ export interface IConfigStore {
   // Integration
   getAdapterConfig?(): IAdapterConfig | null;
   getMappingProfile?(): IMappingProfile | null;
+  /** Runtime config for the RollupEngine. Sibling to mapping.json under integration/. */
+  getWorkOrderGroupsConfig?(): IRollupEngineConfig | null;
 
   // Reload from disk
   reload(): void;

@@ -11,7 +11,7 @@ export type MappingErrorSeverity = 'error' | 'warning';
 
 export interface MappingError {
   code: string;                            // e.g. 'UNPARSEABLE_DATE'
-  entity: 'orders' | 'resources' | 'tasks';
+  entity: 'orders' | 'resources' | 'tasks' | 'workOrderGroups';
   targetField: string;                     // e.g. 'windowStart'
   sourceField?: string;                    // e.g. 'TaskStartDate'
   rawValue?: unknown;

@@ -11,6 +11,7 @@ import {
   emptyValidationSummary,
   summarizeValidation,
 } from '../integration/sync-result';
+import { IWorkOrderGroupData } from '../../config/interfaces/config-store.interface';
 
 @Injectable()
 export class StateService {
@@ -34,9 +35,13 @@ export class StateService {
   // Applies a pre-fetched and mapped payload onto the landscape.
   // When payload has data (REST adapter), hydrates from the payload arrays.
   // When payload is empty (file adapter), falls back to configService reads.
-  applyTransformed(payload: IRawDataPayload, mappingErrors: MappingError[] = []): SyncResult {
+  applyTransformed(
+    payload: IRawDataPayload,
+    workOrderGroups: IWorkOrderGroupData[] = [],
+    mappingErrors: MappingError[] = [],
+  ): SyncResult {
     const tenantId = this.configService.getTenantId();
-    const landscape = this.hydrator.buildLandscape(payload);
+    const landscape = this.hydrator.buildLandscape(payload, workOrderGroups);
     validateReferences(landscape);
     this.landscapes.set(tenantId, landscape);
     return this.buildSyncResult(landscape, mappingErrors);
@@ -50,8 +55,8 @@ export class StateService {
     if (!adapterConfig || adapterConfig.adapterType !== 'rest') {
       return this.syncFromConfig();
     }
-    const { payload, errors: mappingErrors } = await this.syncService.sync();
-    return this.applyTransformed(payload, mappingErrors);
+    const { payload, workOrderGroups, errors: mappingErrors } = await this.syncService.sync();
+    return this.applyTransformed(payload, workOrderGroups, mappingErrors);
   }
 
   async reloadAndSync(): Promise<SyncResult> {

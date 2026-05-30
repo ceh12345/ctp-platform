@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DateTime } from 'luxon';
-import { IMappingProfile } from '../../config/interfaces/config-store.interface';
+import { IMappingProfile, IWorkOrderGroupData } from '../../config/interfaces/config-store.interface';
 import {
   AttributeMapping,
   EntityMapping,
@@ -17,6 +17,7 @@ const HAS_TZ_DESIGNATOR = /(Z|[+\-]\d{2}:?\d{2})$/;
 
 export interface MappingResult {
   payload: IRawDataPayload;
+  workOrderGroups: IWorkOrderGroupData[];
   errors: MappingError[];
 }
 
@@ -25,7 +26,7 @@ export interface MappingResult {
 // requests. The ctx object is created fresh per `transform()` invocation.
 interface MappingCtx {
   errors: MappingError[];
-  entity: 'orders' | 'resources' | 'tasks';
+  entity: 'orders' | 'resources' | 'tasks' | 'workOrderGroups';
   recordIndex: number;  // updated as the record loop iterates
   targetField: string;  // updated as the rule loop iterates
 }
@@ -34,14 +35,21 @@ interface MappingCtx {
 export class MappingEngine {
   transform(raw: IRawDataPayload, profile: IMappingProfile | null): MappingResult {
     const errors: MappingError[] = [];
-    if (!profile) return { payload: raw, errors };
+    if (!profile) return { payload: raw, workOrderGroups: [], errors };
     const payload: IRawDataPayload = {
       ...raw,
       orders:    this.mapEntities(raw.orders,    profile['orders'],    'orders',    errors),
       resources: this.mapEntities(raw.resources, profile['resources'], 'resources', errors),
       tasks:     this.mapTasks(raw.tasks,        profile['tasks'],     errors),
     };
-    return { payload, errors };
+    // workOrderGroups are derived from the same raw records that feed orders
+    // (one group per unique Job). Reads RAW orders, not the mapped output —
+    // hierarchy/attribute resolution needs source-shaped fields like
+    // ProjectName / ItemDescription1 that the order mapping has collapsed away.
+    const workOrderGroups = profile.workOrderGroups
+      ? this.mapWorkOrderGroups(raw.orders, profile.workOrderGroups, errors)
+      : [];
+    return { payload, workOrderGroups, errors };
   }
 
   // ── Generic entity mapping ────────────────────────────────────────────────
@@ -277,6 +285,59 @@ export class MappingEngine {
     }
 
     return prevLinkMap;
+  }
+
+  // ── WorkOrderGroup mapping (SPRINT-workordergroup step 7) ────────────────
+  //
+  // Derives one CTPWorkOrderGroup per unique key from the raw orders payload
+  // (the WO endpoint records). Dedup is first-write-wins — subsequent records
+  // with the same key are skipped, so scalar fields come from whichever WO
+  // record appears first in the payload. Hierarchies/attributes resolve from
+  // that same first record.
+  //
+  // Reads RAW orders rather than the mapped output because hierarchy /
+  // attribute resolution often references source-shape fields (ProjectName,
+  // ItemDescription1) that the per-order mapping has collapsed away.
+
+  private mapWorkOrderGroups(
+    rawOrders: unknown[],
+    spec: EntityMapping,
+    errors: MappingError[],
+  ): IWorkOrderGroupData[] {
+    const keyRule = spec.mappings?.key;
+    if (!keyRule) return [];
+
+    const seen = new Set<string>();
+    const out: IWorkOrderGroupData[] = [];
+
+    (rawOrders as Record<string, any>[]).forEach((record, recordIndex) => {
+      const ctx: MappingCtx = {
+        errors,
+        entity: 'workOrderGroups',
+        recordIndex,
+        targetField: 'key',
+      };
+      const keyValRaw = this.applyRule(record, keyRule, ctx);
+      if (keyValRaw === undefined || keyValRaw === null || keyValRaw === '') return;
+      const key = String(keyValRaw);
+      if (seen.has(key)) return;
+      seen.add(key);
+
+      const scalars = spec.mappings
+        ? this.applyMappings(record, spec.mappings, { ...ctx, targetField: '' })
+        : {};
+      const hierarchies = this.resolveHierarchies(spec, record);
+      const attributes  = this.resolveAttributes(spec, record);
+
+      out.push({
+        ...scalars,
+        key,
+        hierarchies,
+        attributes,
+      } as IWorkOrderGroupData);
+    });
+
+    return out;
   }
 
   // ── Hierarchy + attribute resolution (SPRINT-workordergroup step 5) ──────

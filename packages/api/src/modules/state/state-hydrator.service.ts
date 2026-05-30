@@ -22,6 +22,8 @@ import {
   CTPTaskMaterialInput,
   CTPTaskMaterialInputList,
   CTPOrder,
+  CTPWorkOrderGroup,
+  NameValue,
   IValidationError,
   makeValidationError,
   CTPTaskStateConstants,
@@ -35,8 +37,10 @@ import {
   ICalendarData,
   IStateChangeData,
   IOrderData,
+  IWorkOrderGroupData,
 } from '../../config/interfaces/config-store.interface';
 import { IRawDataPayload } from '../integration/adapter.interface';
+import { WorkOrderGroupService } from './workordergroup.service';
 
 // Small target interface so the helper works with any entity that carries
 // validationErrors (CTPTask, CTPOrder, CTPResource all qualify).
@@ -47,8 +51,17 @@ interface ValidationTarget {
 @Injectable()
 export class StateHydratorService {
   private readonly logger = new Logger(StateHydratorService.name);
+  private readonly workOrderGroupService: WorkOrderGroupService;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    workOrderGroupService?: WorkOrderGroupService,
+  ) {
+    // Optional injection — Nest supplies it in production; tests that
+    // don't touch group rollups can omit. Falls back to a service
+    // built from the same configService.
+    this.workOrderGroupService = workOrderGroupService ?? new WorkOrderGroupService(configService);
+  }
 
   private isRestTenant(): boolean {
     const cfg = this.configService.getAdapterConfig?.();
@@ -110,7 +123,10 @@ export class StateHydratorService {
     return null;
   }
 
-  buildLandscape(data?: IRawDataPayload): SchedulingLandscape {
+  buildLandscape(
+    data?: IRawDataPayload,
+    workOrderGroupsData?: IWorkOrderGroupData[],
+  ): SchedulingLandscape {
     const horizonConfig = this.configService.getHorizon();
     const settingsConfig = this.configService.getSettings();
     const resourceData = this.resolveEntityData<IResourceData>(
@@ -165,7 +181,59 @@ export class StateHydratorService {
       }
     }
 
+    // WorkOrderGroups — REST-tenant mapping output is in workOrderGroupsData.
+    // File-tenants (no mapping pipeline) skip this; groups stay empty.
+    if (workOrderGroupsData && workOrderGroupsData.length > 0) {
+      this.hydrateWorkOrderGroups(landscape, workOrderGroupsData);
+    }
+
+    // Rollup-engine sync hook — rebuilds group membership from order.groupKey
+    // and denormalises hierarchy/attributes down to orders and tasks. Safe
+    // to call even when groups is empty (no-op).
+    this.workOrderGroupService.rebuildGroups(landscape);
+
     return landscape;
+  }
+
+  private hydrateWorkOrderGroups(
+    landscape: SchedulingLandscape,
+    data: IWorkOrderGroupData[],
+  ): void {
+    for (const item of data) {
+      const group = new CTPWorkOrderGroup('WorkOrderGroup', item.name ?? item.key, item.key);
+
+      if (item.sourceStart) {
+        const dt = this.parseIsoDateOrRecord(item.sourceStart, null, 'sourceStart');
+        if (dt) group.sourceStart = CTPDateTime.fromDateTime(dt);
+      }
+      if (item.sourceEnd) {
+        const dt = this.parseIsoDateOrRecord(item.sourceEnd, null, 'sourceEnd');
+        if (dt) group.sourceEnd = CTPDateTime.fromDateTime(dt);
+      }
+      if (item.promiseDate) {
+        const dt = this.parseIsoDateOrRecord(item.promiseDate, null, 'promiseDate');
+        if (dt) group.promiseDate = CTPDateTime.fromDateTime(dt);
+      }
+
+      // Hierarchy slots — set value (and update slot name to match the
+      // mapping's dimension label). slot is 1-indexed; CTPHierarchies
+      // uses 0-indexed list access.
+      for (const h of item.hierarchies ?? []) {
+        const node = group.hierarchy.index(h.slot - 1);
+        if (node) {
+          node.name = h.name;
+          node.value = h.value ?? '';
+        }
+      }
+
+      // Attributes — empty-string values are still added (resolver already
+      // dropped null/empty unless includeIfEmpty was set).
+      for (const a of item.attributes ?? []) {
+        group.attributes.add(new NameValue(a.name, a.value));
+      }
+
+      landscape.groups.addEntity(group);
+    }
   }
 
   private hydrateCadences(landscape: SchedulingLandscape): void {
@@ -226,6 +294,15 @@ export class StateHydratorService {
       if (lateDt) order.lateDueDate = CTPDateTime.fromDateTime(lateDt);
       order.priority = item.priority ?? 0;
       if (item.latenessPenaltyPerDay !== undefined) order.latenessPenaltyPerDay = item.latenessPenaltyPerDay;
+
+      // groupKey / parentOrderKey — populated from mapping output when present.
+      if (typeof (item as any).groupKey === 'string') order.groupKey = (item as any).groupKey;
+      if (typeof (item as any).parentOrderKey === 'string') order.parentOrderKey = (item as any).parentOrderKey;
+
+      // Stash mapping-output extras (wostatus, customerName, jobCode, etc.)
+      // on rawFields for downstream engines (rollup cancellationPredicate).
+      order.rawFields = { ...(item as Record<string, unknown>) };
+
       landscape.orders.addEntity(order);
     }
   }
