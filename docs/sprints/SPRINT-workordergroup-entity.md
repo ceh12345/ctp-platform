@@ -238,6 +238,34 @@ Customer value `"CEM INTERNATIONAL P/L (NZ A/C)"` is one of five entries in the 
 
 ---
 
+## Hierarchy → attribute mirror
+
+After hierarchy values are resolved (sync time, in `RollupEngine.rebuildGroups`), the engine **mirrors each populated hierarchy slot's `name` + `value` into the entity's attributes list**. This means a consumer iterating only `attributes` still sees the group's dimensions — uniformity at the read path. UI widgets that filter on attribute chips, KPI computations that walk attributes, exports that flatten attributes — none of them need to know that some entries originated from hierarchy.
+
+### Three rules
+
+1. **Engine writes the mirror, mapping config does not.** The mapping config's `hierarchies` block declares the slots; the `attributes` block authors explicit entries. The engine combines them at sync time. Authors never write hierarchy-mirroring attributes in mapping.
+
+2. **Regenerated each pass.** `rebuildGroups` strips any prior mirror entries (by name-match against current hierarchy slot names) before re-writing. Config edits to slot names or values propagate without leaving duplicates. Stale entries from a previous slot-name (e.g. config rename) persist until restart — acceptable since renames are rare and an unsynced rename is already a configuration smell.
+
+3. **Indistinguishable from authored attributes at the read path.** No special marker, no separate field. A consumer can't tell whether `attributes[3]` came from a mapping author or from the mirror — and shouldn't need to.
+
+### Config validator
+
+`MappingEngine.transform()` rejects any config where an `AttributeMapping.name` collides with a `HierarchySlotMapping.name` on the same entity. Fails at config-load (start of transform), not at rebuild time. Without this guard, an authored attribute would be silently stripped on each rebuild and surface as "my attribute keeps disappearing."
+
+### Denormalisation interaction
+
+Group hierarchy + attributes are **reference-shared** down to member orders and member tasks (single instance, three pointers). The mirror is written **once per group** on the shared list; orders and tasks see it via the share. Engine unit tests pin this invariant with identity-equality assertions (`order.attributes === group.attributes`) so any future refactor into per-entity copies fails loudly before subtle aliasing bugs reach distant code.
+
+If a future tenant ever needs per-entity hierarchy divergence (an order or task carrying a value distinct from its group's), the per-entity-copy approach gets evaluated then. The decision today: avoid speculative complexity, lock the invariant with a test, revisit on real need.
+
+### API payload exposure
+
+Both `hierarchies` (typed slot array) and `attributes` (flat name/value list) appear on `WorkOrderGroupResultDto`. Hierarchy values appearing in **both** is expected behaviour, not a duplication bug. The mirror means clients can choose either shape: structured (filter on slot 1 = Customer) or flat (treat all attributes uniformly). A comment in the serialiser (`extractResults`) flags this so future readers don't "fix" the duplication.
+
+---
+
 ## Rollup engine
 
 A new component, `RollupEngine`, that lives in the same module as the existing engines (`engines.ts`) but is **not part of the solve loop**.

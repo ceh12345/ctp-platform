@@ -3495,6 +3495,10 @@ export class CTPService {
     // workOrderGroups mapping configured. statusLabel uses the
     // WorkOrderGroupStatus enum as single source of truth (reverse lookup
     // returns the enum-key name — no hand-maintained second map).
+    // Note: each hierarchy slot's name+value also appears in the attributes
+    // array by design — the rollup engine mirrors hierarchy values into
+    // attributes so consumers iterating only `attributes` still see the
+    // group's dimension values. Not a duplication bug; uniformity is the point.
     const nowSeconds = Math.floor(Date.now() / 1000);
     const workOrderGroups = landscape.groups.toArray().map((group) => {
       const attributes: { name: string; value: string }[] = [];

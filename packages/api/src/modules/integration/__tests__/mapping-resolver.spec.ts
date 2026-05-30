@@ -183,6 +183,66 @@ describe('MappingEngine.resolveHierarchies', () => {
   });
 });
 
+describe('MappingEngine — slot/attribute name collision validation', () => {
+  // The rollup engine mirrors hierarchy values into attributes
+  // automatically. A mapping that authors an attribute with the same
+  // name as a hierarchy slot would have that attribute silently
+  // overwritten on each rebuild — so MappingEngine.transform() rejects
+  // the config at the start of the workOrderGroups path.
+
+  it('throws when an AttributeMapping name collides with a HierarchySlotMapping name', () => {
+    const engine = new MappingEngine();
+    const profile = {
+      version: '1.0',
+      tenantId: 'test',
+      source: 'test',
+      workOrderGroups: {
+        sourceEndpoint: 'wo',
+        mappings: { key: { from: 'Job' } },
+        hierarchies: [
+          { slot: 1 as const, name: 'Customer', source: { kind: 'field' as const, field: 'CustomerName' } },
+        ],
+        attributes: [
+          // Authored attribute collides with the slot name above
+          { name: 'Customer', source: { kind: 'field' as const, field: 'CustomerCode' } },
+        ],
+      },
+    };
+    const rawPayload = {
+      orders: [{ Job: '1', CustomerName: 'X', CustomerCode: 'XCODE' }],
+      resources: [], tasks: [], calendars: [], stateChanges: [],
+      products: [], materials: [], processes: [], cadences: [], uomConversions: null,
+    };
+    expect(() => engine.transform(rawPayload as any, profile as any))
+      .toThrowError(/collides with hierarchy slot name/);
+  });
+
+  it('accepts a profile where attribute names do not collide', () => {
+    const engine = new MappingEngine();
+    const profile = {
+      version: '1.0',
+      tenantId: 'test',
+      source: 'test',
+      workOrderGroups: {
+        sourceEndpoint: 'wo',
+        mappings: { key: { from: 'Job' } },
+        hierarchies: [
+          { slot: 1 as const, name: 'Customer', source: { kind: 'field' as const, field: 'CustomerName' } },
+        ],
+        attributes: [
+          { name: 'Strategy', source: { kind: 'field' as const, field: 'Strategy' } },
+        ],
+      },
+    };
+    const rawPayload = {
+      orders: [{ Job: '1', CustomerName: 'X', Strategy: 'JIT' }],
+      resources: [], tasks: [], calendars: [], stateChanges: [],
+      products: [], materials: [], processes: [], cadences: [], uomConversions: null,
+    };
+    expect(() => engine.transform(rawPayload as any, profile as any)).not.toThrow();
+  });
+});
+
 describe('MappingEngine.resolveAttributes', () => {
   const engine = new MappingEngine();
 

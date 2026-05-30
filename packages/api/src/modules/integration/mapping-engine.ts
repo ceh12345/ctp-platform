@@ -304,6 +304,8 @@ export class MappingEngine {
     spec: EntityMapping,
     errors: MappingError[],
   ): IWorkOrderGroupData[] {
+    this.validateEntityMapping(spec, 'workOrderGroups');
+
     const keyRule = spec.mappings?.key;
     if (!keyRule) return [];
 
@@ -338,6 +340,29 @@ export class MappingEngine {
     });
 
     return out;
+  }
+
+  /**
+   * Reject configs where an AttributeMapping name collides with a
+   * HierarchySlotMapping name on the same entity. The rollup engine
+   * mirrors hierarchy values into attributes automatically; a slot-
+   * named authored attribute would be silently overwritten on each
+   * rebuild, surfacing as "my attribute keeps disappearing." Fail at
+   * config-load (start of transform) so the failure is obvious.
+   */
+  private validateEntityMapping(entity: EntityMapping, entityName: string): void {
+    if (!entity.hierarchies || !entity.attributes) return;
+    const slotNames = new Set(entity.hierarchies.map((h) => h.name));
+    for (const a of entity.attributes) {
+      if (slotNames.has(a.name)) {
+        throw new Error(
+          `Mapping config error on entity '${entityName}': attribute '${a.name}' ` +
+          `collides with hierarchy slot name '${a.name}'. Hierarchy slot names are ` +
+          `reserved — the rollup engine mirrors hierarchy values into attributes ` +
+          `automatically. Rename the attribute or the slot.`
+        );
+      }
+    }
   }
 
   // ── Hierarchy + attribute resolution (SPRINT-workordergroup step 5) ──────

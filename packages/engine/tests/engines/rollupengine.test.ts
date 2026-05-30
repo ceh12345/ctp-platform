@@ -10,6 +10,7 @@ import {
 import { CTPLinkId } from '../../Models/Core/linkid';
 import { CTPInterval } from '../../Models/Core/window';
 import { InfeasibilityReport } from '../../Models/Entities/infeasibilityreport';
+import { NameValue } from '../../Models/Core/namevalue';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -219,6 +220,127 @@ describe('RollupEngine.rebuildGroups — denormalisation', () => {
     expect(tasks.getEntity('TX')?.groupKey).toBeNull();
   });
 });
+
+// ─── Hierarchy → attribute mirror + reference-share invariant ─────────────
+
+describe('RollupEngine — hierarchy/attribute mirror', () => {
+  function setUp() {
+    const engine = makeEngine();
+    const orders = new CTPOrders();
+    orders.addEntity(makeOrder('WO1', 'G1', null));
+    orders.addEntity(makeOrder('WO2', 'G1', 'WO1'));
+
+    const tasks = new CTPTasks();
+    tasks.addEntity(makeTask('T1', 'WO1'));
+    tasks.addEntity(makeTask('T2', 'WO2'));
+
+    const groups = new CTPWorkOrderGroups();
+    const g1 = makeGroup('G1');
+    g1.hierarchy.first  = 'CEM International';
+    g1.hierarchy.second = 'MI 252208';
+    g1.hierarchy.third  = '12118';
+    // Hierarchy slot names default to "Hierarchy N" — rename to mimic
+    // what the mapping engine does for real (e.g. "Customer", "Project").
+    const n1 = g1.hierarchy.index(0); if (n1) n1.name = 'Customer';
+    const n2 = g1.hierarchy.index(1); if (n2) n2.name = 'Project';
+    const n3 = g1.hierarchy.index(2); if (n3) n3.name = 'SalesOrder';
+    // Plus one pre-existing authored attribute.
+    g1.attributes.add(new NameValue('Strategy', 'JIT'));
+    groups.addEntity(g1);
+
+    return { engine, orders, tasks, groups, g1 };
+  }
+
+  it('appends hierarchy slot names + values to group.attributes after rebuild', () => {
+    const { engine, orders, tasks, groups, g1 } = setUp();
+    engine.rebuildGroups(orders, tasks, groups);
+
+    const names: string[] = [];
+    g1.attributes.forEach((nv) => names.push(nv.name));
+    expect(names).toContain('Strategy');     // authored, preserved
+    expect(names).toContain('Customer');     // mirrored
+    expect(names).toContain('Project');
+    expect(names).toContain('SalesOrder');
+
+    // Mirror values match hierarchy values
+    let customerVal: string | null = null;
+    g1.attributes.forEach((nv) => { if (nv.name === 'Customer') customerVal = nv.value; });
+    expect(customerVal).toBe('CEM International');
+  });
+
+  it('regenerates mirror on a second rebuild — no duplicate entries', () => {
+    const { engine, orders, tasks, groups, g1 } = setUp();
+    engine.rebuildGroups(orders, tasks, groups);
+    engine.rebuildGroups(orders, tasks, groups);
+
+    const customerCount = countByName(g1.attributes, 'Customer');
+    expect(customerCount).toBe(1);
+    // And authored survives both passes
+    expect(countByName(g1.attributes, 'Strategy')).toBe(1);
+  });
+
+  it('mirror is visible on member orders + tasks via reference share', () => {
+    const { engine, orders, tasks, groups } = setUp();
+    engine.rebuildGroups(orders, tasks, groups);
+
+    for (const orderKey of ['WO1', 'WO2']) {
+      const o = orders.getEntity(orderKey)!;
+      const names: string[] = [];
+      o.attributes.forEach((nv) => names.push(nv.name));
+      expect(names).toContain('Customer');
+      expect(names).toContain('Strategy');
+    }
+    for (const taskKey of ['T1', 'T2']) {
+      const t = tasks.getEntity(taskKey)!;
+      const names: string[] = [];
+      t.attributes.forEach((nv) => names.push(nv.name));
+      expect(names).toContain('Customer');
+    }
+  });
+
+  // ─── Reference-share invariant ─────────────────────────────────────────
+  //
+  // The mirror only works because group + member orders + member tasks
+  // share the same CTPAttributes (and CTPHierarchies) instance. If anyone
+  // refactors that into a copy, these tests fail loudly — before subtle
+  // aliasing bugs surface in distant code.
+
+  it('reference-share invariant: order.attributes === group.attributes', () => {
+    const { engine, orders, tasks, groups, g1 } = setUp();
+    engine.rebuildGroups(orders, tasks, groups);
+    expect(orders.getEntity('WO1')!.attributes).toBe(g1.attributes);
+    expect(orders.getEntity('WO2')!.attributes).toBe(g1.attributes);
+  });
+
+  it('reference-share invariant: task.attributes === order.attributes === group.attributes', () => {
+    const { engine, orders, tasks, groups, g1 } = setUp();
+    engine.rebuildGroups(orders, tasks, groups);
+    expect(tasks.getEntity('T1')!.attributes).toBe(g1.attributes);
+    expect(tasks.getEntity('T2')!.attributes).toBe(g1.attributes);
+    expect(tasks.getEntity('T1')!.attributes).toBe(orders.getEntity('WO1')!.attributes);
+  });
+
+  it('reference-share invariant: order.hierarchy === group.hierarchy', () => {
+    const { engine, orders, tasks, groups, g1 } = setUp();
+    engine.rebuildGroups(orders, tasks, groups);
+    expect(orders.getEntity('WO1')!.hierarchy).toBe(g1.hierarchy);
+    expect(orders.getEntity('WO2')!.hierarchy).toBe(g1.hierarchy);
+  });
+
+  it('reference-share invariant: task.hierarchy === order.hierarchy === group.hierarchy', () => {
+    const { engine, orders, tasks, groups, g1 } = setUp();
+    engine.rebuildGroups(orders, tasks, groups);
+    expect(tasks.getEntity('T1')!.hierarchy).toBe(g1.hierarchy);
+    expect(tasks.getEntity('T2')!.hierarchy).toBe(g1.hierarchy);
+    expect(tasks.getEntity('T1')!.hierarchy).toBe(orders.getEntity('WO1')!.hierarchy);
+  });
+});
+
+function countByName(list: { forEach: (cb: (nv: { name: string }) => void) => void }, name: string): number {
+  let n = 0;
+  list.forEach((nv) => { if (nv.name === name) n++; });
+  return n;
+}
 
 // ─── refreshRollups: timing + counts ──────────────────────────────────────
 

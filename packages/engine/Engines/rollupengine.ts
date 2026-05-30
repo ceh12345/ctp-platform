@@ -5,6 +5,7 @@ import {
   CTPWorkOrderGroups,
   WorkOrderGroupStatus,
 } from "../Models/Entities/workordergroup";
+import { NameValue } from "../Models/Core/namevalue";
 
 const SECONDS_PER_DAY = 86400;
 
@@ -83,7 +84,14 @@ export class RollupEngine {
       }
     }
 
-    // Denormalise: group → member orders
+    // Mirror hierarchy values into each group's attributes. Written once
+    // per group on the SHARED attributes list — orders + tasks pick it up
+    // via reference share below. Regenerated each pass (strip-by-slot-name
+    // then re-append) so config edits propagate without duplicates.
+    groups.forEach((group) => this.writeHierarchyMirror(group));
+
+    // Denormalise: group → member orders (reference share — single source
+    // of truth for hierarchy + attributes including the mirror).
     orders.forEach((order) => {
       if (!order.groupKey) return;
       const group = groups.getEntity(order.groupKey);
@@ -92,7 +100,7 @@ export class RollupEngine {
       order.attributes = group.attributes;
     });
 
-    // Denormalise: order → its tasks (also sets task.groupKey)
+    // Denormalise: order → its tasks (also sets task.groupKey).
     tasks.forEach((task) => {
       const orderKey = task.linkId?.name;
       if (!orderKey) return;
@@ -102,6 +110,37 @@ export class RollupEngine {
       task.hierarchy = order.hierarchy;
       task.attributes = order.attributes;
     });
+  }
+
+  /**
+   * Mirror populated hierarchy slots into the group's attributes list.
+   * Strips any prior mirror entries (by name match against current slot
+   * names) before re-writing, so repeated calls don't duplicate.
+   *
+   * Mirror entries are indistinguishable from authored attributes at the
+   * read path — uniformity is the whole point. The MappingEngine config
+   * validator blocks any AttributeMapping whose name collides with a
+   * HierarchySlotMapping name on the same entity, so authored attributes
+   * never share names with slots.
+   *
+   * Mutates `group.attributes` in place — orders + tasks reference-share
+   * the same list, so they see the mirror without further work.
+   */
+  private writeHierarchyMirror(group: CTPWorkOrderGroup): void {
+    const entries = group.hierarchy.populatedEntries();
+    const slotNames = new Set(entries.map((e) => e.name));
+
+    // Snapshot the authored (non-slot-name) entries before we clear.
+    const authored: NameValue[] = [];
+    group.attributes.forEach((nv) => {
+      if (!slotNames.has(nv.name)) authored.push(nv);
+    });
+
+    // In-place rewrite — preserves the reference identity that
+    // orders/tasks share.
+    group.attributes.clear();
+    for (const a of authored) group.attributes.add(a);
+    for (const e of entries) group.attributes.add(new NameValue(e.name, e.value));
   }
 
   /**
