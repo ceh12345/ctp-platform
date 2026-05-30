@@ -46,11 +46,15 @@ export class InspectorExportService {
     const projects     = this.synthesizeParents(landscape, 1);
     const salesOrders  = this.synthesizeParents(landscape, 2);
     const soLines      = this.synthesizeParents(landscape, 3);
+    const unattached   = this.collectUnattached(landscape);
+    const attributeStats = this.computeAttributeStats(landscape);
 
     this.addIndexSheet(workbook, landscape, {
       projectCount: projects.length,
       salesOrderCount: salesOrders.length,
       soLineCount: soLines.length,
+      unattached,
+      attributeStats,
     });
     this.addProjectsSheet(workbook, projects);
     this.addSalesOrdersSheet(workbook, salesOrders);
@@ -59,7 +63,8 @@ export class InspectorExportService {
     this.addWorkOrdersSheet(workbook, landscape);
     this.addTasksSheet(workbook, landscape);
     this.addMaterialsSheet(workbook, landscape);
-    // Phase 4: Attributes + Unattached sheets.
+    this.addAttributesSheet(workbook, landscape);
+    this.addUnattachedSheet(workbook, unattached);
 
     // exceljs's writeBuffer() returns a Buffer, but Node's evolving Buffer
     // type signature (Buffer<ArrayBufferLike> in newer Node @types) makes
@@ -78,12 +83,19 @@ export class InspectorExportService {
   private addIndexSheet(
     workbook: ExcelJS.Workbook,
     landscape: SchedulingLandscape,
-    synth: { projectCount: number; salesOrderCount: number; soLineCount: number },
+    summary: {
+      projectCount: number;
+      salesOrderCount: number;
+      soLineCount: number;
+      unattached: UnattachedRows;
+      attributeStats: AttributeStats;
+    },
   ): void {
     const sheet = workbook.addWorksheet('_Index');
     sheet.columns = [
-      { header: '', key: 'label', width: 36 },
-      { header: '', key: 'value', width: 56 },
+      { header: '', key: 'label', width: 40 },
+      { header: '', key: 'value', width: 16 },
+      { header: '', key: 'note',  width: 56 },
     ];
 
     const tenant = this.configService.getTenantConfig();
@@ -101,23 +113,33 @@ export class InspectorExportService {
       ['Snapshot timestamp',  new Date().toISOString()],
       ['Export generated at', new Date().toISOString()],
       [],
-      ['ENTITY COUNTS', ''],
-      ['Projects',                        synth.projectCount,    '(synthesized from hierarchy slot 2)'],
-      ['SalesOrders',                     synth.salesOrderCount, '(synthesized from hierarchy slot 3)'],
-      ['SOLines',                         synth.soLineCount,     '(synthesized from hierarchy slot 4 — empty if slot not configured)'],
+      ['ENTITY COUNTS', '', ''],
+      ['Projects',                        summary.projectCount,    '(synthesized from hierarchy slot 2)'],
+      ['SalesOrders',                     summary.salesOrderCount, '(synthesized from hierarchy slot 3)'],
+      ['SOLines',                         summary.soLineCount,     '(synthesized from hierarchy slot 4 — empty if not configured)'],
       ['Jobs',                            landscape.groups.size()],
       ['WorkOrders',                      landscape.orders.size()],
       ['Tasks',                           landscape.tasks.size()],
       ['Materials (task-input pairs)',    materialCount],
       ['Resources',                       landscape.resources.size()],
       [],
-      ['ATTRIBUTE SOURCE COVERAGE', ''],
+      ['UNATTACHED COUNTS', '', ''],
+      ['Unattached WorkOrders',           summary.unattached.workOrders.length, summary.unattached.workOrders.length > 0 ? '⚠ no groupKey or group missing' : ''],
+      ['Unattached Tasks',                summary.unattached.tasks.length,      summary.unattached.tasks.length > 0      ? '⚠ linkId points at nonexistent order' : ''],
+      ['Flat Jobs (no single head WO)',   summary.unattached.groups.length,     summary.unattached.groups.length > 0     ? '⚠ OI-2 fallback' : ''],
+      [],
+      ['ATTRIBUTE COVERAGE', '', ''],
       ['workOrderGroups (declared names)', wogSources ? wogSources.size : 0],
+      ['Total attribute rows emitted',     summary.attributeStats.totalRows],
+      ['Rows with sourcePath',             summary.attributeStats.withSourcePath],
+      ['Rows engine-computed (no source)', summary.attributeStats.engineComputed, summary.attributeStats.engineComputed > 0 ? 'attributes without a mapping rule (none today; placeholder)' : ''],
+      ['Rows unmapped (empty value, no source)', summary.attributeStats.unmapped, summary.attributeStats.unmapped > 0 ? '⚠ review needed' : ''],
     ]);
 
-    // Bold the two section headers
+    // Bold the section headers
     sheet.getRow(6).font  = { bold: true };
     sheet.getRow(16).font = { bold: true };
+    sheet.getRow(21).font = { bold: true };
   }
 
   // ── Synthesized parent sheets (Projects / SalesOrders / SOLines) ────
@@ -387,6 +409,160 @@ export class InspectorExportService {
     this.applyTableConventions(sheet);
   }
 
+  // ── Attributes sheet (the session's primary artifact) ──────────────
+
+  /**
+   * One row per (entity, attribute) pair across Jobs / WorkOrders / Tasks.
+   * sourcePath looked up from the profile-level sidecar; for Stafford today
+   * orders + tasks share the group's attribute set via reference share, so
+   * all three look up against the same `workOrderGroups` sidecar key.
+   *
+   * Flags per the spec:
+   *   isUnmapped       — value empty AND sourcePath empty
+   *   isEngineComputed — value populated AND sourcePath empty
+   *
+   * Filter by entityType for level-specific review; sort by sourcePath to
+   * audit by mapping rule; filter isEngineComputed=TRUE to surface
+   * attributes that bypass the mapping layer (none in Stafford today —
+   * the hierarchy mirror's entries trace back to their slot's source).
+   */
+  private addAttributesSheet(workbook: ExcelJS.Workbook, landscape: SchedulingLandscape): void {
+    const sheet = workbook.addWorksheet('Attributes');
+    sheet.columns = [
+      { header: 'entityType',       key: 'entityType',       width: 14 },
+      { header: 'entityKey',        key: 'entityKey',        width: 18 },
+      { header: 'entityName',       key: 'entityName',       width: 50 },
+      { header: 'attributeName',    key: 'attrName',         width: 26 },
+      { header: 'attributeValue',   key: 'attrValue',        width: 40 },
+      { header: 'sourcePath',       key: 'sourcePath',       width: 40 },
+      { header: 'isUnmapped',       key: 'isUnmapped',       width: 13 },
+      { header: 'isEngineComputed', key: 'isEngineComputed', width: 18 },
+    ];
+
+    const sources = this.stateService.getAttributeSources();
+    const wogSources = sources.get('workOrderGroups') ?? new Map<string, string>();
+
+    const emit = (entityType: string, key: string, name: string, attrs: Record<string, string>) => {
+      for (const [attrName, attrValue] of Object.entries(attrs)) {
+        const sourcePath = wogSources.get(attrName) ?? '';
+        sheet.addRow({
+          entityType, entityKey: key, entityName: name,
+          attrName, attrValue, sourcePath,
+          isUnmapped: attrValue === '' && sourcePath === '',
+          isEngineComputed: attrValue !== '' && sourcePath === '',
+        });
+      }
+    };
+
+    landscape.groups.forEach((g) => emit('Job',       g.key, g.name,         this.attributesOf(g)));
+    landscape.orders.forEach((o) => emit('WorkOrder', o.key, o.name ?? '',   this.attributesOf(o)));
+    landscape.tasks.forEach((t)  => emit('Task',      t.key, t.name ?? '',   this.attributesOf(t)));
+
+    this.applyTableConventions(sheet);
+  }
+
+  // ── Unattached sheet ───────────────────────────────────────────────
+
+  private addUnattachedSheet(workbook: ExcelJS.Workbook, unattached: UnattachedRows): void {
+    const sheet = workbook.addWorksheet('Unattached');
+    sheet.columns = [
+      { header: 'entityType', key: 'entityType', width: 14 },
+      { header: 'entityKey',  key: 'entityKey',  width: 18 },
+      { header: 'entityName', key: 'entityName', width: 50 },
+      { header: 'reason',     key: 'reason',     width: 60 },
+      { header: 'sourceData', key: 'sourceData', width: 80 },
+    ];
+    for (const r of [...unattached.workOrders, ...unattached.tasks, ...unattached.groups]) {
+      sheet.addRow(r);
+    }
+    this.applyTableConventions(sheet);
+  }
+
+  /**
+   * Walk the landscape and collect entities whose hierarchy linkage failed.
+   * Three categories matter for the Stafford session:
+   *   WorkOrders — groupKey is null OR points at a nonexistent group
+   *   Tasks      — linkId.name doesn't match any order
+   *   Jobs       — no single head WO (OI-2 fallback: 0 or 2+ candidates)
+   *
+   * Returns sorted rows; the Unattached sheet emits them as-is.
+   */
+  private collectUnattached(landscape: SchedulingLandscape): UnattachedRows {
+    const wo: UnattachedRow[] = [];
+    landscape.orders.forEach((o) => {
+      if (o.groupKey === null) {
+        wo.push({
+          entityType: 'WorkOrder', entityKey: o.key, entityName: o.name ?? '',
+          reason: 'no groupKey (Job not set on source record)',
+          sourceData: JSON.stringify({ groupKey: null, parentOrderKey: o.parentOrderKey, productKey: o.productKey }),
+        });
+      } else if (!landscape.groups.getEntity(o.groupKey)) {
+        wo.push({
+          entityType: 'WorkOrder', entityKey: o.key, entityName: o.name ?? '',
+          reason: `groupKey '${o.groupKey}' points at nonexistent group`,
+          sourceData: JSON.stringify({ groupKey: o.groupKey, parentOrderKey: o.parentOrderKey }),
+        });
+      }
+    });
+
+    const t: UnattachedRow[] = [];
+    landscape.tasks.forEach((task) => {
+      const orderKey = task.linkId?.name;
+      if (!orderKey) return;   // tasks without a linkId are independent — not unattached
+      if (!landscape.orders.getEntity(orderKey)) {
+        t.push({
+          entityType: 'Task', entityKey: task.key, entityName: task.name ?? '',
+          reason: `linkId.name '${orderKey}' does not match any order`,
+          sourceData: JSON.stringify({ linkId: { name: orderKey, type: task.linkId?.type } }),
+        });
+      }
+    });
+
+    const g: UnattachedRow[] = [];
+    landscape.groups.forEach((group) => {
+      if (group.headWorkOrderKey === null && group.workOrderKeys.length > 0) {
+        g.push({
+          entityType: 'Job', entityKey: group.key, entityName: group.name,
+          reason: 'no single head WO identified (OI-2 fallback — 0 or 2+ candidates)',
+          sourceData: JSON.stringify({ memberCount: group.workOrderKeys.length, sampleMembers: group.workOrderKeys.slice(0, 5) }),
+        });
+      }
+    });
+
+    return { workOrders: wo, tasks: t, groups: g };
+  }
+
+  /**
+   * Precompute the Attribute-sheet counters that drive the _Index summary.
+   * Walks the same entities the sheet emits, totals attribute rows, rows
+   * with sourcePath, engine-computed rows (no source path), and unmapped
+   * rows (no value AND no source path).
+   */
+  private computeAttributeStats(landscape: SchedulingLandscape): AttributeStats {
+    const sources = this.stateService.getAttributeSources();
+    const wogSources = sources.get('workOrderGroups') ?? new Map<string, string>();
+
+    let totalRows = 0;
+    let withSourcePath = 0;
+    let engineComputed = 0;
+    let unmapped = 0;
+
+    const tally = (attrs: Record<string, string>) => {
+      for (const [name, value] of Object.entries(attrs)) {
+        totalRows++;
+        const sp = wogSources.get(name) ?? '';
+        if (sp !== '')                       withSourcePath++;
+        if (value !== '' && sp === '')       engineComputed++;
+        if (value === '' && sp === '')       unmapped++;
+      }
+    };
+    landscape.groups.forEach((g) => tally(this.attributesOf(g)));
+    landscape.orders.forEach((o) => tally(this.attributesOf(o)));
+    landscape.tasks.forEach((t)  => tally(this.attributesOf(t)));
+
+    return { totalRows, withSourcePath, engineComputed, unmapped };
+  }
+
   // ── Helpers ─────────────────────────────────────────────────────────
 
   /**
@@ -436,6 +612,27 @@ interface SynthesizedParent {
   dimensionName: string;
   jobs: CTPWorkOrderGroup[];
   slotIndex: number;
+}
+
+interface UnattachedRow {
+  entityType: string;
+  entityKey: string;
+  entityName: string;
+  reason: string;
+  sourceData: string;
+}
+
+interface UnattachedRows {
+  workOrders: UnattachedRow[];
+  tasks: UnattachedRow[];
+  groups: UnattachedRow[];
+}
+
+interface AttributeStats {
+  totalRows: number;
+  withSourcePath: number;
+  engineComputed: number;
+  unmapped: number;
 }
 
 function toIsoOrNull(epochSeconds: number | null): string {
