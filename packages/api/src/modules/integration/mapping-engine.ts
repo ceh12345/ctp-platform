@@ -18,8 +18,17 @@ const HAS_TZ_DESIGNATOR = /(Z|[+\-]\d{2}:?\d{2})$/;
 export interface MappingResult {
   payload: IRawDataPayload;
   workOrderGroups: IWorkOrderGroupData[];
+  attributeSources: AttributeSourceMap;
   errors: MappingError[];
 }
+
+/**
+ * Profile-level provenance map. Keyed entityType → attrName → sourcePath
+ * string. Populated once per transform() from the profile's attribute +
+ * hierarchy mappings. Consumed by the Excel exporter; not used by the
+ * engine itself.
+ */
+export type AttributeSourceMap = Map<string, Map<string, string>>;
 
 // Per-call context threaded through private methods. MappingEngine is a Nest
 // singleton; putting mutable state on `this` would race across concurrent
@@ -35,7 +44,7 @@ interface MappingCtx {
 export class MappingEngine {
   transform(raw: IRawDataPayload, profile: IMappingProfile | null): MappingResult {
     const errors: MappingError[] = [];
-    if (!profile) return { payload: raw, workOrderGroups: [], errors };
+    if (!profile) return { payload: raw, workOrderGroups: [], attributeSources: new Map(), errors };
     const payload: IRawDataPayload = {
       ...raw,
       orders:    this.mapEntities(raw.orders,    profile['orders'],    'orders',    errors),
@@ -49,7 +58,53 @@ export class MappingEngine {
     const workOrderGroups = profile.workOrderGroups
       ? this.mapWorkOrderGroups(raw.orders, profile.workOrderGroups, errors)
       : [];
-    return { payload, workOrderGroups, errors };
+    const attributeSources = this.buildAttributeSources(profile);
+    return { payload, workOrderGroups, attributeSources, errors };
+  }
+
+  /**
+   * Build the profile-level sidecar map from the mapping profile's
+   * attribute + hierarchy declarations. Entity-keyed; attribute-name-keyed
+   * within each entity. Consumed by the Excel exporter; not used by the
+   * engine itself.
+   *
+   * Hierarchy slot names go in alongside authored attributes because the
+   * rollup engine mirrors hierarchy values into the attributes list —
+   * the mirror entries should trace back to the slot's source, not be
+   * flagged as engine-computed.
+   */
+  public buildAttributeSources(profile: IMappingProfile): AttributeSourceMap {
+    const out: AttributeSourceMap = new Map();
+    if (profile.workOrderGroups) {
+      out.set('workOrderGroups', this.entityAttributeSources(profile.workOrderGroups));
+    }
+    return out;
+  }
+
+  private entityAttributeSources(entity: EntityMapping): Map<string, string> {
+    const out = new Map<string, string>();
+    for (const h of entity.hierarchies ?? []) {
+      out.set(h.name, this.describeSource(h.source));
+    }
+    for (const a of entity.attributes ?? []) {
+      out.set(a.name, this.describeSource(a.source));
+    }
+    return out;
+  }
+
+  private describeSource(source: ValueSource): string {
+    switch (source.kind) {
+      case 'field':
+        return source.transform ? `${source.field}.${source.transform}()` : source.field;
+      case 'constant':
+        return `const:${source.value}`;
+      case 'composite':
+        return `template:${source.template}`;
+      case 'synthetic':
+        return `synthetic:hash-pool(${source.hashOn})`;
+      case 'join':
+        return `${source.endpoint}.${source.field} via ${source.via}`;
+    }
   }
 
   // ── Generic entity mapping ────────────────────────────────────────────────

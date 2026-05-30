@@ -6,6 +6,7 @@ import { SyncService } from '../integration/sync.service';
 import { IRawDataPayload } from '../integration/adapter.interface';
 import { validateReferences } from '../integration/validation-pass';
 import { MappingError } from '../integration/mapping-error';
+import { AttributeSourceMap } from '../integration/mapping-engine';
 import {
   SyncResult,
   emptyValidationSummary,
@@ -16,6 +17,7 @@ import { IWorkOrderGroupData } from '../../config/interfaces/config-store.interf
 @Injectable()
 export class StateService {
   private landscapes = new Map<string, SchedulingLandscape>();
+  private attributeSourcesByTenant = new Map<string, AttributeSourceMap>();
 
   constructor(
     private readonly hydrator: StateHydratorService,
@@ -39,11 +41,13 @@ export class StateService {
     payload: IRawDataPayload,
     workOrderGroups: IWorkOrderGroupData[] = [],
     mappingErrors: MappingError[] = [],
+    attributeSources: AttributeSourceMap = new Map(),
   ): SyncResult {
     const tenantId = this.configService.getTenantId();
     const landscape = this.hydrator.buildLandscape(payload, workOrderGroups);
     validateReferences(landscape);
     this.landscapes.set(tenantId, landscape);
+    this.attributeSourcesByTenant.set(tenantId, attributeSources);
     return this.buildSyncResult(landscape, mappingErrors);
   }
 
@@ -55,8 +59,8 @@ export class StateService {
     if (!adapterConfig || adapterConfig.adapterType !== 'rest') {
       return this.syncFromConfig();
     }
-    const { payload, workOrderGroups, errors: mappingErrors } = await this.syncService.sync();
-    return this.applyTransformed(payload, workOrderGroups, mappingErrors);
+    const { payload, workOrderGroups, attributeSources, errors: mappingErrors } = await this.syncService.sync();
+    return this.applyTransformed(payload, workOrderGroups, mappingErrors, attributeSources);
   }
 
   async reloadAndSync(): Promise<SyncResult> {
@@ -67,6 +71,12 @@ export class StateService {
   getLandscape(): SchedulingLandscape | null {
     const tenantId = this.configService.getTenantId();
     return this.landscapes.get(tenantId) ?? null;
+  }
+
+  /** Profile-level attribute-source sidecar from the last successful sync. Empty Map when no mapping profile or no attributes were declared. */
+  getAttributeSources(): AttributeSourceMap {
+    const tenantId = this.configService.getTenantId();
+    return this.attributeSourcesByTenant.get(tenantId) ?? new Map();
   }
 
   getSummary(): SyncResult {

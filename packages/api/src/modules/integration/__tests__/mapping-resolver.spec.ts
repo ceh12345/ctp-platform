@@ -183,6 +183,85 @@ describe('MappingEngine.resolveHierarchies', () => {
   });
 });
 
+describe('MappingEngine.buildAttributeSources (sidecar)', () => {
+  const engine = new MappingEngine();
+
+  it('derives sourcePath strings from each ValueSource kind', () => {
+    const profile = {
+      version: '1.0', tenantId: 't', source: 's',
+      workOrderGroups: {
+        sourceEndpoint: 'wo',
+        mappings: { key: { from: 'Job' } },
+        hierarchies: [
+          { slot: 1 as const, name: 'Customer', source: { kind: 'synthetic' as const, strategy: 'hash-pool' as const, pool: ['A','B'], hashOn: 'SalesOrderNo' } },
+          { slot: 2 as const, name: 'Project',  source: { kind: 'field' as const, field: 'ProjectName' } },
+        ],
+        attributes: [
+          { name: 'Strategy',           source: { kind: 'field' as const, field: 'Strategy' } },
+          { name: 'ProjectManagerName', source: { kind: 'field' as const, field: 'ProjectManagerName', transform: 'trim' as const } },
+          { name: 'Unit',               source: { kind: 'constant' as const, value: 'EA' } },
+          { name: 'Composite',          source: { kind: 'composite' as const, template: '{A} - {B}' } },
+        ],
+      },
+    };
+    const map = engine.buildAttributeSources(profile as any);
+
+    const wog = map.get('workOrderGroups')!;
+    expect(wog).toBeDefined();
+    expect(wog.get('Customer')).toBe('synthetic:hash-pool(SalesOrderNo)');
+    expect(wog.get('Project')).toBe('ProjectName');
+    expect(wog.get('Strategy')).toBe('Strategy');
+    expect(wog.get('ProjectManagerName')).toBe('ProjectManagerName.trim()');
+    expect(wog.get('Unit')).toBe('const:EA');
+    expect(wog.get('Composite')).toBe('template:{A} - {B}');
+  });
+
+  it('derives sourcePath for the join kind', () => {
+    const profile = {
+      version: '1.0', tenantId: 't', source: 's',
+      workOrderGroups: {
+        sourceEndpoint: 'wo',
+        mappings: { key: { from: 'Job' } },
+        hierarchies: [
+          { slot: 1 as const, name: 'Customer', source: {
+            kind: 'join' as const, via: 'SalesOrderHeaderCode',
+            endpoint: 'salesOrderHeaderEntity', field: 'BillToCustomerName',
+          } },
+        ],
+      },
+    };
+    const map = engine.buildAttributeSources(profile as any);
+    expect(map.get('workOrderGroups')!.get('Customer'))
+      .toBe('salesOrderHeaderEntity.BillToCustomerName via SalesOrderHeaderCode');
+  });
+
+  it('returns an empty map when the profile has no entity mappings with attributes/hierarchies', () => {
+    const profile = { version: '1.0', tenantId: 't', source: 's' };
+    const map = engine.buildAttributeSources(profile as any);
+    expect(map.size).toBe(0);
+  });
+
+  it('transform() returns attributeSources alongside payload + workOrderGroups + errors', () => {
+    const profile = {
+      version: '1.0', tenantId: 't', source: 's',
+      workOrderGroups: {
+        sourceEndpoint: 'wo',
+        mappings: { key: { from: 'Job' } },
+        attributes: [
+          { name: 'Strategy', source: { kind: 'field' as const, field: 'Strategy' } },
+        ],
+      },
+    };
+    const rawPayload = {
+      orders: [{ Job: '1', Strategy: 'JIT' }],
+      resources: [], tasks: [], calendars: [], stateChanges: [],
+      products: [], materials: [], processes: [], cadences: [], uomConversions: null,
+    };
+    const result = engine.transform(rawPayload as any, profile as any);
+    expect(result.attributeSources.get('workOrderGroups')!.get('Strategy')).toBe('Strategy');
+  });
+});
+
 describe('MappingEngine — slot/attribute name collision validation', () => {
   // The rollup engine mirrors hierarchy values into attributes
   // automatically. A mapping that authors an attribute with the same
