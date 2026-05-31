@@ -24,7 +24,59 @@
       "type": "START",
       "prevLink": "",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "15707",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Southern Cross Machining"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "VIAL HANDLING - DESIGN"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00011626"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "095"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "DAVE STUART"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-03-29T10:59:59.997Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Southern Cross Machining"
+      },
+      {
+        "name": "Project",
+        "value": "VIAL HANDLING - DESIGN"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00011626"
+      }
+    ]
   },
   {
     "name": "16996 — FO",
@@ -51,7 +103,33 @@
       "type": "START",
       "prevLink": "",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "16996",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "U"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-05-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      }
+    ]
   },
   {
     "name": "16996 — QC",
@@ -78,7 +156,33 @@
       "type": "LINK",
       "prevLink": "25508-FO-3",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "16996",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "U"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-05-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      }
+    ]
   },
   {
     "name": "17875 — OUT",
@@ -105,7 +209,59 @@
       "type": "START",
       "prevLink": "",
       "maxGap": 28800
-    }
+    },
+    "groupKey": "17875",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Bayside Manufacturing"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "INEX TANKS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012180"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "238"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "GRAEME CHUBB"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-29T11:59:59.997Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Bayside Manufacturing"
+      },
+      {
+        "name": "Project",
+        "value": "INEX TANKS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012180"
+      }
+    ]
   },
   {
     "name": "17890 — QC",
@@ -132,7 +288,59 @@
       "type": "START",
       "prevLink": "",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "17890",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Bayside Manufacturing"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "BANDSAW PROTOTYPES"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012224"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-04-29T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Bayside Manufacturing"
+      },
+      {
+        "name": "Project",
+        "value": "BANDSAW PROTOTYPES"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012224"
+      }
+    ]
   },
   {
     "name": "17890 — QC",
@@ -159,7 +367,59 @@
       "type": "LINK",
       "prevLink": "27004-QC-6",
       "maxGap": 28800
-    }
+    },
+    "groupKey": "17890",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Bayside Manufacturing"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "BANDSAW PROTOTYPES"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012224"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-04-29T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Bayside Manufacturing"
+      },
+      {
+        "name": "Project",
+        "value": "BANDSAW PROTOTYPES"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012224"
+      }
+    ]
   },
   {
     "name": "18543 — PR",
@@ -186,7 +446,59 @@
       "type": "START",
       "prevLink": "",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — K",
@@ -213,7 +525,59 @@
       "type": "LINK",
       "prevLink": "28378-PR-1",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — F",
@@ -240,7 +604,59 @@
       "type": "LINK",
       "prevLink": "28378-K-2",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — P",
@@ -267,7 +683,59 @@
       "type": "LINK",
       "prevLink": "28378-F-3",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — OUT",
@@ -294,7 +762,59 @@
       "type": "LINK",
       "prevLink": "28378-P-4",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — PR",
@@ -321,7 +841,59 @@
       "type": "LINK",
       "prevLink": "28378-OUT-5",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — K",
@@ -348,7 +920,59 @@
       "type": "LINK",
       "prevLink": "28378-PR-6",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — QC",
@@ -375,7 +999,59 @@
       "type": "LINK",
       "prevLink": "28378-K-7",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — F",
@@ -402,7 +1078,59 @@
       "type": "LINK",
       "prevLink": "28378-QC-8",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — PR",
@@ -429,7 +1157,59 @@
       "type": "LINK",
       "prevLink": "28378-F-9",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — K",
@@ -456,7 +1236,59 @@
       "type": "LINK",
       "prevLink": "28378-PR-10",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — P",
@@ -483,7 +1315,59 @@
       "type": "LINK",
       "prevLink": "28378-K-11",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — NT",
@@ -510,7 +1394,59 @@
       "type": "LINK",
       "prevLink": "28378-P-12",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — F",
@@ -537,7 +1473,59 @@
       "type": "LINK",
       "prevLink": "28378-NT-13",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — P",
@@ -564,7 +1552,59 @@
       "type": "LINK",
       "prevLink": "28378-F-14",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — NT",
@@ -591,7 +1631,59 @@
       "type": "LINK",
       "prevLink": "28378-P-15",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — PR",
@@ -618,7 +1710,59 @@
       "type": "LINK",
       "prevLink": "28378-NT-16",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — K",
@@ -645,7 +1789,59 @@
       "type": "LINK",
       "prevLink": "28378-PR-17",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — P",
@@ -672,7 +1868,59 @@
       "type": "LINK",
       "prevLink": "28378-K-18",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — A",
@@ -699,7 +1947,59 @@
       "type": "LINK",
       "prevLink": "28378-P-19",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18543 — QC",
@@ -726,7 +2026,59 @@
       "type": "LINK",
       "prevLink": "28378-A-20",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18543",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — K",
@@ -753,7 +2105,59 @@
       "type": "START",
       "prevLink": "",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — F",
@@ -780,7 +2184,59 @@
       "type": "LINK",
       "prevLink": "28387-K-2",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — P",
@@ -807,7 +2263,59 @@
       "type": "LINK",
       "prevLink": "28387-F-3",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — OUT",
@@ -834,7 +2342,59 @@
       "type": "LINK",
       "prevLink": "28387-P-4",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — PR",
@@ -861,7 +2421,59 @@
       "type": "LINK",
       "prevLink": "28387-OUT-5",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — K",
@@ -888,7 +2500,59 @@
       "type": "LINK",
       "prevLink": "28387-PR-6",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — QC",
@@ -915,7 +2579,59 @@
       "type": "LINK",
       "prevLink": "28387-K-7",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — F",
@@ -942,7 +2658,59 @@
       "type": "LINK",
       "prevLink": "28387-QC-8",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — PR",
@@ -969,7 +2737,59 @@
       "type": "LINK",
       "prevLink": "28387-F-9",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — K",
@@ -996,7 +2816,59 @@
       "type": "LINK",
       "prevLink": "28387-PR-10",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — P",
@@ -1023,7 +2895,59 @@
       "type": "LINK",
       "prevLink": "28387-K-11",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — NT",
@@ -1050,7 +2974,59 @@
       "type": "LINK",
       "prevLink": "28387-P-12",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — F",
@@ -1077,7 +3053,59 @@
       "type": "LINK",
       "prevLink": "28387-NT-13",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — P",
@@ -1104,7 +3132,59 @@
       "type": "LINK",
       "prevLink": "28387-F-14",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — NT",
@@ -1131,7 +3211,59 @@
       "type": "LINK",
       "prevLink": "28387-P-15",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — PR",
@@ -1158,7 +3290,59 @@
       "type": "LINK",
       "prevLink": "28387-NT-16",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — K",
@@ -1185,7 +3369,59 @@
       "type": "LINK",
       "prevLink": "28387-PR-17",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — P",
@@ -1212,7 +3448,59 @@
       "type": "LINK",
       "prevLink": "28387-K-18",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — A",
@@ -1239,7 +3527,59 @@
       "type": "LINK",
       "prevLink": "28387-P-19",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18544 — QC",
@@ -1266,7 +3606,59 @@
       "type": "LINK",
       "prevLink": "28387-A-20",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18544",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18553 — A",
@@ -1293,7 +3685,59 @@
       "type": "START",
       "prevLink": "",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18553",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — OUT",
@@ -1320,7 +3764,59 @@
       "type": "START",
       "prevLink": "",
       "maxGap": 28800
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — QH",
@@ -1347,7 +3843,59 @@
       "type": "LINK",
       "prevLink": "28468-OUT-1",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — OUT",
@@ -1374,7 +3922,59 @@
       "type": "LINK",
       "prevLink": "28468-QH-2",
       "maxGap": 28800
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — F",
@@ -1401,7 +4001,59 @@
       "type": "LINK",
       "prevLink": "28468-OUT-3",
       "maxGap": 86400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — NT",
@@ -1428,7 +4080,59 @@
       "type": "LINK",
       "prevLink": "28468-F-4",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — F",
@@ -1455,7 +4159,59 @@
       "type": "LINK",
       "prevLink": "28468-NT-5",
       "maxGap": 86400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — PR",
@@ -1482,7 +4238,59 @@
       "type": "LINK",
       "prevLink": "28468-F-6",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — K",
@@ -1509,7 +4317,59 @@
       "type": "LINK",
       "prevLink": "28468-PR-7",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — F",
@@ -1536,7 +4396,59 @@
       "type": "LINK",
       "prevLink": "28468-K-8",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — PR",
@@ -1563,7 +4475,59 @@
       "type": "LINK",
       "prevLink": "28468-F-9",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — K",
@@ -1590,7 +4554,59 @@
       "type": "LINK",
       "prevLink": "28468-PR-10",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — F",
@@ -1617,7 +4633,59 @@
       "type": "LINK",
       "prevLink": "28468-K-11",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — PR",
@@ -1644,7 +4712,59 @@
       "type": "LINK",
       "prevLink": "28468-F-12",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — K",
@@ -1671,7 +4791,59 @@
       "type": "LINK",
       "prevLink": "28468-PR-13",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — G",
@@ -1698,7 +4870,59 @@
       "type": "LINK",
       "prevLink": "28468-K-14",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — F",
@@ -1725,7 +4949,59 @@
       "type": "LINK",
       "prevLink": "28468-G-15",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — P",
@@ -1752,7 +5028,59 @@
       "type": "LINK",
       "prevLink": "28468-F-16",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — OUT",
@@ -1779,7 +5107,59 @@
       "type": "LINK",
       "prevLink": "28468-P-17",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — G",
@@ -1806,7 +5186,59 @@
       "type": "LINK",
       "prevLink": "28468-OUT-18",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — A",
@@ -1833,7 +5265,59 @@
       "type": "LINK",
       "prevLink": "28468-G-19",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — OUT",
@@ -1860,7 +5344,59 @@
       "type": "LINK",
       "prevLink": "28468-A-20",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — A",
@@ -1887,7 +5423,59 @@
       "type": "LINK",
       "prevLink": "28468-OUT-21",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — QC",
@@ -1914,7 +5502,59 @@
       "type": "LINK",
       "prevLink": "28468-A-22",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18580 — PM",
@@ -1941,7 +5581,59 @@
       "type": "LINK",
       "prevLink": "28468-QC-23",
       "maxGap": 28800
-    }
+    },
+    "groupKey": "18580",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-25T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — OUT",
@@ -1968,7 +5660,59 @@
       "type": "START",
       "prevLink": "",
       "maxGap": 28800
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — QH",
@@ -1995,7 +5739,59 @@
       "type": "LINK",
       "prevLink": "28482-OUT-1",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — OUT",
@@ -2022,7 +5818,59 @@
       "type": "LINK",
       "prevLink": "28482-QH-2",
       "maxGap": 28800
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — F",
@@ -2049,7 +5897,59 @@
       "type": "LINK",
       "prevLink": "28482-OUT-3",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — NT",
@@ -2076,7 +5976,59 @@
       "type": "LINK",
       "prevLink": "28482-F-4",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — F",
@@ -2103,7 +6055,59 @@
       "type": "LINK",
       "prevLink": "28482-NT-5",
       "maxGap": 86400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — PR",
@@ -2130,7 +6134,59 @@
       "type": "LINK",
       "prevLink": "28482-F-6",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — K",
@@ -2157,7 +6213,59 @@
       "type": "LINK",
       "prevLink": "28482-PR-7",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — F",
@@ -2184,7 +6292,59 @@
       "type": "LINK",
       "prevLink": "28482-K-8",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — PR",
@@ -2211,7 +6371,59 @@
       "type": "LINK",
       "prevLink": "28482-F-9",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — K",
@@ -2238,7 +6450,59 @@
       "type": "LINK",
       "prevLink": "28482-PR-10",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — F",
@@ -2265,7 +6529,59 @@
       "type": "LINK",
       "prevLink": "28482-K-11",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — PR",
@@ -2292,7 +6608,59 @@
       "type": "LINK",
       "prevLink": "28482-F-12",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — K",
@@ -2319,7 +6687,59 @@
       "type": "LINK",
       "prevLink": "28482-PR-13",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — G",
@@ -2346,7 +6766,59 @@
       "type": "LINK",
       "prevLink": "28482-K-14",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — F",
@@ -2373,7 +6845,59 @@
       "type": "LINK",
       "prevLink": "28482-G-15",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — P",
@@ -2400,7 +6924,59 @@
       "type": "LINK",
       "prevLink": "28482-F-16",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — OUT",
@@ -2427,7 +7003,59 @@
       "type": "LINK",
       "prevLink": "28482-P-17",
       "maxGap": null
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — G",
@@ -2454,7 +7082,59 @@
       "type": "LINK",
       "prevLink": "28482-OUT-18",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — A",
@@ -2481,7 +7161,59 @@
       "type": "LINK",
       "prevLink": "28482-G-19",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — OUT",
@@ -2508,7 +7240,59 @@
       "type": "LINK",
       "prevLink": "28482-A-20",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — A",
@@ -2535,7 +7319,59 @@
       "type": "LINK",
       "prevLink": "28482-OUT-21",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — QC",
@@ -2562,7 +7398,59 @@
       "type": "LINK",
       "prevLink": "28482-A-22",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18582 — PM",
@@ -2589,7 +7477,59 @@
       "type": "LINK",
       "prevLink": "28482-QC-23",
       "maxGap": 28800
-    }
+    },
+    "groupKey": "18582",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "CEM International P/L (NZ A/C)"
+      },
+      {
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012264"
+      }
+    ]
   },
   {
     "name": "18816 — P",
@@ -2616,7 +7556,59 @@
       "type": "START",
       "prevLink": "",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18816",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "25KG DOUBLE BAG TIP"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012361"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-05-05T18:03:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "25KG DOUBLE BAG TIP"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012361"
+      }
+    ]
   },
   {
     "name": "18816 — QC",
@@ -2643,7 +7635,59 @@
       "type": "LINK",
       "prevLink": "28772-P-5",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18816",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "25KG DOUBLE BAG TIP"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012361"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-05-05T18:03:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "25KG DOUBLE BAG TIP"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012361"
+      }
+    ]
   },
   {
     "name": "18909 — LP",
@@ -2670,7 +7714,59 @@
       "type": "START",
       "prevLink": "",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "18909 — L030",
@@ -2697,7 +7793,59 @@
       "type": "LINK",
       "prevLink": "28907-LP-1",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "18909 — L050",
@@ -2724,7 +7872,59 @@
       "type": "LINK",
       "prevLink": "28907-L030-2",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "18909 — L060",
@@ -2751,7 +7951,59 @@
       "type": "LINK",
       "prevLink": "28907-L050-3",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "18909 — OUT",
@@ -2778,7 +8030,59 @@
       "type": "LINK",
       "prevLink": "28907-L060-4",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "18909 — F",
@@ -2805,7 +8109,59 @@
       "type": "LINK",
       "prevLink": "28907-OUT-5",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "18909 — P",
@@ -2832,7 +8188,59 @@
       "type": "LINK",
       "prevLink": "28907-F-6",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "18909 — PR",
@@ -2859,7 +8267,59 @@
       "type": "LINK",
       "prevLink": "28907-P-7",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "18909 — NM",
@@ -2886,7 +8346,59 @@
       "type": "LINK",
       "prevLink": "28907-PR-8",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "18909 — F",
@@ -2913,7 +8425,59 @@
       "type": "LINK",
       "prevLink": "28907-NM-9",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "18909 — PR",
@@ -2940,7 +8504,59 @@
       "type": "LINK",
       "prevLink": "28907-F-10",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "18909 — NM",
@@ -2967,7 +8583,59 @@
       "type": "LINK",
       "prevLink": "28907-PR-11",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "18909 — F",
@@ -2994,7 +8662,59 @@
       "type": "LINK",
       "prevLink": "28907-NM-12",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "18909 — P",
@@ -3021,7 +8741,59 @@
       "type": "LINK",
       "prevLink": "28907-F-13",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "18909 — PR",
@@ -3048,7 +8820,59 @@
       "type": "LINK",
       "prevLink": "28907-P-14",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "18909 — K",
@@ -3075,7 +8899,59 @@
       "type": "LINK",
       "prevLink": "28907-PR-15",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "18909 — QC",
@@ -3102,7 +8978,59 @@
       "type": "LINK",
       "prevLink": "28907-K-16",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "18909",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T11:59:59.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Pacific Engineering Ltd"
+      },
+      {
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012397"
+      }
+    ]
   },
   {
     "name": "R18915 — R",
@@ -3129,6 +9057,58 @@
       "type": "START",
       "prevLink": "",
       "maxGap": 14400
-    }
+    },
+    "groupKey": "R18915",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "Bayside Manufacturing"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "FRAME AND TABLE TOPS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012368"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "Q"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "025"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "JULIAN FORD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-04-20T12:00:00.000Z"
+      },
+      {
+        "name": "Customer",
+        "value": "Bayside Manufacturing"
+      },
+      {
+        "name": "Project",
+        "value": "FRAME AND TABLE TOPS"
+      },
+      {
+        "name": "SalesOrder",
+        "value": "00012368"
+      }
+    ]
   }
 ]

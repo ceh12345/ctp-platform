@@ -1,20 +1,14 @@
 [
   {
-    "key": "23482",
-    "name": "23482 — DESIGN OF VIAL HANDLING COMPONENTS",
-    "productKey": "SEL DESIGN",
-    "demandQty": 1,
-    "dueDate": "2026-03-29T10:59:59.997Z",
-    "lateDueDate": "2026-11-29T11:00:00.000Z",
-    "priority": 10,
-    "jobCode": "15707",
-    "jobType": "C",
-    "customerCode": "IRP",
-    "customerName": "INTELLIGENT ROBOTICS PTY LTD",
-    "itemFamily": "NA",
-    "wostatus": "PRINTED",
-    "groupKey": "15707",
-    "parentOrderKey": "23482",
+    "key": "15707",
+    "name": "VIAL HANDLING - DESIGN / DESIGN OF VIAL HANDLING COMPONENTS",
+    "headWorkOrderKey": "23482",
+    "workOrderKeys": [
+      "23482"
+    ],
+    "sourceStart": "2026-03-29T00:58:58.797-06:00",
+    "sourceEnd": "2026-03-29T04:59:59.997-06:00",
+    "promiseDate": "2026-11-29T04:00:00.000-07:00",
     "hierarchies": [
       {
         "slot": 1,
@@ -68,19 +62,15 @@
     ]
   },
   {
-    "key": "25508",
-    "name": "25508 — SUPPORT FLANGE INNER",
-    "productKey": "SEL BC-PRJ-11-10-X05_B",
-    "demandQty": 2,
-    "dueDate": "2026-05-28T12:00:00.000Z",
-    "lateDueDate": "2026-05-30T12:00:00.000Z",
-    "priority": 10,
-    "jobCode": "16996",
-    "jobType": "U",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "groupKey": "16996",
-    "parentOrderKey": "25506",
+    "key": "16996",
+    "name": "COFFEE ROASTER ASSY JACK R",
+    "headWorkOrderKey": null,
+    "workOrderKeys": [
+      "25508"
+    ],
+    "sourceStart": "2026-05-20T21:15:00.000-06:00",
+    "sourceEnd": "2026-05-28T06:00:00.000-06:00",
+    "promiseDate": "2026-05-30T06:00:00.000-06:00",
     "hierarchies": [
       {
         "slot": 1,
@@ -108,21 +98,15 @@
     ]
   },
   {
-    "key": "26980",
-    "name": "26980 — NEW TANK COMPLIANCE CERTIFICATION",
-    "productKey": "SEL MISC SALES",
-    "demandQty": 1,
-    "dueDate": "2026-06-29T11:59:59.997Z",
-    "lateDueDate": "2026-06-29T12:00:00.000Z",
-    "priority": 10,
-    "jobCode": "17875",
-    "jobType": "C",
-    "customerCode": "INX",
-    "customerName": "INDEPENDENT EXTRUSIONS LIMITED",
-    "itemFamily": "NA",
-    "wostatus": "CREATED",
-    "groupKey": "17875",
-    "parentOrderKey": "26980",
+    "key": "17875",
+    "name": "INEX TANKS / NEW TANK COMPLIANCE CERTIFICATION",
+    "headWorkOrderKey": "26980",
+    "workOrderKeys": [
+      "26980"
+    ],
+    "sourceStart": "2026-06-28T21:59:59.997-06:00",
+    "sourceEnd": "2026-06-29T05:59:59.997-06:00",
+    "promiseDate": "2026-06-29T06:00:00.000-06:00",
     "hierarchies": [
       {
         "slot": 1,
@@ -176,21 +160,15 @@
     ]
   },
   {
-    "key": "27004",
-    "name": "27004 — BANDSAW DRIVE WHEEL",
-    "productKey": "MAR 012-B000-04_A",
-    "demandQty": 4,
-    "dueDate": "2026-04-29T12:00:00.000Z",
-    "lateDueDate": "2026-04-29T12:00:00.000Z",
-    "priority": 10,
-    "jobCode": "17890",
-    "jobType": "C",
-    "customerCode": "SCO",
-    "customerName": "SCOTT AUTOMATION & ROBOTICS",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "groupKey": "17890",
-    "parentOrderKey": "27000",
+    "key": "17890",
+    "name": "BANDSAW PROTOTYPES / BASE FRAME ASSEMBLY",
+    "headWorkOrderKey": null,
+    "workOrderKeys": [
+      "27004"
+    ],
+    "sourceStart": "2026-03-09T16:45:00.000-06:00",
+    "sourceEnd": "2026-04-29T06:00:00.000-06:00",
+    "promiseDate": "2026-04-29T06:00:00.000-06:00",
     "hierarchies": [
       {
         "slot": 1,
@@ -244,21 +222,15 @@
     ]
   },
   {
-    "key": "28378",
-    "name": "28378 — WS108 DASHER FRAME C/W RETURN DEFLECTORS",
-    "productKey": "SIC FP08A0600147_02",
-    "demandQty": 9,
-    "dueDate": "2026-06-28T12:00:00.000Z",
-    "lateDueDate": "2026-06-29T12:00:00.000Z",
-    "priority": 10,
-    "jobCode": "18543",
-    "jobType": "C",
-    "customerCode": "SIC",
-    "customerName": "SUPERIOR ICE CREAM EQUIPMENT",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "groupKey": "18543",
-    "parentOrderKey": "28377",
+    "key": "18543",
+    "name": "2026 DF FREEZERS / SCREW STUB SHAFT RETAINING",
+    "headWorkOrderKey": null,
+    "workOrderKeys": [
+      "28378"
+    ],
+    "sourceStart": "2026-04-24T21:45:00.000-06:00",
+    "sourceEnd": "2026-06-28T06:00:00.000-06:00",
+    "promiseDate": "2026-06-29T06:00:00.000-06:00",
     "hierarchies": [
       {
         "slot": 1,
@@ -312,21 +284,15 @@
     ]
   },
   {
-    "key": "28387",
-    "name": "28387 — WS115 DASHER FRAME C/W RETURN DEFLECTORS",
-    "productKey": "SIC FP08A0600063_01",
-    "demandQty": 6,
-    "dueDate": "2026-06-28T12:00:00.000Z",
-    "lateDueDate": "2026-06-29T12:00:00.000Z",
-    "priority": 10,
-    "jobCode": "18544",
-    "jobType": "C",
-    "customerCode": "SIC",
-    "customerName": "SUPERIOR ICE CREAM EQUIPMENT",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "groupKey": "18544",
-    "parentOrderKey": "28386",
+    "key": "18544",
+    "name": "2026 DF FREEZERS / SCREW STUB SHAFT RETAINING",
+    "headWorkOrderKey": null,
+    "workOrderKeys": [
+      "28387"
+    ],
+    "sourceStart": "2026-04-25T10:03:03.600-06:00",
+    "sourceEnd": "2026-06-28T06:00:00.000-06:00",
+    "promiseDate": "2026-06-29T06:00:00.000-06:00",
     "hierarchies": [
       {
         "slot": 1,
@@ -380,21 +346,15 @@
     ]
   },
   {
-    "key": "28410",
-    "name": "28410 — DF1500 EVAPORATOR VESSEL PIPING",
-    "productKey": "SIC FS30A0600200_04",
-    "demandQty": 9,
-    "dueDate": "2026-06-25T12:00:00.000Z",
-    "lateDueDate": "2026-06-29T12:00:00.000Z",
-    "priority": 10,
-    "jobCode": "18553",
-    "jobType": "C",
-    "customerCode": "SIC",
-    "customerName": "SUPERIOR ICE CREAM EQUIPMENT",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "groupKey": "18553",
-    "parentOrderKey": "28410",
+    "key": "18553",
+    "name": "2026 DF FREEZERS / 1/2\" SCH 40 304 SS PIPE",
+    "headWorkOrderKey": "28410",
+    "workOrderKeys": [
+      "28410"
+    ],
+    "sourceStart": "2026-05-07T16:45:00.000-06:00",
+    "sourceEnd": "2026-06-25T06:00:00.000-06:00",
+    "promiseDate": "2026-06-29T06:00:00.000-06:00",
     "hierarchies": [
       {
         "slot": 1,
@@ -448,21 +408,15 @@
     ]
   },
   {
-    "key": "28468",
-    "name": "28468 — DF1500 EVAPORATOR VESSEL",
-    "productKey": "SIC FS30W0600195_08",
-    "demandQty": 9,
-    "dueDate": "2026-06-25T12:00:00.000Z",
-    "lateDueDate": "2026-06-29T12:00:00.000Z",
-    "priority": 10,
-    "jobCode": "18580",
-    "jobType": "C",
-    "customerCode": "SIC",
-    "customerName": "SUPERIOR ICE CREAM EQUIPMENT",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "groupKey": "18580",
-    "parentOrderKey": "28468",
+    "key": "18580",
+    "name": "2026 DF FREEZERS / BAFFLE",
+    "headWorkOrderKey": "28468",
+    "workOrderKeys": [
+      "28468"
+    ],
+    "sourceStart": "2026-03-29T22:24:43.200-06:00",
+    "sourceEnd": "2026-06-25T06:00:00.000-06:00",
+    "promiseDate": "2026-06-29T06:00:00.000-06:00",
     "hierarchies": [
       {
         "slot": 1,
@@ -516,21 +470,15 @@
     ]
   },
   {
-    "key": "28482",
-    "name": "28482 — DF3000 EVAPORATOR VESSEL",
-    "productKey": "SIC FS30W0600238_07",
-    "demandQty": 6,
-    "dueDate": "2026-06-27T12:00:00.000Z",
-    "lateDueDate": "2026-06-29T12:00:00.000Z",
-    "priority": 10,
-    "jobCode": "18582",
-    "jobType": "C",
-    "customerCode": "SIC",
-    "customerName": "SUPERIOR ICE CREAM EQUIPMENT",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "groupKey": "18582",
-    "parentOrderKey": "28482",
+    "key": "18582",
+    "name": "2026 DF FREEZERS / DF3000 LOWER GAS PIPING WELDMENT",
+    "headWorkOrderKey": "28482",
+    "workOrderKeys": [
+      "28482"
+    ],
+    "sourceStart": "2026-04-04T18:36:00.000-06:00",
+    "sourceEnd": "2026-06-27T06:00:00.000-06:00",
+    "promiseDate": "2026-06-29T06:00:00.000-06:00",
     "hierarchies": [
       {
         "slot": 1,
@@ -584,21 +532,15 @@
     ]
   },
   {
-    "key": "28772",
-    "name": "28772 — CONVEYOR PROXIMITY SWITCH MOUNT DETAILS",
-    "productKey": "POW PPL-BD-03-188_A",
-    "demandQty": 1,
-    "dueDate": "2026-05-28T19:45:00.000Z",
-    "lateDueDate": "2026-05-28T12:00:00.000Z",
-    "priority": 5,
-    "jobCode": "18816",
-    "jobType": "C",
-    "customerCode": "POW",
-    "customerName": "POWDER PROJECTS LTD",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "groupKey": "18816",
-    "parentOrderKey": "28767",
+    "key": "18816",
+    "name": "25KG DOUBLE BAG TIP / 25KG DOUBLE BAG TIP GENERAL ARRANGEMENT",
+    "headWorkOrderKey": null,
+    "workOrderKeys": [
+      "28772"
+    ],
+    "sourceStart": "2026-05-05T12:03:00.000-06:00",
+    "sourceEnd": "2026-05-28T13:45:00.000-06:00",
+    "promiseDate": "2026-05-28T06:00:00.000-06:00",
     "hierarchies": [
       {
         "slot": 1,
@@ -652,21 +594,15 @@
     ]
   },
   {
-    "key": "28907",
-    "name": "28907 — CWF-5 - 5\" AUGER TUBE",
-    "productKey": "GEA 30664331-O-0417-055_1",
-    "demandQty": 2,
-    "dueDate": "2026-06-28T11:59:59.000Z",
-    "lateDueDate": "2026-06-29T12:00:00.000Z",
-    "priority": 10,
-    "jobCode": "18909",
-    "jobType": "I",
-    "customerCode": "GEA",
-    "customerName": "GEA NEW ZEALAND LIMITED",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "groupKey": "18909",
-    "parentOrderKey": "28905",
+    "key": "18909",
+    "name": "2 x CWF-5 LIW FEEDERS / SMP HIGH FLOW AUGER",
+    "headWorkOrderKey": null,
+    "workOrderKeys": [
+      "28907"
+    ],
+    "sourceStart": "2026-05-10T07:45:00.000-06:00",
+    "sourceEnd": "2026-06-28T05:59:59.000-06:00",
+    "promiseDate": "2026-06-29T06:00:00.000-06:00",
     "hierarchies": [
       {
         "slot": 1,
@@ -720,21 +656,15 @@
     ]
   },
   {
-    "key": "28920",
-    "name": "28920 — REWORK OF TABLE TOP",
-    "productKey": "SEL REWORK",
-    "demandQty": 1,
-    "dueDate": "2026-04-20T12:00:00.000Z",
-    "lateDueDate": "2026-04-20T12:00:00.000Z",
-    "priority": 10,
-    "jobCode": "R18915",
-    "jobType": "Q",
-    "customerCode": "FPH",
-    "customerName": "FISHER & PAYKEL HEALTHCARE",
-    "itemFamily": "NA",
-    "wostatus": "PRINTED",
-    "groupKey": "R18915",
-    "parentOrderKey": "28920",
+    "key": "R18915",
+    "name": "FRAME AND TABLE TOPS / REWORK OF TABLE TOP",
+    "headWorkOrderKey": "28920",
+    "workOrderKeys": [
+      "28920"
+    ],
+    "sourceStart": "2026-04-20T02:00:00.000-06:00",
+    "sourceEnd": "2026-04-20T06:00:00.000-06:00",
+    "promiseDate": "2026-04-20T06:00:00.000-06:00",
     "hierarchies": [
       {
         "slot": 1,
