@@ -360,6 +360,8 @@ export interface IConfigStore {
   getMappingProfile?(): IMappingProfile | null;
   /** Runtime config for the RollupEngine. Sibling to mapping.json under integration/. */
   getWorkOrderGroupsConfig?(): IRollupEngineConfig | null;
+  /** Pre-derived WorkOrderGroup records for file-tenants. Lives at data/workordergroups.json. REST tenants get groups via MappingEngine; this is the file-tenant analogue. */
+  getWorkOrderGroupsData?(): IWorkOrderGroupData[];
 
   // Reload from disk
   reload(): void;

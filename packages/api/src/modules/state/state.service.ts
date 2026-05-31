@@ -28,7 +28,8 @@ export class StateService {
   private syncFromConfig(): SyncResult {
     this.configService.reloadConfig();
     const tenantId = this.configService.getTenantId();
-    const landscape = this.hydrator.buildLandscape();
+    const workOrderGroupsData = this.configService.getWorkOrderGroupsData();
+    const landscape = this.hydrator.buildLandscape(undefined, workOrderGroupsData);
     validateReferences(landscape);
     this.landscapes.set(tenantId, landscape);
     return this.buildSyncResult(landscape, []);

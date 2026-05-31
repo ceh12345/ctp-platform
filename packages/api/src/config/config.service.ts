@@ -21,6 +21,7 @@ import {
   IUOMConversionsFileData,
   IAdapterConfig,
   IMappingProfile,
+  IWorkOrderGroupData,
 } from './interfaces/config-store.interface';
 import { IRollupEngineConfig } from '@ctp/engine';
 import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
@@ -153,6 +154,11 @@ export class ConfigService {
 
   getWorkOrderGroupsConfig(): IRollupEngineConfig | null {
     return this.store.getWorkOrderGroupsConfig?.() ?? null;
+  }
+
+  /** Pre-derived WorkOrderGroup records for file-tenants. Empty array when the optional data/workordergroups.json isn't present. */
+  getWorkOrderGroupsData(): IWorkOrderGroupData[] {
+    return this.store.getWorkOrderGroupsData?.() ?? [];
   }
 
   reloadConfig(): void {

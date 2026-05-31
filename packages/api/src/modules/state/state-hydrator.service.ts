@@ -299,11 +299,46 @@ export class StateHydratorService {
       if (typeof (item as any).groupKey === 'string') order.groupKey = (item as any).groupKey;
       if (typeof (item as any).parentOrderKey === 'string') order.parentOrderKey = (item as any).parentOrderKey;
 
+      // Optional denormalised hierarchies + attributes (file-tenants that
+      // pre-derive these per-entity in their JSON; the rollup engine still
+      // reference-shares from the group at sync time, so these are the
+      // physical source-of-truth read at hydration before rebuildGroups
+      // overwrites with the group's instance).
+      this.applyDenormalisedHierarchyAttributes(order, item as Record<string, unknown>);
+
       // Stash mapping-output extras (wostatus, customerName, jobCode, etc.)
       // on rawFields for downstream engines (rollup cancellationPredicate).
       order.rawFields = { ...(item as Record<string, unknown>) };
 
       landscape.orders.addEntity(order);
+    }
+  }
+
+  /**
+   * Pre-derived hierarchies + attributes optionally present on per-entity
+   * source records (file-tenants enrich their JSON with the denormalised
+   * values for offline inspectability). Populates entity.hierarchy and
+   * entity.attributes from item.hierarchies / item.attributes if present.
+   *
+   * No-op when fields are absent (REST tenants don't carry these per-record;
+   * they flow via the group + rebuildGroups reference-share path instead).
+   */
+  private applyDenormalisedHierarchyAttributes(
+    entity: { hierarchy: { index: (i: number) => any }; attributes: { add: (nv: any) => void } },
+    item: Record<string, unknown>,
+  ): void {
+    const hierarchies = item.hierarchies as Array<{ slot: number; name: string; value: string | null }> | undefined;
+    if (Array.isArray(hierarchies)) {
+      for (const h of hierarchies) {
+        const node = entity.hierarchy.index(h.slot - 1);
+        if (node) { node.name = h.name; node.value = h.value ?? ''; }
+      }
+    }
+    const attributes = item.attributes as Array<{ name: string; value: string }> | undefined;
+    if (Array.isArray(attributes)) {
+      for (const a of attributes) {
+        entity.attributes.add(new NameValue(a.name, a.value));
+      }
     }
   }
 
@@ -693,6 +728,12 @@ export class StateHydratorService {
         if (typeof numPri === 'number') task.priority = numPri;
       }
       task.originalPriority = task.priority;
+
+      // Optional denormalised hierarchies + attributes + groupKey (file-tenants
+      // that pre-derive these per-entity in tasks.json). See applyDenormalised…
+      // for shape. Rollup engine still reference-shares from group at sync time.
+      this.applyDenormalisedHierarchyAttributes(task, item as Record<string, unknown>);
+      if (typeof (item as any).groupKey === 'string') task.groupKey = (item as any).groupKey;
 
       tasks.addEntity(task);
     }

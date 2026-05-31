@@ -23,6 +23,7 @@ import {
   IUOMConversionsFileData,
   IAdapterConfig,
   IMappingProfile,
+  IWorkOrderGroupData,
 } from './interfaces/config-store.interface';
 import { TenantStrategyOverride, TenantCustomStrategy } from './interfaces/strategy.interface';
 import { IRollupEngineConfig } from '@ctp/engine';
@@ -350,6 +351,15 @@ export class FileConfigStore implements IConfigStore {
       this.readJsonFile<IAdapterConfig>(
         path.join(this.tenantDir, 'integration', 'adapter.json'),
       ),
+    );
+  }
+
+  /** Pre-derived WorkOrderGroup records for file-tenants. data/workordergroups.json, optional file. */
+  getWorkOrderGroupsData(): IWorkOrderGroupData[] {
+    return this.getCached('workOrderGroupsData', () =>
+      this.readJsonFile<IWorkOrderGroupData[]>(
+        path.join(this.tenantDir, 'data', 'workordergroups.json'),
+      ) ?? [],
     );
   }
 
