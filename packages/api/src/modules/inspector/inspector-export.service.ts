@@ -33,7 +33,10 @@ export class InspectorExportService {
     const landscape = this.stateService.getLandscape();
     if (!landscape) {
       throw new HttpException(
-        { error: 'snapshot_unavailable', detail: 'No landscape loaded for this tenant. Sync first via /state/sync or /ctp/solve.' },
+        {
+          error: 'snapshot_unavailable',
+          detail: 'No landscape loaded for this tenant. Sync first via POST /v1/state/sync (or POST /v1/ctp/solve). Tenant routing is via the X-Tenant-Id HTTP header — query parameters are ignored.',
+        },
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
