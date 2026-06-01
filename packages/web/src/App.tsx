@@ -9349,6 +9349,7 @@ function AdminCloneTenant() {
   const target = targetName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const [status, setStatus] = useState<{ type: 'ok' | 'error'; msg: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
 
   const loadTenants = useCallback(async () => {
     try {
@@ -9398,6 +9399,34 @@ function AdminCloneTenant() {
     } catch (err: any) {
       setStatus({ type: 'error', msg: err.message || 'Reset failed' });
     }
+  };
+
+  // Inspector export — fetches the XLSX blob and triggers a browser download.
+  // Uses raw fetch instead of api() because the response is binary, not JSON.
+  const handleInspectorExport = async () => {
+    setExportLoading(true);
+    setStatus(null);
+    try {
+      const res = await fetch(`${API_BASE}/v1/inspector/export`, {
+        headers: { 'X-Tenant-Id': tenantId },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Export failed (${res.status})`);
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get('Content-Disposition') || '';
+      const match = cd.match(/filename="([^"]+)"/);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = match?.[1] || `inspector-${tenantId}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      setStatus({ type: 'ok', msg: `Downloaded ${a.download}` });
+    } catch (err: any) {
+      setStatus({ type: 'error', msg: err.message || 'Export failed' });
+    }
+    setExportLoading(false);
   };
 
   const PROTECTED = new Set(['demo-manufacturing', 'stafford-engineering', 'acme-outpatient']);
@@ -9478,6 +9507,27 @@ function AdminCloneTenant() {
           ))}
         </tbody>
       </table>
+
+      <div style={{ marginTop: 24 }}>
+        <SectionLabel label="Data Inspector Export" />
+        <p style={{ fontSize: 12, color: C.textMuted, margin: '0 0 12px' }}>
+          Download an Excel workbook with all entities + attribute provenance for the current tenant.
+          Requires a synced landscape (the current page-load sync covers that).
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={handleInspectorExport} disabled={exportLoading} style={{
+            padding: '8px 18px', borderRadius: 6, border: 'none', cursor: 'pointer',
+            background: C.accent, color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: FONT,
+            opacity: exportLoading ? 0.4 : 1,
+            whiteSpace: 'nowrap',
+          }}>
+            {exportLoading ? 'Building…' : 'Export to Excel'}
+          </button>
+          <span style={{ fontSize: 11, color: C.textDim }}>
+            Current tenant: <code style={{ fontFamily: 'monospace' }}>{tenantId}</code>
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
