@@ -175,6 +175,71 @@ Carries the same `groupKey` as its parent order, so task-level queries can group
 
 ---
 
+## WO normalization within a WorkOrderGroup
+
+WOs within a Job form a multi-level BOM-style tree. The structure lives on the WO record, not on `JobEntity` (which only carries counts: `TotalQuantityOfWorkOrder`, `QuantityOfOpenWorkorder`, `QuantityOfCloseWorkOrder`).
+
+### Source fields on `workOrderWithAdvancedInformationViewEntity`
+
+| Field | Use | Reliability (2026-06-03 capture, 871 WOs) |
+|---|---|---|
+| `WorkOrder` | Self ID (string) | 100% populated |
+| `ParentWorkOrder` | FK to parent WO (string) | 100% populated |
+| `Sequence` | Genius's operation sequence | **Useless** — only values observed are `null` and `1`. Do not store. |
+
+### Head identification
+
+**Rule: head WO is the one where `WorkOrder === ParentWorkOrder`** (self-reference). Genius marks this for us — no need to promote a head from candidate WOs. This supersedes the earlier "`ParentWorkOrder = null`" guess (OI-2).
+
+### Per-WG sequence number
+
+Topological sort by `ParentWorkOrder`, leaves first → root last. Kahn's algorithm; tie-break by `WorkOrder` string ascending for determinism. Tree depths observed: 0=345, 1=335, 2=173, 3=18 (max 4 levels). O(n) per Job, free at any realistic tenant size.
+
+Stored on `CTPOrder` as a new `wgSequence: number` field (denormalised at sync time alongside `groupKey`).
+
+### Per-edge CTPLinkId
+
+For each parent/child WO edge in the tree, emit one `CTPLinkId`:
+
+- **From:** child WO's terminal task
+- **To:** parent WO's first material-consuming task
+- **Direction:** finish-to-start (BOM consumption — parent assembly can't start until child sub-component is produced)
+- **maxGap:** 0 for v1 (tight coupling). `Job.ShippingBufferDays` is a candidate but introduces slack; defer to a follow-up sprint.
+
+Reuses the existing Solver 2.5 chain-propagation machinery (commit `b6f79c9`). No new engine code; just additional links seeded at sync time.
+
+### Structural invariants (verified against 2026-06-03 WORK7 capture)
+
+1. **Containment** — WO parents never cross Job boundaries. 0/871 violations.
+2. **Closure** — head closed ⇒ all children closed; conversely, no live child has a closed parent. Verified by cross-referencing 20 "orphan" child refs and 18 "headless" jobs: all 20 orphan children are `CANCELLED`, all 18 headless jobs contain only `CANCELLED` WOs, and none of those 18 jobs are in `JobEntity(Active=true)`. No anomaly — these are inactive Jobs whose WOs leaked through the looser WO-side filter.
+
+### Adapter filter — tighten both sides
+
+Both edge-case categories collapse if the adapter filters consistently on both endpoints:
+
+| Endpoint | Filter |
+|---|---|
+| `workOrderWithAdvancedInformationViewEntity` | `Wostatus!=CLOSED & Wostatus!=CANCELLED` |
+| `JobEntity` | `Active=true & Job<SYST` (already in 2026-06-03 capture) |
+| Cross-check | Drop any WO whose `Job` is not in the active `JobEntity` set |
+
+Effect on 2026-06-03 dataset:
+- Drops 89 `CANCELLED` WOs
+- Eliminates all 20 orphan parent refs
+- Eliminates all 18 headless jobs
+- Resulting WO set: ~782 records (PRINTED 743 + CREATED 37 + PLANNED 2), every Job has exactly one self-referential head
+
+No "virtually-head" hack, no phantom-parent synthesis, no orphan policy needed.
+
+### Adapter / payload work this implies
+
+- Add `JobEntity` to the Genius adapter endpoint list with filter `Active=true & Job<SYST`
+- Add a `jobs` key to `IRawDataPayload`
+- Add the cross-filter step (active Jobs gate WOs) to the mapping pipeline
+- Sanitize the 2026-06-03 capture and promote to `tools/mock-genius/fixtures/stafford-snapshot-2026-06-03/`
+
+---
+
 ## Field sourcing — Stafford / WORK7
 
 Mapping rules to populate each field from Genius data. All from `workOrderWithAdvancedInformationViewEntity` unless noted.
@@ -399,14 +464,11 @@ What goes in `WorkOrderGroup.name`? Options:
 
 Lean: tenant-configurable template, with the Stafford default being "ProjectName / head WO description." Confirm with Kaleb.
 
-### OI-2: Head WO identification
+### OI-2: Head WO identification (RESOLVED — 2026-06-03 capture)
 
-We've assumed the head is the WO with `ParentWorkOrder = null`. The CEM screenshot shows what looks like a single-rooted tree per Job. But:
-- What if a Job has multiple WOs with `ParentWorkOrder = null`? (Flat structure, no head.)
-- What if `ParentWorkOrder` is empty string rather than null?
-- Is there an explicit "head WO" flag in Genius we haven't seen?
+Head WO is the one where `WorkOrder === ParentWorkOrder` (self-reference). Genius writes it this way; no promotion logic needed. Verified against 871 open WOs: every active Job has exactly one self-referential head, never zero or more than one. See "WO normalization within a WorkOrderGroup" section above for the full evidence.
 
-Decision: confirm with Allan against the data. Fall back rule if no single head: `headWorkOrderKey = null`, group is "flat."
+The earlier guess (`ParentWorkOrder = null`) was wrong — `ParentWorkOrder` is 100% populated.
 
 ### OI-3: Member discovery — by `Job` field alone, or by walking the WO tree?
 
@@ -453,12 +515,9 @@ Options:
 
 Recommendation to put forward: buffer days against `sourceEnd`, configurable per tenant, default 3.
 
-### Decision 2 — Head WO identification
+### Decision 2 — Head WO identification (RESOLVED by data inspection)
 
-Confirm:
-- Is `ParentWorkOrder = null` the only signal?
-- Are there cases where a Job has no clear head?
-- Behaviour if multiple head candidates exist?
+Head = self-referential WO (`WorkOrder === ParentWorkOrder`). 2026-06-03 capture confirms: every active Job has exactly one head, none have zero, none have more than one. Containment is also clean (0 cross-Job parent refs in 871 WOs). Nothing to ask Stafford. See "WO normalization within a WorkOrderGroup" for the full structural analysis.
 
 ### Decision 3 — Customer-facing promise date: Job or WO?
 
@@ -483,12 +542,60 @@ No join to `salesOrderHeaderEntity` is needed. The Customer hierarchy slot can b
 
 Switching is a one-line edit to the slot's `source` block in the tenant mapping. The originally-planned `SPRINT-workordergroup-customer-live` follow-up is unnecessary and has been dropped.
 
-### Decision 5 — Cancelled / superseded WOs
+### Decision 5 — Cancelled / superseded WOs (RESOLVED by data inspection)
 
-The CEM screenshot shows at least one strikethrough WO (`26864 SEAL HOUSING`). Confirm:
-- Which `Wostatus` values indicate cancellation vs. completion?
-- Are cancelled WOs included in member counts, or excluded?
-- Recommendation: exclude from `totalWorkOrders`, count separately in `cancelledWorkOrders`.
+2026-06-03 capture observes four `Wostatus` values in the open set: `PRINTED` (743), `CANCELLED` (89), `CREATED` (37), `PLANNED` (2). All 89 `CANCELLED` WOs belong to inactive Jobs (not in `JobEntity(Active=true)`) and account for every orphan-parent and headless-job edge case in the dataset.
+
+**Decision:** filter `CANCELLED` at the adapter, same way `CLOSED` is filtered. No `cancelledWorkOrders` counter is needed — they don't enter the system. See "Adapter filter — tighten both sides" in the WO normalization section above.
+
+### Decision 6 — Buffer days value (refines Decision 1)
+
+Decision 1 settled the *mechanism* (buffer days against `sourceEnd`). Decision 6 settles the *value*.
+
+- Currently configured: `bufferDays: 3` in `config/tenants/stafford-engineering-test/integration/workordergroups.json`.
+- Stafford carries a `ShippingBufferDays` field on the SO line — observed `2` in the May 8 sample.
+
+Frame to Kaleb:
+> *"AT_RISK fires `bufferDays` before sourceEnd. We default to 3 days. Your ShippingBufferDays on the SO line is 2 in the sample — do you want AT_RISK pegged to that, or is 3 the right operational warning window?"*
+
+One-line config change either way. Capture the answer; no design dependency.
+
+### Decision 7 — Hierarchy slot names and count
+
+Currently configured on `CTPWorkOrderGroup`:
+
+| Slot | Name | Source |
+|---|---|---|
+| 1 | Customer | synthetic pool today, swappable to `CustomerName` from the WO record |
+| 2 | Project | `ProjectName` |
+| 3 | SalesOrder | `SalesOrderNo` |
+| 4 | *(unused)* | — |
+| 5 | *(unused)* | — |
+
+Two open variations to settle since these become UI labels in the Jobs page rollup and the Inspector export's per-level sheets:
+
+1. **Is a fourth slot needed?** Some setups carry "Programme" or "Division" or "Business Unit" above Customer. Adding a fourth is a one-line mapping-config edit.
+2. **Are the labels right?** "Customer", "Project", "Sales Order" — match Stafford's internal vocabulary, or do they call any of these something else?
+
+Frame to Kaleb:
+> *"For grouping and filtering in the UI, we've got Customer, Project, Sales Order as the three dimensions above a Job. Are those the right three? Anything sitting above Customer in your setup we should add — Programme, Division, anything like that? Should any be renamed?"*
+
+Cheap conversation; important to settle before the UI work starts so labels don't ripple.
+
+### Decision 8 — Inventory-fulfilled SO lines (OI-6 confirmation with Kaleb)
+
+OI-6 already captures the technical fact: `salesOrderDetailEntity.JobCode` is sometimes null because that SO line is fulfilled from existing inventory rather than production. Allan flagged this on the data side. Decision 8 confirms the *acceptable behaviour* side with Kaleb.
+
+Current sprint approach (per OI-6): filter these out at mapping ingest. They don't appear in groups, don't consume scheduling capacity, don't appear in the solver's view of demand.
+
+Frame to Kaleb:
+> *"Some SO lines are fulfilled from existing stock — they have no Job, no WO, so they don't show up in the scheduler's view. Is that OK as a near-term behaviour, or do you need visibility into those commitments so the customer- and project-level KPIs are complete?"*
+
+Two outcomes:
+- **"Filtering is fine"** → ships as-is.
+- **"We need to see those commitments"** → opens the door to introduce the deferred `SPRINT-workordergroup-demand` (inventory commitments as a separate `Demand` or `Commitment` entity, surfaced alongside the scheduler view). This is also the opportunity to flag that sprint as a roadmap item so it isn't a surprise later.
+
+Use this answer to triage the follow-up sprint's priority.
 
 ---
 
