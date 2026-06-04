@@ -75,3 +75,16 @@ After every sprint's code is complete, run the full regression test suite before
 - **No Vibe-Coding**: Before any edit, state the target file and the specific lines to be changed. Wait for confirmation if changing >3 files.
 - **Minimal Diffs**: Prioritize the smallest possible code change to satisfy the spec. Avoid unnecessary refactors of adjacent code.
 - **Tool Discipline**: Use `grep` for specific string searches instead of broad agentic search tools that consume excess context.
+
+## gstack (recommended)
+
+This project uses [gstack](https://github.com/garrytan/gstack) for AI-assisted workflows.
+Install it for the best experience:
+
+```bash
+git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack
+cd ~/.claude/skills/gstack && ./setup --team
+```
+
+Skills like /qa, /ship, /review, /investigate, and /browse become available after install.
+Use /browse for all web browsing. Use ~/.claude/skills/gstack/... for gstack file paths.
