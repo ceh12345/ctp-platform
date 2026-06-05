@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CTP — ROI & Pricing Calculator</title>
+<style>
+  :root {
+    --ink: #1a1d24;
+    --muted: #6b7280;
+    --line: #e3e6eb;
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --accent: #1f6feb;
+    --good: #137a4b;
+    --good-bg: #e8f6ee;
+    --warn: #9a6700;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.45;
+  }
+  header {
+    padding: 22px 28px;
+    background: var(--ink);
+    color: #fff;
+  }
+  header h1 { margin: 0; font-size: 19px; letter-spacing: .2px; }
+  header p { margin: 4px 0 0; color: #aeb6c2; font-size: 13px; }
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 24px 28px 60px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 880px) { .wrap { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .card h2 {
+    margin: 0 0 14px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--muted);
+  }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0; }
+  .row label { font-size: 14px; flex: 1; }
+  .row .hint { display: block; font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+  input[type="text"], input[type="number"] {
+    width: 150px;
+    padding: 7px 9px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 14px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  input#shopName { text-align: left; width: 190px; }
+  input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  .pct { width: 78px; }
+  .group-sub { font-size: 12px; color: var(--muted); margin: 16px 0 4px; font-weight: 600; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
+
+  .headline {
+    background: var(--good-bg);
+    border: 1px solid #bfe6cf;
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+  }
+  .headline .big { font-size: 30px; font-weight: 700; color: var(--good); letter-spacing: -.5px; }
+  .headline .sub { font-size: 13.5px; color: #2c5e44; margin-top: 2px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  td, th { padding: 7px 6px; text-align: left; border-bottom: 1px solid var(--line); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: 0; }
+  tfoot td { font-weight: 700; border-top: 2px solid var(--ink); border-bottom: 0; }
+
+  .band { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 4px; }
+  .band .b {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+  .band .b.rec { border-color: var(--accent); background: #eef4ff; }
+  .band .b .lab { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+  .band .b .val { font-size: 20px; font-weight: 700; margin-top: 2px; }
+  .band .b .cap { font-size: 11px; color: var(--muted); }
+
+  .pitch {
+    margin-top: 16px;
+    padding: 14px 16px;
+    border-left: 3px solid var(--accent);
+    background: #f5f8ff;
+    font-size: 14px;
+    border-radius: 0 8px 8px 0;
+  }
+  .pitch b { color: var(--ink); }
+  .note { font-size: 12px; color: var(--muted); margin-top: 14px; }
+  .warnbox { color: var(--warn); font-size: 12.5px; margin-top: 10px; }
+  .actions { margin-top: 16px; display: flex; gap: 10px; }
+  button {
+    font-size: 13px; padding: 9px 14px; border-radius: 7px; border: 1px solid var(--line);
+    background: #fff; cursor: pointer;
+  }
+  button.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .presets { display: flex; gap: 8px; margin: 0 0 14px; flex-wrap: wrap; }
+  .presets button { font-size: 12.5px; padding: 7px 12px; }
+  .presets button:hover { border-color: var(--accent); color: var(--accent); }
+  .full { grid-column: 1 / -1; }
+  table.compare td.save, table.compare th.save { color: var(--good); font-weight: 600; }
+  .bottomline {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 14px;
+  }
+  .bottomline .b { border: 1px solid var(--line); border-radius: 8px; padding: 12px; text-align: center; }
+  .bottomline .b.net { border-color: var(--good); background: var(--good-bg); }
+  .bottomline .lab { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+  .bottomline .val { font-size: 20px; font-weight: 700; margin-top: 2px; }
+  @media print {
+    header { background: #fff; color: #000; border-bottom: 2px solid #000; }
+    header p { color: #444; }
+    body { background: #fff; }
+    .inputs-card, .actions { display: none; }
+    .wrap { grid-template-columns: 1fr; max-width: 100%; }
+    .card { border-color: #ccc; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>CTP &mdash; ROI &amp; Pricing Calculator</h1>
+  <p>Value-based pricing for high-mix / low-volume make-to-order shops. Enter the shop's pain costs; get a defensible annual price band and the customer's ROI.</p>
+</header>
+
+<div class="wrap">
+  <!-- INPUTS -->
+  <div class="card inputs-card">
+    <h2>Inputs</h2>
+
+    <div class="presets">
+      <button onclick="applyPreset('small')">Small shop</button>
+      <button onclick="applyPreset('mid')">Mid shop</button>
+      <button onclick="applyPreset('large')">Large shop</button>
+    </div>
+
+    <div class="row">
+      <label for="shopName">Shop / client name</label>
+      <input type="text" id="shopName" value="Example HMLV shop" />
+    </div>
+
+    <div class="group-sub">Annual cost of the pain (what poor scheduling costs them today, $/yr)</div>
+
+    <div class="row">
+      <label>Late-delivery penalties<span class="hint">Contractual late fees, chargebacks, lost rebates</span></label>
+      <input type="number" id="penalties" value="120000" min="0" step="1000" />
+    </div>
+    <div class="row">
+      <label>Expediting / rush costs<span class="hint">Air freight, overtime to recover, premium buys</span></label>
+      <input type="number" id="expediting" value="40000" min="0" step="1000" />
+    </div>
+    <div class="row">
+      <label>Schedule-driven overtime<span class="hint">Avoidable OT from poor sequencing</span></label>
+      <input type="number" id="overtime" value="25000" min="0" step="1000" />
+    </div>
+    <div class="row">
+      <label>Lost margin from missed capacity<span class="hint">Jobs you couldn't take / slipped (optional)</span></label>
+      <input type="number" id="lostMargin" value="0" min="0" step="1000" />
+    </div>
+
+    <div class="group-sub">Planner time spent scheduling manually</div>
+    <div class="row">
+      <label>Planner hours / week</label>
+      <input type="number" id="plannerHrs" value="15" min="0" step="1" />
+    </div>
+    <div class="row">
+      <label>Loaded planner rate ($/hr)</label>
+      <input type="number" id="plannerRate" value="55" min="0" step="5" />
+    </div>
+
+    <hr />
+    <div class="group-sub">CTP improvement assumptions (conservative &mdash; edit freely)</div>
+    <div class="row">
+      <label>Reduce late penalties by</label>
+      <input type="number" class="pct" id="redPen" value="40" min="0" max="100" step="5" />
+    </div>
+    <div class="row">
+      <label>Reduce expediting by</label>
+      <input type="number" class="pct" id="redExp" value="30" min="0" max="100" step="5" />
+    </div>
+    <div class="row">
+      <label>Reduce overtime by</label>
+      <input type="number" class="pct" id="redOt" value="20" min="0" max="100" step="5" />
+    </div>
+    <div class="row">
+      <label>Recover lost margin by</label>
+      <input type="number" class="pct" id="redLm" value="15" min="0" max="100" step="5" />
+    </div>
+    <div class="row">
+      <label>Reduce planner hours by</label>
+      <input type="number" class="pct" id="redPl" value="50" min="0" max="100" step="5" />
+    </div>
+
+    <hr />
+    <div class="group-sub">Pricing</div>
+    <div class="row">
+      <label>Value-capture rate (recommended)<span class="hint">Share of created value you charge for</span></label>
+      <input type="number" class="pct" id="capture" value="25" min="5" max="60" step="1" />
+    </div>
+    <div class="row">
+      <label>Founding-customer discount<span class="hint">Trade for case study + reference + logo</span></label>
+      <input type="number" class="pct" id="founding" value="40" min="0" max="80" step="5" />
+    </div>
+    <div class="row">
+      <label>Price floor (per site)<span class="hint">Don't quote below this regardless of value</span></label>
+      <input type="number" id="floor" value="18000" min="0" step="1000" />
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="card">
+    <h2>Results</h2>
+
+    <div class="headline">
+      <div class="big" id="hPrice">$0</div>
+      <div class="sub" id="hSub">recommended annual price</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Value driver</th><th class="num">Pain $/yr</th><th class="num">CTP recovers</th></tr>
+      </thead>
+      <tbody id="breakdown"></tbody>
+      <tfoot>
+        <tr><td>Total annual value created</td><td class="num"></td><td class="num" id="totalValue">$0</td></tr>
+      </tfoot>
+    </table>
+
+    <div style="margin-top:18px">
+      <h2>Annual price band</h2>
+      <div class="band">
+        <div class="b"><div class="lab">Conservative</div><div class="val" id="bLow">$0</div><div class="cap" id="capLow">20% of value</div></div>
+        <div class="b rec"><div class="lab">Recommended</div><div class="val" id="bMid">$0</div><div class="cap" id="capMid">25% of value</div></div>
+        <div class="b"><div class="lab">Aggressive</div><div class="val" id="bHigh">$0</div><div class="cap" id="capHigh">33% of value</div></div>
+      </div>
+    </div>
+
+    <div class="pitch" id="pitch"></div>
+    <div class="pitch" id="foundingPitch" style="border-left-color:var(--good);background:var(--good-bg)"></div>
+
+    <div class="warnbox" id="warn"></div>
+
+    <div class="note">
+      Method: charge a fraction (~1/4 to 1/3) of the dollar value CTP creates, anchored to a countable
+      unit (per site/plant), on an annual contract. Defaults are deliberately conservative so the ROI
+      you quote is defensible. The price never drops below the floor.
+    </div>
+
+    <div class="actions">
+      <button class="primary" onclick="window.print()">Print / Save PDF</button>
+      <button onclick="resetAll()">Reset to example</button>
+    </div>
+  </div>
+
+  <!-- CUSTOMER SUMMARY (full width, prints clean) -->
+  <div class="card full" id="compareCard">
+    <h2>Customer summary &mdash; today vs. with CTP</h2>
+    <table class="compare">
+      <thead>
+        <tr>
+          <th>Cost driver</th>
+          <th class="num">Today / yr</th>
+          <th class="num">With CTP / yr</th>
+          <th class="num save">You save / yr</th>
+        </tr>
+      </thead>
+      <tbody id="compareBody"></tbody>
+      <tfoot>
+        <tr>
+          <td>Total scheduling cost</td>
+          <td class="num" id="cToday">$0</td>
+          <td class="num" id="cWith">$0</td>
+          <td class="num save" id="cSave">$0</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="bottomline">
+      <div class="b"><div class="lab">CTP subscription</div><div class="val" id="blPrice">$0</div></div>
+      <div class="b net"><div class="lab">Net annual benefit</div><div class="val" id="blNet" style="color:var(--good)">$0</div></div>
+      <div class="b"><div class="lab">Return on investment</div><div class="val" id="blRoi">0x</div></div>
+    </div>
+
+    <div class="pitch" id="comparePitch"></div>
+  </div>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const ids = ['shopName','penalties','expediting','overtime','lostMargin','plannerHrs','plannerRate',
+               'redPen','redExp','redOt','redLm','redPl','capture','founding','floor'];
+  const defaults = {
+    shopName:'Example HMLV shop', penalties:120000, expediting:40000, overtime:25000, lostMargin:0,
+    plannerHrs:15, plannerRate:55, redPen:40, redExp:30, redOt:20, redLm:15, redPl:50,
+    capture:25, founding:40, floor:18000
+  };
+
+  const num = id => { const v = parseFloat($(id).value); return isNaN(v) ? 0 : v; };
+  const money = n => '$' + Math.round(n).toLocaleString('en-US');
+  const pct = id => Math.max(0, Math.min(100, num(id))) / 100;
+
+  function compute() {
+    const penalties = num('penalties');
+    const expediting = num('expediting');
+    const overtime = num('overtime');
+    const lostMargin = num('lostMargin');
+    const plannerCost = num('plannerHrs') * num('plannerRate') * 52;
+
+    const rows = [
+      ['Late-delivery penalties', penalties, penalties * pct('redPen')],
+      ['Expediting / rush costs',  expediting, expediting * pct('redExp')],
+      ['Schedule-driven overtime', overtime,   overtime * pct('redOt')],
+      ['Lost margin (capacity)',   lostMargin, lostMargin * pct('redLm')],
+      ['Planner time',             plannerCost, plannerCost * pct('redPl')],
+    ];
+
+    const value = rows.reduce((s, r) => s + r[2], 0);
+
+    // price band
+    const cap = Math.max(5, Math.min(60, num('capture'))) / 100;
+    const floor = num('floor');
+    const low  = Math.max(floor, value * 0.20);
+    const mid  = Math.max(floor, value * cap);
+    const high = Math.max(floor, value * 0.33);
+
+    const founding = mid * (1 - pct('founding'));
+
+    // render breakdown
+    $('breakdown').innerHTML = rows.map(r =>
+      `<tr><td>${r[0]}</td><td class="num">${money(r[1])}</td><td class="num">${money(r[2])}</td></tr>`
+    ).join('');
+    $('totalValue').textContent = money(value);
+
+    $('bLow').textContent = money(low);
+    $('bMid').textContent = money(mid);
+    $('bHigh').textContent = money(high);
+    $('capMid').textContent = Math.round(cap * 100) + '% of value';
+
+    // headline = recommended (mid)
+    const roi = mid > 0 ? value / mid : 0;
+    const payback = value > 0 ? (mid / (value / 12)) : 0;
+    $('hPrice').textContent = money(mid) + ' / yr';
+    $('hSub').textContent = `recommended annual price per site · ${roi.toFixed(1)}x customer ROI`;
+
+    const shop = $('shopName').value.trim() || 'This shop';
+    $('pitch').innerHTML =
+      `<b>${shop}</b> loses about <b>${money(value)}/year</b> to scheduling problems CTP fixes. ` +
+      `At <b>${money(mid)}/year</b>, they recover <b>${money(value - mid)}/year net</b> &mdash; ` +
+      `a <b>${roi.toFixed(1)}x return</b>, paid back in <b>${payback.toFixed(1)} months</b>.`;
+
+    $('foundingPitch').innerHTML =
+      `<b>Founding-customer offer:</b> ${money(founding)}/year ` +
+      `(${Math.round(pct('founding')*100)}% off) in exchange for a written case study, a reference call, ` +
+      `and logo rights. At that price the ROI is <b>${(founding>0?value/founding:0).toFixed(1)}x</b>.`;
+
+    // customer summary: today vs with-CTP
+    const totalToday = rows.reduce((s, r) => s + r[1], 0);
+    const totalWith = totalToday - value;
+    $('compareBody').innerHTML = rows.map(r => {
+      const today = r[1], saved = r[2], withCtp = today - saved;
+      return `<tr><td>${r[0]}</td><td class="num">${money(today)}</td>` +
+             `<td class="num">${money(withCtp)}</td><td class="num save">${money(saved)}</td></tr>`;
+    }).join('');
+    $('cToday').textContent = money(totalToday);
+    $('cWith').textContent  = money(totalWith);
+    $('cSave').textContent  = money(value);
+
+    const netBenefit = value - mid;
+    $('blPrice').textContent = money(mid) + ' / yr';
+    $('blNet').textContent   = money(netBenefit) + ' / yr';
+    $('blRoi').textContent   = roi.toFixed(1) + 'x';
+    $('comparePitch').innerHTML =
+      `Today ${shop} spends about <b>${money(totalToday)}/year</b> coping with scheduling. ` +
+      `With CTP that drops to <b>${money(totalWith)}/year</b>. After the <b>${money(mid)}/year</b> ` +
+      `subscription, the net gain is <b>${money(netBenefit)}/year</b>.`;
+
+    // sanity warning
+    let warn = '';
+    if (value < floor * 1.5 && value > 0) {
+      warn = 'Heads up: the value created is close to your price floor. Either the pain numbers are too low to ' +
+             'justify this buyer, or you are missing a cost driver (penalties / expediting are usually the big ones).';
+    } else if (value === 0) {
+      warn = 'Enter the shop’s pain costs above to see a price.';
+    } else if (mid === floor && value * cap < floor) {
+      warn = 'Value-based price is below your floor, so the floor is being used. This is a small/low-pain shop ' +
+             'for CTP — fine to land, but it is not your best-fit customer.';
+    }
+    $('warn').textContent = warn;
+  }
+
+  const presets = {
+    small: { penalties:40000,  expediting:15000, overtime:10000, lostMargin:0,     plannerHrs:8,  plannerRate:50 },
+    mid:   { penalties:120000, expediting:40000, overtime:25000, lostMargin:0,     plannerHrs:15, plannerRate:55 },
+    large: { penalties:300000, expediting:90000, overtime:60000, lostMargin:80000, plannerHrs:30, plannerRate:60 },
+  };
+  function applyPreset(name) {
+    const p = presets[name];
+    if (!p) return;
+    Object.keys(p).forEach(k => $(k).value = p[k]);
+    $('shopName').value = name.charAt(0).toUpperCase() + name.slice(1) + ' HMLV shop';
+    compute();
+  }
+
+  function resetAll() {
+    ids.forEach(id => $(id).value = defaults[id]);
+    compute();
+  }
+
+  ids.forEach(id => $(id).addEventListener('input', compute));
+  compute();
+</script>
+</body>
+</html>
