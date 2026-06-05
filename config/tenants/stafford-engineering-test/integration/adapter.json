@@ -7,7 +7,9 @@
     "auth": { "type": "none" },
     "timeout": 30000,
     "retries": 3,
-    "retryDelay": 2000
+    "retryDelay": 2000,
+    "pageSizeParam": "pageSize",
+    "pageNumberParam": "pageNumber"
   },
   "endpoints": {
     "salesOrders": { "path": "/workOrderWithAdvancedInformationViewEntity", "pageSize": 100 },

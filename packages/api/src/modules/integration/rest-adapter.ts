@@ -12,11 +12,14 @@ export class RestAdapter implements IDataAdapter {
     const timeout = (this.config.connection?.timeout as number) ?? 30000;
     const retries = (this.config.connection?.retries as number) ?? 3;
     const retryDelay = (this.config.connection?.retryDelay as number) ?? 2000;
+    // Pagination param names default to Genius conventions. Per-tenant override via connection.{pageSizeParam,pageNumberParam}.
+    const pageSizeParam   = (this.config.connection?.pageSizeParam   as string) ?? 'pageSize';
+    const pageNumberParam = (this.config.connection?.pageNumberParam as string) ?? 'pageNumber';
 
     const [salesOrders, tasks, resources] = await Promise.all([
-      this.fetchAllPages(`${baseUrl}${endpoints.salesOrders?.path ?? ''}`, endpoints.salesOrders?.pageSize ?? 100, timeout, retries, retryDelay),
-      this.fetchAllPages(`${baseUrl}${endpoints.tasks?.path ?? ''}`, endpoints.tasks?.pageSize ?? 200, timeout, retries, retryDelay),
-      this.fetchAllPages(`${baseUrl}${endpoints.resources?.path ?? ''}`, endpoints.resources?.pageSize ?? 100, timeout, retries, retryDelay),
+      this.fetchAllPages(`${baseUrl}${endpoints.salesOrders?.path ?? ''}`, endpoints.salesOrders?.pageSize ?? 100, timeout, retries, retryDelay, pageSizeParam, pageNumberParam),
+      this.fetchAllPages(`${baseUrl}${endpoints.tasks?.path ?? ''}`, endpoints.tasks?.pageSize ?? 200, timeout, retries, retryDelay, pageSizeParam, pageNumberParam),
+      this.fetchAllPages(`${baseUrl}${endpoints.resources?.path ?? ''}`, endpoints.resources?.pageSize ?? 100, timeout, retries, retryDelay, pageSizeParam, pageNumberParam),
     ]);
 
     return {
@@ -39,6 +42,8 @@ export class RestAdapter implements IDataAdapter {
     timeout: number,
     retries: number,
     retryDelay: number,
+    pageSizeParam: string,
+    pageNumberParam: string,
   ): Promise<unknown[]> {
     if (!url || url.endsWith('/')) return [];
 
@@ -47,7 +52,8 @@ export class RestAdapter implements IDataAdapter {
     const results: unknown[] = [];
 
     do {
-      const fullUrl = `${url}?limit=${pageSize}&pageIndex=${page}`;
+      const sep = url.includes('?') ? '&' : '?';
+      const fullUrl = `${url}${sep}${pageSizeParam}=${pageSize}&${pageNumberParam}=${page}`;
       const data = await this.fetchWithRetry(fullUrl, timeout, retries, retryDelay);
       const records: unknown[] = data?.Result ?? (Array.isArray(data) ? data : []);
       results.push(...records);
