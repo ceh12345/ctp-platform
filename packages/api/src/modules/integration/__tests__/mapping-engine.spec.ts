@@ -68,7 +68,7 @@ const STAFFORD_PROFILE: IMappingProfile = {
 
 function makePayload(overrides: Partial<IRawDataPayload> = {}): IRawDataPayload {
   return {
-    orders: GENIUS_ORDERS, tasks: GENIUS_TASKS, resources: GENIUS_RESOURCES,
+    orders: GENIUS_ORDERS, tasks: GENIUS_TASKS, resources: GENIUS_RESOURCES, jobs: [],
     calendars: [], stateChanges: [], products: [], materials: [], processes: [], cadences: [], uomConversions: null,
     ...overrides,
   };

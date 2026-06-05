@@ -101,7 +101,7 @@
       "type":            { "from": "Formula", "lookup": { "HR/UN": "STANDARD", "JR/DY": "SUBCONTRACT_DAYS", "_default": "STANDARD" } },
       "durationSeconds": { "from": "TotalPlannedMachineHours", "factor": 3600 },
       "durationQty":     { "value": 1 },
-      "durationType":    { "value": 0 },
+      "durationType":    { "value": 1 },
       "wipState": {
         "cascade": [
           { "from": "CompletionPercentage",       "threshold": 99.99, "above": "COMPLETED" },

@@ -14,6 +14,7 @@ export class FileAdapter implements IDataAdapter {
       stateChanges:   this.configService.getStateChanges(),
       products:       this.configService.getProducts(),
       orders:         this.configService.getOrders(),
+      jobs:           [],
       materials:      this.configService.getMaterials(),
       processes:      this.configService.getProcesses(),
       cadences:       this.configService.getCadences(),

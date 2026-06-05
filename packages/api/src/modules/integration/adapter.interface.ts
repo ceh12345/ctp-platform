@@ -5,6 +5,7 @@ export interface IRawDataPayload {
   stateChanges: unknown[];
   products: unknown[];
   orders: unknown[];
+  jobs: unknown[];
   materials: unknown[];
   processes: unknown[];
   cadences: unknown[];

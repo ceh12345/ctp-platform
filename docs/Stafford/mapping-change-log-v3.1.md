@@ -211,8 +211,31 @@ Confirms Kaleb's *"Work order > task order should give the requisite chain."*
 | **CTPOrder unit** | Should it represent a job (potentially multi-WO) or remain 1:1 with work order as currently mapped? |
 | **Subcontract task duration** | `JR/DY` tasks express calendar days, not machine hours. `TotalPlannedMachineHours = 0` for OUT ops. Engine handling TBD — may need a separate duration field for SUBCONTRACT_DAYS task type. |
 | **PRINTED → IN_PROCESS impact** | Observe whether the engine treats IN_PROCESS as immutable; if so, escalate (most active tasks would lock). |
+| **Float-vs-fixed duration** | Which OperationCodes (if any) name operations that physically cannot be interrupted mid-run by a shift break or planned maintenance without ruining the part? Typical examples elsewhere: heat-treat, curing, paint-bake, certain CNC autonomous cycles. Default for everything else will be FLOAT (engine is free to slice the duration around downtime). If Stafford names specific codes, we convert the `tasks.durationType` rule from `value: 1` to a `lookup` keyed on `OperationCode` — skeleton drafted below. Note: this is NOT the same question as `Formula` (HR/UN vs HR/OP), which is about *how* duration is computed, not whether the run can be paused. |
 
 These don't block v3.1 application. They drive the next round of mapping/architecture work.
+
+### Derive-rule skeleton — `tasks.durationType` keyed on `OperationCode`
+
+Activates if Stafford answers the float-vs-fixed question above with a list of FIXED operation codes. Until then the mapping ships `{ "value": 1 }` (FLOAT for all tasks).
+
+```jsonc
+"durationType": {
+  "from": "OperationCode",
+  "lookup": {
+    "OP_HEATTREAT": 0,   // placeholder — replace with real Stafford codes
+    "OP_CURE":      0,
+    "OP_BAKE":      0,
+    "_default": 1
+  }
+}
+```
+
+Constants: `0 = FIXED_DURATION` (engine treats as uninterruptible block), `1 = FLOAT_DURATION` (engine may slice around downtime). Defined in `packages/engine/CTPTask.ts`.
+
+Why this lives in mapping, not a global tenant flag: `durationType` is a per-task field in the engine model — the engine reads it off each task on every solve. Mapping has to resolve a value for it on every task it produces, so the float-vs-fixed *rule* belongs in `tasks.durationType` alongside `durationSeconds` and `durationQty`. Switching from constant-value to lookup is a config edit only — no adapter, hydrator, or engine work.
+
+Why this is NOT a `from` passthrough: no field in the 2026-04-23 or 2026-06-03 WORK7 captures distinguishes continuous-block operations from interruptible ones. `Formula` (HR/UN vs HR/OP vs JR/DY) describes the duration math, not the interruptibility. If a future Genius pull surfaces such a field, the rule collapses back to a single `from`.
 
 ---
 

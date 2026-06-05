@@ -52,7 +52,7 @@ function baseTask(overrides: any = {}) {
   };
 }
 
-// IRawDataPayload has 10 required fields. Most are empty for our tests.
+// IRawDataPayload has 11 required fields. Most are empty for our tests.
 function makePayload(overrides: Partial<IRawDataPayload>): IRawDataPayload {
   return {
     resources: [],
@@ -61,6 +61,7 @@ function makePayload(overrides: Partial<IRawDataPayload>): IRawDataPayload {
     stateChanges: [],
     products: [],
     orders: [],
+    jobs: [],
     materials: [],
     processes: [],
     cadences: [],

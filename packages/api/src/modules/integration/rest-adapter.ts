@@ -16,16 +16,22 @@ export class RestAdapter implements IDataAdapter {
     const pageSizeParam   = (this.config.connection?.pageSizeParam   as string) ?? 'pageSize';
     const pageNumberParam = (this.config.connection?.pageNumberParam as string) ?? 'pageNumber';
 
-    const [salesOrders, tasks, resources] = await Promise.all([
-      this.fetchAllPages(`${baseUrl}${endpoints.salesOrders?.path ?? ''}`, endpoints.salesOrders?.pageSize ?? 100, timeout, retries, retryDelay, pageSizeParam, pageNumberParam),
-      this.fetchAllPages(`${baseUrl}${endpoints.tasks?.path ?? ''}`, endpoints.tasks?.pageSize ?? 200, timeout, retries, retryDelay, pageSizeParam, pageNumberParam),
-      this.fetchAllPages(`${baseUrl}${endpoints.resources?.path ?? ''}`, endpoints.resources?.pageSize ?? 100, timeout, retries, retryDelay, pageSizeParam, pageNumberParam),
+    // Each slot is fetched only when its `path` is configured. An unconfigured
+    // slot returns []; we do NOT fall back to fetching baseUrl bare (would 404).
+    const buildUrl = (path: string | undefined) => (path ? `${baseUrl}${path}` : '');
+
+    const [salesOrders, tasks, resources, jobs] = await Promise.all([
+      this.fetchAllPages(buildUrl(endpoints.salesOrders?.path), endpoints.salesOrders?.pageSize ?? 100, timeout, retries, retryDelay, pageSizeParam, pageNumberParam),
+      this.fetchAllPages(buildUrl(endpoints.tasks?.path),       endpoints.tasks?.pageSize       ?? 200, timeout, retries, retryDelay, pageSizeParam, pageNumberParam),
+      this.fetchAllPages(buildUrl(endpoints.resources?.path),   endpoints.resources?.pageSize   ?? 100, timeout, retries, retryDelay, pageSizeParam, pageNumberParam),
+      this.fetchAllPages(buildUrl(endpoints.jobs?.path),        endpoints.jobs?.pageSize        ?? 100, timeout, retries, retryDelay, pageSizeParam, pageNumberParam),
     ]);
 
     return {
       orders:         salesOrders,
       tasks,
       resources,
+      jobs,
       calendars:      [],
       stateChanges:   [],
       products:       [],

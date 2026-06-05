@@ -410,4 +410,36 @@ describe('RestAdapter', () => {
     expect(payload.processes).toEqual([]);
     expect(payload.uomConversions).toBeNull();
   });
+
+  // ── Jobs endpoint ─────────────────────────────────────────────────────────
+
+  it('fetches the jobs endpoint when configured and returns records on payload.jobs', async () => {
+    const jobs = [{ Id: 849, Job: '10842', Active: true }];
+    vi.stubGlobal('fetch', mockFetch({
+      JobEntity: makeGeniusEnvelope(jobs),
+    }));
+
+    const adapter = new RestAdapter(makeConfig({
+      endpoints: {
+        salesOrders: { path: '/salesOrderDetailEntity',                    pageSize: 100 },
+        tasks:       { path: '/productionTaskWithAdvancedInfoViewEntity',   pageSize: 200 },
+        resources:   { path: '/machineAndRessourceEntity',                 pageSize: 100 },
+        jobs:        { path: '/JobEntity',                                 pageSize: 100 },
+      },
+    }));
+    const payload = await adapter.fetchRawData();
+    expect(payload.jobs).toEqual(jobs);
+  });
+
+  it('returns empty payload.jobs when no jobs endpoint is configured', async () => {
+    vi.stubGlobal('fetch', mockFetch({
+      salesOrderDetailEntity:                  makeGeniusEnvelope([]),
+      productionTaskWithAdvancedInfoViewEntity: makeGeniusEnvelope([]),
+      machineAndRessourceEntity:               makeGeniusEnvelope([]),
+    }));
+
+    const adapter = new RestAdapter(makeConfig());  // no jobs endpoint in default makeConfig
+    const payload = await adapter.fetchRawData();
+    expect(payload.jobs).toEqual([]);
+  });
 });
