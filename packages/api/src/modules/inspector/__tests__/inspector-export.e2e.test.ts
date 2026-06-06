@@ -277,8 +277,10 @@ describe('Inspector export — _Index attribute coverage block', () => {
     return null;
   }
 
-  it('T6.1 declared attribute-name count matches Stafford profile (9: 3 slots + 6 attrs)', () => {
-    expect(Number(indexValueFor('workOrderGroups (declared names)'))).toBe(9);
+  it('T6.1 declared attribute-name count matches Stafford profile (11: 4 slots + 7 attrs)', () => {
+    // Slots: Customer, Project, SalesOrder, Family
+    // Attrs: Strategy, JobType, CustomerSource, ProjectManagerCode, ProjectManagerName, JobRiskCode, DbrEndDate
+    expect(Number(indexValueFor('workOrderGroups (declared names)'))).toBe(11);
   });
 
   it('T6.2 total attribute rows emitted is consistent with Attributes sheet size', () => {

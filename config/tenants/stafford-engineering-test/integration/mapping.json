@@ -28,45 +28,48 @@
 
   "workOrderGroups": {
     "sourceEndpoint": "workOrderWithAdvancedInformationViewEntity",
+    "_sourceEndpointTODO": "Switch to JobEntity once the 2026-06-03 capture is promoted to fixtures. JobEntity field names diverge: SalesOrderNo→SalesOrder, ItemFamily→FamilyCode, ShippingBufferDays per-Job. Tracked in SPRINT-workordergroup-entity.md Decision 7.",
     "mappings": {
       "key":         { "from": "Job" },
       "name":        { "from": ["ProjectName", "ItemDescription1"], "sep": " / " },
       "sourceStart": { "from": "JobStartDate", "toUTC": true },
       "sourceEnd":   { "from": "JobEndDate",   "toUTC": true },
-      "promiseDate": { "from": "DeliveryDate", "toUTC": true }
+      "promiseDate": { "from": "DeliveryDate", "toUTC": true },
+
+      "_customerLabel": {
+        "cascade": [
+          { "from": "CustomerName" },
+          {
+            "from": "JobType",
+            "lookup": {
+              "I": "[Auto] Internal — Stock",
+              "U": "[Auto] Internal — Workshop",
+              "Q": "[Auto] Quote Pipeline",
+              "_default": "[Auto] Unclassified"
+            }
+          }
+        ]
+      },
+      "_customerSource": {
+        "from": "CustomerName",
+        "ifPresent": "genius-master",
+        "ifAbsent":  "auto-from-JobType"
+      },
+      "_familyLabel": {
+        "from": "ItemFamily",
+        "lookup": { "NA": null, "N/A": null }
+      }
     },
     "hierarchies": [
-      {
-        "slot": 1,
-        "name": "Customer",
-        "source": {
-          "kind": "synthetic",
-          "strategy": "hash-pool",
-          "pool": [
-            "CEM International P/L (NZ A/C)",
-            "Pacific Engineering Ltd",
-            "Tasman Industries",
-            "Bayside Manufacturing",
-            "Southern Cross Machining"
-          ],
-          "hashOn": "SalesOrderNo",
-          "_note": "Pool order and contents must stay stable — DJB2 hash assignments are positional. Editing the pool reshuffles every job's assigned customer."
-        }
-      },
-      {
-        "slot": 2,
-        "name": "Project",
-        "source": { "kind": "field", "field": "ProjectName" }
-      },
-      {
-        "slot": 3,
-        "name": "SalesOrder",
-        "source": { "kind": "field", "field": "SalesOrderNo" }
-      }
+      { "slot": 1, "name": "Customer",   "source": { "kind": "field", "field": "_customerLabel" } },
+      { "slot": 2, "name": "Project",    "source": { "kind": "field", "field": "ProjectName" } },
+      { "slot": 3, "name": "SalesOrder", "source": { "kind": "field", "field": "SalesOrderNo" } },
+      { "slot": 4, "name": "Family",     "source": { "kind": "field", "field": "_familyLabel" } }
     ],
     "attributes": [
       { "name": "Strategy",           "source": { "kind": "field", "field": "Strategy" } },
       { "name": "JobType",            "source": { "kind": "field", "field": "JobType" } },
+      { "name": "CustomerSource",     "source": { "kind": "field", "field": "_customerSource" } },
       { "name": "ProjectManagerCode", "source": { "kind": "field", "field": "ProjectManagerCode" } },
       { "name": "ProjectManagerName", "source": { "kind": "field", "field": "ProjectManagerName", "transform": "trim" } },
       { "name": "JobRiskCode",        "source": { "kind": "field", "field": "JobRiskCode" } },

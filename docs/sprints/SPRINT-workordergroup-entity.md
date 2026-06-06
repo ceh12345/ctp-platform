@@ -527,7 +527,7 @@ The structural one. Frame to Kaleb:
 
 If Job: we plan toward Option B for the solver. If WO: Option A is sufficient.
 
-### Decision 4 — Customer endpoint (RESOLVED by data inspection)
+### Decision 4 — Customer endpoint (RESOLVED by data inspection, updated 2026-06-05)
 
 The May 8 WORK7 fixture confirms `CustomerName` is denormalised on every `workOrderWithAdvancedInformationViewEntity` record. Example from Job 19071:
 
@@ -541,6 +541,70 @@ No join to `salesOrderHeaderEntity` is needed. The Customer hierarchy slot can b
 - **Live mode** — `{ kind: "field", field: "CustomerName" }`
 
 Switching is a one-line edit to the slot's `source` block in the tenant mapping. The originally-planned `SPRINT-workordergroup-customer-live` follow-up is unnecessary and has been dropped.
+
+#### Update 2026-06-05 — JobEntity supersedes the WO source
+
+The 2026-06-03 capture surfaced `JobEntity` as a 5th endpoint, which carries Customer fields directly on the Job record (not just denormalised on each WO):
+
+| Field | Fill rate (558 active jobs) | Distinct |
+|---|---|---|
+| `CustomerId` | 98.0% (547) | 28 |
+| `CustomerName` | 98.0% (547) | 28 |
+| `CustomerLink` | 98.0% (547) | 28 — **duplicate of `CustomerId`, do not carry both** |
+
+Sourcing from JobEntity is cleaner than from WO (one value per Job vs N per Job's WOs) once the mapping rewrite ships. Top customers: SEALED AIR (249 jobs, 45%), SUPERIOR ICE CREAM (51), FISHER & PAYKEL HEALTHCARE (50), NUTON LLC (32), GEA AUSTRALIA (32).
+
+#### Auto-marked fallback for the 11 null-customer cases
+
+11 active jobs (2.0%) have null `CustomerId`. They sort cleanly by `JobType`:
+
+| JobType (all 558) | Count | No customer | Pattern |
+|---|---|---|---|
+| `C` Customer | 496 | 0 | always has customer |
+| `I` Internal/inventory | 50 | 7 | stock parts: "SPACER KIPP PIN", "LINKAGE PIVOT BOLT", "GUN DRILLED BLANK", etc. |
+| `U` Untyped/utility | 7 | 4 | workshop, training ("BLOCK COURSE #2"), labour ("LABOUR FOR TFD MACHINING") |
+| `Q` Quote | 5 | 0 | not yet converted |
+
+`JobType` is already the classifier — no need to invent one. The mapping rule does two things on null-customer cases: (1) emit a clearly-synthetic hierarchy value with an `[Auto]` prefix, and (2) emit a sidecar `customerSource` attribute distinguishing real-vs-derived for filter/query.
+
+**Customer hierarchy rule:**
+```jsonc
+"customer": {
+  "kind": "field",
+  "field": "CustomerName",        // 547 → real Genius customer name
+  "fallback": {
+    "kind": "derive",
+    "from": "JobType",
+    "lookup": {
+      "I": "[Auto] Internal — Stock",
+      "U": "[Auto] Internal — Workshop",
+      "Q": "[Auto] Quote Pipeline",
+      "_default": "[Auto] Unclassified"
+    }
+  }
+}
+```
+
+**Sidecar provenance attribute:**
+```jsonc
+"attributes": [
+  {
+    "name": "customerSource",
+    "source": {
+      "kind": "derive",
+      "from": "CustomerId",
+      "lookup": {
+        "_present": "genius-master",   // any non-null value → real Genius customer
+        "_default": "auto-from-JobType"
+      }
+    }
+  }
+]
+```
+
+The `[Auto]` prefix is impossible to confuse with a real Stafford customer code (theirs are short uppercase: `SAC`, `FPH`, `GEA-AU`). UI eyeball-distinguishable everywhere without parsing the prefix at query time — KPIs / filters / Inspector exports split on the `customerSource` attribute.
+
+Stafford can rename the bucket labels later (one-line config edit) but no Stafford ask is required to ship — the rule is honest about what it's doing.
 
 ### Decision 5 — Cancelled / superseded WOs (RESOLVED by data inspection)
 
@@ -560,27 +624,27 @@ Frame to Kaleb:
 
 One-line config change either way. Capture the answer; no design dependency.
 
-### Decision 7 — Hierarchy slot names and count
+### Decision 7 — Hierarchy slot names and count (RESOLVED by data inspection)
 
-Currently configured on `CTPWorkOrderGroup`:
+Four hierarchy slots, all sourced from JobEntity (post-mapping-rewrite). Verified against the full 2026-06-03 capture (558 active jobs):
 
-| Slot | Name | Source |
-|---|---|---|
-| 1 | Customer | synthetic pool today, swappable to `CustomerName` from the WO record |
-| 2 | Project | `ProjectName` |
-| 3 | SalesOrder | `SalesOrderNo` |
-| 4 | *(unused)* | — |
-| 5 | *(unused)* | — |
+| Slot | Name | Source field | Fill rate | Distinct | Notes |
+|---|---|---|---|---|---|
+| 1 | Customer | `CustomerName` (with `[Auto]` fallback from `JobType` — see Decision 4) | 98.0% real + 2.0% auto = 100% | 28 real + 4 buckets | top: SEALED AIR 45% |
+| 2 | Project | `ProjectName` | 89.8% | 95 names / 100 numbers | top: "CL20 & RG20 SPARES" 36% |
+| 3 | SalesOrder | `SalesOrder` | (already mapped from WO) | — | unchanged |
+| 4 | Family | `FamilyCode` | 92.8% real + 7.2% `NA` | 5 buckets | S-ENG 70%, S-SUB 9%, M-OEM 7%, M-PNE 4%, M-FASN 3% |
 
-Two open variations to settle since these become UI labels in the Jobs page rollup and the Inspector export's per-level sheets:
+**Stafford ask: none.** All four slots resolve from data with no domain decision required. Label choices match Stafford's Genius vocabulary directly (Customer / Project / Sales Order / Family) — no renames needed.
 
-1. **Is a fourth slot needed?** Some setups carry "Programme" or "Division" or "Business Unit" above Customer. Adding a fourth is a one-line mapping-config edit.
-2. **Are the labels right?** "Customer", "Project", "Sales Order" — match Stafford's internal vocabulary, or do they call any of these something else?
+**Things to drop from the mapping that were tentative:**
+- `FamilyGroupCode` — 100% `NA` across all jobs, useless, do not map
+- `FamilyLink` — duplicate of `FamilyCode`, do not carry both
+- `CustomerLink` — duplicate of `CustomerId`, do not carry both
 
-Frame to Kaleb:
-> *"For grouping and filtering in the UI, we've got Customer, Project, Sales Order as the three dimensions above a Job. Are those the right three? Anything sitting above Customer in your setup we should add — Programme, Division, anything like that? Should any be renamed?"*
+**NA handling for Family:** the 40 jobs (7.2%) with `FamilyCode: "NA"` map to a `null` slot value, not the literal string `"NA"`. They render as "(no Family)" in the hierarchy UI — same treatment as the 11 null-Customer cases handled by Decision 4's `[Auto]` fallback.
 
-Cheap conversation; important to settle before the UI work starts so labels don't ripple.
+**Slot 5 is intentionally unused.** Programme / Division / Business Unit aren't reflected in Stafford's data shape. Adding a 5th slot for a future tenant is a one-line config edit — no schema impact.
 
 ### Decision 8 — Inventory-fulfilled SO lines (OI-6 confirmation with Kaleb)
 

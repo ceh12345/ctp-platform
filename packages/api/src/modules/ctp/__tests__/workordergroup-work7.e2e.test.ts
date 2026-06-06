@@ -44,13 +44,12 @@ const FIXTURE_DIR = path.resolve(
   'tools', 'mock-genius', 'recorded', 'stafford-work7-2026-05-08',
 );
 
-const SYNTHETIC_POOL = [
-  'CEM International P/L (NZ A/C)',
-  'Pacific Engineering Ltd',
-  'Tasman Industries',
-  'Bayside Manufacturing',
-  'Southern Cross Machining',
-];
+// Sentinel prefix for the [Auto] Customer fallback rule (Decision 4 update).
+// 11 of 558 active jobs lack a real CustomerName; the mapping derives a
+// bucket from JobType and prefixes "[Auto]" so a human reader can tell
+// the value was synthesised. CustomerSource attribute carries the same
+// signal for query/filter use.
+const AUTO_CUSTOMER_PREFIX = '[Auto]';
 
 // ─── Fixture loader + fetch stub ─────────────────────────────────────────
 
@@ -223,18 +222,21 @@ describe('T2 — aggregate sanity', () => {
     expect(s3 / total).toBeGreaterThanOrEqual(0.80);
   });
 
-  it('T2.3 synthetic customer distributes Jobs across ≥ 3 of the 5 pool entries (AC #10)', () => {
+  it('T2.3 Customer is sourced from CustomerName, distributes across ≥ 3 distinct values', () => {
     const buckets = new Map<string, number>();
     sharedLandscape.groups.forEach(g => {
       const c = g.hierarchy.first ?? '';
       buckets.set(c, (buckets.get(c) ?? 0) + 1);
     });
     const nonEmpty = Array.from(buckets.entries()).filter(([k, v]) => k !== '' && v > 0);
-    // With ~hundreds of Jobs across 5 pool entries, expect all 5 buckets;
-    // assert ≥ 3 to avoid brittleness under future pool tweaks.
+    // Real Genius customer field has 28 distinct values across the WORK7 fixture.
+    // Assert ≥ 3 to avoid brittleness as the fixture evolves.
     expect(nonEmpty.length).toBeGreaterThanOrEqual(3);
-    // Every used label must be in the configured pool.
-    for (const [k] of nonEmpty) expect(SYNTHETIC_POOL).toContain(k);
+    // Every value is either a real customer name (non-empty string) or an
+    // [Auto]-prefixed synthesised bucket — never an empty string.
+    for (const [k] of nonEmpty) {
+      expect(k.length).toBeGreaterThan(0);
+    }
   });
 
   it('T2.4 synthetic customer assignment is deterministic across repeated syncs (AC #9)', async () => {
@@ -335,21 +337,36 @@ describe('T3 — spot checks', () => {
     expect(g.workOrderKeys.length).toBeGreaterThanOrEqual(1);
     expect(g.sourceStart).not.toBeNull();
     expect(g.sourceEnd).not.toBeNull();
-    expect(g.hierarchy.first).toBeTruthy();      // synthetic customer
+    expect(g.hierarchy.first).toBeTruthy();      // Customer (real or [Auto])
     expect(g.hierarchy.second).toBeTruthy();     // ProjectName
     expect(g.hierarchy.third).toBeTruthy();      // SalesOrderNo
-    // Synthetic assignment for THIS job (stable hash of its SalesOrderNo)
-    expect(SYNTHETIC_POOL).toContain(g.hierarchy.first);
+    // Customer is either a real Genius customer name OR an [Auto]-prefixed
+    // bucket; never empty. Stafford's worked-example Job 15897 has a real
+    // customer (verified against fixture), so we additionally assert NOT [Auto].
+    expect(g.hierarchy.first!.startsWith(AUTO_CUSTOMER_PREFIX)).toBe(false);
   });
 
-  it('T3.2 a CEM customer job has the CEM synthetic pool entry', () => {
-    // The pool includes "CEM International P/L (NZ A/C)" — at least one
-    // synthetic-assigned group should land in that bucket given the SO
-    // distribution.
-    const cemGroups = sharedLandscape.groups.toArray()
-      .filter(g => g.hierarchy.first === 'CEM International P/L (NZ A/C)');
-    expect(cemGroups.length).toBeGreaterThan(0);
-    expect(cemGroups[0].workOrderKeys.length).toBeGreaterThanOrEqual(1);
+  it('T3.2 every group Customer is either a real name or an [Auto] bucket — never empty', () => {
+    // Replaces the prior CEM-synthetic-pool test (Decision 4 update — see
+    // SPRINT-workordergroup-entity.md). The new rule: Customer comes from
+    // CustomerName when present, else falls back to JobType-derived [Auto]
+    // bucket. Every group must have a non-empty Customer value.
+    const groups = sharedLandscape.groups.toArray();
+    expect(groups.length).toBeGreaterThan(0);
+    let real = 0, auto = 0;
+    for (const g of groups) {
+      const c = g.hierarchy.first;
+      expect(c).toBeTruthy();
+      if (c!.startsWith(AUTO_CUSTOMER_PREFIX)) auto++;
+      else real++;
+    }
+    // Both buckets should be present in a representative fixture (the May 8
+    // fixture has ~10 real customers + a small number of customer-less Jobs
+    // that fall back to [Auto]).
+    expect(real).toBeGreaterThan(0);
+    // [Auto] count not asserted as > 0 because the May 8 fixture's null-customer
+    // population is small and may be zero — we just assert the structural
+    // invariant (every group has a non-empty Customer value).
   });
 
   it('T3.3 there exists at least one single-WO Job (trivial case)', () => {

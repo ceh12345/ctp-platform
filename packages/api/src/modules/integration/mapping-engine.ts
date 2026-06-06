@@ -148,7 +148,7 @@ export class MappingEngine {
     // Object.prototype and would always test truthy with `!==undefined`.
     const RULE_KEYS = [
       'value', 'from', 'lookup', 'factor', 'toUTC', 'toString',
-      'threshold', 'cascade',
+      'threshold', 'cascade', 'ifPresent', 'ifAbsent',
     ] as const;
     return !RULE_KEYS.some(k => Object.prototype.hasOwnProperty.call(rule, k));
   }
@@ -193,10 +193,24 @@ export class MappingEngine {
       return coerce(rule.below);
     }
 
-    // lookup — value map with optional _default
+    // ifPresent / ifAbsent — presence check, the string-shaped analogue of
+    // threshold. val is "present" when not null, not undefined, and not the
+    // empty string. Either branch can be omitted; an omitted branch returns
+    // undefined, letting cascade fall through to the next sub-rule.
+    if (rule.ifPresent !== undefined || rule.ifAbsent !== undefined) {
+      const present = val !== null && val !== undefined && val !== '';
+      return coerce(present ? rule.ifPresent : rule.ifAbsent);
+    }
+
+    // lookup — value map with optional _default. Uses `in` checks rather
+    // than `??` chaining so an explicit null mapping (e.g. { "NA": null })
+    // resolves to null instead of falling through to _default. Lets a
+    // lookup express "this value drops to absent" cleanly.
     if (rule.lookup) {
       const key = String(val);
-      return coerce(rule.lookup[key] ?? rule.lookup['_default'] ?? val);
+      if (Object.prototype.hasOwnProperty.call(rule.lookup, key)) return coerce(rule.lookup[key]);
+      if (Object.prototype.hasOwnProperty.call(rule.lookup, '_default')) return coerce(rule.lookup['_default']);
+      return coerce(val);
     }
 
     // multiply — e.g. hours → seconds
@@ -383,8 +397,15 @@ export class MappingEngine {
       const scalars = spec.mappings
         ? this.applyMappings(record, spec.mappings, { ...ctx, targetField: '' })
         : {};
-      const hierarchies = this.resolveHierarchies(spec, record);
-      const attributes  = this.resolveAttributes(spec, record);
+      // Make resolved scalars visible to hierarchy/attribute resolution so a
+      // scalar rule using cascade/lookup/ifPresent can synthesize a value and
+      // the slot/attribute reads it via { kind: "field", field: "_synthetic" }.
+      // Scalars override raw fields on name collision — they're the
+      // mapping's intentional output. Use a leading "_" for synthesized
+      // fields by convention so they don't shadow real source fields.
+      const recordForSlots = { ...record, ...scalars };
+      const hierarchies = this.resolveHierarchies(spec, recordForSlots);
+      const attributes  = this.resolveAttributes(spec, recordForSlots);
 
       out.push({
         ...scalars,
