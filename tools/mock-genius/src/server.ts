@@ -48,6 +48,7 @@ const GENIUS_ENTITIES = [
   'workOrderWithAdvancedInformationViewEntity',
   'productionTaskWithAdvancedInfoViewEntity',
   'machineAndRessourceEntity',    // note: Genius typo ("Ressource") preserved
+  'JobEntity',                    // added 2026-06-07 — first-class entity, used by WorkOrderGroup mapping
 ] as const;
 
 for (const entity of GENIUS_ENTITIES) {
