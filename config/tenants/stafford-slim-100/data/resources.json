@@ -30,21 +30,6 @@
     }
   },
   {
-    "key": "33",
-    "name": "ADRIAN",
-    "type": "MACHINE",
-    "class": "MACHINE",
-    "hourlyRate": 84,
-    "efficiency": 90,
-    "parallelCapacity": 0,
-    "isFinite": true,
-    "calendarCode": "Standard",
-    "hierarchy": {
-      "level1": "FIT",
-      "level2": "A"
-    }
-  },
-  {
     "key": "34",
     "name": "NICK C",
     "type": "MACHINE",
@@ -225,36 +210,6 @@
     }
   },
   {
-    "key": "39",
-    "name": "GRAEME",
-    "type": "MACHINE",
-    "class": "MACHINE",
-    "hourlyRate": 91,
-    "efficiency": 90,
-    "parallelCapacity": 1,
-    "isFinite": true,
-    "calendarCode": "Standard",
-    "hierarchy": {
-      "level1": "ENG",
-      "level2": "D"
-    }
-  },
-  {
-    "key": "40",
-    "name": "CORT",
-    "type": "MACHINE",
-    "class": "MACHINE",
-    "hourlyRate": 91,
-    "efficiency": 90,
-    "parallelCapacity": 1,
-    "isFinite": true,
-    "calendarCode": "Standard",
-    "hierarchy": {
-      "level1": "ENG",
-      "level2": "D"
-    }
-  },
-  {
     "key": "6",
     "name": "FABRICATION & WELDING",
     "type": "WORK_CENTER",
@@ -405,21 +360,6 @@
     }
   },
   {
-    "key": "50",
-    "name": "NA",
-    "type": "MACHINE",
-    "class": "MACHINE",
-    "hourlyRate": 84,
-    "efficiency": 90,
-    "parallelCapacity": 1,
-    "isFinite": true,
-    "calendarCode": "Standard",
-    "hierarchy": {
-      "level1": "FAB",
-      "level2": "F"
-    }
-  },
-  {
     "key": "51",
     "name": "SAM O",
     "type": "MACHINE",
@@ -437,51 +377,6 @@
   {
     "key": "52",
     "name": "COOPER",
-    "type": "MACHINE",
-    "class": "MACHINE",
-    "hourlyRate": 84,
-    "efficiency": 90,
-    "parallelCapacity": 1,
-    "isFinite": true,
-    "calendarCode": "Standard",
-    "hierarchy": {
-      "level1": "FAB",
-      "level2": "F"
-    }
-  },
-  {
-    "key": "53",
-    "name": "NA",
-    "type": "MACHINE",
-    "class": "MACHINE",
-    "hourlyRate": 84,
-    "efficiency": 90,
-    "parallelCapacity": 1,
-    "isFinite": true,
-    "calendarCode": "Standard",
-    "hierarchy": {
-      "level1": "FAB",
-      "level2": "F"
-    }
-  },
-  {
-    "key": "54",
-    "name": "NA",
-    "type": "MACHINE",
-    "class": "MACHINE",
-    "hourlyRate": 84,
-    "efficiency": 90,
-    "parallelCapacity": 1,
-    "isFinite": true,
-    "calendarCode": "Standard",
-    "hierarchy": {
-      "level1": "FAB",
-      "level2": "F"
-    }
-  },
-  {
-    "key": "55",
-    "name": "NA",
     "type": "MACHINE",
     "class": "MACHINE",
     "hourlyRate": 84,
@@ -546,6 +441,21 @@
     "class": "WORK_CENTER",
     "hourlyRate": 70,
     "efficiency": 75,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "OTH",
+      "level2": "G"
+    }
+  },
+  {
+    "key": "79",
+    "name": "COOPER",
+    "type": "WORK_CENTER",
+    "class": "WORK_CENTER",
+    "hourlyRate": 70,
+    "efficiency": 100,
     "parallelCapacity": 1,
     "isFinite": true,
     "calendarCode": "Standard",
@@ -690,58 +600,13 @@
     }
   },
   {
-    "key": "59",
-    "name": "NA",
-    "type": "MACHINE",
-    "class": "MACHINE",
-    "hourlyRate": 84,
-    "efficiency": 90,
-    "parallelCapacity": 1,
-    "isFinite": true,
-    "calendarCode": "Standard",
-    "hierarchy": {
-      "level1": "MAC",
-      "level2": "M"
-    }
-  },
-  {
-    "key": "60",
-    "name": "NA",
-    "type": "MACHINE",
-    "class": "MACHINE",
-    "hourlyRate": 84,
-    "efficiency": 90,
-    "parallelCapacity": 1,
-    "isFinite": true,
-    "calendarCode": "Standard",
-    "hierarchy": {
-      "level1": "MAC",
-      "level2": "M"
-    }
-  },
-  {
-    "key": "61",
-    "name": "NA",
-    "type": "MACHINE",
-    "class": "MACHINE",
-    "hourlyRate": 84,
-    "efficiency": 90,
-    "parallelCapacity": 1,
-    "isFinite": true,
-    "calendarCode": "Standard",
-    "hierarchy": {
-      "level1": "MAC",
-      "level2": "M"
-    }
-  },
-  {
     "key": "1",
     "name": "NOT APPLICABLE",
     "type": "SUBCONTRACT",
     "class": "SUBCONTRACT",
     "hourlyRate": 0,
     "efficiency": 100,
-    "parallelCapacity": 9999,
+    "parallelCapacity": 1,
     "isFinite": false,
     "calendarCode": "",
     "hierarchy": {
@@ -891,7 +756,7 @@
     "class": "SUBCONTRACT",
     "hourlyRate": 0,
     "efficiency": 100,
-    "parallelCapacity": 9999,
+    "parallelCapacity": 1,
     "isFinite": false,
     "calendarCode": "Standard",
     "hierarchy": {
@@ -1097,21 +962,6 @@
   {
     "key": "66",
     "name": "ANDY H",
-    "type": "MACHINE",
-    "class": "MACHINE",
-    "hourlyRate": 84,
-    "efficiency": 90,
-    "parallelCapacity": 1,
-    "isFinite": true,
-    "calendarCode": "Standard",
-    "hierarchy": {
-      "level1": "MAC",
-      "level2": "T"
-    }
-  },
-  {
-    "key": "67",
-    "name": "NA",
     "type": "MACHINE",
     "class": "MACHINE",
     "hourlyRate": 84,

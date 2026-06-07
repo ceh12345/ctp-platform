@@ -159,21 +159,63 @@ curl.exe -H "X-Tenant-Id: stafford-engineering-test" \
 
 Open in Excel. The Jobs sheet should show `attr.Customer`, `attr.Family`, etc. populated. CustomerSource attribute should split ~98% `genius-master` / ~2% `auto-from-JobType` (the latter being JobType=I/U/Q overhead jobs that lack real customers).
 
-## Phase 7 — Commit
+## Phase 7 — Re-slice the slim-100 dataset
+
+`stafford-slim-100` is a curated subset of `stafford-engineering-test` used as the small/fast test fixture. When engineering-test's data refreshes, slim-100 should re-slice from it so the test fixture tracks reality.
 
 ```bash
-# Stage entity files + auto-derived horizon (NOT the working-tree fixture
-# in tools/mock-genius/fixtures/)
+# Preview the slice — prints the proposed picks, writes nothing
+node scripts/slice-stafford-slim.js
+
+# Review the output. Check:
+#   - Group count + total tasks (~100 target)
+#   - Project diversity (should cover ~10 distinct projects)
+#   - Customer diversity (should cover ~8-10 distinct customers)
+#   - Resource coverage X/68 (aim for ≥50% within multi-order constraint)
+#   - Diff vs current slim-100 — is the change reasonable?
+
+# When satisfied, write it
+node scripts/slice-stafford-slim.js --write --copy-calendars
+```
+
+What the script does:
+1. Reads `config/tenants/stafford-engineering-test/data/*.json` (the canonical full set just refreshed)
+2. Filters candidate groups by tunable constants at top of script:
+   - `MIN_ORDERS = 2` (multi-WO Jobs only)
+   - `GROUP_MAX_TASKS = 25` (drops monster groups that would blow the budget)
+   - `CUTOFF_DATE = '2026-04-01'` (sourceEnd must be ≥ this date — adjust if the refresh data shifts forward)
+3. **Phase 1 (diversity):** greedy score = new resources × 5 + new project × 30 + new customer × 10 − task count × 1 − project-already-picked × 40. Picks until total tasks ≥ `PHASE1_TARGET = 85`.
+4. **Phase 2 (resource pickup):** while target not yet met AND remaining groups add ≥1 new resource, pick group with most-new-resources (tie-break smallest task count). Stops when no group adds new resources or target hit.
+5. Writes 4 entity files + slim-specific `horizon.json` (re-derived from the sliced date range).
+6. `--copy-calendars` also copies engineering-test's `calendars.json` → slim-100's (so all 68 resources have their calendars).
+
+When to tune the constants:
+- **Cutoff drifted past data window?** Bump `CUTOFF_DATE` to a date where ≥40 multi-order candidates remain (run preview to see the candidate count).
+- **Resource coverage way down?** Adjust `PHASE1_TARGET` (lower = more Phase-2 budget for resources, but less diversity).
+- **Want broader resource coverage at cost of multi-order purity?** Drop `MIN_ORDERS` to 1 — preview will report the trade.
+
+## Phase 8 — Commit
+
+```bash
+# Stage engineering-test refresh + horizon
 git add config/tenants/stafford-engineering-test/data/orders.json
 git add config/tenants/stafford-engineering-test/data/tasks.json
 git add config/tenants/stafford-engineering-test/data/resources.json
 git add config/tenants/stafford-engineering-test/data/workordergroups.json
 git add config/tenants/stafford-engineering-test/horizon.json
 
-git commit -m "data(stafford): refresh CTP-shape from WORK7 $DATE capture"
+# Stage slim-100 re-slice
+git add config/tenants/stafford-slim-100/data/orders.json
+git add config/tenants/stafford-slim-100/data/tasks.json
+git add config/tenants/stafford-slim-100/data/resources.json
+git add config/tenants/stafford-slim-100/data/workordergroups.json
+git add config/tenants/stafford-slim-100/data/calendars.json
+git add config/tenants/stafford-slim-100/horizon.json
+
+git commit -m "data(stafford): refresh CTP-shape from WORK7 $DATE + re-slice slim-100"
 ```
 
-The `tools/mock-genius/recorded/` and `tools/mock-genius/fixtures/stafford-snapshot-*/` directories stay gitignored — they contain real customer/employee names. Locally they live alongside; on push they don't go.
+The `tools/mock-genius/recorded/` and `tools/mock-genius/fixtures/stafford-snapshot-*/` directories stay gitignored — they contain the raw Genius-shape source. Locally they live alongside; on push they don't go.
 
 If you need teammates to reproduce, share the captured fixture out-of-band (Slack, secure file transfer) or have them re-capture via VPN.
 
