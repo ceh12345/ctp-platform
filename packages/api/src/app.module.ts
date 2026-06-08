@@ -4,6 +4,7 @@ import { StateModule } from './modules/state/state.module';
 import { ConfigModule } from './config/config.module';
 import { CTPModule } from './modules/ctp/ctp.module';
 import { DataModule } from './modules/data/data.module';
+import { OrdersModule } from './modules/orders/orders.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AIModule } from './modules/ai/ai.module';
 import { LoggingModule } from './logging/logging.module';
@@ -13,7 +14,7 @@ import { InspectorModule } from './modules/inspector/inspector.module';
 import { TenantMiddleware } from './config/tenant.middleware';
 
 @Module({
-  imports: [LoggingModule, HealthModule, StateModule, ConfigModule, CTPModule, DataModule, AnalyticsModule, AIModule, DebugModule, IntegrationModule, InspectorModule],
+  imports: [LoggingModule, HealthModule, StateModule, ConfigModule, CTPModule, DataModule, OrdersModule, AnalyticsModule, AIModule, DebugModule, IntegrationModule, InspectorModule],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

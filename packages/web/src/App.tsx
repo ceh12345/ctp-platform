@@ -387,22 +387,24 @@ function deriveMaterialStatus(mat: any): string {
 
 function statusColor(status: string): string {
   switch (status) {
-    case 'on-track': case 'covered': return C.green;
-    case 'at-risk': case 'warning': return C.yellow;
-    case 'late': case 'shortage': case 'critical': case 'capacity': return C.red;
+    case 'on-track': case 'covered': case 'ON_TRACK': return C.green;
+    case 'at-risk': case 'warning': case 'AT_RISK': return C.yellow;
+    case 'late': case 'shortage': case 'critical': case 'capacity': case 'LATE': case 'BLOCKED': return C.red;
     case 'availability': return '#9e9e9e';
     case 'dependency': return '#ff9800';
+    case 'COMPLETED': case 'CANCELLED': return C.textDim;
     default: return C.textDim;
   }
 }
 
 function statusBg(status: string): string {
   switch (status) {
-    case 'on-track': case 'covered': return C.greenDim;
-    case 'at-risk': case 'warning': return C.yellowDim;
-    case 'late': case 'shortage': case 'critical': case 'capacity': return C.redDim;
+    case 'on-track': case 'covered': case 'ON_TRACK': return C.greenDim;
+    case 'at-risk': case 'warning': case 'AT_RISK': return C.yellowDim;
+    case 'late': case 'shortage': case 'critical': case 'capacity': case 'LATE': case 'BLOCKED': return C.redDim;
     case 'availability': return '#9e9e9e18';
     case 'dependency': return '#ff980018';
+    case 'COMPLETED': case 'CANCELLED': return 'transparent';
     default: return 'transparent';
   }
 }
@@ -1269,11 +1271,6 @@ function ModeBadge({ mode }: { mode: string }) {
   );
 }
 
-const ORDER_MODES = [
-  { value: 'INCLUDE', label: 'Include', color: C.green },
-  { value: 'LOCKED', label: 'Locked', color: C.yellow },
-  { value: 'EXCLUDE', label: 'Exclude', color: C.textDim },
-];
 const MATERIAL_MODES = [
   { value: 'TRACK', label: 'Monitored', icon: '◐', color: C.cyan },
   { value: 'ON', label: 'Required', icon: '●', color: C.green },
@@ -1329,33 +1326,6 @@ function getCompatibleResources(selectedTaskKeys: string[], tasks: any[]): {
 
   return Array.from(resourceMap.values())
     .sort((a, b) => b.currentCount - a.currentCount || b.compatibleCount - a.compatibleCount);
-}
-
-function ClickableModeBadge({ mode, modes, onChange }: {
-  mode: string;
-  modes: { value: string; label: string; color: string }[];
-  onChange: (newMode: string) => void;
-}) {
-  const upper = (mode || modes[0].value).toUpperCase();
-  const current = modes.find(m => m.value === upper) || modes[0];
-  const nextIdx = (modes.findIndex(m => m.value === upper) + 1) % modes.length;
-  const color = current.color;
-  const bg = color + '22';
-  return (
-    <span
-      onClick={(e) => { e.stopPropagation(); onChange(modes[nextIdx].value); }}
-      title={`Click to change to ${modes[nextIdx].label}`}
-      style={{
-        display: 'inline-block', padding: '1px 8px', borderRadius: 9999,
-        fontSize: 10, fontWeight: 700, color, background: bg,
-        border: `1px solid ${color}33`, fontFamily: FONT,
-        cursor: 'pointer', userSelect: 'none',
-        transition: 'background 0.15s',
-      }}
-    >
-      {current.label}
-    </span>
-  );
 }
 
 function ModeToggle({ mode, modes, onChange }: {
@@ -7763,192 +7733,6 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SCHEDULE PROGRESS
-   ═══════════════════════════════════════════════════════════════ */
-
-function ScheduleProgress({ placed, total, infeasible }: {
-  placed: number; total: number; infeasible: number;
-}) {
-  if (total === 0) return <span style={{ color: C.textDim, fontSize: 12 }}>—</span>;
-  const pct = (placed / total) * 100;
-  const color = pct === 100 ? C.green : pct > 0 ? C.yellow : C.red;
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 12, fontWeight: 600, color, minWidth: 36 }}>
-        {placed}/{total}
-      </span>
-      <div style={{
-        flex: 1, height: 4, background: C.border, borderRadius: 2,
-        overflow: 'hidden', maxWidth: 60,
-      }}>
-        <div style={{
-          width: `${pct}%`, height: '100%', background: color, borderRadius: 2,
-          transition: 'width 0.3s',
-        }} />
-      </div>
-      {infeasible > 0 && (
-        <span style={{ fontSize: 10, color: C.red }} title={`${infeasible} infeasible`}>
-          ⚠{infeasible}
-        </span>
-      )}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   ORDER TABLE
-   ═══════════════════════════════════════════════════════════════ */
-
-function OrderTable({ orders, products, tasks, orderModes, taskPins, taskExcludes, onOrderModeChange }: {
-  orders: any[]; products: any[]; tasks?: any[];
-  orderModes?: Record<string, string>;
-  taskPins?: Record<string, boolean>;
-  taskExcludes?: Record<string, boolean>;
-  onOrderModeChange?: (key: string, mode: string) => void;
-}) {
-  const { sortKey, sortDir, toggle, sorted } = useSort('priority');
-
-  const enriched = useMemo(() => orders.map(o => {
-    const orderTasks = (tasks || []).filter((tk: any) => tk.orderRef === o.orderKey);
-    const total = orderTasks.length;
-    const scheduled = orderTasks.filter((tk: any) => tk.feasible && tk.scheduledStart).length;
-    const pinned = orderTasks.filter((tk: any) => taskPins?.[tk.key]).length;
-    const excluded = orderTasks.filter((tk: any) => taskExcludes?.[tk.key]).length;
-    const infeasible = orderTasks.filter((tk: any) => !tk.feasible && tk.errors?.length > 0).length;
-    const placed = scheduled + pinned;
-    const prodName = products.find((p: any) => p.key === o.productKey)?.name || o.productKey;
-
-    const starts = orderTasks.filter((tk: any) => tk.feasible && tk.scheduledStart).map((tk: any) => tk.scheduledStart);
-    const ends = orderTasks.filter((tk: any) => tk.feasible && tk.scheduledEnd).map((tk: any) => tk.scheduledEnd);
-
-    const firstTask = orderTasks[0];
-    const _priorityLabel = priorityLabel(firstTask, undefined);
-    const _priorityColor = priorityLabelColor(_priorityLabel);
-
-    return {
-      ...o,
-      _status: deriveOrderStatus(o, tasks),
-      _productName: prodName,
-      _totalTasks: total,
-      _scheduledTasks: placed,
-      _infeasibleTasks: infeasible,
-      _excludedTasks: excluded,
-      _scheduleProgress: total > 0 ? placed / total : 0,
-      _scheduledStart: starts.length ? starts.sort()[0] : null,
-      _scheduledEnd: ends.length ? ends.sort().pop() : null,
-      _priorityLabel,
-      _priorityColor,
-    };
-  }), [orders, tasks, taskPins, taskExcludes, products]);
-
-  const statusDeriver = useCallback((row: any) => row._status, []);
-  const filter = useFilter(enriched, { statusDeriver });
-
-  const onTrackCount = enriched.filter(o => o._status === 'on-track').length;
-  const atRiskCount = enriched.filter(o => o._status === 'at-risk').length;
-  const lateCount = enriched.filter(o => o._status === 'late').length;
-  const statusOptions = [
-    { value: 'all', label: 'All', count: enriched.length },
-    { value: 'on-track', label: t('onTrack', 'On Track'), color: C.green, count: onTrackCount },
-    { value: 'at-risk', label: t('atRisk', 'At Risk'), color: C.yellow, count: atRiskCount },
-    { value: 'late', label: t('late', 'Late'), color: C.red, count: lateCount },
-  ];
-
-  const colFilter = (key: string) => ({
-    column: key,
-    values: filter.distinctValues(key),
-    selected: filter.columnFilters[key] || new Set<string>(),
-    onChange: filter.setColumnFilter,
-  });
-
-  const rows = sorted(filter.filtered);
-  return (
-    <div>
-      <FilterBar filter={filter} statusOptions={statusOptions} />
-      <ActiveFilters filter={filter} />
-      <div style={{ overflowX: 'auto' }}>
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              {onOrderModeChange && <th style={{
-                padding: '10px 12px', textAlign: 'left', fontSize: 12, fontWeight: 600,
-                color: C.textMuted, borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap',
-                fontFamily: FONT, width: 80,
-              }}>Mode</th>}
-              <SortHeader label={t('order', 'Order')} k="orderKey" current={sortKey} dir={sortDir} onSort={toggle}
-                filterProps={colFilter('orderKey')} />
-              <SortHeader label={t('product', 'Product')} k="_productName" current={sortKey} dir={sortDir} onSort={toggle}
-                filterProps={colFilter('_productName')} />
-              <SortHeader label={t('demand', 'Demand')} k="demandQty" current={sortKey} dir={sortDir} onSort={toggle} />
-              <SortHeader label={t('scheduledStatus', 'Scheduled')} k="scheduledQty" current={sortKey} dir={sortDir} onSort={toggle} />
-              <SortHeader label="Progress" k="_scheduleProgress" current={sortKey} dir={sortDir} onSort={toggle} />
-              <SortHeader label="Start" k="_scheduledStart" current={sortKey} dir={sortDir} onSort={toggle} />
-              <SortHeader label="End" k="_scheduledEnd" current={sortKey} dir={sortDir} onSort={toggle} />
-              <SortHeader label={t('dueDate', 'Due Date')} k="dueDate" current={sortKey} dir={sortDir} onSort={toggle} />
-              <SortHeader label={t('priority', 'Priority')} k="priority" current={sortKey} dir={sortDir} onSort={toggle} />
-              <SortHeader label={t('fillRate', 'Fill Rate')} k="fillRate" current={sortKey} dir={sortDir} onSort={toggle} />
-              <SortHeader label="Status" k="_status" current={sortKey} dir={sortDir} onSort={toggle}
-                filterProps={colFilter('_status')} />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((o: any) => {
-              const status = o._status;
-              const prodColor = C.accent;
-              return (
-                <tr key={o.orderKey}
-                  onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
-                  {onOrderModeChange && (
-                    <td style={cellStyle}>
-                      <ClickableModeBadge
-                        mode={orderModes?.[o.orderKey] || 'INCLUDE'}
-                        modes={ORDER_MODES}
-                        onChange={(m) => onOrderModeChange(o.orderKey, m)}
-                      />
-                    </td>
-                  )}
-                  <td style={{ ...cellStyle, fontWeight: 600 }}>{o.orderKey}</td>
-                  <td style={cellStyle}>
-                    <span style={{ color: prodColor, fontWeight: 500 }}>
-                      {o._productName}
-                    </span>
-                  </td>
-                  <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(o.demandQty)}</td>
-                  <td style={{ ...cellStyle, textAlign: 'right' }}>{fmtNum(o.scheduledQty)}</td>
-                  <td style={cellStyle}>
-                    <ScheduleProgress placed={o._scheduledTasks} total={o._totalTasks} infeasible={o._infeasibleTasks} />
-                  </td>
-                  <td style={cellStyle}>{fmtDate(o._scheduledStart)}</td>
-                  <td style={cellStyle}>{fmtDate(o._scheduledEnd)}</td>
-                  <td style={cellStyle}>{fmtDateShort(o.dueDate)}</td>
-                  <td style={cellStyle}>
-                    <Badge
-                      label={o._priorityLabel}
-                      color={o._priorityColor}
-                    />
-                  </td>
-                  <td style={cellStyle}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Ring pct={o.fillRate} size={28} />
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>{
-                        (o.fillRate ?? 0) > 1 ? fmtPctDirect(o.fillRate) : fmtPctFromDecimal(o.fillRate)
-                      }</span>
-                    </div>
-                  </td>
-                  <td style={cellStyle}><Badge label={status} /></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
    HOVER TOOLTIP
    ═══════════════════════════════════════════════════════════════ */
 
@@ -8743,48 +8527,641 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
    TAB CONTENT — ORDERS
    ═══════════════════════════════════════════════════════════════ */
 
-function OrdersTab({ orders, products, tasks, orderModes, taskPins, taskExcludes, onOrderModeChange,
-  caseFilter, onClearCaseFilter }: {
-  orders: any[]; products: any[]; tasks?: any[];
-  orderModes?: Record<string, string>;
-  taskPins?: Record<string, boolean>;
-  taskExcludes?: Record<string, boolean>;
-  onOrderModeChange?: (key: string, mode: string) => void;
+/* ─── Orders grid column model ──────────────────────────────────────
+ * `id` matches the column name the backend's resolveValue() expects
+ * (canonical filter param name); `label` is the user-facing header.
+ * Filterable columns surface a header funnel that opens a popover.
+ * WO/Description/Qty Planned are deliberately not filterable — see
+ * SPRINT-orders-page-rebuild.md OI-7 (high-cardinality columns).
+ */
+type OrdersGridColumn = {
+  id: string;
+  label: string;
+  filterable: boolean;
+  sortable: boolean;
+  align?: 'left' | 'right' | 'center';
+  width?: number;
+};
+
+const ORDERS_COLUMNS: OrdersGridColumn[] = [
+  { id: 'Customer',           label: 'Customer',         filterable: true,  sortable: true,  width: 220 },
+  { id: 'Project',            label: 'Project',          filterable: true,  sortable: true,  width: 200 },
+  { id: 'SalesOrder',         label: 'Sales Order',      filterable: true,  sortable: true,  width: 130 },
+  { id: 'Family',             label: 'Family',           filterable: true,  sortable: true,  width: 100 },
+  { id: 'groupKey',           label: 'Job',              filterable: true,  sortable: true,  width: 110 },
+  { id: 'key',                label: 'WO',               filterable: false, sortable: true,  width: 90  },
+  { id: 'name',               label: 'Description',     filterable: false, sortable: true,  width: 280 },
+  { id: 'statusLabel',        label: 'Status',           filterable: true,  sortable: true,  width: 110 },
+  { id: 'dueDate',            label: 'Due Date',         filterable: true,  sortable: true,  width: 120 },
+  { id: 'quantityPlanned',    label: 'Qty Planned',      filterable: false, sortable: true,  width: 110, align: 'right' },
+  { id: 'Strategy',           label: 'Strategy',         filterable: true,  sortable: true,  width: 100 },
+  { id: 'CustomerSource',     label: 'Customer Source',  filterable: true,  sortable: true,  width: 150 },
+  { id: 'ProjectManagerName', label: 'Project Manager',  filterable: true,  sortable: true,  width: 160 },
+  { id: 'JobType',            label: 'Job Type',         filterable: true,  sortable: true,  width: 90 },
+];
+
+const EMPTY_LABEL = '(none)';
+
+type OrdersFilterMap = Record<string, string[]>;
+
+function readOrdersUrlState(caseFilter?: string | null): {
+  filters: OrdersFilterMap; sortBy: string; sortDir: 'asc' | 'desc'; page: number; view: 'list' | 'grouped';
+} {
+  const p = new URLSearchParams(window.location.search);
+  const filters: OrdersFilterMap = {};
+  for (const [k, v] of p.entries()) {
+    const m = /^filter\.(.+)$/.exec(k);
+    if (!m) continue;
+    const vals = v.split(',').map(s => s.trim()).filter(Boolean);
+    if (vals.length) filters[m[1]] = vals;
+  }
+  // caseFilter is a deep-link from another tab (e.g. clicking an orderRef on
+  // the Schedule tab). Apply as a server-side filter on WO key.
+  if (caseFilter) filters['key'] = [caseFilter];
+  const sortBy  = p.get('sortBy')  || 'dueDate';
+  const sortDir = (p.get('sortDir') === 'desc' ? 'desc' : 'asc') as 'asc' | 'desc';
+  const page    = Math.max(1, parseInt(p.get('page') || '1', 10) || 1);
+  const view    = (p.get('view') === 'grouped' ? 'grouped' : 'list') as 'list' | 'grouped';
+  return { filters, sortBy, sortDir, page, view };
+}
+
+function writeOrdersUrlState(s: {
+  filters: OrdersFilterMap; sortBy: string; sortDir: 'asc' | 'desc'; page: number; view: 'list' | 'grouped';
+}) {
+  const p = new URLSearchParams(window.location.search);
+  // Strip prior filter.* / orders state, preserve everything else (e.g. tenant).
+  for (const k of [...p.keys()]) {
+    if (k.startsWith('filter.') || k === 'sortBy' || k === 'sortDir' || k === 'page' || k === 'view') p.delete(k);
+  }
+  for (const [col, vals] of Object.entries(s.filters)) {
+    if (col === 'key') continue;   // caseFilter — managed by parent state, not URL
+    if (vals.length) p.set(`filter.${col}`, vals.join(','));
+  }
+  if (s.sortBy !== 'dueDate') p.set('sortBy', s.sortBy);
+  if (s.sortDir !== 'asc')    p.set('sortDir', s.sortDir);
+  if (s.page !== 1)           p.set('page', String(s.page));
+  if (s.view !== 'list')      p.set('view', s.view);
+  const next = `${window.location.pathname}?${p.toString()}`;
+  window.history.replaceState(null, '', next);
+}
+
+function buildOrdersQuery(s: {
+  filters: OrdersFilterMap; sortBy: string; sortDir: 'asc' | 'desc'; page: number; pageSize: number;
+}): string {
+  const p = new URLSearchParams();
+  for (const [col, vals] of Object.entries(s.filters)) {
+    if (vals.length) p.set(`filter.${col}`, vals.join(','));
+  }
+  p.set('sortBy', s.sortBy);
+  p.set('sortDir', s.sortDir);
+  p.set('page', String(s.page));
+  p.set('pageSize', String(s.pageSize));
+  return p.toString();
+}
+
+function fmtOrdersDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
+}
+
+function OrdersTab({ caseFilter, onClearCaseFilter, onNavigateToSchedule }: {
   caseFilter?: string | null;
   onClearCaseFilter?: () => void;
+  onNavigateToSchedule?: (orderKey: string) => void;
 }) {
-  const filteredOrders = useMemo(() =>
-    caseFilter ? orders.filter(o => o.orderKey === caseFilter) : orders,
-    [orders, caseFilter]);
-  const totalDemand = filteredOrders.reduce((s: number, o: any) => s + (o.demandQty || 0), 0);
-  const lateCount = filteredOrders.filter((o: any) => deriveOrderStatus(o, tasks) === 'late').length;
-  const atRiskCount = filteredOrders.filter((o: any) => deriveOrderStatus(o, tasks) === 'at-risk').length;
+  const initial = useMemo(() => readOrdersUrlState(caseFilter), []);
+  const [filters, setFilters]   = useState<OrdersFilterMap>(initial.filters);
+  const [sortBy,  setSortBy]    = useState<string>(initial.sortBy);
+  const [sortDir, setSortDir]   = useState<'asc' | 'desc'>(initial.sortDir);
+  const [page,    setPage]      = useState<number>(initial.page);
+  const [pageSize] = useState<number>(100);
+  const [view,    setView]      = useState<'list' | 'grouped'>(initial.view);
+
+  // caseFilter is parent-controlled; it travels in `filters['key']` but we
+  // never persist it to the URL (the parent owns the deep-link semantics).
+  useEffect(() => {
+    setFilters(prev => {
+      const next = { ...prev };
+      if (caseFilter) next['key'] = [caseFilter];
+      else delete next['key'];
+      return next;
+    });
+    setPage(1);
+  }, [caseFilter]);
+
+  // Sync URL on state change (skip the `key` filter — it's case-filter and
+  // belongs to the parent's deep-link state, not user-shareable URLs).
+  useEffect(() => {
+    writeOrdersUrlState({ filters, sortBy, sortDir, page, view });
+  }, [filters, sortBy, sortDir, page, view]);
+
+  const [rows, setRows]                   = useState<any[]>([]);
+  const [totalCount, setTotalCount]       = useState<number>(0);
+  const [filteredCount, setFilteredCount] = useState<number>(0);
+  const [loading, setLoading]             = useState<boolean>(true);
+  const [error, setError]                 = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    const qs = buildOrdersQuery({ filters, sortBy, sortDir, page, pageSize });
+    api(`/orders?${qs}`)
+      .then((data: any) => {
+        if (cancelled) return;
+        setRows(data.rows || []);
+        setTotalCount(data.totalCount || 0);
+        setFilteredCount(data.filteredCount || 0);
+      })
+      .catch((e: any) => {
+        if (cancelled) return;
+        setError(e?.message || 'Failed to load orders');
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [filters, sortBy, sortDir, page, pageSize]);
+
+  const activeFilterCount = useMemo(
+    () => Object.entries(filters).filter(([k, v]) => k !== 'key' && v.length > 0).length,
+    [filters],
+  );
+
+  const clearAll = () => {
+    setFilters(prev => {
+      const next: OrdersFilterMap = {};
+      if (prev['key']) next['key'] = prev['key'];
+      return next;
+    });
+    setPage(1);
+  };
+
+  const onHeaderClick = (col: OrdersGridColumn) => {
+    if (!col.sortable) return;
+    if (sortBy === col.id) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(col.id);
+      setSortDir('asc');
+    }
+    setPage(1);
+  };
+
+  // Excel-scoped distinct: pass the OTHER filters as scope. The popover
+  // does its own server call with these as filter params (the endpoint strips
+  // the requested column itself).
+  const otherFilters = (col: string): OrdersFilterMap => {
+    const out: OrdersFilterMap = {};
+    for (const [k, v] of Object.entries(filters)) {
+      if (k !== col) out[k] = v;
+    }
+    return out;
+  };
+
+  const [popoverColumn, setPopoverColumn] = useState<string | null>(null);
+  const [popoverAnchor, setPopoverAnchor] = useState<DOMRect | null>(null);
+
+  const openPopover = (col: OrdersGridColumn, ev: React.MouseEvent<HTMLElement>) => {
+    if (!col.filterable) return;
+    const rect = ev.currentTarget.getBoundingClientRect();
+    setPopoverColumn(col.id);
+    setPopoverAnchor(rect);
+  };
+
+  const applyFilter = (col: string, values: string[]) => {
+    setFilters(prev => {
+      const next = { ...prev };
+      if (values.length === 0) delete next[col]; else next[col] = values;
+      return next;
+    });
+    setPage(1);
+    setPopoverColumn(null);
+  };
+
+  // Count visible rows whose CustomerSource is "auto-from-JobType" for the
+  // synthesised-customer notice (spec: appears when any visible row is auto).
+  const autoCustomerCount = useMemo(() =>
+    rows.filter((r: any) =>
+      (r.attributes || []).find((a: any) => a.name === 'CustomerSource')?.value === 'auto-from-JobType'
+    ).length, [rows]);
+
+  // Cell value extractor for grid rendering (matches resolveValue on the
+  // backend; kept thin since rows already carry hierarchies + attributes).
+  const cellValue = (row: any, colId: string): string => {
+    switch (colId) {
+      case 'key':              return row.key ?? '';
+      case 'name':              return row.name ?? '';
+      case 'groupKey':          return row.groupKey ?? '';
+      case 'dueDate':           return fmtOrdersDate(row.dueDate);
+      case 'statusLabel':       return row.statusLabel ?? '';
+      case 'quantityPlanned':   return row.quantityPlanned != null ? String(row.quantityPlanned) : '';
+    }
+    if (['Customer', 'Project', 'SalesOrder', 'Family'].includes(colId)) {
+      const h = (row.hierarchies || []).find((x: any) => x.name === colId);
+      const v = h?.value;
+      return v == null || v === '' ? EMPTY_LABEL : String(v);
+    }
+    const a = (row.attributes || []).find((x: any) => x.name === colId);
+    const av = a?.value;
+    return av == null || av === '' ? EMPTY_LABEL : String(av);
+  };
+
+  // Renders the Status column as a chip using the existing Badge + statusColor()
+  // palette (spec Visual spec § Status column).
+  const renderCell = (row: any, colId: string) => {
+    if (colId === 'statusLabel') {
+      const s = row.statusLabel;
+      if (!s) return <span style={{ color: C.textDim }}>—</span>;
+      return <Badge label={String(s).replace(/_/g, ' ')} color={statusColor(s)} />;
+    }
+    return cellValue(row, colId);
+  };
+
+  // Drill-through: WO row → Schedule tab filtered to that WO's chain.
+  // Job summary row → Schedule filtered to the Job's head WO (loads the whole chain).
+  const onRowClick = (row: any) => {
+    if (!onNavigateToSchedule) return;
+    onNavigateToSchedule(row.key);
+  };
+  const onGroupClick = (section: any) => {
+    if (!onNavigateToSchedule) return;
+    // Head WO loads the full chain; fall back to first member if head unknown.
+    const head = section.members.find((m: any) => m.isHead) || section.members[0];
+    if (head) onNavigateToSchedule(head.key);
+  };
+
+  // Grouped-mode summary rows. Groups appear in the order their first member
+  // does in `rows` (so server-side sort drives Job order in grouped view too).
+  const groupedSections = useMemo(() => {
+    if (view !== 'grouped') return [];
+    const order: string[] = [];
+    const buckets = new Map<string, any[]>();
+    for (const r of rows) {
+      const gk = r.groupKey || '(no job)';
+      if (!buckets.has(gk)) { buckets.set(gk, []); order.push(gk); }
+      buckets.get(gk)!.push(r);
+    }
+    return order.map(gk => {
+      const members = buckets.get(gk)!;
+      // Sort members by key ascending (secondary sort per OI-3 grouped-mode note).
+      members.sort((a, b) => String(a.key).localeCompare(String(b.key)));
+      const sample = members[0] || {};
+      return {
+        groupKey: gk,
+        groupName: sample.groupName ?? gk,
+        groupSourceEnd: sample.groupSourceEnd ?? null,
+        members,
+      };
+    });
+  }, [view, rows]);
+
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const toggleCollapse = (gk: string) => setCollapsed(c => ({ ...c, [gk]: !c[gk] }));
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {caseFilter && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontFamily: FONT }}>
+      {/* Toolbar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        {/* View toggle */}
+        <div style={{ display: 'inline-flex', border: `1px solid ${C.border}`, borderRadius: 6, overflow: 'hidden' }}>
+          {(['list', 'grouped'] as const).map(v => (
+            <span key={v}
+              onClick={() => setView(v)}
+              style={{
+                padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                background: view === v ? C.accent : 'transparent',
+                color: view === v ? '#fff' : C.textMuted,
+              }}>
+              {v === 'list' ? 'List' : 'Grouped by Job'}
+            </span>
+          ))}
+        </div>
+
+        {/* Case filter chip */}
+        {caseFilter && (
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, fontFamily: FONT,
+            padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600,
             background: C.accent + '18', color: C.accent, border: `1px solid ${C.accent}44`,
           }}>
-            Filtered: {caseFilter}
-            <span onClick={onClearCaseFilter} style={{ cursor: 'pointer', opacity: 0.7, fontSize: 14 }} title="Clear filter">&times;</span>
+            WO: {caseFilter}
+            <span onClick={onClearCaseFilter} style={{ cursor: 'pointer', opacity: 0.7, fontSize: 14 }} title="Clear">&times;</span>
           </span>
+        )}
+
+        {activeFilterCount > 0 && (
+          <span style={{ fontSize: 12, color: C.textMuted }}>
+            {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active
+            <span onClick={clearAll} style={{ marginLeft: 8, color: C.accent, cursor: 'pointer' }}>Clear all</span>
+          </span>
+        )}
+
+        <div style={{ marginLeft: 'auto', fontSize: 12, color: C.textMuted }}>
+          {loading ? 'Loading…' : `Showing ${filteredCount} of ${totalCount} work orders`}
+        </div>
+      </div>
+
+      {/* Synthesised-customer notice (OI: appears when any visible row is auto) */}
+      {!loading && autoCustomerCount > 0 && (
+        <div style={{
+          padding: '8px 12px', fontSize: 12, lineHeight: 1.5,
+          background: C.yellowDim, border: `1px solid ${C.yellow}44`, borderRadius: 6, color: C.text,
+        }}>
+          <strong>Note:</strong> {autoCustomerCount} of {rows.length} visible work orders show synthesised
+          customer labels prefixed with <code>[Auto]</code>. Their source records had no Customer field,
+          so they were bucketed by JobType. Filter <em>Customer Source</em> = <code>auto-from-JobType</code> to isolate them.
         </div>
       )}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KPI label={`Total ${t('orders', 'Orders')}`} value={filteredOrders.length} icon="📋" />
-        <KPI label={`Total ${t('demand', 'Demand')}`} value={fmtNum(totalDemand)} icon="📦" />
-        <KPI label={t('late', 'Late')} value={lateCount} icon="⏰" color={lateCount > 0 ? C.red : C.green} />
-        <KPI label={t('atRisk', 'At Risk')} value={atRiskCount} icon="⚠" color={atRiskCount > 0 ? C.yellow : C.green} />
-      </div>
-      <Card>
-        <OrderTable orders={filteredOrders} products={products} tasks={tasks}
-          orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}
-          onOrderModeChange={onOrderModeChange} />
+
+      {error && (
+        <div style={{ padding: '8px 12px', background: C.redDim, color: C.red, borderRadius: 6, fontSize: 12 }}>
+          {error}
+        </div>
+      )}
+
+      {/* Grid */}
+      <Card style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{ maxHeight: '70vh', overflow: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, color: C.text }}>
+            <thead style={{ position: 'sticky', top: 0, background: C.surface, zIndex: 1 }}>
+              <tr>
+                {ORDERS_COLUMNS.map(col => {
+                  const isSorted = sortBy === col.id;
+                  const isFiltered = (filters[col.id] || []).length > 0;
+                  return (
+                    <th key={col.id}
+                      style={{
+                        padding: '8px 10px', textAlign: col.align || 'left',
+                        borderBottom: `1px solid ${C.border}`,
+                        fontWeight: 600, fontSize: 11, color: C.textMuted,
+                        whiteSpace: 'nowrap', userSelect: 'none',
+                        minWidth: col.width,
+                      }}>
+                      <span onClick={() => onHeaderClick(col)}
+                        style={{ cursor: col.sortable ? 'pointer' : 'default', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {col.label}
+                        {isSorted && <span style={{ color: C.accent }}>{sortDir === 'asc' ? '▲' : '▼'}</span>}
+                      </span>
+                      {col.filterable && (
+                        <span
+                          onClick={(e) => openPopover(col, e)}
+                          title="Filter"
+                          style={{
+                            marginLeft: 6, padding: '0 4px', cursor: 'pointer',
+                            color: isFiltered ? C.accent : C.textDim,
+                          }}>
+                          ▾
+                        </span>
+                      )}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {/* Empty / no-match */}
+              {!loading && rows.length === 0 && (
+                <tr>
+                  <td colSpan={ORDERS_COLUMNS.length} style={{ padding: 32, textAlign: 'center', color: C.textMuted }}>
+                    {(activeFilterCount > 0 || caseFilter)
+                      ? <>No work orders match these filters. <span onClick={clearAll} style={{ color: C.accent, cursor: 'pointer' }}>Clear all filters</span></>
+                      : 'No work orders in this tenant.'}
+                  </td>
+                </tr>
+              )}
+
+              {/* List view */}
+              {view === 'list' && rows.map((r: any) => (
+                <tr key={r.key}
+                  onClick={() => onRowClick(r)}
+                  style={{
+                    borderBottom: `1px solid ${C.border}`,
+                    cursor: onNavigateToSchedule ? 'pointer' : 'default',
+                  }}>
+                  {ORDERS_COLUMNS.map(col => (
+                    <td key={col.id} style={{
+                      padding: '6px 10px', textAlign: col.align || 'left',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      maxWidth: col.width,
+                    }} title={cellValue(r, col.id)}>
+                      {renderCell(r, col.id)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+
+              {/* Grouped view */}
+              {view === 'grouped' && groupedSections.map(section => {
+                const isCollapsed = !!collapsed[section.groupKey];
+                // Worst-status rollup for the summary row badge (LATE > AT_RISK > ON_TRACK > COMPLETED > CANCELLED).
+                const STATUS_RANK: Record<string, number> = { LATE: 0, BLOCKED: 1, AT_RISK: 2, ON_TRACK: 3, COMPLETED: 4, CANCELLED: 5 };
+                const groupStatus = section.members
+                  .map((m: any) => m.statusLabel)
+                  .filter(Boolean)
+                  .sort((a: string, b: string) => (STATUS_RANK[a] ?? 99) - (STATUS_RANK[b] ?? 99))[0] || null;
+                return (
+                  <Fragment key={section.groupKey}>
+                    <tr style={{ background: C.surface2, borderBottom: `1px solid ${C.border}` }}>
+                      <td colSpan={ORDERS_COLUMNS.length} style={{ padding: '8px 10px', fontWeight: 600 }}>
+                        <span onClick={(e) => { e.stopPropagation(); toggleCollapse(section.groupKey); }}
+                          style={{ color: C.textMuted, marginRight: 8, cursor: 'pointer', padding: '0 4px' }}>
+                          {isCollapsed ? '▸' : '▾'}
+                        </span>
+                        <span onClick={() => onGroupClick(section)}
+                          style={{ color: C.accent, cursor: onNavigateToSchedule ? 'pointer' : 'default' }}
+                          title={onNavigateToSchedule ? 'View Job in Schedule' : undefined}>
+                          Job {section.groupKey}
+                        </span>
+                        {section.groupName && <span style={{ color: C.text, marginLeft: 8 }}>{section.groupName}</span>}
+                        {groupStatus && <span style={{ marginLeft: 10 }}>
+                          <Badge label={String(groupStatus).replace(/_/g, ' ')} color={statusColor(groupStatus)} />
+                        </span>}
+                        <span style={{ color: C.textMuted, marginLeft: 12, fontWeight: 400 }}>
+                          {section.members.length} WO{section.members.length !== 1 ? 's' : ''}
+                          {section.groupSourceEnd && <> · Due {fmtOrdersDate(section.groupSourceEnd)}</>}
+                        </span>
+                      </td>
+                    </tr>
+                    {!isCollapsed && section.members.map(r => (
+                      <tr key={r.key}
+                        onClick={() => onRowClick(r)}
+                        style={{
+                          borderBottom: `1px solid ${C.border}`,
+                          cursor: onNavigateToSchedule ? 'pointer' : 'default',
+                        }}>
+                        {ORDERS_COLUMNS.map(col => (
+                          <td key={col.id} style={{
+                            padding: '6px 10px 6px 24px', textAlign: col.align || 'left',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            maxWidth: col.width,
+                          }} title={cellValue(r, col.id)}>
+                            {renderCell(r, col.id)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {filteredCount > pageSize && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '10px 14px', borderTop: `1px solid ${C.border}`, fontSize: 12, color: C.textMuted,
+          }}>
+            <span>Page {page} of {Math.max(1, Math.ceil(filteredCount / pageSize))}</span>
+            <div style={{ display: 'inline-flex', gap: 6 }}>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
+                style={{ padding: '4px 10px', background: 'transparent', border: `1px solid ${C.border}`, color: C.text, borderRadius: 4, cursor: page <= 1 ? 'default' : 'pointer', opacity: page <= 1 ? 0.4 : 1 }}>
+                Prev
+              </button>
+              <button onClick={() => setPage(p => p + 1)} disabled={page >= Math.ceil(filteredCount / pageSize)}
+                style={{ padding: '4px 10px', background: 'transparent', border: `1px solid ${C.border}`, color: C.text, borderRadius: 4, cursor: page >= Math.ceil(filteredCount / pageSize) ? 'default' : 'pointer', opacity: page >= Math.ceil(filteredCount / pageSize) ? 0.4 : 1 }}>
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </Card>
+
+      {popoverColumn && popoverAnchor && (
+        <ColumnFilterPopover
+          column={popoverColumn}
+          anchor={popoverAnchor}
+          selected={filters[popoverColumn] || []}
+          otherFilters={otherFilters(popoverColumn)}
+          onApply={(vals) => applyFilter(popoverColumn, vals)}
+          onClose={() => setPopoverColumn(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function ColumnFilterPopover({ column, anchor, selected, otherFilters, onApply, onClose }: {
+  column: string;
+  anchor: DOMRect;
+  selected: string[];
+  otherFilters: OrdersFilterMap;
+  onApply: (values: string[]) => void;
+  onClose: () => void;
+}) {
+  const [values, setValues] = useState<{ value: string | null; count: number }[]>([]);
+  const [truncated, setTruncated] = useState<boolean>(false);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState<boolean>(true);
+  // Working selection set — committed on Apply. Use sentinel string for nulls
+  // so the URL/filter shape stays uniform; convert on Apply.
+  const [draft, setDraft] = useState<Set<string>>(new Set(selected));
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    const p = new URLSearchParams();
+    p.set('column', column);
+    for (const [col, vals] of Object.entries(otherFilters)) {
+      if (vals.length) p.set(`filter.${col}`, vals.join(','));
+    }
+    if (search) p.set('search', search);
+    p.set('limit', '500');
+    api(`/orders/distinct?${p.toString()}`)
+      .then((data: any) => {
+        if (cancelled) return;
+        setValues(data.values || []);
+        setTruncated(!!data.truncated);
+      })
+      .catch(() => { /* swallow — popover stays empty + user can close */ })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [column, search]);
+
+  const toValueKey = (v: string | null): string => v == null ? EMPTY_LABEL : v;
+
+  const toggle = (v: string | null) => {
+    const k = toValueKey(v);
+    setDraft(prev => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k); else next.add(k);
+      return next;
+    });
+  };
+  const selectAll = () => setDraft(new Set(values.map(v => toValueKey(v.value))));
+  const clearAll  = () => setDraft(new Set());
+
+  const top  = anchor.bottom + 4;
+  const left = Math.max(8, Math.min(anchor.left, window.innerWidth - 340));
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
+      <div style={{
+        position: 'fixed', top, left, width: 320, maxHeight: 380,
+        background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
+        boxShadow: '0 10px 30px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column',
+        zIndex: 100, fontFamily: FONT, fontSize: 12, color: C.text,
+      }}>
+        <div style={{ padding: 10, borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 6, fontWeight: 600 }}>Filter: {column}</div>
+          <input
+            autoFocus
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search…"
+            style={{
+              width: '100%', padding: '6px 8px', boxSizing: 'border-box',
+              background: C.bg, border: `1px solid ${C.border}`, color: C.text, borderRadius: 4,
+              fontFamily: FONT, fontSize: 12,
+            }}
+          />
+        </div>
+        <div style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
+          {loading && <div style={{ padding: 10, color: C.textMuted }}>Loading…</div>}
+          {!loading && values.length === 0 && <div style={{ padding: 10, color: C.textMuted }}>No matching values.</div>}
+          {!loading && values.map((v, i) => {
+            const display = v.value == null ? EMPTY_LABEL : v.value;
+            const key = toValueKey(v.value);
+            const checked = draft.has(key);
+            return (
+              <label key={`${key}-${i}`} style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '4px 10px', cursor: 'pointer',
+                background: checked ? C.accentGlow : 'transparent',
+              }}>
+                <input type="checkbox" checked={checked} onChange={() => toggle(v.value)} />
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={display}>
+                  {display}
+                </span>
+                <span style={{ color: C.textDim, fontVariantNumeric: 'tabular-nums' }}>{v.count}</span>
+              </label>
+            );
+          })}
+          {!loading && truncated && (
+            <div style={{ padding: '6px 10px', color: C.textMuted, fontStyle: 'italic' }}>
+              Showing first {values.length}. Refine search to narrow.
+            </div>
+          )}
+        </div>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: 8, borderTop: `1px solid ${C.border}`, gap: 6,
+        }}>
+          <div style={{ display: 'inline-flex', gap: 6 }}>
+            <button onClick={selectAll} style={{ padding: '4px 8px', background: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted, borderRadius: 4, cursor: 'pointer', fontSize: 11 }}>Select all</button>
+            <button onClick={clearAll}  style={{ padding: '4px 8px', background: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted, borderRadius: 4, cursor: 'pointer', fontSize: 11 }}>Clear</button>
+          </div>
+          <div style={{ display: 'inline-flex', gap: 6 }}>
+            <button onClick={onClose} style={{ padding: '4px 10px', background: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted, borderRadius: 4, cursor: 'pointer', fontSize: 11 }}>Cancel</button>
+            <button onClick={() => onApply([...draft])} style={{ padding: '4px 10px', background: C.accent, border: `1px solid ${C.accent}`, color: '#fff', borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>Apply</button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -16289,16 +16666,9 @@ export default function App() {
             onTaskClick={handleTaskClick}
           />
         )}
-        {activeTab === 'Orders' && <OrdersTab orders={orders} products={products} tasks={tasks}
-          orderModes={orderModes} taskPins={taskPins} taskExcludes={taskExcludes}
-          onOrderModeChange={(key: string, mode: string) => {
-            if (queueMode) {
-              addToQueue(`Set order ${key} → ${mode}`, { type: 'set_order_mode', orderKey: key, mode });
-              return;
-            }
-            setOrderModes(prev => ({ ...prev, [key]: mode })); setSolveStale(true);
-          }}
-          caseFilter={ordersCaseFilter} onClearCaseFilter={() => setOrdersCaseFilter(null)} />}
+        {activeTab === 'Orders' && <OrdersTab
+          caseFilter={ordersCaseFilter} onClearCaseFilter={() => setOrdersCaseFilter(null)}
+          onNavigateToSchedule={(orderKey) => { setScheduleCaseFilter(orderKey); setActiveTab('Schedule'); }} />}
         {activeTab === 'Conflicts' && <ConflictsTab tasks={tasks} resources={resources} materials={materials}
           onTaskClick={handleTaskClickByKey} />}
         {activeTab === 'Materials' && <MaterialsTab materials={materials}
