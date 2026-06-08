@@ -33,7 +33,7 @@ npm run dev --workspace=@ctp/web
 Sanity-check:
 
 ```bash
-curl http://localhost:8080/_mock/health              # → {"status":"ok","scenario":"stafford-clean"}
+curl http://localhost:8080/_mock/health              # → {"status":"ok","scenario":"stafford-snapshot-2026-06-03"}
 curl http://localhost:3000/v1/health/version          # → version info
 curl http://localhost:3001                           # → Vite HTML
 ```
@@ -49,7 +49,7 @@ Between scenarios, reset the mock to a known state:
 curl -X POST http://localhost:8080/_mock/reset
 ```
 
-This clears all injected failures and restores scenario to `stafford-clean`.
+This clears all injected failures and restores scenario to the default (`stafford-snapshot-2026-06-03`).
 
 ---
 

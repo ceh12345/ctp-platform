@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { app } from '../src/server';
+import { DEFAULT_SCENARIO } from '../src/fixtures';
 
 // Shared helper — reset between tests so queues don't leak.
 async function resetServer() {
@@ -49,7 +50,7 @@ describe('mock-genius', () => {
 
   it('#4 POST /_mock/scenario switches active scenario without restart', async () => {
     const before = await app.inject({ method: 'GET', url: '/_mock/state' });
-    expect(before.json().scenario).toBe('stafford-clean');
+    expect(before.json().scenario).toBe(DEFAULT_SCENARIO);
 
     const switchRes = await app.inject({ method: 'POST', url: '/_mock/scenario', payload: { scenario: 'empty' } });
     expect(switchRes.statusCode).toBe(200);
@@ -183,7 +184,7 @@ describe('mock-genius', () => {
     await app.inject({ method: 'POST', url: '/_mock/reset' });
 
     const afterState = (await app.inject({ method: 'GET', url: '/_mock/state' })).json();
-    expect(afterState.scenario).toBe('stafford-clean');
+    expect(afterState.scenario).toBe(DEFAULT_SCENARIO);
     expect(afterState.pendingFailures).toEqual([]);
 
     // And the next request should succeed cleanly
@@ -203,7 +204,7 @@ describe('mock-genius', () => {
     });
 
     const state = (await app.inject({ method: 'GET', url: '/_mock/state' })).json();
-    expect(state.scenario).toBe('stafford-clean');
+    expect(state.scenario).toBe(DEFAULT_SCENARIO);
     expect(state.requestCount).toBeGreaterThanOrEqual(2);
     expect(state.pendingFailures.length).toBe(1);
     expect(state.pendingFailures[0]).toMatchObject({

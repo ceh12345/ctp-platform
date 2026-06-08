@@ -61,7 +61,8 @@ If an entity file is missing, the endpoint returns an empty `Result` array.
 
 | Scenario | Description |
 |----------|-------------|
-| `stafford-clean` | 15 orders, 15 work orders, 30 production tasks, 28 machines. Default. |
+| `stafford-snapshot-2026-06-03` | Full WORK7 capture — 871 work orders, 2563 tasks, 77 machines. **Default.** |
+| `stafford-clean` | 15 orders, 15 work orders, 30 production tasks, 28 machines. Hand-crafted smoke fixture. |
 | `empty` | No entity files — all endpoints return empty arrays. |
 | `single-order` | PV-001 only — 1 order, 10 tasks (full chain), 12 machines. |
 
@@ -82,7 +83,7 @@ curl -X POST http://localhost:8080/_mock/scenario -H "Content-Type: application/
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MOCK_PORT` | `8080` | HTTP listen port |
-| `MOCK_SCENARIO` | `stafford-clean` | Active scenario on startup |
+| `MOCK_SCENARIO` | `stafford-snapshot-2026-06-03` | Active scenario on startup |
 | `MOCK_FIXTURES_DIR` | `./fixtures` | Override fixtures directory |
 | `MOCK_LOG_REQUESTS` | `true` | Log incoming requests to stdout |
 
