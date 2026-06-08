@@ -57,6 +57,7 @@ import {
 import { ScheduleConfigurationService } from '../../config/schedule-configuration.service';
 import { WhereToRequestDto, WhereToResponseDto, MoveToRequestDto, MoveToResponseDto } from './dto/whereto.dto';
 import { CTPQueryDto, CTPQueryResponse, CTPQueryOption, CTPQuerySummary, ChainTemplatesResponse } from './dto/ctp-query.dto';
+import { TaskResultDto, OrderResultDto } from './dto/solve-result.dto';
 
 export interface TaskSnapshot {
   key: string;
@@ -3172,7 +3173,12 @@ export class CTPService {
         orderScheduledQty.set(orderRef, existing + task.netOutputQty());
       }
 
-      const taskResult: any = {
+      const taskResult: TaskResultDto = {
+        // compatibleResources / cost / visible / blendedScore are filled in
+        // below the initial literal; satisfy the DTO by seeding sensible
+        // defaults here so the type-check at the literal catches drift.
+        compatibleResources: [],
+        visible: true,
         key: task.key,
         name: task.name,
         state: task.state,
@@ -3204,6 +3210,7 @@ export class CTPService {
         infeasibilityReport: task.infeasibilityReport ? this.serializeInfeasibilityReport(task.infeasibilityReport) : null,
         typedAttributes: task.typedAttributes.toArray(),
         orderRef,
+        groupKey: task.groupKey ?? null,
         outputProductKey,
         outputQty,
         outputScrapRate,
@@ -3466,7 +3473,7 @@ export class CTPService {
     // dates never reflected mapping-profile transformations.
     // CTPOrder stores dueDate/lateDueDate as epoch seconds; convert back
     // to ISO for the response shape. dueDate === 0 means "not set".
-    const orders = landscape.orders.toArray().map((order) => {
+    const orders: OrderResultDto[] = landscape.orders.toArray().map((order): OrderResultDto => {
       const scheduledQty = orderScheduledQty.get(order.key) ?? 0;
       return {
         orderKey: order.key,
