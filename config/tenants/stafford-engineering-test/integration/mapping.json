@@ -121,7 +121,8 @@
     "linkId": {
       "chainKey":     "WorkOrderCode",
       "orderKey":     "Order",
-      "lagHoursField":"LagHours"
+      "lagHoursField":"_DISABLED_PENDING_STAFFORD_Q1",
+      "_note":        "lagHoursField temporarily pointed at a non-existent field so maxGap = null for all chains. LagHours appears to be a default (94% of tasks = 4); enforcing it as a hard chain constraint blocks 22% of links. Pending Q1 in docs/Stafford/QUESTIONS-slim-100.md. Restore to 'LagHours' once Stafford clarifies intent."
     }
   }
 }
