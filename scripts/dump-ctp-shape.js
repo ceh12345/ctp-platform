@@ -143,6 +143,35 @@ async function main() {
 
   console.log(`  ${ordersStamped}/${orders.length} orders enriched, ${tasksStamped}/${tasks.length} tasks enriched (${tasksUnlinked} unlinked)`);
 
+  // ── State-coherence pass ───────────────────────────────────────────────
+  // Chain-precedence invariant: if task X precedes task Y, and Y is
+  // IN_PROCESS or COMPLETED, then X is COMPLETED. There is no other possible
+  // state — Y cannot run/finish without X having finished. The platform
+  // enforces this derivation from the model; source ERPs typically don't.
+  // See docs/Stafford/QUESTIONS-slim-100.md Q5.
+  console.log('State-coherence pass (chain-precedence invariant)...');
+  const taskByKey = new Map(tasks.map(t => [t.key, t]));
+  const COHERENT_DOWNSTREAM_STATES = new Set(['IN_PROCESS', 'COMPLETED']);
+  let upgraded = 0;
+  const visit = (key, seen) => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    const t = taskByKey.get(key);
+    if (!t) return;
+    if (t.wipState !== 'COMPLETED') {
+      t.wipState = 'COMPLETED';
+      upgraded++;
+    }
+    const prev = t.linkId?.prevLink;
+    if (prev) visit(prev, seen);
+  };
+  for (const t of tasks) {
+    if (!COHERENT_DOWNSTREAM_STATES.has(t.wipState)) continue;
+    const prev = t.linkId?.prevLink;
+    if (prev) visit(prev, new Set());
+  }
+  console.log(`  ${upgraded} NOT_STARTED/IN_PROCESS predecessors upgraded to COMPLETED`);
+
   // ── Compute horizon from group date range ────────────────────────────
   // start = earliest sourceStart, maxDays = ceil(latest sourceEnd - start).
   // pastDueExtensionDays is preserved from the existing horizon.json (operational

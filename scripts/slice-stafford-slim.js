@@ -44,6 +44,7 @@ const W_PROJ               = 30;   // weight: new project covered
 const W_CUST               = 10;   // weight: new customer covered
 const P_SIZE               = 1.0;  // penalty: per task in group
 const P_REPEAT_PROJECT     = 40;   // penalty: project already in slice (forces broader coverage)
+const HORIZON_BUFFER_DAYS  = 30;   // padding past max(sourceEnd) so long-duration tasks (e.g. 192h on a day-shift resource) have runway past their group's nominal end. See QUESTIONS-slim-100.md Q6.
 
 const WRITE            = process.argv.includes('--write');
 const COPY_CALENDARS   = process.argv.includes('--copy-calendars');
@@ -225,7 +226,7 @@ if (minStart && maxEnd && maxEnd > minStart) {
   }
   slicedHorizon = {
     start: minStart.toISOString().slice(0, 10),
-    maxDays: Math.ceil((maxEnd - minStart) / 86400000),
+    maxDays: Math.ceil((maxEnd - minStart) / 86400000) + HORIZON_BUFFER_DAYS,
     pastDueExtensionDays: extension,
   };
 }

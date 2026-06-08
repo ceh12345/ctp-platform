@@ -156,15 +156,126 @@ Predecessor is IN_PROCESS with no `actualEnd` (Q2). The OUT task itself is 0-dur
 
 In slim-100, all 7 zero-duration tasks are OUTWORK. Combined Q2 + Q3 blocked successors: **19 of 112 tasks in slim (17%), 322 of 2,511 in engineering-test (13%).**
 
-**Current working assumption:** OUTWORK tasks legitimately span calendar days, not machine hours. The mapping needs a different source field for this task type.
+**Current working assumption:** OUTWORK tasks legitimately span calendar days, not machine hours. The mapping needs a different source field for this type.
+
+**Defensive workaround shipped 2026-06-07** (pending Stafford confirmation):
+
+We've extended the mapping engine with two small additions and updated the Stafford mapping to fall back to a date-range duration when `TotalPlannedMachineHours = 0`:
+
+```jsonc
+"durationSeconds": {
+  "cascade": [
+    { "from": "TotalPlannedMachineHours", "factor": 3600, "skipIfZero": true },
+    { "dateRangeSeconds": { "from": "TaskStartDate", "to": "TaskEndDate" } }
+  ]
+}
+```
+
+- `factor.skipIfZero` — when the source field is 0, the rule returns undefined so the cascade can continue
+- `dateRangeSeconds` — new rule type that returns `(EndDate − StartDate)` in seconds
+
+This restores a non-zero duration for all 126 OUTWORK tasks in engineering-test and 7 in slim-100, unblocking downstream chain anchoring. Isolation test on WO 28482 (the chain that motivated this fix) confirms the chain now schedules end-to-end.
+
+**Caveat:** the `TaskStartDate → TaskEndDate` window from Genius reflects the planned subcontract span. If Stafford operates with different vendor lead times in practice, this fallback may understate or overstate the real duration. Restore the original mapping or refine the fallback once Stafford confirms.
 
 **Options once Stafford responds:**
 
-- **Stafford confirms "use TaskEndDate − TaskStartDate as duration for subcontracts"** → mapping change: cascade rule that picks `(TaskEndDate − TaskStartDate)` in seconds when `Formula = JR/DY`, else `TotalPlannedMachineHours × 3600`. Requires either a new mapping rule type (e.g., `dateRangeToDuration`) or pre-computing the duration in the data load pipeline.
-- **Stafford confirms "subcontracts have a specific field for day count"** → use that field × 86400. Need to identify which Genius field.
-- **Stafford accepts "treat as no-op / skip in scheduling"** → mapping converts `JR/DY` to a special task type that the engine skips for chain ordering but still tracks for KPIs. Lossy but simple.
+- **Stafford confirms "TaskEndDate − TaskStartDate is the right subcontract duration"** → keep the cascade as-is, drop the `_note` flagging it as defensive
+- **Stafford confirms "subcontracts have a specific field for day count"** → swap the second cascade branch to `{ from: "<that field>", factor: 86400 }`
+- **Stafford prefers "treat as scheduling-skip"** → revert this change, add a new task type that the engine skips for chain ordering but tracks for KPIs
 
-**Decision deadline:** Higher urgency than Q1 + Q2 — affects 13-17% of tasks across the dataset.
+**Decision deadline:** Lower urgency now that the workaround is live, but worth resolving before the next data refresh so we know whether the fallback is the right answer or interim cover.
+
+---
+
+## Q4 — Engine bug: calendar interval shape sensitivity (NOT a Stafford question)
+
+**Not a Stafford question — engine bug.** Logged here because it surfaced during the same WO 28482 debug session and affected our ability to validate Stafford's data.
+
+**The bug:** `CommonStartTimesAgent` in the engine silently fails to find scheduling slots when a resource's calendar has multiple contiguous 24-hour intervals — but the failure is shape-sensitive in ways that aren't fully characterized.
+
+**Empirical findings from systematic testing (OUT-1 task, 1h duration, OUTWORK resource, slim-100 horizon):**
+
+| Calendar shape | Result |
+|---|---|
+| 1 interval covering full horizon (52 days) | **Works** |
+| 1 × 24h interval at 00:00 UTC | Works |
+| 2 × 24h intervals at 00:00 UTC, contiguous | Works |
+| 5 × 24h intervals at 00:00 UTC, contiguous | Works |
+| 1 × 24h interval at 11:00 UTC (= NZ midnight) | Works |
+| **2 × 24h intervals at 11:00 UTC, contiguous** | **FAILS** |
+| **365 × 24h intervals at 11:00 UTC (original generated shape)** | **FAILS** |
+| **3 × 8h intervals at 00:00 UTC covering full day** | **FAILS** |
+| MURRAY-style 8h day-shift intervals starting 18:00 UTC | Works |
+
+The bug isn't pure interval-length, isn't pure interval-count, isn't pure start-time — it's some interaction. Same effective coverage works as one big interval but fails when split into contiguous pieces, depending on the specific start-time × interval-length combo.
+
+**Workaround shipped 2026-06-08:** `scripts/generate-stafford-calendar.py` now emits ONE horizon-spanning interval for subcontract resources (instead of 365 daily 24h intervals). The existing fixture calendars (`engineering-test`, `slim-100`, `wo28482-only`) were patched the same way — for each SUBCONTRACT-type resource, multiple intervals replaced with one interval `[min(start), max(end)]`.
+
+This unblocks Stafford scheduling but doesn't actually fix the engine. **Real fix needed:**
+- Engine team: write a unit test against `CommonStartTimesAgent` that exercises various interval shapes (the table above is the test matrix)
+- Trace why specific combos return zero start-times
+- Fix the interval-merging or boundary-handling logic
+
+**Impact if not fixed (real-fix-needed deadline):**
+- Day-shift resources work fine (current pattern is 8h at 18:00 UTC)
+- Subcontract / 24h coverage resources are stuck with the workaround
+- Any future tenant that wants a "24/7" resource modeled as daily intervals will hit the same wall
+- The workaround obscures the bug — when someone tries to model an actual 24/7 resource with daily intervals "properly," it'll silently break their schedule
+
+---
+
+## Q5 — Platform-enforced state-coherence rule (not a Stafford question)
+
+**Not a Stafford question — platform rule.** Logged here for visibility because it materially changes what we send to Stafford for review.
+
+**The rule:** if task X precedes task Y in a chain, and Y is `IN_PROCESS` or `COMPLETED`, then X is `COMPLETED`. **There is no other possible state.** Y cannot be running or done without X having finished first. This is a derivation from the chain-precedence invariant the model already encodes — not an inference about source-data errors, not a correction we choose to apply.
+
+**Why we need to enforce it:** Genius (and most source ERPs) doesn't enforce this invariant. Operators mark a task IN_PROCESS or COMPLETED in Genius without going back to update predecessors that they "must have" finished. The data is internally inconsistent against the chain model. The CTP platform enforces what the source doesn't.
+
+**Implementation:** Sync-time pass walking chains backward from any task in IN_PROCESS or COMPLETED state, setting all ancestors to COMPLETED. Lives in the data-load pipeline (currently `scripts/dump-ctp-shape.js`; will move to API sync hydrator when feature-b ships).
+
+**Validation surface (when later wired into the inspector / sync report):**
+
+```
+Task <X> source state was <NOT_STARTED|IN_PROCESS> but successor <Z>
+is IN_PROCESS/COMPLETED. State corrected to COMPLETED per chain
+precedence invariant.
+```
+
+Informational, not an error. Operators get told "the platform reconciled this for you" — they can update Genius or leave it.
+
+**Impact in slim-100 (measured 2026-06-08):** the state-coherence pass upgrades a small number of NOT_STARTED tasks to COMPLETED (exact count surfaced in the dump script output). This is what unblocks chains where an in-process task is mid-chain — predecessors no longer need to be "placed forward" by the solver because they're already done.
+
+**Why this isn't a Stafford question:**
+The rule is a model invariant we enforce. We don't ask Stafford "is it OK if your IN_PROCESS task's predecessors are COMPLETED?" — they can't NOT be. The platform applying the rule is correct behavior; the data inconsistency it papers over is Stafford's to clean up at their own pace.
+
+**Related engine concern (separate ticket):**
+Even with state-coherence applied at sync time, the engine's strategy still appears to refuse to backward-place chain predecessors of a pinned task in some cases. That's an engine design issue — a properly-engineered solver should always try to place every included task, with anchors (pinning, IN_PROCESS state) as hard constraints that the solver works around, not as gates that prevent placement of upstream work. With state-coherence applied, the question becomes moot for the IN_PROCESS case (predecessors are COMPLETED so the solver no longer tries to place them at all), but the underlying engine behavior is worth fixing separately.
+
+---
+
+## Q6 — Very-long-duration tasks (e.g. 192h on a single resource)
+
+**The question:** For tasks like `28482-F-9` (192h of `TotalPlannedMachineHours` on GRANT, a day-shift machinist), what's the operational truth? Is this genuinely a 5-week machining operation, an inflated estimate that operators haven't updated, or a unit/Formula misread?
+
+**Why we're asking:**
+
+192 hours on a single day-shift resource = 24 working days = ~5 weeks of GRANT's calendar capacity. In the slim-100 fixture, F-9 sits mid-chain in WO 28482 — its predecessor K-8 ends around 2026-05-26, so F-9 would need to extend from late May to early July. The slim's horizon (auto-derived from group sourceStart/sourceEnd) ended 2026-06-27 before adding a buffer.
+
+This caused chain cascade failure: F-9 didn't fit → all 14 downstream tasks (PR-10, K-11, F-12, ..., PM-24) marked infeasible.
+
+**Workaround shipped 2026-06-08:** `slice-stafford-slim.js` now adds a `HORIZON_BUFFER_DAYS = 30` constant past `max(sourceEnd)`. Long-duration tasks get runway past their group's nominal end. Auto-derived horizons no longer cut chains short at the boundary.
+
+**Scale of the pattern:** F-9 isn't unique. Across the 2026-06-03 capture, several tasks exceed 100h on individual day-shift resources. Worth knowing what Stafford's operational expectation is for these — does GRANT really spend 5 consecutive weeks on one task, or is the 192h estimate stale?
+
+**Options once Stafford responds:**
+
+- **Stafford confirms "192h is real, just plan around it"** → keep the horizon buffer, no further action
+- **Stafford confirms "estimates are inflated, operators rarely update them"** → flag long-duration tasks (>40h on a finite resource?) in the inspector export as `requires-review` so operators can update Genius before sync
+- **Stafford confirms "this should split across resources"** → mapping change: detect long-duration tasks and split into multiple sub-tasks. Probably out of scope for v1.
+
+**Decision deadline:** Lower urgency — the buffer unblocks scheduling today. The real question is data-quality, not engine.
 
 ---
 

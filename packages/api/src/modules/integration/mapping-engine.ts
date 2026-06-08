@@ -42,9 +42,16 @@ interface MappingCtx {
 
 @Injectable()
 export class MappingEngine {
+  // Named-default values referenced by `fromDefault` rules. Set at the
+  // start of each transform() from profile.defaults (per-tenant config in
+  // mapping.json). Lifetime is one transform() invocation; safe because
+  // transform is synchronous despite MappingEngine being a Nest singleton.
+  private defaults: Record<string, unknown> = {};
+
   transform(raw: IRawDataPayload, profile: IMappingProfile | null): MappingResult {
     const errors: MappingError[] = [];
     if (!profile) return { payload: raw, workOrderGroups: [], attributeSources: new Map(), errors };
+    this.defaults = (profile.defaults as Record<string, unknown>) ?? {};
     const payload: IRawDataPayload = {
       ...raw,
       orders:    this.mapEntities(raw.orders,    profile['orders'],    'orders',    errors),
@@ -148,7 +155,8 @@ export class MappingEngine {
     // Object.prototype and would always test truthy with `!==undefined`.
     const RULE_KEYS = [
       'value', 'from', 'lookup', 'factor', 'toUTC', 'toString',
-      'threshold', 'cascade', 'ifPresent', 'ifAbsent',
+      'threshold', 'cascade', 'ifPresent', 'ifAbsent', 'dateRangeSeconds',
+      'fromDefault',
     ] as const;
     return !RULE_KEYS.some(k => Object.prototype.hasOwnProperty.call(rule, k));
   }
@@ -213,9 +221,49 @@ export class MappingEngine {
       return coerce(val);
     }
 
-    // multiply — e.g. hours → seconds
+    // multiply — e.g. hours → seconds. Optional `skipIfZero: true` modifier:
+    // when val is 0, return undefined so a surrounding cascade can fall
+    // through to a fallback. Used when "0 from this field" actually means
+    // "this field doesn't apply" (e.g. JR/DY subcontract tasks have
+    // TotalPlannedMachineHours = 0 because they're calendar-day work).
     if (rule.factor !== undefined && val !== undefined && val !== null) {
-      return coerce(Number(val) * rule.factor);
+      const n = Number(val);
+      if (n === 0 && rule.skipIfZero === true) return coerce(undefined);
+      return coerce(n * rule.factor);
+    }
+
+    // dateRangeSeconds — { from: "fieldStart", to: "fieldEnd" } — returns the
+    // number of seconds between two date fields on the record. Used as a
+    // duration fallback for subcontract / day-rate tasks where machine-hour
+    // fields are zero. Returns undefined if either field is missing or
+    // unparseable; clamps to ≥ 0 to avoid negative durations.
+    // Optional `skipIfZero: true` modifier: when the computed range is 0
+    // (e.g. TaskStartDate == TaskEndDate in the source), return undefined
+    // so a surrounding cascade can fall through to a default.
+    if (rule.dateRangeSeconds) {
+      const drs = rule.dateRangeSeconds;
+      const startVal = record[drs.from];
+      const endVal   = record[drs.to];
+      if (startVal == null || endVal == null) return coerce(undefined);
+      const startMs = new Date(String(startVal)).getTime();
+      const endMs   = new Date(String(endVal)).getTime();
+      if (isNaN(startMs) || isNaN(endMs)) return coerce(undefined);
+      const seconds = Math.max(0, Math.round((endMs - startMs) / 1000));
+      if (seconds === 0 && rule.skipIfZero === true) return coerce(undefined);
+      return coerce(seconds);
+    }
+
+    // fromDefault — { fromDefault: "namedConstant", factor?: number }
+    // Reads a named value from profile.defaults (set per-tenant in
+    // mapping.json's top-level `defaults` block). Used to pull tenant-
+    // configurable constants into rules without burying literals in cascade
+    // tails — e.g. `subcontractDefaultLeadTimeHours` for OUT tasks whose
+    // source duration is zero. Returns undefined if the name isn't defined.
+    if (rule.fromDefault !== undefined) {
+      const dval = this.defaults[rule.fromDefault];
+      if (dval === undefined || dval === null) return coerce(undefined);
+      if (rule.factor !== undefined) return coerce(Number(dval) * rule.factor);
+      return coerce(dval);
     }
 
     // toUTC — normalize an ISO date to UTC Z form.

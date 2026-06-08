@@ -70,19 +70,23 @@ def weekday_intervals(start, end):
 
 
 def all_day_intervals(start, end):
-    """Yield 24h NZ-local intervals from start to end (subcontract)."""
-    d = start
-    while d <= end:
-        off_today    = nz_offset_hours(d)
-        off_tomorrow = nz_offset_hours(d + timedelta(days=1))
-        yield {
-            'start': iso_utc(d.year, d.month, d.day, 0, 0, off_today),
-            'end':   iso_utc((d + timedelta(days=1)).year,
-                              (d + timedelta(days=1)).month,
-                              (d + timedelta(days=1)).day, 0, 0, off_tomorrow),
-            'qty':   99,  # high capacity — subcontract isn't gated on Stafford shift
-        }
-        d += timedelta(days=1)
+    """One horizon-spanning interval for subcontract resources.
+
+    WORKAROUND for an engine bug surfaced 2026-06-08: CommonStartTimesAgent
+    silently fails to find slots when calendars have multiple contiguous 24h
+    intervals (interval-shape-sensitive in ways not fully characterized — see
+    docs/Stafford/QUESTIONS-slim-100.md Q4). A single interval covering the
+    full date range dodges the bug. Acceptable simplification for subcontract
+    resources, which are a vendor pool (infinite capacity, no calendar gates).
+    """
+    off_start = nz_offset_hours(start)
+    next_after_end = end + timedelta(days=1)
+    off_end = nz_offset_hours(next_after_end)
+    yield {
+        'start': iso_utc(start.year, start.month, start.day, 0, 0, off_start),
+        'end':   iso_utc(next_after_end.year, next_after_end.month, next_after_end.day, 0, 0, off_end),
+        'qty':   99999,  # effectively unlimited — subcontract isn't gated on Stafford shift, doesn't bind at scale
+    }
 
 
 def main():

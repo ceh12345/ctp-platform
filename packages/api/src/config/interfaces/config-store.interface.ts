@@ -289,6 +289,14 @@ export interface IMappingProfile {
   /** Mapping block for WorkOrderGroup. Typed (EntityMapping) — sets the precedent for tightening other entities later. */
   workOrderGroups?: EntityMapping;
 
+  /**
+   * Named-default values referenced by rules via `{ "fromDefault": "name" }`.
+   * Tenant-scoped placeholder constants for cases where source data is
+   * missing or zero — e.g. `subcontractDefaultLeadTimeHours` for OUTWORK
+   * tasks whose source span is empty.
+   */
+  defaults?: Record<string, unknown>;
+
   transforms?: Record<string, any>;
   [key: string]: any;
 }

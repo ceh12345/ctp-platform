@@ -3,6 +3,11 @@
   "tenantId": "stafford-engineering-test",
   "source": "genius-api-mock",
 
+  "defaults": {
+    "subcontractDefaultLeadTimeHours": 24,
+    "_note": "Defensive Q3 workaround: when an OUTWORK task has both TotalPlannedMachineHours=0 AND TaskStartDate==TaskEndDate (no source duration at all), the engine still needs a non-zero placeholder to schedule against. We assume 24h (1 day). Stafford to confirm — see docs/Stafford/QUESTIONS-slim-100.md Q3."
+  },
+
   "orders": {
     "mappings": {
       "key":         { "from": "WorkOrder" },
@@ -82,7 +87,7 @@
       "key":         { "from": "Id", "toString": true },
       "name":        { "from": "Description1" },
       "type":        { "from": "RessourceType", "lookup": { "R": "MACHINE", "W": "WORK_CENTER", "S": "SUBCONTRACT", "_default": "MACHINE" } },
-      "class":       { "from": "RessourceType", "lookup": { "R": "MACHINE", "W": "WORK_CENTER", "S": "SUBCONTRACT", "_default": "MACHINE" } },
+      "class":       { "value": "REUSABLE", "_note": "All Stafford resources (people, machines, work centers, OUTWORK) are REUSABLE from the engine's perspective. Materials would be CONSUMABLE but Stafford doesn't map them. Display category lives on `type`." },
       "hourlyRate":  { "from": "MachineRateCost" },
 
       "efficiency":       { "from": "Efficiency" },
@@ -102,7 +107,14 @@
     "mappings": {
       "name":            { "from": ["JobCode", "OperationCode"], "sep": " — " },
       "type":            { "from": "Formula", "lookup": { "HR/UN": "STANDARD", "JR/DY": "SUBCONTRACT_DAYS", "_default": "STANDARD" } },
-      "durationSeconds": { "from": "TotalPlannedMachineHours", "factor": 3600 },
+      "durationSeconds": {
+        "cascade": [
+          { "from": "TotalPlannedMachineHours", "factor": 3600, "skipIfZero": true },
+          { "dateRangeSeconds": { "from": "TaskStartDate", "to": "TaskEndDate" }, "skipIfZero": true },
+          { "fromDefault": "subcontractDefaultLeadTimeHours", "factor": 3600 }
+        ],
+        "_note": "Defensive Q3 workaround: cascade through (1) TotalPlannedMachineHours×3600, (2) TaskStartDate→TaskEndDate range, (3) defaults.subcontractDefaultLeadTimeHours×3600. The third branch fires when source has no usable duration (OUT tasks with same start==end). See docs/Stafford/QUESTIONS-slim-100.md Q3."
+      },
       "durationQty":     { "value": 1 },
       "durationType":    { "value": 1 },
       "wipState": {

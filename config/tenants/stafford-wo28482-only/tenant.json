@@ -1,0 +1,9 @@
+{
+  "tenantId": "stafford-wo28482-only",
+  "name": "Stafford WO 28482 only (debug)",
+  "vertical": "manufacturing",
+  "createdAt": "2026-05-12T00:00:00Z",
+  "updatedAt": "2026-05-12T00:00:00Z",
+  "clonedFrom": "stafford-engineering-test",
+  "description": "Stafford slim demo dataset — May 8 Genius snapshot transformed to flat files (78 resources, 12 work orders, 116 tasks). File adapter only — no mock-genius dependency."
+}

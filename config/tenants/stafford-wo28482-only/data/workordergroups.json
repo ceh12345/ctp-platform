@@ -1,0 +1,61 @@
+[
+  {
+    "key": "18582",
+    "name": "2026 DF FREEZERS / DF3000 LOWER GAS PIPING WELDMENT",
+    "sourceStart": "2026-05-05T12:00:14.400Z",
+    "sourceEnd": "2026-06-27T12:00:00.000Z",
+    "promiseDate": "2026-06-29T12:00:00.000Z",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "SUPERIOR ICE CREAM EQUIPMENT"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      }
+    ],
+    "workOrderKeys": [
+      "28482"
+    ],
+    "headWorkOrderKey": "28482"
+  }
+]
