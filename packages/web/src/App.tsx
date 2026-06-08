@@ -349,6 +349,25 @@ function parseCustomZoom(label: string): number | null {
   return m ? Number(m[1]) : null;
 }
 
+/**
+ * Join a task or order to its WorkOrderGroup via groupKey. Hierarchies +
+ * attributes live on the group; this is the canonical client-side lookup.
+ * Returns null when the entity is ungrouped (e.g. tenants without
+ * workordergroups configured — see TaskResultDto.groupKey doc).
+ */
+function findGroup(entity: { groupKey?: string | null } | null | undefined,
+                   groups: any[]): any | null {
+  if (!entity?.groupKey) return null;
+  return groups.find((g: any) => g.key === entity.groupKey) ?? null;
+}
+
+/** Read a hierarchy slot value by name from a WorkOrderGroup. Returns null when absent or empty. */
+function getHierarchyValue(group: any, name: string): string | null {
+  const h = group?.hierarchies?.find((x: any) => x.name === name);
+  const v = h?.value;
+  return v == null || v === '' ? null : String(v);
+}
+
 function deriveOrderStatus(order: any, tasks?: any[]): string {
   const raw = order.fillRate ?? 0;
   // fillRate is a ratio (0.0–N) where 1.0 = 100%. Values > 1 mean overfilled.
@@ -6955,7 +6974,7 @@ function AttributeSearch({ resources, selectedAttributes, onAttributesChange }: 
   );
 }
 
-function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExcludes, taskUnschedules, orderModes,
+function TaskTable({ tasks, products, colors, workOrderGroups, onTaskClick, taskPins, taskExcludes, taskUnschedules, orderModes,
   onPinTask, onExcludeTask, onUnscheduleTask,
   onApiUnschedule, onApiPin, onApiBulkUnschedule, onApiBulkPin,
   experienceLevel = 'novice',
@@ -6967,7 +6986,9 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   priorityOverrides, onSetPriority: _onSetPriority, onRushSelected,
   onApiSchedule, actionLoading, resourceUtilization, isQueuing = false,
   onToolbarAction }: {
-  tasks: any[]; products: any[]; colors: any; onTaskClick?: (t: any) => void;
+  tasks: any[]; products: any[]; colors: any;
+  workOrderGroups?: any[];
+  onTaskClick?: (t: any) => void;
   taskPins?: Record<string, boolean>; taskExcludes?: Record<string, boolean>; taskUnschedules?: Set<string>;
   orderModes?: Record<string, string>;
   onPinTask?: (key: string, pinned: boolean) => void;
@@ -7016,9 +7037,18 @@ function TaskTable({ tasks, products, colors, onTaskClick, taskPins, taskExclude
   const enriched = useMemo(() => caseTasks.map(tk => {
     const _status = deriveTaskStatus(tk, taskPins, taskExcludes, taskUnschedules, orderModes);
     const _orderMode = orderModes?.[tk.orderRef] || 'INCLUDE';
+    // When the task has no outputProductKey (Stafford tenants don't map it),
+    // fall back to the Project hierarchy value from the WorkOrderGroup so the
+    // "Project" column (a tenant terminology remap of `product`) shows the
+    // real Project instead of going blank. Other tenants are unaffected
+    // because their tasks have outputProductKey populated — the fallback
+    // never fires for them. See SPRINT-orders-page-rebuild and the groupKey
+    // join doc on TaskResultDto.
     const _productName = tk.outputProductKey
       ? (products.find((p: any) => p.key === tk.outputProductKey)?.name || tk.outputProductKey)
-      : (tk.processName || '');
+      : (getHierarchyValue(findGroup(tk, workOrderGroups || []), 'Project')
+         || tk.processName
+         || '');
     const _priority = priorityOverrides?.[tk.key] ?? tk.priority ?? 100;
     const _priorityLabel = priorityLabel(tk, priorityOverrides?.[tk.key]);
     const _priorityRank = priorityRank(_priorityLabel);
@@ -8356,7 +8386,7 @@ function UnscheduledPanel({ tasks, colors, taskExcludes, taskUnschedules,
    TAB CONTENT — SCHEDULE
    ═══════════════════════════════════════════════════════════════ */
 
-function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResourceClick,
+function ScheduleTab({ tasks, resources, products, colors, workOrderGroups, onTaskClick, onResourceClick,
   taskPins, taskExcludes, taskUnschedules, orderModes, orders,
   onPinTask, onExcludeTask, onUnscheduleTask,
   onApiUnschedule, onApiPin, onApiSchedule, onApiBulkUnschedule, onApiBulkPin, actionLoading,
@@ -8374,6 +8404,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
   ctpGhostBars, isQueuing = false,
   onToolbarAction }: {
   tasks: any[]; resources: any[]; products: any[]; colors: any;
+  workOrderGroups?: any[];
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   onViewAgenda?: (r: any) => void;
   onOpenDowntimeEditor?: (resourceKey: string) => void;
@@ -8494,7 +8525,7 @@ function ScheduleTab({ tasks, resources, products, colors, onTaskClick, onResour
         </Card>
       ) : (
         <Card>
-          <TaskTable tasks={tasks} products={products} colors={colors} onTaskClick={onTaskClick}
+          <TaskTable tasks={tasks} products={products} colors={colors} workOrderGroups={workOrderGroups} onTaskClick={onTaskClick}
             taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
             orderModes={orderModes} experienceLevel={experienceLevel}
             onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask}
@@ -14654,6 +14685,7 @@ export default function App() {
   const resources = solveResult?.resourceUtilization || [];
   const orders = solveResult?.orders || [];
   const materials = solveResult?.materials || [];
+  const workOrderGroups = solveResult?.workOrderGroups || [];
   const summary = solveResult?.summary || null;
 
   const loadData = useCallback(async () => {
@@ -16559,7 +16591,7 @@ export default function App() {
             onViewAgenda={(r: any) => { setSelectedTask(null); setSelectedResource(null); setAgendaResource(r); }} />
         )}
         {activeTab === 'Schedule' && (
-          <ScheduleTab tasks={tasks} resources={resources} products={products} colors={colors}
+          <ScheduleTab tasks={tasks} resources={resources} products={products} colors={colors} workOrderGroups={workOrderGroups}
             orders={orders}
             onTaskClick={handleTaskClick} onResourceClick={handleResourceClick}
             taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
