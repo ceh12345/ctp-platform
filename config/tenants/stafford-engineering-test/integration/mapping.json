@@ -106,7 +106,7 @@
     "key": { "from": ["WorkOrderCode", "OperationCode", "Order"], "sep": "-" },
     "mappings": {
       "name":            { "from": ["JobCode", "OperationCode"], "sep": " — " },
-      "type":            { "from": "Formula", "lookup": { "HR/UN": "STANDARD", "JR/DY": "SUBCONTRACT_DAYS", "_default": "STANDARD" } },
+      "type":            { "value": "PROCESS", "_note": "CTP task type enum is closed: PROCESS / SETUP / TEAR_DOWN. Genius BOR has no setup/teardown distinction — every production task is a PROCESS. Genius `Formula` (HR/UN vs JR/DY) is duration semantics, not task category, and belongs elsewhere if surfaced." },
       "durationSeconds": {
         "cascade": [
           { "from": "TotalPlannedMachineHours", "factor": 3600, "skipIfZero": true },

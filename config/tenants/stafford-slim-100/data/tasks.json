@@ -1,7 +1,7 @@
 [
   {
     "name": "S18421 — A",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 61200,
     "durationQty": 1,
     "durationType": 1,
@@ -69,7 +69,7 @@
   },
   {
     "name": "S18421 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -137,7 +137,7 @@
   },
   {
     "name": "S18421 — NT",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 91800,
     "durationQty": 1,
     "durationType": 1,
@@ -205,7 +205,7 @@
   },
   {
     "name": "S18421 — NM",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 31500,
     "durationQty": 1,
     "durationType": 1,
@@ -273,7 +273,7 @@
   },
   {
     "name": "S18421 — OUT",
-    "type": "SUBCONTRACT_DAYS",
+    "type": "PROCESS",
     "durationSeconds": 604800,
     "durationQty": 1,
     "durationType": 1,
@@ -341,7 +341,7 @@
   },
   {
     "name": "S18421 — LP",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 360,
     "durationQty": 1,
     "durationType": 1,
@@ -409,7 +409,7 @@
   },
   {
     "name": "S18421 — L",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 6120,
     "durationQty": 1,
     "durationType": 1,
@@ -477,7 +477,7 @@
   },
   {
     "name": "S18421 — FO",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 68400,
     "durationQty": 1,
     "durationType": 1,
@@ -545,7 +545,7 @@
   },
   {
     "name": "S18421 — F",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 489600,
     "durationQty": 1,
     "durationType": 1,
@@ -613,7 +613,7 @@
   },
   {
     "name": "S18421 — P",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 122400,
     "durationQty": 1,
     "durationType": 1,
@@ -681,7 +681,7 @@
   },
   {
     "name": "S18421 — NT",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 214200,
     "durationQty": 1,
     "durationType": 1,
@@ -749,7 +749,7 @@
   },
   {
     "name": "S18421 — PR",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -817,7 +817,7 @@
   },
   {
     "name": "S18421 — K",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 32400,
     "durationQty": 1,
     "durationType": 1,
@@ -885,7 +885,7 @@
   },
   {
     "name": "S18421 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -953,7 +953,7 @@
   },
   {
     "name": "19324 — A",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 7200,
     "durationQty": 1,
     "durationType": 1,
@@ -1029,7 +1029,7 @@
   },
   {
     "name": "19324 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -1105,7 +1105,7 @@
   },
   {
     "name": "19324 — LP",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 720,
     "durationQty": 1,
     "durationType": 1,
@@ -1181,7 +1181,7 @@
   },
   {
     "name": "19324 — L030",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 1800,
     "durationQty": 1,
     "durationType": 1,
@@ -1257,7 +1257,7 @@
   },
   {
     "name": "19324 — FO",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 1800,
     "durationQty": 1,
     "durationType": 1,
@@ -1333,7 +1333,7 @@
   },
   {
     "name": "19324 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -1409,7 +1409,7 @@
   },
   {
     "name": "18816 — DR",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 57600,
     "durationQty": 1,
     "durationType": 1,
@@ -1485,7 +1485,7 @@
   },
   {
     "name": "18816 — A",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 72000,
     "durationQty": 1,
     "durationType": 1,
@@ -1561,7 +1561,7 @@
   },
   {
     "name": "18816 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -1637,7 +1637,7 @@
   },
   {
     "name": "18816 — F",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 324000,
     "durationQty": 1,
     "durationType": 1,
@@ -1713,7 +1713,7 @@
   },
   {
     "name": "18816 — P",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 216000,
     "durationQty": 1,
     "durationType": 1,
@@ -1789,7 +1789,7 @@
   },
   {
     "name": "18816 — OUT",
-    "type": "SUBCONTRACT_DAYS",
+    "type": "PROCESS",
     "durationSeconds": 604800,
     "durationQty": 1,
     "durationType": 1,
@@ -1865,7 +1865,7 @@
   },
   {
     "name": "18816 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -1941,7 +1941,7 @@
   },
   {
     "name": "18816 — P",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 21600,
     "durationQty": 1,
     "durationType": 1,
@@ -2017,7 +2017,7 @@
   },
   {
     "name": "18816 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -2093,7 +2093,7 @@
   },
   {
     "name": "18816 — P",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 7200,
     "durationQty": 1,
     "durationType": 1,
@@ -2169,7 +2169,7 @@
   },
   {
     "name": "18816 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -2245,7 +2245,7 @@
   },
   {
     "name": "18816 — NT",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 7200,
     "durationQty": 1,
     "durationType": 1,
@@ -2321,7 +2321,7 @@
   },
   {
     "name": "18816 — F",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 10800,
     "durationQty": 1,
     "durationType": 1,
@@ -2397,7 +2397,7 @@
   },
   {
     "name": "18816 — PBB",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 1800,
     "durationQty": 1,
     "durationType": 1,
@@ -2473,7 +2473,7 @@
   },
   {
     "name": "18816 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -2549,7 +2549,7 @@
   },
   {
     "name": "18816 — F",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 14400,
     "durationQty": 1,
     "durationType": 1,
@@ -2625,7 +2625,7 @@
   },
   {
     "name": "18816 — PBB",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 7200,
     "durationQty": 1,
     "durationType": 1,
@@ -2701,7 +2701,7 @@
   },
   {
     "name": "18816 — OUT",
-    "type": "SUBCONTRACT_DAYS",
+    "type": "PROCESS",
     "durationSeconds": 604800,
     "durationQty": 1,
     "durationType": 1,
@@ -2777,7 +2777,7 @@
   },
   {
     "name": "18816 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -2853,7 +2853,7 @@
   },
   {
     "name": "19129 — A",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -2929,7 +2929,7 @@
   },
   {
     "name": "19129 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -3005,7 +3005,7 @@
   },
   {
     "name": "19129 — NT",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 5400,
     "durationQty": 1,
     "durationType": 1,
@@ -3081,7 +3081,7 @@
   },
   {
     "name": "19129 — PR",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -3157,7 +3157,7 @@
   },
   {
     "name": "19129 — NM",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 3600,
     "durationQty": 1,
     "durationType": 1,
@@ -3233,7 +3233,7 @@
   },
   {
     "name": "19129 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -3309,7 +3309,7 @@
   },
   {
     "name": "19129 — NT",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 4500,
     "durationQty": 1,
     "durationType": 1,
@@ -3385,7 +3385,7 @@
   },
   {
     "name": "19129 — PR",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 1188,
     "durationQty": 1,
     "durationType": 1,
@@ -3461,7 +3461,7 @@
   },
   {
     "name": "19129 — NM",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 7200,
     "durationQty": 1,
     "durationType": 1,
@@ -3537,7 +3537,7 @@
   },
   {
     "name": "19129 — P",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 1800,
     "durationQty": 1,
     "durationType": 1,
@@ -3613,7 +3613,7 @@
   },
   {
     "name": "19129 — LE",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 2088.0000000000005,
     "durationQty": 1,
     "durationType": 1,
@@ -3689,7 +3689,7 @@
   },
   {
     "name": "19129 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -3765,7 +3765,7 @@
   },
   {
     "name": "19129 — M",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -3841,7 +3841,7 @@
   },
   {
     "name": "19129 — F",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -3917,7 +3917,7 @@
   },
   {
     "name": "19129 — P",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 720,
     "durationQty": 1,
     "durationType": 1,
@@ -3993,7 +3993,7 @@
   },
   {
     "name": "19129 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -4069,7 +4069,7 @@
   },
   {
     "name": "18799 — F",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 10800,
     "durationQty": 1,
     "durationType": 1,
@@ -4145,7 +4145,7 @@
   },
   {
     "name": "18799 — NT",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 7200,
     "durationQty": 1,
     "durationType": 1,
@@ -4221,7 +4221,7 @@
   },
   {
     "name": "18799 — P",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 3600,
     "durationQty": 1,
     "durationType": 1,
@@ -4297,7 +4297,7 @@
   },
   {
     "name": "18799 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -4373,7 +4373,7 @@
   },
   {
     "name": "18799 — M",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 1800,
     "durationQty": 1,
     "durationType": 1,
@@ -4449,7 +4449,7 @@
   },
   {
     "name": "18799 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -4525,7 +4525,7 @@
   },
   {
     "name": "18799 — M",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 1800,
     "durationQty": 1,
     "durationType": 1,
@@ -4601,7 +4601,7 @@
   },
   {
     "name": "18799 — T",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 3600,
     "durationQty": 1,
     "durationType": 1,
@@ -4677,7 +4677,7 @@
   },
   {
     "name": "19325 — A",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 3600,
     "durationQty": 1,
     "durationType": 1,
@@ -4753,7 +4753,7 @@
   },
   {
     "name": "19325 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -4829,7 +4829,7 @@
   },
   {
     "name": "19325 — NT",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 5400,
     "durationQty": 1,
     "durationType": 1,
@@ -4905,7 +4905,7 @@
   },
   {
     "name": "19325 — PR",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 14400,
     "durationQty": 1,
     "durationType": 1,
@@ -4981,7 +4981,7 @@
   },
   {
     "name": "19325 — NM",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 28800,
     "durationQty": 1,
     "durationType": 1,
@@ -5057,7 +5057,7 @@
   },
   {
     "name": "19325 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -5133,7 +5133,7 @@
   },
   {
     "name": "19325 — M",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 3600,
     "durationQty": 1,
     "durationType": 1,
@@ -5209,7 +5209,7 @@
   },
   {
     "name": "19325 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -5285,7 +5285,7 @@
   },
   {
     "name": "18627 — A",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 18000,
     "durationQty": 1,
     "durationType": 1,
@@ -5361,7 +5361,7 @@
   },
   {
     "name": "18627 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -5437,7 +5437,7 @@
   },
   {
     "name": "18906 — A",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 7200,
     "durationQty": 1,
     "durationType": 1,
@@ -5513,7 +5513,7 @@
   },
   {
     "name": "18906 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -5589,7 +5589,7 @@
   },
   {
     "name": "18906 — F",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 36000,
     "durationQty": 1,
     "durationType": 1,
@@ -5665,7 +5665,7 @@
   },
   {
     "name": "18906 — OUT",
-    "type": "SUBCONTRACT_DAYS",
+    "type": "PROCESS",
     "durationSeconds": 432000,
     "durationQty": 1,
     "durationType": 1,
@@ -5741,7 +5741,7 @@
   },
   {
     "name": "18906 — NT",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 5400,
     "durationQty": 1,
     "durationType": 1,
@@ -5817,7 +5817,7 @@
   },
   {
     "name": "18906 — F",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 5400,
     "durationQty": 1,
     "durationType": 1,
@@ -5893,7 +5893,7 @@
   },
   {
     "name": "18906 — P",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 3600,
     "durationQty": 1,
     "durationType": 1,
@@ -5969,7 +5969,7 @@
   },
   {
     "name": "18906 — NT",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 3600,
     "durationQty": 1,
     "durationType": 1,
@@ -6045,7 +6045,7 @@
   },
   {
     "name": "18906 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -6121,7 +6121,7 @@
   },
   {
     "name": "18300 — A",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 144000,
     "durationQty": 1,
     "durationType": 1,
@@ -6197,7 +6197,7 @@
   },
   {
     "name": "18300 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -6273,7 +6273,7 @@
   },
   {
     "name": "18300 — A",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 28800,
     "durationQty": 1,
     "durationType": 1,
@@ -6349,7 +6349,7 @@
   },
   {
     "name": "18300 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -6425,7 +6425,7 @@
   },
   {
     "name": "18300 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -6501,7 +6501,7 @@
   },
   {
     "name": "18582 — QH",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 14400,
     "durationQty": 1,
     "durationType": 1,
@@ -6577,7 +6577,7 @@
   },
   {
     "name": "18582 — F",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 64800,
     "durationQty": 1,
     "durationType": 1,
@@ -6653,7 +6653,7 @@
   },
   {
     "name": "18582 — F",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 345600,
     "durationQty": 1,
     "durationType": 1,
@@ -6729,7 +6729,7 @@
   },
   {
     "name": "18582 — PR",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 1800,
     "durationQty": 1,
     "durationType": 1,
@@ -6805,7 +6805,7 @@
   },
   {
     "name": "18582 — K",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 43200,
     "durationQty": 1,
     "durationType": 1,
@@ -6881,7 +6881,7 @@
   },
   {
     "name": "18582 — F",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 691200,
     "durationQty": 1,
     "durationType": 1,
@@ -6957,7 +6957,7 @@
   },
   {
     "name": "18582 — PR",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 1800,
     "durationQty": 1,
     "durationType": 1,
@@ -7033,7 +7033,7 @@
   },
   {
     "name": "18582 — K",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 86400,
     "durationQty": 1,
     "durationType": 1,
@@ -7109,7 +7109,7 @@
   },
   {
     "name": "18582 — F",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 259200,
     "durationQty": 1,
     "durationType": 1,
@@ -7185,7 +7185,7 @@
   },
   {
     "name": "18582 — PR",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 1800,
     "durationQty": 1,
     "durationType": 1,
@@ -7261,7 +7261,7 @@
   },
   {
     "name": "18582 — K",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 129600,
     "durationQty": 1,
     "durationType": 1,
@@ -7337,7 +7337,7 @@
   },
   {
     "name": "18582 — G",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 21600,
     "durationQty": 1,
     "durationType": 1,
@@ -7413,7 +7413,7 @@
   },
   {
     "name": "18582 — F",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 345600,
     "durationQty": 1,
     "durationType": 1,
@@ -7489,7 +7489,7 @@
   },
   {
     "name": "18582 — P",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 86400,
     "durationQty": 1,
     "durationType": 1,
@@ -7565,7 +7565,7 @@
   },
   {
     "name": "18582 — OUT",
-    "type": "SUBCONTRACT_DAYS",
+    "type": "PROCESS",
     "durationSeconds": 86400,
     "durationQty": 1,
     "durationType": 1,
@@ -7641,7 +7641,7 @@
   },
   {
     "name": "18582 — G",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 86400,
     "durationQty": 1,
     "durationType": 1,
@@ -7717,7 +7717,7 @@
   },
   {
     "name": "18582 — A",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 43200,
     "durationQty": 1,
     "durationType": 1,
@@ -7793,7 +7793,7 @@
   },
   {
     "name": "18582 — OUT",
-    "type": "SUBCONTRACT_DAYS",
+    "type": "PROCESS",
     "durationSeconds": 604800,
     "durationQty": 1,
     "durationType": 1,
@@ -7869,7 +7869,7 @@
   },
   {
     "name": "18582 — A",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 43200,
     "durationQty": 1,
     "durationType": 1,
@@ -7945,7 +7945,7 @@
   },
   {
     "name": "18582 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -8021,7 +8021,7 @@
   },
   {
     "name": "18582 — QH",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 3600,
     "durationQty": 1,
     "durationType": 1,
@@ -8097,7 +8097,7 @@
   },
   {
     "name": "18582 — F",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 518400,
     "durationQty": 1,
     "durationType": 1,
@@ -8173,7 +8173,7 @@
   },
   {
     "name": "18582 — QC",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 900,
     "durationQty": 1,
     "durationType": 1,
@@ -8249,7 +8249,7 @@
   },
   {
     "name": "18582 — OUT",
-    "type": "SUBCONTRACT_DAYS",
+    "type": "PROCESS",
     "durationSeconds": 345600,
     "durationQty": 1,
     "durationType": 1,
@@ -8325,7 +8325,7 @@
   },
   {
     "name": "18582 — PM",
-    "type": "STANDARD",
+    "type": "PROCESS",
     "durationSeconds": 86400,
     "durationQty": 1,
     "durationType": 1,
