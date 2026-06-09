@@ -284,7 +284,12 @@ describe('Snapshot: computeDurationForward', () => {
   // ── Boundary clipping ──
 
   it('boundary clipping: range narrower than intervals', () => {
-    // Intervals span [0,100] but range is set up with startW=20, endW=80
+    // Intervals span [0,100] but range is set up with startW=20, endW=80.
+    // Walker positions must respect the narrower range, not the interval
+    // bounds — pre-fix the walker returned est=0 (interval start), which
+    // broke downstream feasibleStartTimes when range was a strict subset
+    // of the calendar. See continuous-calendar.test.ts for the field-shape
+    // regression.
     const list = new CTPIntervals();
     list.add(new CTPInterval(0, 50, 5));
     list.add(new CTPInterval(50, 100, 5));
@@ -298,10 +303,12 @@ describe('Snapshot: computeDurationForward', () => {
     const feasible = range.computeDurationForward(0, 100, dur);
 
     expect(feasible).toBe(true);
-    expect(range.values.est).toBe(0);
-    // computeBoundedDuration clips to range.startW/endW:
-    // First interval [0,50]: d=50, startW<20 → d -= 20 = 30. Second [50,100]: d=50, endW>80 → d -= 20 = 30.
-    // Accumulated: 30 from first, then needs 20 more from second. eet = 100 - (60-50) = 90? Capturing actual.
+    // First interval [0,50]: clipped contribution 30 (range 20..50). Second
+    // [50,100]: clipped 30 (range 50..80). Accumulated 60 across both,
+    // need 50, so trim 10 off end. End: min(100, 80) - 10 = 70. Start: the
+    // clipped position of the first interval = max(0, 20) = 20.
+    expect(range.values.est).toBe(20);
+    expect(range.values.eet).toBe(70);
   });
 });
 
@@ -447,10 +454,10 @@ describe('Snapshot: computeBoundedDuration (tested via forward/backward)', () =>
     expect(range.values.eet).toBe(60);
   });
 
-  it('interval extends past range.endW → clipped capacity, eet adjusted', () => {
-    // Interval [0,100], range endW=60 → computeBoundedDuration clips:
-    // d = 100, endW(100) > rangeEndW(60) → d -= 40 = 60 effective capacity
-    // Need 50. more=60 >= 50. eet = ptr.endW(100) - (60-50) = 90
+  it('interval extends past range.endW → clipped capacity, end clipped to range.endW', () => {
+    // Interval [0,100], range.endW=60. Clipped capacity = 60. Need 50, so
+    // 10 trim. Start respects range bounds (max(0, 0) = 0), end clipped to
+    // range.endW first (min(100, 60) = 60), then trim: 60 - 10 = 50.
     const list = new CTPIntervals();
     list.add(new CTPInterval(0, 100, 5));
     const range = new CTPRange(list.head, list.tail, 5, 100);
@@ -461,13 +468,13 @@ describe('Snapshot: computeBoundedDuration (tested via forward/backward)', () =>
 
     expect(feasible).toBe(true);
     expect(range.values.est).toBe(0);
-    expect(range.values.eet).toBe(90);
+    expect(range.values.eet).toBe(50);
   });
 
-  it('interval extends before range.startW → clipped capacity, eet adjusted', () => {
-    // Interval [0,100], range startW=30 → computeBoundedDuration clips:
-    // d = 100, startW(0) < rangeStartW(30) → d -= 30 = 70 effective capacity
-    // Need 50. more=70 >= 50. eet = ptr.endW(100) - (70-50) = 80
+  it('interval extends before range.startW → clipped capacity, est = range.startW', () => {
+    // Interval [0,100], range.startW=30. Clipped capacity = 70. Need 50, so
+    // 20 trim. Start respects range bounds (max(0, 30) = 30), end is
+    // min(100, 100)=100, then trim: 100 - 20 = 80.
     const list = new CTPIntervals();
     list.add(new CTPInterval(0, 100, 5));
     const range = new CTPRange(list.head, list.tail, 5, 100);
@@ -477,24 +484,25 @@ describe('Snapshot: computeBoundedDuration (tested via forward/backward)', () =>
     const feasible = range.computeDurationForward(0, 100, dur);
 
     expect(feasible).toBe(true);
-    expect(range.values.est).toBe(0);
+    expect(range.values.est).toBe(30);
     expect(range.values.eet).toBe(80);
   });
 
   it('both ends clipped', () => {
+    // Interval [0,100], range [20,80]. Clipped capacity = 60. Need 60
+    // exactly — no trim. Start = max(0, 20) = 20, end = min(100, 80) = 80.
     const list = new CTPIntervals();
     list.add(new CTPInterval(0, 100, 5));
     const range = new CTPRange(list.head, list.tail, 5, 100);
     range.startW = 20;
     range.endW = 80;
-    // Effective capacity: 80-20 = 60
 
     const dur = makeDur(60, 1, CTPDurationConstants.FLOAT_DURATION);
     const feasible = range.computeDurationForward(0, 100, dur);
 
     expect(feasible).toBe(true);
-    expect(range.values.est).toBe(0);
-    expect(range.values.eet).toBe(100); // eet = ptr.endW=100, then 60-60=0 adjustment
+    expect(range.values.est).toBe(20);
+    expect(range.values.eet).toBe(80);
   });
 
   it('runRate clipping: interval with runRate', () => {

@@ -50,18 +50,24 @@ export function walkForward(
   let more = 0;
   let reset = false;
 
-  // Initialize from first pointer
+  // Initialize from first pointer, clipping to [rangeStart, rangeEnd] so the
+  // walker's running position respects the scheduling window. Without the
+  // clip, a calendar interval that extends past the task window produces a
+  // `start` at the interval's calendar start (often before the window) and
+  // an `end` at the calendar end (often past the deadline). Downstream
+  // feasibleStartTimes then can't reconcile those positions with the task
+  // window and rejects the placement.
   if (estPtr) {
-    end = estPtr.data.endW;
-    start = estPtr.data.startW;
+    end = Math.min(estPtr.data.endW, rangeEnd);
+    start = Math.max(estPtr.data.startW, rangeStart);
   }
 
   let ptr = estPtr;
   while (ptr && ptr !== lstPtr?.next) {
     while (more < consumed && ptr && ptr !== lstPtr?.next) {
       if (reset) {
-        end = ptr.data.endW;
-        start = ptr.data.startW;
+        end = Math.min(ptr.data.endW, rangeEnd);
+        start = Math.max(ptr.data.startW, rangeStart);
         more = 0;
       }
       reset = false;
@@ -73,7 +79,7 @@ export function walkForward(
       }
       if (!reset) {
         more += dur;
-        end = ptr.data.endW;
+        end = Math.min(ptr.data.endW, rangeEnd);
       }
 
       ptr = ptr?.next;
@@ -105,18 +111,19 @@ export function walkBackward(
   let more = 0;
   let reset = false;
 
-  // Initialize from last pointer
+  // Initialize from last pointer, clipping to [rangeStart, rangeEnd]
+  // (mirror of walkForward — see that function's comment for why).
   if (lstPtr) {
-    end = lstPtr.data.endW;
-    start = lstPtr.data.startW;
+    end = Math.min(lstPtr.data.endW, rangeEnd);
+    start = Math.max(lstPtr.data.startW, rangeStart);
   }
 
   let ptr = lstPtr;
   while (ptr && ptr !== estPtr?.prev) {
     while (more < consumed && ptr && ptr !== estPtr?.prev) {
       if (reset) {
-        start = ptr.data.startW;
-        end = ptr.data.endW;
+        start = Math.max(ptr.data.startW, rangeStart);
+        end = Math.min(ptr.data.endW, rangeEnd);
         more = 0;
       }
       reset = false;
@@ -128,7 +135,7 @@ export function walkBackward(
       }
       if (!reset) {
         more += dur;
-        start = ptr.data.startW;
+        start = Math.max(ptr.data.startW, rangeStart);
       }
 
       ptr = ptr?.prev;
