@@ -190,7 +190,21 @@ This restores a non-zero duration for all 126 OUTWORK tasks in engineering-test 
 
 ## Q4 — Engine bug: calendar interval shape sensitivity (NOT a Stafford question)
 
+**Status: RESOLVED 2026-06-09 (commit `1611e65`).** Root cause found and fixed at the engine level. Notes below preserved for historical context.
+
 **Not a Stafford question — engine bug.** Logged here because it surfaced during the same WO 28482 debug session and affected our ability to validate Stafford's data.
+
+### Actual root cause (uncovered 2026-06-09)
+
+The empirical pattern in the table below described the symptom but not the underlying cause. After deeper investigation: the bug was in `walkForward` / `walkBackward` in `packages/engine/Models/Core/interval-walker.ts`. The walker correctly accumulated **clipped** working time across intervals, but the running `start` / `end` cursor positions were initialised from **raw** interval bounds (interval start/end), not clipped to the scheduling window. When a calendar interval extended past the task window — either side — the walker returned cursor positions outside the window, and downstream `feasibleStartTimes` couldn't reconcile them with the task window so the placement was rejected.
+
+The Q4 calendar workaround (single horizon-spanning interval) didn't actually fix the problem — it just changed the shape. The single mega-interval was wider than any task window, so the bug fired every time; the only reason it "worked" for the ingest pipeline was that ingest validation doesn't run the scheduler.
+
+**Fix:** `Math.max(ptr.data.startW, rangeStart)` / `Math.min(ptr.data.endW, rangeEnd)` on the walker's start/end cursor at init, reset, and update — six lines across the two walker functions. Regression test in `packages/engine/tests/scheduling/continuous-calendar.test.ts`. Snapshot tests in `packages/engine/tests/models/range.refactor.test.ts` updated to reflect corrected behaviour.
+
+**Impact:** slim-100 feasibility went from 69.7% to 89.9% (the 20 extra tasks were all on WOs that had OUTWORK tasks blocking their chains). WO 27978 — the canonical reproduction — now places all 12 tasks. The OUTWORK calendar workaround in `generate-stafford-calendar.py` is no longer needed and should be removed.
+
+### Original notes (the symptom table that led us astray)
 
 **The bug:** `CommonStartTimesAgent` in the engine silently fails to find scheduling slots when a resource's calendar has multiple contiguous 24-hour intervals — but the failure is shape-sensitive in ways that aren't fully characterized.
 
@@ -276,6 +290,56 @@ This caused chain cascade failure: F-9 didn't fit → all 14 downstream tasks (P
 - **Stafford confirms "this should split across resources"** → mapping change: detect long-duration tasks and split into multiple sub-tasks. Probably out of scope for v1.
 
 **Decision deadline:** Lower urgency — the buffer unblocks scheduling today. The real question is data-quality, not engine.
+
+---
+
+## Q7 — WO 28482 chain doesn't fit the window: are the durations real?
+
+**The question:** WO 28482's chain has 22 tasks totalling **~2,400 hours of TotalPlannedMachineHours**. With the calendar bug now fixed (Q4 RESOLVED), 13 of 22 still schedule but 9 in the tail don't — because the engine's wall-clock placement for the chain runs to ~**2026-09-29**, but the WO's own `sourceEnd` is **2026-06-27** (and `promiseDate` is 2026-06-29). The engine's elapsed-time math diverges from Stafford's source-tagged `scheduledEnd` by ~**3 months**.
+
+Is the source data's hours-per-task semantically what we think it is, or is there a unit / Formula misinterpretation behind the divergence?
+
+**Why we're asking:**
+
+Concrete reproduction on stafford-slim-100 (2026-06-09, post engine fix):
+
+| Task | TotalPlannedMachineHours | Resource | Engine wall-clock | Stafford source-tagged `scheduledEnd` |
+|---|---:|---|---:|---|
+| 28482-F-6 | 384h | GRANT (day-shift machinist) | 16 days continuous | (within chain ending 2026-06-26) |
+| 28482-F-9 | 816h | GRANT | 34 days continuous | (within chain ending 2026-06-26) |
+| 28482-F-12 | 312h | GRANT | 13 days continuous | (within chain ending 2026-06-26) |
+| 28482-K-11 | 120h | WERNER | 5 days continuous | (within chain ending 2026-06-26) |
+| 28482-OUT-21 | 168h | OUTWORK | 7 days continuous | (within chain ending 2026-06-26) |
+
+**Stafford's source-tagged `scheduledEnd` on the last task (PM-24) is 2026-06-26** — implying Stafford's Genius scheduler believes the whole 22-task chain finishes by then. The engine schedules just the first 13 tasks running to **2026-07-23**, leaving 9 tasks unable to fit before the horizon ends (2026-07-28).
+
+**On Q6's chord — long-duration tasks:** F-9 at 192h was already flagged in Q6; F-6 (384h), F-9 (816h), F-12 (312h) on the same WO add weight to that. The current Q6 working assumption was "horizon buffer unblocks scheduling, leave data quality to Stafford." With the engine bug fixed and 28482 still failing on chain length, Q6's data-quality question becomes blocking, not deferred.
+
+**What's discrepant:**
+
+1. **Unit possibility:** is `TotalPlannedMachineHours` actually hours of work, or some other unit (days, person-hours, calendar-hours)? Genius's `Formula` column distinguishes `HR/UN` (hours per unit) from `JR/DY` (days per day, subcontract semantics). Are some F-* tasks using `JR/DY` or another formula we're misinterpreting as hours?
+2. **Capacity / parallelism possibility:** is GRANT supposed to run in parallel (multiple workers on one task), or with a different shift pattern than the 5d/wk we've assumed? An 816h task taking 34 days continuous (engine) vs ~7 weeks if split over normal shifts could just mean GRANT is meant to be modelled as multiple resources or as 24/7.
+3. **Engine's elapsed-time math possibility:** the engine is placing 384h as 16 continuous wall-clock days (24h/day). For a normal day-shift resource that should be ~67 calendar days (8h × 5d/wk). Either GRANT's calendar is wrong (we should check) or the engine is treating FLOAT_DURATION as continuous when it shouldn't.
+
+**Why we want Stafford's word before we change anything:** we don't know which of those three is the real explanation, and each has a different fix. Guessing risks a fake-correctness deploy where the schedule "looks right" because we adjusted a number, not because we understood the source semantics.
+
+**Current state:** **WO 28482 left unscheduled** in slim-100 — 9 of 22 tasks remain infeasible. We are deliberately not bandaiding (no horizon extension, no duration override) until Stafford clarifies.
+
+**Concrete asks for Stafford:**
+
+1. For task `28482-F-6` (TotalPlannedMachineHours = 384, Formula = `HR/UN`, Resource = GRANT):
+   - Is 384 hours of GRANT's working time the right interpretation?
+   - If yes — what calendar pattern does GRANT actually follow? Single shift / multiple shifts / 24/7 / overlapping workers?
+   - If no — what's the right interpretation (and what does the field actually mean)?
+2. For 28482's whole chain — Stafford's Genius scheduler shows it finishing **2026-06-26**. Is that based on the same `TotalPlannedMachineHours` values we're reading, or is Genius applying some transformation we don't have visibility into?
+3. Is there an operational pattern where Stafford operators inflate `TotalPlannedMachineHours` as a planning-buffer / sandbag, and the real expected time is much shorter?
+
+**Impact if assumption is wrong:**
+- If we misread the unit: every WO with a long-duration task will have inflated placements, schedule will look catastrophic vs. Stafford's reality
+- If GRANT is meant to be 24/7 or parallel: same — placements will be 3-6x longer than reality
+- If we read it right and the data is just inflated: we're stuck reporting infeasible schedules until Stafford updates Genius
+
+**Decision:** **Blocking.** We can't get past 89.9% scheduling on slim-100 without a Stafford answer here. WO 28482 cannot be confidently scheduled with the data as-is — and any code change to make it schedule would be a guess, not a fix.
 
 ---
 
