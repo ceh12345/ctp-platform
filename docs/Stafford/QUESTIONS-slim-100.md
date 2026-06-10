@@ -343,4 +343,50 @@ Concrete reproduction on stafford-slim-100 (2026-06-09, post engine fix):
 
 ---
 
+## Q8 — Self-referencing `prevLink` on production tasks
+
+**The question:** Several production tasks in WORK7 have `prevLink` pointing at the task's own key (`prevLink === taskKey`). Some ERP systems use this idiom as a sentinel meaning "no predecessor — this is a chain head"; others use blank/null. Which is Genius's convention, and are these records flagging anything operational?
+
+**Why we're asking:**
+
+In the 2026-06-03 WORK7 capture (engineering-test, 2,511 tasks):
+
+| Stat | Value |
+|---|---|
+| Self-referencing tasks | **102 / 2,511 (4.1%)** |
+| Affected work orders | **24** |
+| Most-affected operation types | OUT (26), QC (22), D (18), A (14), PM (6) |
+
+Concrete example — chain 25760:
+
+```
+key=25760-OUT-9    prevLink="25760-OUT-9"   ← self-reference
+key=25760-QC-10    prevLink="25760-QC-10"   ← self-reference
+key=25760-PM-1     prevLink="25760-PM-1"    ← self-reference
+```
+
+The concentration on OUT (outsource), QC (quality check), PM (project management) — operations that are often "appended-to-end" or "added-outside-standard-routing" — suggests this might be intentional Genius behaviour for tasks that aren't part of the main BOR sequence.
+
+**Three possible readings:**
+
+1. **Genius sentinel for "no predecessor"** — some ERPs do this; the value is structurally non-null but semantically empty. CTP treats it the same as `prevLink: ''` (chain head). Schedule works fine.
+2. **Operator workflow artifact** — operators added these operations after the main routing was set up, and the form auto-populated `prevLink` with the task's own key as a default. Functional but not strictly correct.
+3. **Genuine data quality issue** — operator typo or sync glitch; the operation should have had a real predecessor that got lost. Schedule may run but the chain ordering is wrong.
+
+**Current working assumption (shipped 2026-06-09 in commit `[next]`):** treat `prevLink === key` as equivalent to "no predecessor." The hydrator's `deriveSequencesFromLinkId` skips self-references when building the chain head set; the assertion skips them when verifying topology. WO 28687 (the bug that surfaced this) schedules end-to-end. No code change needed if Stafford confirms reading #1 or #2.
+
+**Impact if assumption is wrong:**
+- If Stafford confirms #1 or #2: keep current behaviour, document the platform interpretation
+- If #3 (data quality): we should surface these in the inspector export as `requires-review` so operators can re-link them to their proper predecessor in Genius. The 102-task footprint is small enough to clean up manually.
+
+**Asks for Stafford:**
+
+1. Is `prevLink === task's own key` a sentinel for "no predecessor in this chain" in Genius?
+2. Why does the pattern concentrate on OUT / QC / D / A operations? Is there a workflow where these operations get added separately from the main routing?
+3. Do you want CTP to flag these as `requires-review` for source cleanup, or is the current "treat as no-predecessor" interpretation correct?
+
+**Decision urgency:** **Low.** Schedule works either way. The question is whether the platform should help Stafford spot and clean these records, or just absorb them silently.
+
+---
+
 <!-- Add new questions below this line -->

@@ -439,6 +439,7 @@ export class StateHydratorService {
 
   private hydrateTasks(data: ITaskData[], horizon: CTPHorizon): CTPTasks {
     const tasks = new CTPTasks();
+    let sawSourceSequence = false;
     for (const item of data) {
       const task = new CTPTask(item.type ?? 'PROCESS', item.name, item.key);
 
@@ -574,8 +575,12 @@ export class StateHydratorService {
         task.materialsResources = matList;
       }
 
-      // Sequence (chain ordering)
-      if (item.sequence !== undefined) task.sequence = item.sequence;
+      // Sequence is derived from linkId topology in a post-pass below — not
+      // honoured from source. See deriveSequencesFromLinkId at end of
+      // hydrateTasks. We track whether source attempted to set sequence
+      // so we can emit a single warning per sync (Stafford WO 28687 root
+      // cause: sequence missing → degenerate sort in ChainContextEngine).
+      if (item.sequence !== undefined) sawSourceSequence = true;
 
       // Process & subType
       if (item.process) task.process = item.process;
@@ -777,7 +782,135 @@ export class StateHydratorService {
       });
     }
 
+    // ── Derive task.sequence from linkId topology ───────────────────────────
+    // linkId.prevLink is the single source of truth for chain order. We
+    // unconditionally walk it and assign sequence positions per chain. Any
+    // source-supplied sequence is ignored (warned about once per sync).
+    //
+    // Without this pass, tenants whose mappings don't emit sequence end up
+    // with all tasks at the default value; ChainContextEngine sorts by
+    // sequence and gets a degenerate (file-order) sort, processing chain
+    // tasks out of order. Stafford WO 28687 QC-6 was the canonical repro
+    // (chain order T-1→F-2→NT-3→P-4→M-5→QC-6, disk-file order
+    // F-2,NT-3,P-4,QC-6,M-5,T-1 → engine bailed at QC-6's chain evaluation).
+    if (sawSourceSequence) {
+      console.warn(
+        '[StateHydratorService] task.sequence is derived from linkId topology; ' +
+        'source-supplied sequence values were observed in the input but ignored. ' +
+        'Remove the sequence field from tenant mapping to silence this warning.',
+      );
+    }
+    StateHydratorService.deriveSequencesFromLinkId(tasks);
+    StateHydratorService.assertSequenceMatchesLinkId(tasks);
+
     return tasks;
+  }
+
+  /**
+   * For each chain (grouped by linkId.name), walk prevLink topologically and
+   * assign sequence 1..N in chain order. Tasks not in any chain (no linkId.name)
+   * keep their default sequence. Logs warnings for multi-head chains or cycles
+   * — these indicate malformed linkId data that the engine wouldn't schedule
+   * correctly even with sequence correct.
+   */
+  static deriveSequencesFromLinkId(tasks: CTPTasks): void {
+    const byChain = new Map<string, CTPTask[]>();
+    tasks.forEach(t => {
+      const chainKey = t.linkId?.name;
+      if (!chainKey) return;
+      if (!byChain.has(chainKey)) byChain.set(chainKey, []);
+      byChain.get(chainKey)!.push(t);
+    });
+
+    for (const [chainKey, chainTasks] of byChain) {
+      const inChain = new Set(chainTasks.map(t => t.key));
+      // A "real" predecessor exists when the prevLink is non-empty, refers
+      // to a task in this chain, and is not the task itself (self-references
+      // appear in some Stafford WORK7 captures — treat as if no predecessor).
+      const realPrev = (t: CTPTask): string | null => {
+        const prev = t.linkId?.prevLink;
+        if (!prev || prev === t.key || !inChain.has(prev)) return null;
+        return prev;
+      };
+      const successorOf = new Map<string, CTPTask>();
+      for (const t of chainTasks) {
+        const prev = realPrev(t);
+        if (prev) successorOf.set(prev, t);
+      }
+      const heads = chainTasks.filter(t => realPrev(t) === null);
+
+      if (heads.length === 0) {
+        // No head found = all tasks point to in-chain predecessors → cycle.
+        // Fall back to chainTasks insertion order so the chain still gets
+        // sequence values (strictly increasing within the chain so the
+        // assertion's invariant holds along whatever edges DO exist).
+        console.warn(
+          `[StateHydratorService] chain ${chainKey}: no head found (cycle in linkId.prevLink); ` +
+          `assigning sequences in disk order as fallback.`,
+        );
+        let seq = 1;
+        for (const t of chainTasks) t.sequence = seq++;
+        continue;
+      }
+      if (heads.length > 1) {
+        console.warn(
+          `[StateHydratorService] chain ${chainKey}: expected 1 head, found ` +
+          `${heads.length} (${heads.map(h => h.key).join(', ')}). ` +
+          `Sequence assignment will start from each head independently.`,
+        );
+      }
+
+      let seq = 1;
+      const placed = new Set<string>();
+      for (const head of heads) {
+        let cur: CTPTask | undefined = head;
+        while (cur) {
+          if (placed.has(cur.key)) {
+            console.warn(`[StateHydratorService] chain ${chainKey}: revisited ${cur.key} during walk; stopping.`);
+            break;
+          }
+          placed.add(cur.key);
+          cur.sequence = seq++;
+          cur = successorOf.get(cur.key);
+        }
+      }
+      // Any chain tasks not reached by walking from heads (e.g. orphans in a
+      // weird shape) still get a sequence so the assertion passes.
+      for (const t of chainTasks) {
+        if (!placed.has(t.key)) t.sequence = seq++;
+      }
+    }
+  }
+
+  /**
+   * Producer-side invariant check. Runs once per sync immediately after
+   * deriveSequencesFromLinkId. The engine trusts this and doesn't re-check on
+   * every solve cycle (CTPBaseScheduler has an opt-in dev-mode variant gated
+   * by CTP_VALIDATE_SEQUENCE for debugging).
+   *
+   * Fails loudly here at the sync boundary so any future regression in
+   * derivation surfaces immediately in the sync output, not as a mystery
+   * scheduling infeasibility later.
+   */
+  static assertSequenceMatchesLinkId(tasks: CTPTasks): void {
+    const byKey = new Map<string, CTPTask>();
+    tasks.forEach(t => byKey.set(t.key, t));
+    tasks.forEach(t => {
+      const prev = t.linkId?.prevLink;
+      if (!prev) return;
+      if (prev === t.key) return; // self-reference; not a real predecessor
+      const predecessor = byKey.get(prev);
+      if (!predecessor) return; // orphan; warned during derivation
+      if (predecessor.sequence >= t.sequence) {
+        throw new Error(
+          `[StateHydratorService] task.sequence inconsistent with linkId topology ` +
+          `after derivation: task ${t.key} (seq=${t.sequence}) follows ` +
+          `${predecessor.key} (seq=${predecessor.sequence}) per linkId.prevLink, ` +
+          `but sequence does not strictly increase. deriveSequencesFromLinkId ` +
+          `has a bug.`,
+        );
+      }
+    });
   }
 
   private static readonly DAY_MAP: Record<string, number> = {
