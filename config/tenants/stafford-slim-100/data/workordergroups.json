@@ -1,0 +1,603 @@
+[
+  {
+    "key": "S18421",
+    "name": "WS08/DF1500 SYMETRIC BEATER",
+    "sourceStart": "2026-05-17T20:05:56.400Z",
+    "sourceEnd": "2026-06-17T12:00:00.000Z",
+    "promiseDate": "2026-06-18T12:00:00.000Z",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "SUPERIOR ICE CREAM EQUIPMENT"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": null
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": ""
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-17T12:00:00.000Z"
+      }
+    ],
+    "workOrderKeys": [
+      "27977",
+      "27978"
+    ],
+    "headWorkOrderKey": "27977"
+  },
+  {
+    "key": "19324",
+    "name": "BUTT MUSCLE PULLER / PNEUMATICS ASSEMBLY",
+    "sourceStart": "2026-06-03T04:18:00.000Z",
+    "sourceEnd": "2026-06-04T12:00:00.000Z",
+    "promiseDate": "2026-06-04T12:00:00.000Z",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "INTELLIGENT ROBOTICS PTY LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "BUTT MUSCLE PULLER"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012160"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "095"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "DAVE STUART"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-04T12:00:00.000Z"
+      }
+    ],
+    "workOrderKeys": [
+      "29569",
+      "29570"
+    ],
+    "headWorkOrderKey": "29569"
+  },
+  {
+    "key": "18816",
+    "name": "25KG DOUBLE BAG TIP / 25KG DOUBLE BAG TIP GENERAL ARRANGEMENT",
+    "sourceStart": "2026-05-05T18:03:00.000Z",
+    "sourceEnd": "2026-06-21T19:45:00.000Z",
+    "promiseDate": "2026-05-28T12:00:00.000Z",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "POWDER PROJECTS LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "25KG DOUBLE BAG TIP"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012361"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-05-05T18:03:00.000Z"
+      }
+    ],
+    "workOrderKeys": [
+      "28767",
+      "28768",
+      "28769",
+      "28770",
+      "28771",
+      "28773"
+    ],
+    "headWorkOrderKey": "28767"
+  },
+  {
+    "key": "19129",
+    "name": "MANUAL POWDER SAMPLER / MANUAL POWDER SAMPLER - FLAT",
+    "sourceStart": "2026-05-24T22:35:49.200Z",
+    "sourceEnd": "2026-05-26T12:00:00.000Z",
+    "promiseDate": "2026-05-28T12:00:00.000Z",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "TETRA PAK (NEW ZEALAND) LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "MANUAL POWDER SAMPLER"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012487"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "025"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "JULIAN FORD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-05-26T12:00:00.000Z"
+      }
+    ],
+    "workOrderKeys": [
+      "29169",
+      "29171",
+      "29172",
+      "29173"
+    ],
+    "headWorkOrderKey": "29169"
+  },
+  {
+    "key": "18799",
+    "name": "DRIVESHAFT AND CLAMP / DRIVE SHAFT DRIVE STUB",
+    "sourceStart": "2026-05-04T00:48:43.200Z",
+    "sourceEnd": "2026-05-05T12:00:00.000Z",
+    "promiseDate": "2026-05-07T12:00:00.000Z",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "TECHNOPAK LIMITED"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "DRIVESHAFT AND CLAMP"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012412"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "025"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "JULIAN FORD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-05-05T12:00:00.000Z"
+      }
+    ],
+    "workOrderKeys": [
+      "28687",
+      "28692"
+    ],
+    "headWorkOrderKey": "28687"
+  },
+  {
+    "key": "19325",
+    "name": "120MM DRILL HEAD / 120MM DRILL HEAD ASSEMBLY",
+    "sourceStart": "2026-06-03T09:30:00.000Z",
+    "sourceEnd": "2026-06-08T12:00:00.000Z",
+    "promiseDate": "2026-06-10T12:00:00.000Z",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "CASH SALE - LOCAL"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "120MM DRILL HEAD"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012510"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "095"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "DAVE STUART"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-08T12:00:00.000Z"
+      }
+    ],
+    "workOrderKeys": [
+      "29575",
+      "29576",
+      "29577"
+    ],
+    "headWorkOrderKey": "29575"
+  },
+  {
+    "key": "18627",
+    "name": "DE-REELER & DOSING PARTS / DANCER ARM ASSEMBLY",
+    "sourceStart": "2026-05-25T22:45:00.000Z",
+    "sourceEnd": "2026-05-26T12:00:00.000Z",
+    "promiseDate": "2026-05-28T12:00:00.000Z",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "FISHER & PAYKEL HEALTHCARE"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "DE-REELER & DOSING PARTS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012387"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "025"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "JULIAN FORD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-05-26T12:00:00.000Z"
+      }
+    ],
+    "workOrderKeys": [
+      "28522",
+      "28523"
+    ],
+    "headWorkOrderKey": "28522"
+  },
+  {
+    "key": "18906",
+    "name": "2 x CWF-5 LIW FEEDERS / CWF-5 LIW FEEDER & FRAME - LACTOSE HF",
+    "sourceStart": "2026-05-30T10:17:52.800Z",
+    "sourceEnd": "2026-06-10T11:59:59.997Z",
+    "promiseDate": "2026-06-11T12:00:00.000Z",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "GEA NEW ZEALAND LIMITED"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2 x CWF-5 LIW FEEDERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012397"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-10T11:59:59.997Z"
+      }
+    ],
+    "workOrderKeys": [
+      "28842",
+      "28866"
+    ],
+    "headWorkOrderKey": "28842"
+  },
+  {
+    "key": "18300",
+    "name": "B400 SAW PROTOTYPE #2 / DRIVE SHAFT",
+    "sourceStart": "2026-04-25T01:09:14.400Z",
+    "sourceEnd": "2026-04-27T12:00:00.000Z",
+    "promiseDate": "2026-04-29T12:00:00.000Z",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "SCOTT AUTOMATION & ROBOTICS"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "B400 SAW PROTOTYPE #2"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012501"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "I"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-04-27T12:00:00.000Z"
+      }
+    ],
+    "workOrderKeys": [
+      "27851",
+      "28969",
+      "28975",
+      "28987"
+    ],
+    "headWorkOrderKey": "27851"
+  },
+  {
+    "key": "18582",
+    "name": "2026 DF FREEZERS / DF3000 LOWER GAS PIPING WELDMENT",
+    "sourceStart": "2026-05-05T12:00:14.400Z",
+    "sourceEnd": "2026-06-27T12:00:00.000Z",
+    "promiseDate": "2026-06-29T12:00:00.000Z",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "SUPERIOR ICE CREAM EQUIPMENT"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "2026 DF FREEZERS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012264"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-27T12:00:00.000Z"
+      }
+    ],
+    "workOrderKeys": [
+      "28482",
+      "28485"
+    ],
+    "headWorkOrderKey": "28482"
+  }
+]

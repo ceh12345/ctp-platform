@@ -7,13 +7,16 @@
     "auth": { "type": "none" },
     "timeout": 30000,
     "retries": 3,
-    "retryDelay": 2000
+    "retryDelay": 2000,
+    "pageSizeParam": "pageSize",
+    "pageNumberParam": "pageNumber"
   },
   "endpoints": {
-    "salesOrders": { "path": "/workOrderWithAdvancedInformationViewEntity", "pageSize": 100 },
-    "workOrders":  { "path": "/workOrderWithAdvancedInformationViewEntity", "pageSize": 100 },
-    "tasks":       { "path": "/productionTaskWithAdvancedInfoViewEntity",   "pageSize": 200 },
-    "resources":   { "path": "/machineAndRessourceEntity",                 "pageSize": 100 }
+    "salesOrders": { "path": "/workOrderWithAdvancedInformationViewEntity?Wostatus%21%3DCLOSED%26Wostatus%21%3DCANCELLED", "pageSize": 100, "_filter": "Wostatus!=CLOSED & Wostatus!=CANCELLED" },
+    "workOrders":  { "path": "/workOrderWithAdvancedInformationViewEntity?Wostatus%21%3DCLOSED%26Wostatus%21%3DCANCELLED", "pageSize": 100, "_filter": "Wostatus!=CLOSED & Wostatus!=CANCELLED" },
+    "tasks":       { "path": "/productionTaskWithAdvancedInfoViewEntity?IsCompleted%3Dfalse",                              "pageSize": 200, "_filter": "IsCompleted=false" },
+    "resources":   { "path": "/machineAndRessourceEntity?Active%3Dtrue",                                                   "pageSize": 100, "_filter": "Active=true" },
+    "jobs":        { "path": "/JobEntity?Active%3Dtrue%26Job%3CSYST",                                                      "pageSize": 100, "_filter": "Active=true & Job<SYST" }
   },
   "responseEnvelope": {
     "resultPath": "Result",

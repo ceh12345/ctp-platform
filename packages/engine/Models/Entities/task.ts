@@ -233,6 +233,9 @@ export class CTPTask extends CTPKeyEntity implements ITask {
   public batchRuleKey: string | null = null;  // References a CTPBatchRule by key
   public batchQty: number = 1;                // How many units this task contributes to the batch
 
+  // Denormalised from parent order's CTPWorkOrderGroup (lets task-level queries group without joining through orders)
+  public groupKey: string | null = null;
+
   // Cadence — resolved interval in minutes (null = no cadence, tasks start whenever)
   public cadenceIntervalMinutes: number | null = null;
 

@@ -1,0 +1,7 @@
+[
+  { "key": "pressure-vessel", "name": "Pressure Vessel (ASME)", "category": "Fabrication" },
+  { "key": "processing-equipment", "name": "Processing Equipment Frame", "category": "Fabrication" },
+  { "key": "machined-components", "name": "Machined Component Set", "category": "Machining" },
+  { "key": "repair-service", "name": "Repair / Service Job", "category": "Service" },
+  { "key": "5-axis-complex", "name": "5-Axis Complex Component", "category": "Machining" }
+]

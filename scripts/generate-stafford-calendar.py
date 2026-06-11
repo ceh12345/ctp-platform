@@ -70,19 +70,25 @@ def weekday_intervals(start, end):
 
 
 def all_day_intervals(start, end):
-    """Yield 24h NZ-local intervals from start to end (subcontract)."""
+    """Yield 24h NZ-local intervals from start to end for subcontract resources.
+
+    Subcontract / OUTWORK resources represent the external vendor pool — no
+    Stafford shift gates, no real capacity ceiling. Each day gets one 24h
+    interval at qty=99999 (effectively unbounded). The 2026-06-08 single-
+    interval Q4 workaround has been removed (commit `1611e65` fixed the
+    underlying engine bug — see QUESTIONS-slim-100.md Q4).
+    """
     d = start
     while d <= end:
-        off_today    = nz_offset_hours(d)
-        off_tomorrow = nz_offset_hours(d + timedelta(days=1))
+        off_today = nz_offset_hours(d)
+        d_next = d + timedelta(days=1)
+        off_next = nz_offset_hours(d_next)
         yield {
             'start': iso_utc(d.year, d.month, d.day, 0, 0, off_today),
-            'end':   iso_utc((d + timedelta(days=1)).year,
-                              (d + timedelta(days=1)).month,
-                              (d + timedelta(days=1)).day, 0, 0, off_tomorrow),
-            'qty':   99,  # high capacity — subcontract isn't gated on Stafford shift
+            'end':   iso_utc(d_next.year, d_next.month, d_next.day, 0, 0, off_next),
+            'qty':   99999,  # effectively unlimited — subcontract vendor pool, no capacity binding
         }
-        d += timedelta(days=1)
+        d = d_next
 
 
 def main():

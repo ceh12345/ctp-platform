@@ -48,6 +48,7 @@ const GENIUS_ENTITIES = [
   'workOrderWithAdvancedInformationViewEntity',
   'productionTaskWithAdvancedInfoViewEntity',
   'machineAndRessourceEntity',    // note: Genius typo ("Ressource") preserved
+  'JobEntity',                    // added 2026-06-07 — first-class entity, used by WorkOrderGroup mapping
 ] as const;
 
 for (const entity of GENIUS_ENTITIES) {
@@ -90,9 +91,10 @@ for (const entity of GENIUS_ENTITIES) {
         return reply;
       }
 
-      // 3. Normal response — honor pagination via pageIndex/limit
-      const pageIndex = parseInt(req.query.pageIndex ?? '1', 10) || 1;
-      const pageSize  = parseInt(req.query.limit ?? '100', 10) || 100;
+      // 3. Normal response — honor pagination. Accept Genius-correct names (pageNumber/pageSize)
+      //    and the legacy adapter names (pageIndex/limit) so old and new clients both work.
+      const pageIndex = parseInt(req.query.pageNumber ?? req.query.pageIndex ?? '1', 10) || 1;
+      const pageSize  = parseInt(req.query.pageSize   ?? req.query.limit     ?? '100', 10) || 100;
       return reply.header('Content-Type', 'application/json')
         .send(geniusPagedEnvelope(records, pageIndex, pageSize));
     }

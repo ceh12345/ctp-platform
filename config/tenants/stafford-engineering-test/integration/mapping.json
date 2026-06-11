@@ -3,6 +3,11 @@
   "tenantId": "stafford-engineering-test",
   "source": "genius-api-mock",
 
+  "defaults": {
+    "subcontractDefaultLeadTimeHours": 24,
+    "_note": "Defensive Q3 workaround: when an OUTWORK task has both TotalPlannedMachineHours=0 AND TaskStartDate==TaskEndDate (no source duration at all), the engine still needs a non-zero placeholder to schedule against. We assume 24h (1 day). Stafford to confirm — see docs/Stafford/QUESTIONS-slim-100.md Q3."
+  },
+
   "orders": {
     "mappings": {
       "key":         { "from": "WorkOrder" },
@@ -14,6 +19,9 @@
 
       "priority":    { "from": "Strategy", "lookup": { "JIT": 10, "ASAP": 5, "_default": 50 } },
 
+      "groupKey":       { "from": "Job" },
+      "parentOrderKey": { "from": "ParentWorkOrder" },
+
       "jobCode":      { "from": "Job" },
       "jobType":      { "from": "JobType" },
       "customerCode": { "from": "CustomerCode" },
@@ -23,12 +31,63 @@
     }
   },
 
+  "workOrderGroups": {
+    "sourceEndpoint": "workOrderWithAdvancedInformationViewEntity",
+    "_sourceEndpointTODO": "Switch to JobEntity once the 2026-06-03 capture is promoted to fixtures. JobEntity field names diverge: SalesOrderNo→SalesOrder, ItemFamily→FamilyCode, ShippingBufferDays per-Job. Tracked in SPRINT-workordergroup-entity.md Decision 7.",
+    "mappings": {
+      "key":         { "from": "Job" },
+      "name":        { "from": ["ProjectName", "ItemDescription1"], "sep": " / " },
+      "sourceStart": { "from": "JobStartDate", "toUTC": true },
+      "sourceEnd":   { "from": "JobEndDate",   "toUTC": true },
+      "promiseDate": { "from": "DeliveryDate", "toUTC": true },
+
+      "_customerLabel": {
+        "cascade": [
+          { "from": "CustomerName" },
+          {
+            "from": "JobType",
+            "lookup": {
+              "I": "[Auto] Internal — Stock",
+              "U": "[Auto] Internal — Workshop",
+              "Q": "[Auto] Quote Pipeline",
+              "_default": "[Auto] Unclassified"
+            }
+          }
+        ]
+      },
+      "_customerSource": {
+        "from": "CustomerName",
+        "ifPresent": "genius-master",
+        "ifAbsent":  "auto-from-JobType"
+      },
+      "_familyLabel": {
+        "from": "ItemFamily",
+        "lookup": { "NA": null, "N/A": null }
+      }
+    },
+    "hierarchies": [
+      { "slot": 1, "name": "Customer",   "source": { "kind": "field", "field": "_customerLabel" } },
+      { "slot": 2, "name": "Project",    "source": { "kind": "field", "field": "ProjectName" } },
+      { "slot": 3, "name": "SalesOrder", "source": { "kind": "field", "field": "SalesOrderNo" } },
+      { "slot": 4, "name": "Family",     "source": { "kind": "field", "field": "_familyLabel" } }
+    ],
+    "attributes": [
+      { "name": "Strategy",           "source": { "kind": "field", "field": "Strategy" } },
+      { "name": "JobType",            "source": { "kind": "field", "field": "JobType" } },
+      { "name": "CustomerSource",     "source": { "kind": "field", "field": "_customerSource" } },
+      { "name": "ProjectManagerCode", "source": { "kind": "field", "field": "ProjectManagerCode" } },
+      { "name": "ProjectManagerName", "source": { "kind": "field", "field": "ProjectManagerName", "transform": "trim" } },
+      { "name": "JobRiskCode",        "source": { "kind": "field", "field": "JobRiskCode" } },
+      { "name": "DbrEndDate",         "source": { "kind": "field", "field": "DbrEndDate", "transform": "dateToIso" } }
+    ]
+  },
+
   "resources": {
     "mappings": {
       "key":         { "from": "Id", "toString": true },
       "name":        { "from": "Description1" },
       "type":        { "from": "RessourceType", "lookup": { "R": "MACHINE", "W": "WORK_CENTER", "S": "SUBCONTRACT", "_default": "MACHINE" } },
-      "class":       { "from": "RessourceType", "lookup": { "R": "MACHINE", "W": "WORK_CENTER", "S": "SUBCONTRACT", "_default": "MACHINE" } },
+      "class":       { "value": "REUSABLE", "_note": "All Stafford resources (people, machines, work centers, OUTWORK) are REUSABLE from the engine's perspective. Materials would be CONSUMABLE but Stafford doesn't map them. Display category lives on `type`." },
       "hourlyRate":  { "from": "MachineRateCost" },
 
       "efficiency":       { "from": "Efficiency" },
@@ -47,10 +106,17 @@
     "key": { "from": ["WorkOrderCode", "OperationCode", "Order"], "sep": "-" },
     "mappings": {
       "name":            { "from": ["JobCode", "OperationCode"], "sep": " — " },
-      "type":            { "from": "Formula", "lookup": { "HR/UN": "STANDARD", "JR/DY": "SUBCONTRACT_DAYS", "_default": "STANDARD" } },
-      "durationSeconds": { "from": "TotalPlannedMachineHours", "factor": 3600 },
+      "type":            { "value": "PROCESS", "_note": "CTP task type enum is closed: PROCESS / SETUP / TEAR_DOWN. Genius BOR has no setup/teardown distinction — every production task is a PROCESS. Genius `Formula` (HR/UN vs JR/DY) is duration semantics, not task category, and belongs elsewhere if surfaced." },
+      "durationSeconds": {
+        "cascade": [
+          { "from": "TotalPlannedMachineHours", "factor": 3600, "skipIfZero": true },
+          { "dateRangeSeconds": { "from": "TaskStartDate", "to": "TaskEndDate" }, "skipIfZero": true },
+          { "fromDefault": "subcontractDefaultLeadTimeHours", "factor": 3600 }
+        ],
+        "_note": "Defensive Q3 workaround: cascade through (1) TotalPlannedMachineHours×3600, (2) TaskStartDate→TaskEndDate range, (3) defaults.subcontractDefaultLeadTimeHours×3600. The third branch fires when source has no usable duration (OUT tasks with same start==end). See docs/Stafford/QUESTIONS-slim-100.md Q3."
+      },
       "durationQty":     { "value": 1 },
-      "durationType":    { "value": 0 },
+      "durationType":    { "value": 1 },
       "wipState": {
         "cascade": [
           { "from": "CompletionPercentage",       "threshold": 99.99, "above": "COMPLETED" },
@@ -67,7 +133,8 @@
     "linkId": {
       "chainKey":     "WorkOrderCode",
       "orderKey":     "Order",
-      "lagHoursField":"LagHours"
+      "lagHoursField":"_DISABLED_PENDING_STAFFORD_Q1",
+      "_note":        "lagHoursField temporarily pointed at a non-existent field so maxGap = null for all chains. LagHours appears to be a default (94% of tasks = 4); enforcing it as a hard chain constraint blocks 22% of links. Pending Q1 in docs/Stafford/QUESTIONS-slim-100.md. Restore to 'LagHours' once Stafford clarifies intent."
     }
   }
 }

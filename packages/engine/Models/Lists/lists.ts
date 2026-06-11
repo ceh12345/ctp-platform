@@ -46,6 +46,27 @@ export class CTPHierarchies extends CTPNameValues {
     this.add(new NameValue("Hierarchy 5"));
   }
 
+  /**
+   * Returns the populated slots as a serialisation-friendly array.
+   * Empty-value slots are omitted (treated as "this slot has no mapping
+   * configured" — covers both default placeholders and resolver returns
+   * that produced empty strings). Slot index is 1-based.
+   *
+   * Reusable across any entity that carries a CTPHierarchies field
+   * (orders / tasks / resources / workOrderGroup) when each becomes
+   * exposed in the API payload.
+   */
+  public populatedEntries(): { slot: number; name: string; value: string }[] {
+    const out: { slot: number; name: string; value: string }[] = [];
+    for (let i = 0; i < 5; i++) {
+      const node = this.index(i);
+      if (node?.value && node.value !== '') {
+        out.push({ slot: i + 1, name: node.name, value: node.value });
+      }
+    }
+    return out;
+  }
+
   public get first(): string | undefined {
     return this?.index(0)?.value;
   }

@@ -1,0 +1,92 @@
+{
+  "captureDate": "2026-06-03",
+  "captureMethod": "direct-curl",
+  "env": {
+    "geniusHost": "https://genius.stafford.co.nz:53215",
+    "geniusVersion": "17.1.6.3",
+    "companyCode": "WORK7",
+    "envType": "dev-test"
+  },
+  "auth": {
+    "type": "bearer-session",
+    "tokenSource": "session-scoped (not persisted)"
+  },
+  "entities": [
+    {
+      "name": "machineAndRessourceEntity",
+      "filter": "Active=true",
+      "filterEncoded": "Active%3Dtrue",
+      "totalElementsFound": 68,
+      "totalPagesFound": 1,
+      "pageSize": 100,
+      "filesWritten": 1
+    },
+    {
+      "name": "salesOrderDetailEntity",
+      "filter": "ItemStatus!=C",
+      "filterEncoded": "ItemStatus%21%3DC",
+      "totalElementsFound": 830,
+      "totalPagesFound": 9,
+      "pageSize": 100,
+      "filesWritten": 9
+    },
+    {
+      "name": "workOrderWithAdvancedInformationViewEntity",
+      "filter": "Wostatus!=CLOSED",
+      "filterEncoded": "Wostatus%21%3DCLOSED",
+      "totalElementsFound": 871,
+      "totalPagesFound": 9,
+      "pageSize": 100,
+      "filesWritten": 9
+    },
+    {
+      "name": "productionTaskWithAdvancedInfoViewEntity",
+      "filter": "IsCompleted=false",
+      "filterEncoded": "IsCompleted%3Dfalse",
+      "totalElementsFound": 2563,
+      "totalPagesFound": 26,
+      "pageSize": 100,
+      "filesWritten": 26
+    },
+    {
+      "name": "JobEntity",
+      "filter": "Active=true & Job<SYST",
+      "filterEncoded": "Active%3Dtrue%26Job%3CSYST",
+      "totalElementsFound": 558,
+      "totalPagesFound": 6,
+      "pageSize": 100,
+      "filesWritten": 6,
+      "notes": "First time this entity is captured. JobStatusCode=Planned would be redundant (all 568 Active jobs are status 1320/Planned). Job<SYST drops 10 SYST-prefixed system/test jobs."
+    }
+  ],
+  "totals": {
+    "totalRecordsCaptured": 4890,
+    "totalPagesWritten": 51,
+    "totalDiskBytesApprox": 16000000
+  },
+  "verifiedFilterOperators": {
+    "andSeparator": "%26",
+    "equal": "%3D",
+    "notEqual": "%21%3D",
+    "lessThan": "%3C",
+    "startsWith": "%5B"
+  },
+  "untestedFilterOperators": [
+    "OR separator (%7C or %21)",
+    "<=, >=, >",
+    "ends-with (%5D), contains (%3A), range (%7B)"
+  ],
+  "sanitizationRequired": true,
+  "containsRealCustomerData": true,
+  "promotionTarget": "tools/mock-genius/fixtures/stafford-snapshot-2026-06-03/ (after sanitization + envelope stripping)",
+  "comparedToPriorCapture": {
+    "priorDate": "2026-04-23",
+    "deltas": {
+      "machineAndRessourceEntity_unfiltered": "77 → 79 (+2)",
+      "salesOrderDetailEntity_filtered": "474 → 830 (+356)",
+      "workOrderWithAdvancedInformationViewEntity_filtered": "956 → 871 (-85)",
+      "productionTaskWithAdvancedInfoViewEntity_filtered": "3118 → 2563 (-555)",
+      "JobEntity": "new — not captured previously"
+    }
+  }
+}

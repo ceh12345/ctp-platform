@@ -1,5 +1,6 @@
-import { ITypedAttribute } from '@ctp/engine';
+import { ITypedAttribute, IRollupEngineConfig } from '@ctp/engine';
 import { TenantStrategyOverride, TenantCustomStrategy } from './strategy.interface';
+import { EntityMapping } from './hierarchy-mapping.interface';
 
 // Schema types
 export interface IAttributeSchemaDefinition {
@@ -130,6 +131,19 @@ export interface IOrderData {
   lateDueDate?: string;
   priority?: number;
   latenessPenaltyPerDay?: number;
+  [key: string]: unknown;   // mapping engine may emit extra scalar fields (wostatus, customerName, etc.); hydrator stashes them on CTPOrder.rawFields
+}
+
+// WorkOrderGroup data — mapping engine output, consumed by hydrator.
+export interface IWorkOrderGroupData {
+  key: string;
+  name?: string;
+  sourceStart?: string;
+  sourceEnd?: string;
+  promiseDate?: string;
+  hierarchies?: { slot: 1 | 2 | 3 | 4 | 5; name: string; value: string | null }[];
+  attributes?: { name: string; value: string }[];
+  [key: string]: unknown;
 }
 
 // Material inventory data
@@ -271,6 +285,18 @@ export interface IMappingProfile {
   tasks?: Record<string, any>;
   resources?: Record<string, any>;
   calendars?: Record<string, any>;
+
+  /** Mapping block for WorkOrderGroup. Typed (EntityMapping) — sets the precedent for tightening other entities later. */
+  workOrderGroups?: EntityMapping;
+
+  /**
+   * Named-default values referenced by rules via `{ "fromDefault": "name" }`.
+   * Tenant-scoped placeholder constants for cases where source data is
+   * missing or zero — e.g. `subcontractDefaultLeadTimeHours` for OUTWORK
+   * tasks whose source span is empty.
+   */
+  defaults?: Record<string, unknown>;
+
   transforms?: Record<string, any>;
   [key: string]: any;
 }
@@ -340,6 +366,10 @@ export interface IConfigStore {
   // Integration
   getAdapterConfig?(): IAdapterConfig | null;
   getMappingProfile?(): IMappingProfile | null;
+  /** Runtime config for the RollupEngine. Sibling to mapping.json under integration/. */
+  getWorkOrderGroupsConfig?(): IRollupEngineConfig | null;
+  /** Pre-derived WorkOrderGroup records for file-tenants. Lives at data/workordergroups.json. REST tenants get groups via MappingEngine; this is the file-tenant analogue. */
+  getWorkOrderGroupsData?(): IWorkOrderGroupData[];
 
   // Reload from disk
   reload(): void;

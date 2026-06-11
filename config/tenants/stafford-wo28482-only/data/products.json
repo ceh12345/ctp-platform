@@ -1,0 +1,7 @@
+[
+  { "key": "PROD-PV", "name": "Pressure Vessel", "productType": "FINISHED", "unitOfMeasure": "unit", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "PROD-EQ", "name": "Processing Equipment", "productType": "FINISHED", "unitOfMeasure": "unit", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "PROD-MC", "name": "Machined Components", "productType": "FINISHED", "unitOfMeasure": "set", "outputScrapRate": 0.02, "bomInputs": [] },
+  { "key": "PROD-RP", "name": "Repair Service", "productType": "FINISHED", "unitOfMeasure": "unit", "outputScrapRate": 0, "bomInputs": [] },
+  { "key": "PROD-CX", "name": "5-Axis Component", "productType": "FINISHED", "unitOfMeasure": "unit", "outputScrapRate": 0.01, "bomInputs": [] }
+]

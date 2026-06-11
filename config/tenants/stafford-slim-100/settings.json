@@ -5,5 +5,5 @@
   "topTasksToSchedule": 2,
   "resetUsageAfterProcessChange": true,
   "scheduleDirection": 1,
-  "solverStrategy": "Greedy"
+  "solverStrategy": "Chain"
 }

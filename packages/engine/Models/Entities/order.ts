@@ -22,6 +22,15 @@ export class CTPOrder extends CTPKeyEntity implements IOrder {
   public latenessPenaltyPerDay: number = 0;
   public validationErrors: IValidationError[] = [];
 
+  public groupKey: string | null = null;       // → CTPWorkOrderGroup.key
+  public parentOrderKey: string | null = null; // → another CTPOrder.key, for the WO tree
+
+  // Mapping-output fields not in IOrderData. Populated by the hydrator from the
+  // mapping engine's per-order output. Read by downstream engines (e.g. rollup
+  // cancellationPredicate) that need source-shaped data without coupling to
+  // raw payload internals.
+  public rawFields: Record<string, unknown> = {};
+
   constructor(t?: string, n?: string, k?: string) {
     super(t, n, k);
   }

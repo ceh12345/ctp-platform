@@ -1,0 +1,8 @@
+{
+  "bufferDays": 3,
+  "cancellationPredicate": {
+    "field": "wostatus",
+    "values": [],
+    "_note": "Raw Genius field is 'Wostatus' (capital W); 'wostatus' lowercase is the hydrated CTPOrder.rawFields key. Values when populated should match the mapped form exactly (e.g. 'CANCELLED', 'CLOSED' — pending Decision 5). Empty array intentionally matches nothing."
+  }
+}

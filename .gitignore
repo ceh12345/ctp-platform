@@ -13,3 +13,13 @@ packages/engine/**/*.d.ts
 
 # Auto-generated version file
 packages/api/src/version.json
+
+# Python bytecode cache
+__pycache__/
+*.pyc
+
+# Inspector export artifacts (timestamped local generations, easy to regen)
+inspector-*.xlsx
+
+# Excel temp files (Office locks the file while open)
+~$*.xlsx

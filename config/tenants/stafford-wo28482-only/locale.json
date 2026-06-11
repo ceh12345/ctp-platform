@@ -1,0 +1,21 @@
+{
+  "locale": "en-NZ",
+  "timezone": "Pacific/Auckland",
+  "currency": "NZD",
+  "formats": {
+    "date": "d MMM yyyy",
+    "time": "h:mm a",
+    "dateTime": "d MMM, h:mm a",
+    "dateShort": "d MMM",
+    "durationHours": "{h}h {m}m",
+    "percentage": "{v}%"
+  },
+  "actions": {
+    "solve": "Schedule",
+    "sync": "Reload",
+    "solveAndSync": "Reload & Schedule",
+    "save": "Save",
+    "cancel": "Cancel",
+    "retry": "Retry"
+  }
+}

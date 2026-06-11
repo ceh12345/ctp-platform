@@ -122,6 +122,42 @@ export interface BulkScheduleResult {
 }
 
 export abstract class CTPBaseScheduler {
+  /**
+   * Opt-in invariant check for debugging sessions. Not called automatically
+   * by `schedule()` — gated behind CTP_VALIDATE_SEQUENCE=1. The sequence
+   * invariant is enforced at sync time in the hydrator (single producer
+   * boundary); the engine trusts the hydrator's output to avoid paying an
+   * O(N) check on every solve cycle at scale.
+   *
+   * Use during development when you suspect sequence/linkId drift:
+   *   CTP_VALIDATE_SEQUENCE=1 npm run start:dev --workspace=@ctp/api
+   *
+   * The check: linkId.prevLink is the single source of truth for chain
+   * order; for every task whose prevLink points to another task in the
+   * same chain, the predecessor's sequence must be strictly less than the
+   * successor's.
+   */
+  static assertSequenceMatchesLinkId(tasks: CTPTasks): void {
+    const byKey = new Map<string, CTPTask>();
+    tasks.forEach(t => byKey.set(t.key, t));
+    tasks.forEach(t => {
+      const prev = t.linkId?.prevLink;
+      if (!prev) return;
+      if (prev === t.key) return; // self-reference; not a real predecessor
+      const predecessor = byKey.get(prev);
+      if (!predecessor) return; // orphan; hydrator already warned
+      if (predecessor.sequence >= t.sequence) {
+        throw new Error(
+          `[CTPBaseScheduler] task.sequence inconsistent with linkId topology: ` +
+          `task ${t.key} (seq=${t.sequence}) follows ${predecessor.key} ` +
+          `(seq=${predecessor.sequence}) per linkId.prevLink, but sequence ` +
+          `does not strictly increase. Hydrator's deriveSequencesFromLinkId ` +
+          `must have regressed — chain ordering will be broken.`,
+        );
+      }
+    });
+  }
+
   protected landscape: SchedulingLandscape;
   protected scoring: CTPScoring | null;
   protected scheduleContexts: ScheduleContexts;
@@ -681,6 +717,14 @@ export abstract class CTPBaseScheduler {
         if (task.hasLinkId()) detected = true;
       });
       this.settings.hasChains = detected;
+    }
+
+    // Optional development-mode validation: opt-in via CTP_VALIDATE_SEQUENCE=1.
+    // Off by default — sequence invariant is enforced at sync time in the
+    // hydrator (single producer boundary). This gate is for debugging
+    // sessions where you want runtime confirmation. No-op when unset.
+    if (typeof process !== 'undefined' && process.env?.CTP_VALIDATE_SEQUENCE === '1') {
+      CTPBaseScheduler.assertSequenceMatchesLinkId(this.landscape.tasks);
     }
 
     this.initScheduling(tasks);

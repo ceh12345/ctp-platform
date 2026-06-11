@@ -119,7 +119,7 @@ describe('RestAdapter', () => {
       callCount++;
       const urlStr = url.toString();
       if (!urlStr.includes('salesOrderDetailEntity')) return { ok: true, json: async () => makeGeniusEnvelope([]) };
-      const pageMatch = urlStr.match(/pageIndex=(\d+)/);
+      const pageMatch = urlStr.match(/pageNumber=(\d+)/);
       const page = pageMatch ? parseInt(pageMatch[1]) : 1;
       const data = page === 1 ? page1 : page === 2 ? page2 : page3;
       return { ok: true, json: async () => makeGeniusEnvelope(data, 3, page) };
@@ -130,6 +130,72 @@ describe('RestAdapter', () => {
 
     expect(payload.orders).toHaveLength(5);
     expect(payload.orders).toEqual([...page1, ...page2, ...page3]);
+  });
+
+  // ── Pagination param names ───────────────────────────────────────────────
+
+  it('defaults pagination params to Genius-correct names (pageSize/pageNumber)', async () => {
+    const fetchFn = vi.fn(async (_url: string) => ({ ok: true, json: async () => makeGeniusEnvelope([]) }));
+    vi.stubGlobal('fetch', fetchFn);
+
+    const adapter = new RestAdapter(makeConfig());
+    await adapter.fetchRawData();
+
+    // Every request URL should carry the new names, not the legacy ones.
+    const urls = fetchFn.mock.calls.map(c => String(c[0]));
+    expect(urls.length).toBeGreaterThan(0);
+    for (const u of urls) {
+      expect(u).toMatch(/[?&]pageSize=\d+/);
+      expect(u).toMatch(/[?&]pageNumber=\d+/);
+      expect(u).not.toMatch(/[?&]limit=/);
+      expect(u).not.toMatch(/[?&]pageIndex=/);
+    }
+  });
+
+  it('honors per-tenant pagination param overrides', async () => {
+    const fetchFn = vi.fn(async (_url: string) => ({ ok: true, json: async () => makeGeniusEnvelope([]) }));
+    vi.stubGlobal('fetch', fetchFn);
+
+    const adapter = new RestAdapter(makeConfig({
+      connection: {
+        baseUrl: 'http://localhost:8080/api/data/fetch',
+        timeout: 5000,
+        retries: 0,
+        retryDelay: 100,
+        pageSizeParam: 'limit',
+        pageNumberParam: 'offset',
+      },
+    }));
+    await adapter.fetchRawData();
+
+    const urls = fetchFn.mock.calls.map(c => String(c[0]));
+    for (const u of urls) {
+      expect(u).toMatch(/[?&]limit=\d+/);
+      expect(u).toMatch(/[?&]offset=\d+/);
+      expect(u).not.toMatch(/[?&]pageSize=/);
+      expect(u).not.toMatch(/[?&]pageNumber=/);
+    }
+  });
+
+  it('appends pagination params with & when path already contains ?', async () => {
+    const fetchFn = vi.fn(async (_url: string) => ({ ok: true, json: async () => makeGeniusEnvelope([]) }));
+    vi.stubGlobal('fetch', fetchFn);
+
+    const adapter = new RestAdapter(makeConfig({
+      endpoints: {
+        salesOrders: { path: '/workOrderWithAdvancedInformationViewEntity?Wostatus!=CLOSED', pageSize: 100 },
+        tasks:       { path: '/productionTaskWithAdvancedInfoViewEntity',                    pageSize: 200 },
+        resources:   { path: '/machineAndRessourceEntity',                                  pageSize: 100 },
+      },
+    }));
+    await adapter.fetchRawData();
+
+    const woUrl = fetchFn.mock.calls.map(c => String(c[0])).find(u => u.includes('Wostatus!=CLOSED'));
+    expect(woUrl).toBeDefined();
+    // Existing query intact, pagination appended with &
+    expect(woUrl).toMatch(/Wostatus!=CLOSED&pageSize=100&pageNumber=1/);
+    // No double '?'
+    expect(woUrl!.split('?').length).toBe(2);
   });
 
   // ── HTTP errors ───────────────────────────────────────────────────────────
@@ -312,7 +378,7 @@ describe('RestAdapter', () => {
       if (!urlStr.includes('salesOrderDetailEntity')) {
         return { ok: true, json: async () => makeGeniusEnvelope([]) };
       }
-      const pageMatch = urlStr.match(/pageIndex=(\d+)/);
+      const pageMatch = urlStr.match(/pageNumber=(\d+)/);
       const page = pageMatch ? parseInt(pageMatch[1]) : 1;
       if (page === 1) {
         return { ok: true, json: async () => makeGeniusEnvelope([{ Id: 1 }, { Id: 2 }], 3, 1) };
@@ -343,5 +409,37 @@ describe('RestAdapter', () => {
     expect(payload.materials).toEqual([]);
     expect(payload.processes).toEqual([]);
     expect(payload.uomConversions).toBeNull();
+  });
+
+  // ── Jobs endpoint ─────────────────────────────────────────────────────────
+
+  it('fetches the jobs endpoint when configured and returns records on payload.jobs', async () => {
+    const jobs = [{ Id: 849, Job: '10842', Active: true }];
+    vi.stubGlobal('fetch', mockFetch({
+      JobEntity: makeGeniusEnvelope(jobs),
+    }));
+
+    const adapter = new RestAdapter(makeConfig({
+      endpoints: {
+        salesOrders: { path: '/salesOrderDetailEntity',                    pageSize: 100 },
+        tasks:       { path: '/productionTaskWithAdvancedInfoViewEntity',   pageSize: 200 },
+        resources:   { path: '/machineAndRessourceEntity',                 pageSize: 100 },
+        jobs:        { path: '/JobEntity',                                 pageSize: 100 },
+      },
+    }));
+    const payload = await adapter.fetchRawData();
+    expect(payload.jobs).toEqual(jobs);
+  });
+
+  it('returns empty payload.jobs when no jobs endpoint is configured', async () => {
+    vi.stubGlobal('fetch', mockFetch({
+      salesOrderDetailEntity:                  makeGeniusEnvelope([]),
+      productionTaskWithAdvancedInfoViewEntity: makeGeniusEnvelope([]),
+      machineAndRessourceEntity:               makeGeniusEnvelope([]),
+    }));
+
+    const adapter = new RestAdapter(makeConfig());  // no jobs endpoint in default makeConfig
+    const payload = await adapter.fetchRawData();
+    expect(payload.jobs).toEqual([]);
   });
 });

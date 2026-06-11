@@ -68,7 +68,7 @@ const STAFFORD_PROFILE: IMappingProfile = {
 
 function makePayload(overrides: Partial<IRawDataPayload> = {}): IRawDataPayload {
   return {
-    orders: GENIUS_ORDERS, tasks: GENIUS_TASKS, resources: GENIUS_RESOURCES,
+    orders: GENIUS_ORDERS, tasks: GENIUS_TASKS, resources: GENIUS_RESOURCES, jobs: [],
     calendars: [], stateChanges: [], products: [], materials: [], processes: [], cadences: [], uomConversions: null,
     ...overrides,
   };
@@ -487,6 +487,164 @@ describe('MappingEngine', () => {
       const result = engine.transform(oneOrder('2026-03-15T08:00:00'), ruleNoTz);
       expect(result.errors).toEqual([]);
       expect((result.payload.orders as any[])[0].dueDate).toBe('2026-03-15T08:00:00');
+    });
+  });
+
+  // ── ifPresent / ifAbsent rule shape ────────────────────────────────────
+  // String-shaped analogue of `threshold`. Used by WorkOrderGroup mapping to
+  // tag records whose Customer source field is present-vs-absent.
+
+  describe('ifPresent / ifAbsent rule', () => {
+    function runRule(rule: any, record: Record<string, any>): any {
+      const profile = {
+        version: '1.0',
+        orders: { mappings: { result: rule } },
+      } as unknown as IMappingProfile;
+      const payload = makePayload({ orders: [record] });
+      const result = engine.transform(payload, profile);
+      return (result.payload.orders as any[])[0].result;
+    }
+
+    it('present non-empty string returns ifPresent', () => {
+      expect(runRule({ from: 'X', ifPresent: 'YES', ifAbsent: 'NO' }, { X: 'something' })).toBe('YES');
+    });
+    it('null field returns ifAbsent', () => {
+      expect(runRule({ from: 'X', ifPresent: 'YES', ifAbsent: 'NO' }, { X: null })).toBe('NO');
+    });
+    it('undefined field returns ifAbsent', () => {
+      expect(runRule({ from: 'X', ifPresent: 'YES', ifAbsent: 'NO' }, {})).toBe('NO');
+    });
+    it('empty-string field returns ifAbsent (empty is absent)', () => {
+      expect(runRule({ from: 'X', ifPresent: 'YES', ifAbsent: 'NO' }, { X: '' })).toBe('NO');
+    });
+    it('numeric 0 is present (not empty/null)', () => {
+      expect(runRule({ from: 'X', ifPresent: 'YES', ifAbsent: 'NO' }, { X: 0 })).toBe('YES');
+    });
+    it('cascade falls through when only ifPresent is set and val is absent', () => {
+      // ifPresent set, ifAbsent undefined → returns undefined → cascade moves on
+      const rule = {
+        cascade: [
+          { from: 'A', ifPresent: 'A-PRESENT' },
+          { value: 'FALLBACK' },
+        ],
+      };
+      // A absent: sub-rule returns undefined, cascade moves to next, returns FALLBACK
+      expect(runRule(rule, { A: null })).toBe('FALLBACK');
+      // A present: first sub-rule returns A-PRESENT
+      expect(runRule(rule, { A: 'real' })).toBe('A-PRESENT');
+    });
+  });
+
+  // ── WorkOrderGroups: scalar-merge precedence ─────────────────────────
+  // Resolved scalars are merged into the record before hierarchy/attribute
+  // resolution, so a scalar rule using cascade/lookup can synthesize a value
+  // that the hierarchy slot reads via { kind: "field", field: "_synthetic" }.
+
+  describe('workOrderGroups — scalar-merge precedence', () => {
+    it('hierarchy slot reads a synthesized scalar field', () => {
+      const profile = {
+        version: '1.0',
+        workOrderGroups: {
+          mappings: {
+            key: { from: 'Job' },
+            _custLabel: {
+              cascade: [
+                { from: 'CustomerName' },
+                { value: '[Auto] Unclassified' },
+              ],
+            },
+          },
+          hierarchies: [
+            { slot: 1, name: 'Customer', source: { kind: 'field', field: '_custLabel' } },
+          ],
+        },
+      } as unknown as IMappingProfile;
+
+      const realRecord = { Job: '100', CustomerName: 'ACME CORP' };
+      const synthRecord = { Job: '101', CustomerName: null };
+
+      const result = engine.transform(makePayload({ orders: [realRecord, synthRecord] }), profile);
+      const groups = result.workOrderGroups;
+      expect(groups).toHaveLength(2);
+      expect(groups[0].hierarchies?.[0].value).toBe('ACME CORP');
+      expect(groups[1].hierarchies?.[0].value).toBe('[Auto] Unclassified');
+    });
+
+    it('attribute reads a synthesized scalar field for provenance flag', () => {
+      const profile = {
+        version: '1.0',
+        workOrderGroups: {
+          mappings: {
+            key: { from: 'Job' },
+            _custSource: {
+              from: 'CustomerName',
+              ifPresent: 'genius-master',
+              ifAbsent:  'auto-from-JobType',
+            },
+          },
+          hierarchies: [
+            { slot: 1, name: 'Customer', source: { kind: 'constant', value: 'X' } },
+          ],
+          attributes: [
+            { name: 'CustomerSource', source: { kind: 'field', field: '_custSource' } },
+          ],
+        },
+      } as unknown as IMappingProfile;
+
+      const realRecord = { Job: '100', CustomerName: 'ACME CORP' };
+      const synthRecord = { Job: '101', CustomerName: null };
+
+      const result = engine.transform(makePayload({ orders: [realRecord, synthRecord] }), profile);
+      expect(result.workOrderGroups[0].attributes?.find(a => a.name === 'CustomerSource')?.value).toBe('genius-master');
+      expect(result.workOrderGroups[1].attributes?.find(a => a.name === 'CustomerSource')?.value).toBe('auto-from-JobType');
+    });
+
+    it('scalar wins on name collision with raw field (scalars are intentional output)', () => {
+      const profile = {
+        version: '1.0',
+        workOrderGroups: {
+          mappings: {
+            key: { from: 'Job' },
+            ProjectName: { value: 'OVERRIDE' },   // shadows raw ProjectName
+          },
+          hierarchies: [
+            { slot: 1, name: 'Project', source: { kind: 'field', field: 'ProjectName' } },
+          ],
+        },
+      } as unknown as IMappingProfile;
+
+      const result = engine.transform(makePayload({ orders: [{ Job: '1', ProjectName: 'RAW' }] }), profile);
+      expect(result.workOrderGroups[0].hierarchies?.[0].value).toBe('OVERRIDE');
+    });
+
+    it('Family NA → null via scalar lookup transformation', () => {
+      const profile = {
+        version: '1.0',
+        workOrderGroups: {
+          mappings: {
+            key: { from: 'Job' },
+            _familyLabel: {
+              from: 'ItemFamily',
+              lookup: { NA: null, 'N/A': null },
+            },
+          },
+          hierarchies: [
+            { slot: 1, name: 'Customer', source: { kind: 'constant', value: 'X' } },
+            { slot: 4, name: 'Family',   source: { kind: 'field',    field: '_familyLabel' } },
+          ],
+        },
+      } as unknown as IMappingProfile;
+
+      const result = engine.transform(makePayload({ orders: [
+        { Job: '1', ItemFamily: 'S-ENG' },
+        { Job: '2', ItemFamily: 'NA' },
+        { Job: '3', ItemFamily: null },
+      ] }), profile);
+
+      const familySlot = (g: any) => g.hierarchies?.find((h: any) => h.name === 'Family');
+      expect(familySlot(result.workOrderGroups[0])?.value).toBe('S-ENG');
+      expect(familySlot(result.workOrderGroups[1])?.value).toBeNull();
+      expect(familySlot(result.workOrderGroups[2])?.value).toBeNull();
     });
   });
 });

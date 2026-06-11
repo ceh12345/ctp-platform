@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const FIXTURES_DIR = process.env.MOCK_FIXTURES_DIR ?? path.join(__dirname, '..', 'fixtures');
-export const DEFAULT_SCENARIO = process.env.MOCK_SCENARIO ?? 'stafford-clean';
+export const DEFAULT_SCENARIO = process.env.MOCK_SCENARIO ?? 'stafford-snapshot-2026-06-03';
 let activeScenario = DEFAULT_SCENARIO;
 
 export function getScenario(): string {

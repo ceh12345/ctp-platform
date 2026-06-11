@@ -39,9 +39,11 @@ import {
   DisjunctiveGraph,
   BulkUnscheduleResult,
   BulkScheduleResult,
+  WorkOrderGroupStatus,
 } from '@ctp/engine';
 import { ErrorCodes } from '../../common/error-codes';
 import { StateService } from '../state/state.service';
+import { WorkOrderGroupService } from '../state/workordergroup.service';
 import { ConfigService } from '../../config/config.service';
 import { StrategyConfigService } from '../../config/strategy-config.service';
 import { LoggerService } from '../../logging/logger.service';
@@ -55,6 +57,7 @@ import {
 import { ScheduleConfigurationService } from '../../config/schedule-configuration.service';
 import { WhereToRequestDto, WhereToResponseDto, MoveToRequestDto, MoveToResponseDto } from './dto/whereto.dto';
 import { CTPQueryDto, CTPQueryResponse, CTPQueryOption, CTPQuerySummary, ChainTemplatesResponse } from './dto/ctp-query.dto';
+import { TaskResultDto, OrderResultDto } from './dto/solve-result.dto';
 
 export interface TaskSnapshot {
   key: string;
@@ -109,6 +112,7 @@ export interface CTPSolveResult {
   resourceUtilization: any[];
   orders: any[];
   materials: any[];
+  workOrderGroups?: any[];
   products?: any[];
   colors?: any;
   terminology?: Record<string, string>;
@@ -142,13 +146,21 @@ export interface CTPSolveResult {
 export class CTPService {
   private results = new Map<string, CTPSolveResult>();
 
+  private readonly workOrderGroupService: WorkOrderGroupService;
+
   constructor(
     private readonly stateService: StateService,
     private readonly configService: ConfigService,
     private readonly strategyConfigService: StrategyConfigService,
     private readonly logger: LoggerService,
     private readonly scheduleConfigService: ScheduleConfigurationService,
-  ) {}
+    workOrderGroupService?: WorkOrderGroupService,
+  ) {
+    // Optional injection — Nest supplies it in production; tests that
+    // don't touch group rollups can omit. Falls back to a service
+    // built from the same configService.
+    this.workOrderGroupService = workOrderGroupService ?? new WorkOrderGroupService(configService);
+  }
 
   // ═══════════════════════════════════════
   // Endpoint 1: Solve with Overrides
@@ -471,6 +483,12 @@ export class CTPService {
         },
       });
     }
+
+    // Post-solve rollup — refresh computedStart/End, status, cancellation
+    // counts on each WorkOrderGroup using the new task scheduled times.
+    // Reads bufferDays + cancellationPredicate from tenant config via the
+    // injected service. Empty groups collection: this is a no-op.
+    this.workOrderGroupService.refreshRollups(landscape, Math.floor(Date.now() / 1000));
 
     return result;
   }
@@ -3155,7 +3173,12 @@ export class CTPService {
         orderScheduledQty.set(orderRef, existing + task.netOutputQty());
       }
 
-      const taskResult: any = {
+      const taskResult: TaskResultDto = {
+        // compatibleResources / cost / visible / blendedScore are filled in
+        // below the initial literal; satisfy the DTO by seeding sensible
+        // defaults here so the type-check at the literal catches drift.
+        compatibleResources: [],
+        visible: true,
         key: task.key,
         name: task.name,
         state: task.state,
@@ -3187,6 +3210,7 @@ export class CTPService {
         infeasibilityReport: task.infeasibilityReport ? this.serializeInfeasibilityReport(task.infeasibilityReport) : null,
         typedAttributes: task.typedAttributes.toArray(),
         orderRef,
+        groupKey: task.groupKey ?? null,
         outputProductKey,
         outputQty,
         outputScrapRate,
@@ -3449,7 +3473,7 @@ export class CTPService {
     // dates never reflected mapping-profile transformations.
     // CTPOrder stores dueDate/lateDueDate as epoch seconds; convert back
     // to ISO for the response shape. dueDate === 0 means "not set".
-    const orders = landscape.orders.toArray().map((order) => {
+    const orders: OrderResultDto[] = landscape.orders.toArray().map((order): OrderResultDto => {
       const scheduledQty = orderScheduledQty.get(order.key) ?? 0;
       return {
         orderKey: order.key,
@@ -3467,7 +3491,63 @@ export class CTPService {
           ? CTPDateTime.toDateTime(order.lateDueDate).toISO()
           : null,
         priority: order.priority ?? 0,
+        groupKey: order.groupKey,
+        parentOrderKey: order.parentOrderKey,
         validationErrors: order.validationErrors ?? [],
+      };
+    });
+
+    // WorkOrderGroups — populated at sync time (rebuildGroups) and refreshed
+    // post-solve (refreshRollups). Empty array when the tenant has no
+    // workOrderGroups mapping configured. statusLabel uses the
+    // WorkOrderGroupStatus enum as single source of truth (reverse lookup
+    // returns the enum-key name — no hand-maintained second map).
+    // Note: each hierarchy slot's name+value also appears in the attributes
+    // array by design — the rollup engine mirrors hierarchy values into
+    // attributes so consumers iterating only `attributes` still see the
+    // group's dimension values. Not a duplication bug; uniformity is the point.
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const workOrderGroups = landscape.groups.toArray().map((group) => {
+      const attributes: { name: string; value: string }[] = [];
+      group.attributes.forEach((nv) => {
+        attributes.push({ name: nv.name, value: nv.value ?? '' });
+      });
+
+      return {
+        key: group.key,
+        name: group.name,
+        headWorkOrderKey: group.headWorkOrderKey,
+        workOrderKeys: group.workOrderKeys,
+        sourceStart: group.sourceStart !== null
+          ? CTPDateTime.toDateTime(group.sourceStart).toISO()
+          : null,
+        sourceEnd: group.sourceEnd !== null
+          ? CTPDateTime.toDateTime(group.sourceEnd).toISO()
+          : null,
+        promiseDate: group.promiseDate !== null
+          ? CTPDateTime.toDateTime(group.promiseDate).toISO()
+          : null,
+        computedStart: group.computedStart !== null
+          ? CTPDateTime.toDateTime(group.computedStart).toISO()
+          : null,
+        computedEnd: group.computedEnd !== null
+          ? CTPDateTime.toDateTime(group.computedEnd).toISO()
+          : null,
+        status: group.status,
+        statusLabel: WorkOrderGroupStatus[group.status],
+        totalWorkOrders: group.totalWorkOrders,
+        completedWorkOrders: group.completedWorkOrders,
+        inProcessWorkOrders: group.inProcessWorkOrders,
+        notStartedWorkOrders: group.notStartedWorkOrders,
+        cancelledWorkOrders: group.cancelledWorkOrders,
+        totalDemandQty: group.totalDemandQty,
+        totalScheduledQty: group.totalScheduledQty,
+        totalProducedQty: group.totalProducedQty,
+        completionRatio: group.completionRatio(),
+        isFullyComplete: group.isFullyComplete(),
+        isLate: group.isLate(nowSeconds),
+        hierarchies: group.hierarchy.populatedEntries(),
+        attributes,
       };
     });
 
@@ -3628,6 +3708,7 @@ export class CTPService {
       resourceUtilization,
       orders,
       materials,
+      workOrderGroups,
       products,
       colors,
       terminology,

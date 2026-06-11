@@ -42,6 +42,7 @@ export * from './Models/Entities/starttime';
 export * from './Models/Entities/statechange';
 export * from './Models/Entities/task';
 export * from './Models/Entities/timeline';
+export * from './Models/Entities/workordergroup';
 
 // Models - Intervals
 export * from './Models/Intervals/availablematrix';
@@ -102,6 +103,7 @@ export * from './Engines/setengine';
 export * from './Engines/starttimeengine';
 export * from './Engines/statechangeerengine';
 export * from './Engines/chaincontextengine';
+export * from './Engines/rollupengine';
 export * from './Engines/Optimization/disjunctivegraph';
 export * from './Engines/Optimization/types';
 export * from './Engines/Optimization/tabusearch';

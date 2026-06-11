@@ -219,7 +219,7 @@ describe('StateHydratorService', () => {
           capacityResources: [{ resource: 'MACHINE-1', isPrimary: true, qty: 1, mode: 'ON' }],
           ...taskOverrides,
         }],
-        calendars: [], stateChanges: [], products: [], orders: [],
+        calendars: [], stateChanges: [], products: [], orders: [], jobs: [],
         materials: [], processes: [], cadences: [], uomConversions: null,
       };
     }
