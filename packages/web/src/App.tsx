@@ -549,7 +549,18 @@ function deriveConflicts(tasks: any[], resources: any[], materials: any[]): any[
    useSort HOOK
    ═══════════════════════════════════════════════════════════════ */
 
-function useSort(defaultKey: string, defaultDir: 'asc' | 'desc' = 'asc') {
+// A single key within a multi-key sort spec: which row field to compare and
+// how. `number` compares numerically (Number(x) || 0); `string` localeCompares.
+type SortKey = { field: string; type: 'string' | 'number' };
+
+function useSort(
+  defaultKey: string,
+  defaultDir: 'asc' | 'desc' = 'asc',
+  // Optional per-sortKey multi-key specs. When the active sortKey has a spec,
+  // rows are compared by walking its keys (first non-zero wins). When absent —
+  // i.e. every other table that doesn't pass this arg — behavior is unchanged.
+  sortSpecs?: Record<string, SortKey[]>,
+) {
   const [sortKey, setSortKey] = useState(defaultKey);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>(defaultDir);
   const toggle = useCallback((key: string) => {
@@ -558,19 +569,49 @@ function useSort(defaultKey: string, defaultDir: 'asc' | 'desc' = 'asc') {
   }, [sortKey]);
   const sorted = useCallback(
     <T,>(data: T[]): T[] => {
+      const specs = sortSpecs?.[sortKey];
       return [...data].sort((a: any, b: any) => {
-        const va = a[sortKey] ?? '';
-        const vb = b[sortKey] ?? '';
-        const cmp = typeof va === 'number' && typeof vb === 'number'
-          ? va - vb
-          : String(va).localeCompare(String(vb));
+        let cmp = 0;
+        if (specs) {
+          for (const { field, type } of specs) {
+            const va = a[field];
+            const vb = b[field];
+            const c = type === 'number'
+              ? (Number(va) || 0) - (Number(vb) || 0)
+              : String(va ?? '').localeCompare(String(vb ?? ''));
+            if (c !== 0) { cmp = c; break; }
+          }
+        } else {
+          const va = a[sortKey] ?? '';
+          const vb = b[sortKey] ?? '';
+          cmp = typeof va === 'number' && typeof vb === 'number'
+            ? va - vb
+            : String(va).localeCompare(String(vb));
+        }
         return sortDir === 'asc' ? cmp : -cmp;
       });
     },
-    [sortKey, sortDir],
+    [sortKey, sortDir, sortSpecs],
   );
   return { sortKey, sortDir, toggle, sorted };
 }
+
+// Operation page — sort definition for the first ("Task"/operation) column.
+// This is the one column that needs a typed multi-key sort; we intentionally do
+// NOT build a general per-table column registry. Sort by work order, then
+// numeric task order, then the raw key as a final tiebreaker. Stafford rows
+// populate _wo/_task (see the enriched map); non-Stafford rows leave them
+// undefined, so the first two keys tie and the row falls through to `key` —
+// i.e. other tenants sort by key exactly as before. Module-level so the spec
+// object is referentially stable across renders (avoids re-sort churn).
+const OPERATION_SORT_KEY = '_opSort';
+const OPERATION_SORT_SPECS: Record<string, SortKey[]> = {
+  [OPERATION_SORT_KEY]: [
+    { field: '_wo', type: 'number' },
+    { field: '_task', type: 'number' },
+    { field: 'key', type: 'string' },
+  ],
+};
 
 /* ═══════════════════════════════════════════════════════════════
    useFilter HOOK
@@ -7029,7 +7070,7 @@ function TaskTable({ tasks, products, colors, workOrderGroups, onTaskClick, task
   resourceUtilization?: any[];
   isQueuing?: boolean;
 }) {
-  const { sortKey, sortDir, toggle, sorted } = useSort('key');
+  const { sortKey, sortDir, toggle, sorted } = useSort(OPERATION_SORT_KEY, 'asc', OPERATION_SORT_SPECS);
   const [activeTypeChips, setActiveTypeChips] = useState<Set<string>>(new Set(['PROCESS']));
 
   const caseTasks = useMemo(() => caseFilter ? tasks.filter(tk => tk.orderRef === caseFilter) : tasks, [tasks, caseFilter]);
@@ -7054,6 +7095,17 @@ function TaskTable({ tasks, products, colors, workOrderGroups, onTaskClick, task
     const _priorityRank = priorityRank(_priorityLabel);
     const _type = tk.type || 'PROCESS';
     const _processCategory = tk.processCategory || '';
+    // Operations-column multi-key sort fields. Stafford task keys are
+    // WorkOrder-OperationCode-TaskOrder: the work order is the real `orderRef`
+    // field, but the task-order number is NOT a field — it lives only in the
+    // key's trailing segment. Derive both as numbers, but only for the Stafford
+    // key shape (parse guard: 3 parts, numeric WorkOrder + numeric TaskOrder).
+    // The guard excludes lookalikes such as demo-sandbox's `T-WC4-5`
+    // (non-numeric work order); non-matching rows leave _wo/_task undefined and
+    // fall through to the `key` tiebreaker in the sort spec, so other tenants
+    // sort by key exactly as before.
+    const _opParts = String(tk.key).split('-');
+    const _isStaffordOp = _opParts.length === 3 && /^\d+$/.test(_opParts[0]) && /^\d+$/.test(_opParts[2]);
     return {
       ...tk,
       _resource: tk.assignedResources?.[0]?.resourceKey || '',
@@ -7070,6 +7122,8 @@ function TaskTable({ tasks, products, colors, workOrderGroups, onTaskClick, task
       _processCategory,
       _slackSort: tk.isOnCriticalPath ? -1 : (tk.slack ?? Infinity),
       _commitSort: { running: 0, on_hold: 1, dispatched: 2, pinned: 3, planned: 4, unscheduled: 5 }[tk.commitmentLevel as string] ?? 5,
+      _wo: _isStaffordOp ? Number(tk.orderRef) : undefined,
+      _task: _isStaffordOp ? Number(_opParts[2]) : undefined,
     };
   }), [caseTasks, taskPins, taskExcludes, taskUnschedules, orderModes, products, priorityOverrides]);
 
@@ -7617,7 +7671,7 @@ function TaskTable({ tasks, products, colors, workOrderGroups, onTaskClick, task
                   style={{ cursor: 'pointer', accentColor: C.accent }}
                 />
               </th>}
-              <SortHeader label={t('task', 'Task')} k="key" current={sortKey} dir={sortDir} onSort={toggle}
+              <SortHeader label={t('task', 'Task')} k={OPERATION_SORT_KEY} current={sortKey} dir={sortDir} onSort={toggle}
                 filterProps={colFilter('name')} />
               <SortHeader label={t('product', 'Product')} k="_productName" current={sortKey} dir={sortDir} onSort={toggle}
                 filterProps={colFilter('_productName')} />
