@@ -209,6 +209,14 @@ export class CTPTask extends CTPKeyEntity implements ITask {
 
   public linkId: CTPLinkId | undefined;
 
+  // Explicit precedence edges (class-only, matching linkId — NOT serialized).
+  // Hold task keys; derived from linkId.prevLink by buildAdjacency() at solve
+  // time. Linear chains => preds.length <= 1, so consumers using
+  // max(pred)/min(succ) behave identically to the legacy single-prevLink logic.
+  // Foundation for the edge-list refactor (DAG / parallel Work Order Groups).
+  public preds: string[] = [];
+  public succs: string[] = [];
+
   public score: number;
 
   public process: string | undefined;

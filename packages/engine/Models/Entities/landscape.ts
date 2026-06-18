@@ -5,6 +5,7 @@ import { CTPResourceModeConstants, CTPResourcePreferenceModeConstants, CTPTaskSt
 import { CTPAppSettings, IAppSettings } from "./appsettings";
 import { CTPHorizon } from "./horizon";
 import { CTPTask, CTPTasks } from "./task";
+import { buildAdjacency } from "./adjacency";
 import { CTPResource, CTPResources } from "./resource";
 import { CTPProcess, CTPProcesses } from "./process";
 import { CTPStateChanges } from "./statechange";
@@ -75,6 +76,10 @@ export class SchedulingLandscape implements ILandscape {
               p.tasks?.sortBySequence();
           });
 
+          // Phase 0 (edge-list refactor): populate explicit preds[]/succs[]
+          // from linkId.prevLink. No consumer reads them yet → no behavior
+          // change; this just lays the foundation.
+          buildAdjacency(this.tasks);
       }
   }
   /**

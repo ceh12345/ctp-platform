@@ -132,6 +132,37 @@ topoOrder(tasks): CTPTask[]           // Kahn's; falls back to sequence on cycle
 Routing every site through these keeps the mechanical conversions uniform and
 makes the length-1 == current-behavior guarantee auditable in one place.
 
+### Resolution model — lists are KEYS, resolved once per evaluation
+`preds[]`/`succs[]` hold **task keys** (strings), not object references — by
+design:
+- Keys are consistent with the existing model (`linkId.prevLink` is already a
+  key) and with how the engine looks tasks up everywhere
+  (`landscape.tasks.getEntity(key)`, the `byKey` maps in
+  `assertSequenceMatchesLinkId` and the disjunctive graph). Keys survive
+  serialization/sync; object refs don't.
+- Computing `max(pred ends)` / `min(succ starts)` therefore requires a **lookup**
+  per edge (key → task / key → working-array position). That is intended.
+
+**Performance discipline — resolve once, use many.** The min/max runs in the
+**innermost combo loop**, so the inner loop must do **zero map lookups**:
+- At the start of each chain/combo evaluation, resolve every task's
+  `preds[]`/`succs[]` keys to **positions in the combo's working array** (or to
+  resolved refs) in a single pass — mirroring the disjunctive graph's
+  `nodeIndex` (key → index) approach.
+- The forward/backward passes then iterate over the pre-resolved positions.
+- Keep this resolution inside the helper chokepoint (`predsOf`/`succsOf`/
+  `maxPredEnd`/`minSuccStart`) so lookups live in exactly one place.
+
+### Generated-task splicing (correctness, not just perf)
+Engine-generated tasks (SETUP / TEARDOWN / changeover — the `mqj0…`-style
+generated keys) are spliced into chains at solve time. Today that insertion
+rides on `sequence` renumbering. With explicit edge lists it must be done **on
+the edges**: inserting a SETUP between A→B means A's `succs` gains SETUP, SETUP's
+`preds=[A]` / `succs=[B]`, and B's `preds` swaps A→SETUP. The adjacency build /
+state-change insertion path must weave generated tasks into `preds[]`/`succs[]`,
+not only into the sequence order. (Parity tests will catch a miss — generated
+tasks would otherwise float free of the precedence graph.)
+
 ---
 
 ## 4. Phases
