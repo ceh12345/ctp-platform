@@ -1,5 +1,6 @@
 import { CTPProcess } from '../Models/Entities/process';
 import { CTPTask, CTPTaskList, CTPTaskResource } from '../Models/Entities/task';
+import { buildAdjacency } from '../Models/Entities/adjacency';
 import { ScheduleContext, ScheduleContexts, BestScheduleContext, StartTimesCache } from '../Models/Entities/schedulecontext';
 import { SchedulingLandscape } from '../Models/Entities/landscape';
 import { CTPScoring } from '../Models/Entities/score';
@@ -151,6 +152,12 @@ export class ChainContextEngine {
     const tasks = chain.tasks;
     if (!tasks || tasks.length === 0) return null;
 
+    // Edge-list refactor: ensure preds[]/succs[] reflect this chain's topology.
+    // chain.tasks is the complete chain (one linkId.name), so this is identical
+    // to the global build in landscape.buildProcesses, and makes evaluateChain
+    // self-sufficient for any caller that reaches it without buildProcesses.
+    buildAdjacency(tasks);
+
     // Step 1: Collect feasible contexts per task
     const taskContextsMap = this.getContextsPerTask(tasks, allContexts);
 
@@ -251,6 +258,9 @@ export class ChainContextEngine {
   ): ChainContextCombo[] {
     const tasks = chain.tasks;
     if (!tasks || tasks.length === 0) return [];
+
+    // Edge-list refactor: build preds[]/succs[] over this chain (see evaluateChain).
+    buildAdjacency(tasks);
 
     // Step 1: Collect feasible contexts per task
     const taskContextsMap = this.getContextsPerTask(tasks, allContexts);
@@ -676,31 +686,57 @@ export class ChainContextEngine {
       assignedEnd: 0,
     }));
 
-    // FORWARD PASS: tighten successor based on predecessor
-    for (let i = 1; i < working.length; i++) {
-      const pred = working[i - 1];
+    // ── Edge-list resolution (resolve once, use many) ──
+    // Resolve each task's preds[]/succs[] keys to positions in the working array
+    // a single time, so the propagation passes do zero lookups in their inner
+    // loops. For today's linear data preds/succs are length<=1, making the
+    // max(pred)/min(succ) below identical to the legacy i-1 / i+1 adjacency.
+    const posByKey = new Map<string, number>();
+    for (let i = 0; i < tasks.length; i++) posByKey.set(tasks[i].key, i);
+    const resolve = (keys: string[]): number[] => {
+      const out: number[] = [];
+      for (const k of keys) { const p = posByKey.get(k); if (p !== undefined) out.push(p); }
+      return out;
+    };
+    const predPos: number[][] = tasks.map(t => resolve(t.preds));
+    const succPos: number[][] = tasks.map(t => resolve(t.succs));
+
+    // FORWARD PASS: floor each task by the LATEST of its predecessors' effective
+    // ends; ceil by maxGap relative to that latest predecessor. Iterating in
+    // sequence order is a valid topological order (the invariant guarantees
+    // pred.sequence < succ.sequence), so every predecessor is already updated.
+    for (let i = 0; i < working.length; i++) {
+      const preds = predPos[i];
+      if (preds.length === 0) continue;
       const succ = working[i];
       const task = tasks[i];
       const maxGap = task.linkId?.maxGap ?? null;
       const duration = bounds[i]!.duration;
-      // State-change offset shifts the predecessor's actual end on the resource
-      const predOffset = bounds[i - 1]!.processChangeDuration;
       const succCalendar = combo.contexts[i].slot.resources?.at(0)?.resource?.available?.staticAvailable;
 
-      // Floor: successor can't start before predecessor's effective end
-      const predEffectiveEEnd = pred.eEndW + predOffset;
-      const predEffectiveLEnd = pred.lEndW + predOffset;
+      // max over predecessors of their effective (offset-adjusted) early/late ends
+      let predEffectiveEEnd = -Infinity;
+      let predEffectiveLEnd = -Infinity;
+      for (const p of preds) {
+        const off = bounds[p]!.processChangeDuration;
+        const ee = working[p].eEndW + off;
+        const le = working[p].lEndW + off;
+        if (ee > predEffectiveEEnd) predEffectiveEEnd = ee;
+        if (le > predEffectiveLEnd) predEffectiveLEnd = le;
+      }
+
+      // Floor: successor can't start before the latest predecessor effective end.
+      // For FLOAT, eEndW walks succ's calendar from the new eStartW; FIXED uses
+      // startW + duration.
       if (predEffectiveEEnd > succ.eStartW) {
         succ.eStartW = predEffectiveEEnd;
-        // For FLOAT, eEndW is wall-clock end after walking succ's calendar from
-        // the new eStartW for `duration` working seconds. For FIXED, falls back
-        // to startW + duration.
         succ.eEndW = task.duration
           ? workingEndForwardW(succCalendar, succ.eStartW, task.duration)
           : succ.eStartW + duration;
       }
 
-      // Ceiling: if maxGap is set, successor must start within maxGap of predecessor's latest effective end
+      // Ceiling: if maxGap is set, successor must start within maxGap of the
+      // latest predecessor's effective end
       if (maxGap !== null) {
         const ceiling = predEffectiveLEnd + maxGap;
         if (ceiling < succ.lStartW) {
@@ -714,43 +750,55 @@ export class ChainContextEngine {
       if (succ.eStartW > succ.lStartW) { combo.feasible = false; return; }
     }
 
-    // BACKWARD PASS: tighten predecessor based on successor
-    for (let i = working.length - 2; i >= 0; i--) {
+    // BACKWARD PASS: ceil each task (as predecessor) by the EARLIEST of its
+    // successors' latest starts (tightest); floor by maxGap as the MAX over
+    // successors. Reverse iteration is a valid reverse-topological order.
+    for (let i = working.length - 1; i >= 0; i--) {
+      const succs = succPos[i];
+      if (succs.length === 0) continue;
       const pred = working[i];
-      const succ = working[i + 1];
-      const succTask = tasks[i + 1];
       const predTask = tasks[i];
-      const maxGap = succTask.linkId?.maxGap ?? null;
       const predDuration = bounds[i]!.duration;
       const predOffset = bounds[i]!.processChangeDuration;
       const predCalendar = combo.contexts[i].slot.resources?.at(0)?.resource?.available?.staticAvailable;
 
-      // Predecessor must finish (including state-change offset) before successor's latest start.
-      // For FLOAT, derive pred.lStartW by walking back from pred.lEndW (= succ.lStartW − offset).
-      const predLEndCandidate = succ.lStartW - predOffset;
-      const latestPredStart = predTask.duration
-        ? workingStartBackwardW(predCalendar, predLEndCandidate, predTask.duration)
-        : predLEndCandidate - predDuration;
-      if (latestPredStart < pred.lStartW) {
-        pred.lStartW = latestPredStart;
+      let minLatestPredStart = Infinity;
+      let maxEarliestPredStart = -Infinity;
+      for (const s of succs) {
+        const succ = working[s];
+        const maxGap = tasks[s].linkId?.maxGap ?? null;
+
+        // Predecessor must finish (incl. offset) before this successor's latest
+        // start. For FLOAT, walk back from pred.lEndW (= succ.lStartW − offset).
+        const predLEndCandidate = succ.lStartW - predOffset;
+        const latestPredStart = predTask.duration
+          ? workingStartBackwardW(predCalendar, predLEndCandidate, predTask.duration)
+          : predLEndCandidate - predDuration;
+        if (latestPredStart < minLatestPredStart) minLatestPredStart = latestPredStart;
+
+        // maxGap floor: pred's effective end can't be earlier than succ.eStartW - maxGap
+        if (maxGap !== null) {
+          const earliestPredEffEnd = succ.eStartW - maxGap;
+          const earliestPredEndCandidate = earliestPredEffEnd - predOffset;
+          const earliestPredStart = predTask.duration
+            ? workingStartBackwardW(predCalendar, earliestPredEndCandidate, predTask.duration)
+            : earliestPredEndCandidate - predDuration;
+          if (earliestPredStart > maxEarliestPredStart) maxEarliestPredStart = earliestPredStart;
+        }
+      }
+
+      if (minLatestPredStart < pred.lStartW) {
+        pred.lStartW = minLatestPredStart;
         pred.lEndW = predTask.duration
           ? workingEndForwardW(predCalendar, pred.lStartW, predTask.duration)
           : pred.lStartW + predDuration;
       }
 
-      // If maxGap is set: predecessor's effective end can't be earlier than succ.eStartW - maxGap
-      if (maxGap !== null) {
-        const earliestPredEffEnd = succ.eStartW - maxGap;
-        const earliestPredEndCandidate = earliestPredEffEnd - predOffset;
-        const earliestPredStart = predTask.duration
-          ? workingStartBackwardW(predCalendar, earliestPredEndCandidate, predTask.duration)
-          : earliestPredEndCandidate - predDuration;
-        if (earliestPredStart > pred.eStartW) {
-          pred.eStartW = earliestPredStart;
-          pred.eEndW = predTask.duration
-            ? workingEndForwardW(predCalendar, pred.eStartW, predTask.duration)
-            : pred.eStartW + predDuration;
-        }
+      if (maxEarliestPredStart > -Infinity && maxEarliestPredStart > pred.eStartW) {
+        pred.eStartW = maxEarliestPredStart;
+        pred.eEndW = predTask.duration
+          ? workingEndForwardW(predCalendar, pred.eStartW, predTask.duration)
+          : pred.eStartW + predDuration;
       }
 
       if (pred.eStartW > pred.lStartW) { combo.feasible = false; return; }
@@ -758,11 +806,18 @@ export class ChainContextEngine {
 
     combo.startTimes = working;
 
-    // Calculate total gap (accounting for state-change offsets)
+    // Calculate total gap (accounting for state-change offsets): each task's
+    // early start vs the latest of its predecessors' effective early ends.
     combo.totalGap = 0;
-    for (let i = 1; i < working.length; i++) {
-      const predOffset = bounds[i - 1]!.processChangeDuration;
-      const gap = working[i].eStartW - (working[i - 1].eEndW + predOffset);
+    for (let i = 0; i < working.length; i++) {
+      const preds = predPos[i];
+      if (preds.length === 0) continue;
+      let maxPredEEnd = -Infinity;
+      for (const p of preds) {
+        const ee = working[p].eEndW + bounds[p]!.processChangeDuration;
+        if (ee > maxPredEEnd) maxPredEEnd = ee;
+      }
+      const gap = working[i].eStartW - maxPredEEnd;
       if (gap > 0) combo.totalGap += gap;
     }
   }

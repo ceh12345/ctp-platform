@@ -1,5 +1,8 @@
 "strict";
-import { CTPTask, CTPTasks } from "./task";
+import { CTPTask } from "./task";
+
+/** Anything iterable via forEach over tasks — CTPTasks, CTPTaskList, or CTPTask[]. */
+type TaskCollection = { forEach(cb: (t: CTPTask) => void): void };
 
 /**
  * Explicit pred/succ edge model — Phase 0 of the edge-list refactor
@@ -31,7 +34,7 @@ function realPrevKey(task: CTPTask, byKey: Map<string, CTPTask>): string | null 
  * Index a task collection by key. Shared chokepoint so edge resolution always
  * goes through one map (callers resolve once, reuse across the inner loops).
  */
-export function indexByKey(tasks: CTPTasks): Map<string, CTPTask> {
+export function indexByKey(tasks: TaskCollection): Map<string, CTPTask> {
   const byKey = new Map<string, CTPTask>();
   tasks.forEach((t) => byKey.set(t.key, t));
   return byKey;
@@ -41,7 +44,7 @@ export function indexByKey(tasks: CTPTasks): Map<string, CTPTask> {
  * (Re)build `preds[]`/`succs[]` for every task from `linkId.prevLink`.
  * Idempotent: clears existing edges first. Call once per solve.
  */
-export function buildAdjacency(tasks: CTPTasks): void {
+export function buildAdjacency(tasks: TaskCollection): void {
   const byKey = indexByKey(tasks);
   tasks.forEach((t) => {
     t.preds = [];
