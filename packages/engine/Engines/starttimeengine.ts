@@ -113,8 +113,22 @@ export class CTPStartTimeEngine
               if (et > this.endW) et = this.endW;
               if (et > ranges.lst) et = ranges.lst;
 
-              if (st <= et)
-                theEngines.unionEngine.union(results, new CTPInterval(st, et));
+              if (st <= et) {
+                // Ticket 1: tail-merge replaces theEngines.unionEngine.union
+                // (general union is O(M) per insert -> O(M^2) total here).
+                // Safe because inputs are non-decreasing in st: the matrix
+                // index list is sorted by estPtr.data.startW, and ranges'
+                // (estPtr, lstPtr) windows do not overlap within one index
+                // (FIXED/UNTRACKED are single-node by construction; FLOAT
+                // partitions the source list). See CODE-OPTIMIZATION-SPRINT
+                // commit history for the invariant verification.
+                const tail = results.tail;
+                if (tail && tail.data.endW >= st) {
+                  if (et > tail.data.endW) tail.data.endW = et;
+                } else {
+                  results.insertAtEnd(new CTPInterval(st, et));
+                }
+              }
             }
             iPtr = iPtr.next;
           }

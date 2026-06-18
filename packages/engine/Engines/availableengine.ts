@@ -429,18 +429,22 @@ export class CTPAvailableEngine
   }
 
   // Add RunRates if exist in original
+  // T11 fix: the per-node runRate !== null check used to be an outer gate
+  // on the first staticOriginal node. When that first node had a null
+  // runRate, the entire merge loop short-circuited and every later
+  // staticOriginal node's runRate was silently dropped. The gate now lives
+  // inside the loop body, alongside the startW <= endW overlap check.
   addRunRates(): void {
-    if (this.matrix?.staticOriginal && this.matrix.staticAvailable) {
-      let i = this.matrix?.staticOriginal.head;
-      let j = this.matrix.staticAvailable.head;
-
-      if (i && i.data.runRate !== null) {
-        while (i && j) {
-          while (i && i.data.startW < j.data.startW) i = i?.next;
-          if (i && i.data.startW <= j.data.endW) j.data.runRate = i.data.runRate;
-          j = j.next;
-        }
+    if (!this.matrix?.staticOriginal || !this.matrix.staticAvailable) return;
+    let i = this.matrix.staticOriginal.head;
+    let j = this.matrix.staticAvailable.head;
+    while (j) {
+      while (i && i.data.startW < j.data.startW) i = i.next;
+      if (!i) return;
+      if (i.data.startW <= j.data.endW && i.data.runRate !== null) {
+        j.data.runRate = i.data.runRate;
       }
+      j = j.next;
     }
   }
 

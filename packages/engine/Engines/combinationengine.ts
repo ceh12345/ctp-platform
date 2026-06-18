@@ -63,15 +63,19 @@ export class ResourceCombinationEngine extends CombinationEngine {
 
     let results: CTPResourcePreference[][] = [];
     intermediate.forEach((combo) => {
+      // T14 fix: previous impl built a comma-joined string and tested
+      // membership via str.includes(resourceKey). That produced false
+      // positives when one key was a substring of another (e.g. "r1"
+      // matched inside "r10,"). Use a Set<string> for O(1) exact-key
+      // lookups instead.
+      const seen = new Set<string>();
       let add = true;
-      let str = "";
       for (let i = 0; i < combo.length; i++) {
-        // check for uniqueness
-        if (str.includes(combo[i].resourceKey)) {
+        if (seen.has(combo[i].resourceKey)) {
           add = false;
           break;
         }
-        str = str + combo[i].resourceKey + ",";
+        seen.add(combo[i].resourceKey);
       }
       if (add) results.push(combo);
     });

@@ -86,4 +86,26 @@ describe('ResourceCombinationEngine', () => {
     const result = engine.resourcecombinations(input, false);
     expect(result.length).toBe(4);
   });
+
+  // CODE-OPTIMIZATION-SPRINT Ticket 14 — str.includes substring false-positive
+  //
+  // Bug (combinationengine.ts:70): uniqueness check uses `str.includes(key)`
+  // against a comma-joined accumulator. When a later resource key is a prefix
+  // of an earlier one (e.g. "r1" arriving after "r10," is already in str),
+  // includes() reports a false-positive collision and the combo is dropped.
+  //
+  // Expected to FAIL against current code, PASS after fix replaces the string
+  // check with a Set<string>.
+  it('treats r1 and r10 as distinct keys (Ticket 14 substring bug)', () => {
+    const engine = new ResourceCombinationEngine();
+    // Order matters for the bug: longer key first so str = "r10,", then "r1"
+    // arrives and falsely matches.
+    const input = [
+      [makePref('p1', 'r10')],
+      [makePref('p2', 'r1')],
+    ] as any;
+    const result = engine.resourcecombinations(input, true);
+    expect(result.length).toBe(1);
+    expect(result[0].map((p: any) => p.resourceKey)).toEqual(['r10', 'r1']);
+  });
 });

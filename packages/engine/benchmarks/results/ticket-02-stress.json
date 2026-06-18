@@ -1,0 +1,23 @@
+{
+  "ticketId": "ticket-02-stress",
+  "description": "addToFloat range lookup (Map vs linear scan), measured via calculate() end-to-end on a scaled-N stress workload — Stafford-class float-heavy",
+  "fixture": "3000 nodes × 300 distinct qtys, all qty>0 (addToFloat's O(K·N) inner work ~900k ops; sized for ~5min total bench wall-clock after iterating from 10000×1000 OOM and 5000×500 ~25min)",
+  "timestamp": "2026-05-23T13:35:43.782Z",
+  "node": "v22.14.0",
+  "correctness": "PASS",
+  "old": {
+    "medianMs": 293.4735,
+    "p95Ms": 348.8028,
+    "minMs": 212.0562,
+    "heapDeltaBytes": 21272
+  },
+  "new": {
+    "medianMs": 300.0488,
+    "p95Ms": 358.0534,
+    "minMs": 218.2054,
+    "heapDeltaBytes": 28768
+  },
+  "speedup": 0.97809,
+  "minSpeedupRequired": 10,
+  "acceptancePass": false
+}

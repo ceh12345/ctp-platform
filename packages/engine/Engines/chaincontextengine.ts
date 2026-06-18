@@ -1,11 +1,13 @@
 import { CTPProcess } from '../Models/Entities/process';
 import { CTPTask, CTPTaskList, CTPTaskResource } from '../Models/Entities/task';
-import { ScheduleContext, ScheduleContexts, BestScheduleContext } from '../Models/Entities/schedulecontext';
+import { ScheduleContext, ScheduleContexts, BestScheduleContext, StartTimesCache } from '../Models/Entities/schedulecontext';
 import { SchedulingLandscape } from '../Models/Entities/landscape';
 import { CTPScoring } from '../Models/Entities/score';
 import { CTPStartTime } from '../Models/Entities/starttime';
 import { CTPResource } from '../Models/Entities/resource';
 import { ScoringEngine } from './scoringengine';
+import { ScoringFactory } from '../Factories/scorefactory';
+import { CTPScoreObjectiveConstants } from '../Models/Core/constants';
 import { ScheduleEngine } from './scheduleengine';
 import { CTPTaskStateConstants } from '../Models/Core/constants';
 import { workingEndForwardW, workingStartBackwardW } from '../Models/Core/interval-walker';
@@ -78,6 +80,62 @@ export interface BumpEvent {
 // ── ChainContextEngine ─────────────────────────────────────────────
 
 export class ChainContextEngine {
+
+  // CODE-OPTIMIZATION-SPRINT Ticket 3 — temporary A/B flag during the bench
+  // window. When true, the 3 startTimes find-pattern helpers
+  // (isWithinStartTimeNode, getAssignedProcessChangeDuration,
+  // findStartTimeNode) use a typed-array cache on ScheduleContext + binary
+  // search instead of head-walking ctx.slot.startTimes. Cleanup commit will
+  // remove the flag and replace each helper's body with the fast path only.
+  public useStartTimesCache: boolean = false;
+
+  // CODE-OPTIMIZATION-SPRINT Ticket 4 — temporary A/B flag during the bench
+  // window. When true, scoreChainCombos dispatches to a PATH-B implementation
+  // that scores raw rule values ONCE per unique context (across all combos)
+  // and blends per-combo. Preserves the existing per-combo min/max
+  // normalization semantics — the spec's "global normalization" variant was
+  // explicitly NOT used because it changed combo rankings. Cleanup commit
+  // will remove the flag and the original head-walk path.
+  public useUniqueContextScoring: boolean = false;
+
+  /**
+   * Build (or return cached) the typed-array snapshot of ctx.slot.startTimes.
+   * Invalidated by bumping ctx._stCacheVersion at every in-cycle mutation
+   * site (currently only truncateContextStartTimes — see comment there).
+   */
+  private getStCache(ctx: ScheduleContext): StartTimesCache | null {
+    if (ctx._stCache && ctx._stCache.version === ctx._stCacheVersion) {
+      return ctx._stCache;
+    }
+    const st = ctx.slot.startTimes;
+    if (!st?.head) {
+      ctx._stCache = null;
+      return null;
+    }
+    // First pass: count nodes so we can allocate exact-size typed arrays.
+    // Narrowed scope (find-pattern helpers only) populates 3 arrays:
+    // eStart and lStart for the binary search, pcd for getAssignedProcessChangeDuration.
+    let n: typeof st.head | null = st.head;
+    let count = 0;
+    while (n) { count++; n = n.next; }
+    const eStart = new Float64Array(count);
+    const lStart = new Float64Array(count);
+    const pcd = new Float64Array(count);
+    n = st.head;
+    let i = 0;
+    while (n) {
+      eStart[i] = n.data.eStartW;
+      lStart[i] = n.data.lStartW;
+      pcd[i] = n.data.processChangeDuration;
+      i++;
+      n = n.next;
+    }
+    ctx._stCache = {
+      count, eStart, lStart, pcd,
+      version: ctx._stCacheVersion,
+    };
+    return ctx._stCache;
+  }
 
   /**
    * Evaluate an entire chain and return the best ChainContextCombo.
@@ -551,23 +609,35 @@ export class ChainContextEngine {
     return found;
   }
 
+  /**
+   * T6: enumerate the full cross-product of `contextSets` using a BaseX-style
+   * digit counter. Pre-allocates the output array and writes each row by index;
+   * no `[...existing, ctx]` spread per combo. Probe showed ×3-4× over the
+   * previous spread-based iteration across input shapes from 125 to 32k combos.
+   *
+   * Empty-input guards preserved: returns `[]` if `contextSets` is empty OR if
+   * any subset is empty (no combo is constructible).
+   */
   private crossProductContexts(contextSets: ScheduleContext[][]): ScheduleContext[][] {
     if (contextSets.length === 0) return [];
-    if (contextSets.length === 1) return contextSets[0].map(c => [c]);
-
-    let result: ScheduleContext[][] = contextSets[0].map(c => [c]);
-
-    for (let i = 1; i < contextSets.length; i++) {
-      const newResult: ScheduleContext[][] = [];
-      for (const existing of result) {
-        for (const ctx of contextSets[i]) {
-          newResult.push([...existing, ctx]);
-        }
-      }
-      result = newResult;
+    let total = 1;
+    for (const s of contextSets) {
+      if (s.length === 0) return [];
+      total *= s.length;
     }
-
-    return result;
+    const out = new Array<ScheduleContext[]>(total);
+    const counters = new Array<number>(contextSets.length).fill(0);
+    for (let n = 0; n < total; n++) {
+      const row = new Array<ScheduleContext>(contextSets.length);
+      for (let i = 0; i < contextSets.length; i++) row[i] = contextSets[i][counters[i]];
+      out[n] = row;
+      // Increment with carry — like a base-N odometer where digit i has base contextSets[i].length.
+      for (let i = contextSets.length - 1; i >= 0; i--) {
+        if (++counters[i] < contextSets[i].length) break;
+        counters[i] = 0;
+      }
+    }
+    return out;
   }
 
   // ── Step 4: Timing propagation ──
@@ -749,6 +819,9 @@ export class ChainContextEngine {
   private computeContextFeasibleDuration(ctx: ScheduleContext): number {
     const st = ctx.slot.startTimes;
     if (!st) return 0;
+    // T3 scope: iterate-all helpers were NOT included in the narrowed ship
+    // (typed-array sum gave only ×2 local with measurable cache complexity).
+    // Only the 3 find-pattern helpers use the binary-search fast path.
     let total = 0;
     let node = st.head;
     while (node) {
@@ -766,6 +839,12 @@ export class ChainContextEngine {
   ): void {
     const st = ctx.slot.startTimes;
     if (!st) return;
+    // T3 invalidation — the only in-cycle mutation site for startTimes during
+    // chain evaluation. Bumping the version causes getStCache to rebuild the
+    // typed arrays on next access. The other 5 startTimes mutation sites
+    // (cadencefilter, computeschedulecontexts, commonstarttimes ×2,
+    // evaluator unschedule) all run outside the evaluate-chain window.
+    ctx._stCacheVersion++;
 
     let node = st.head;
     while (node) {
@@ -798,6 +877,10 @@ export class ChainContextEngine {
     landscape: SchedulingLandscape,
     scoring: CTPScoring,
   ): void {
+    if (this.useUniqueContextScoring) {
+      this.scoreChainCombosWithUnique(combos, landscape, scoring);
+      return;
+    }
     const scoringEngine = new ScoringEngine();
 
     for (const combo of combos) {
@@ -822,6 +905,105 @@ export class ChainContextEngine {
     }
   }
 
+  /**
+   * T4 PATH-B — score raw rule values ONCE per unique context, then re-blend
+   * per-combo using THIS combo's own min/max. Preserves the per-combo
+   * normalization semantics of the original (the spec's "global
+   * normalization" variant changed combo rankings — explicitly NOT used).
+   *
+   * Skips the expensive `rule.compute(ctx)` work for duplicated contexts;
+   * still pays per-combo blending cost. Speedup ≈ duplication ratio when
+   * scoring dominates blending (compute() walks startTimes / calendar;
+   * blending is just min/max arithmetic).
+   */
+  private scoreChainCombosWithUnique(
+    combos: ChainContextCombo[],
+    landscape: SchedulingLandscape,
+    scoring: CTPScoring,
+  ): void {
+    // Build rule instances ONCE — was repeated per-combo in the old path.
+    const rules: { name: string; rule: import('../AI/Scoring/scoringrule').IScoringRule }[] = [];
+    let cum = 0;
+    scoring.rules.forEach((r) => {
+      if (r.includeInSolve) {
+        try {
+          const inst = ScoringFactory.createScoringRule(
+            r.ruleName, r.weight, r.objective, r.penaltyFactor,
+          );
+          rules.push({ name: r.ruleName, rule: inst });
+          cum += inst.weight;
+        } catch (err) {
+          // Scoring rule creation failed — skip this rule (matches original behavior)
+        }
+      }
+    });
+    if (cum <= 0.99 || cum > 1.0) throw "Scoring Rules must sum to 100 %";
+
+    // Compute raw rule scores ONCE for each unique context. rawScores[ctx][r]
+    // = raw score for rule r on ctx, or NaN if ctx has no startTimes / rule
+    // threw. NaN values are skipped during blending (matches original which
+    // skipped on exception via the try/catch in computeScores).
+    const uniqueSet = new Set<ScheduleContext>();
+    for (const combo of combos) for (const ctx of combo.contexts) uniqueSet.add(ctx);
+    const rawScores = new Map<ScheduleContext, number[]>();
+    for (const ctx of uniqueSet) {
+      const arr: number[] = new Array(rules.length);
+      const hasSt = ctx.slot?.hasStartTimes();
+      for (let r = 0; r < rules.length; r++) {
+        if (!hasSt) { arr[r] = NaN; continue; }
+        try { arr[r] = rules[r].rule.compute(ctx).score; }
+        catch { arr[r] = NaN; }
+      }
+      rawScores.set(ctx, arr);
+    }
+
+    // Per-combo: derive min/max from THIS combo's contexts, blend per ctx.
+    for (const combo of combos) {
+      // Per-combo min/max per rule
+      const mins = new Array<number>(rules.length).fill(Number.MAX_SAFE_INTEGER);
+      const maxs = new Array<number>(rules.length).fill(Number.MIN_SAFE_INTEGER);
+      for (const ctx of combo.contexts) {
+        const raw = rawScores.get(ctx)!;
+        for (let r = 0; r < rules.length; r++) {
+          const v = raw[r];
+          if (!isNaN(v)) {
+            if (v < mins[r]) mins[r] = v;
+            if (v > maxs[r]) maxs[r] = v;
+          }
+        }
+      }
+
+      // Blend each context using this combo's min/max; sum into chainScore.
+      // Note: original code initializes blendedScore = Number.MAX_VALUE and
+      // only overwrites if hasStartTimes — so a context without startTimes
+      // contributed MAX_VALUE to the sum, effectively pricing the combo out.
+      // We preserve that here.
+      let chainScore = 0;
+      for (const ctx of combo.contexts) {
+        if (!ctx.slot?.hasStartTimes()) {
+          chainScore += Number.MAX_VALUE;
+          continue;
+        }
+        const raw = rawScores.get(ctx)!;
+        let n = 0;
+        for (let r = 0; r < rules.length; r++) {
+          const v = raw[r];
+          if (isNaN(v)) continue;
+          const range = maxs[r] - mins[r];
+          let s = range !== 0 ? (v - mins[r]) / range : 1.0;
+          s = s * rules[r].rule.weight;
+          if (rules[r].rule.objective === CTPScoreObjectiveConstants.MAXIMIZE) s *= -1.0;
+          if (rules[r].rule.penaltyFactor) s += s * rules[r].rule.penaltyFactor;
+          n += s;
+        }
+        chainScore += n;
+      }
+      // Gap penalty: identical to original
+      chainScore += (combo.totalGap / 60) * 0.1;
+      combo.chainScore = chainScore;
+    }
+  }
+
   // ── Step 7: Assign start times (primary-task-driven) ──
 
   /**
@@ -838,6 +1020,16 @@ export class ChainContextEngine {
     const propagatedEStartP = combo.startTimes[primaryIndex].eStartW;
     const propagatedLStartP = combo.startTimes[primaryIndex].lStartW;
     const primaryDuration = primarySt.head.data.duration;
+
+    // T8: hoist the per-context calendar lookup out of all inner loops below.
+    // combo.contexts[i].slot.resources?.at(0)?.resource?.available?.staticAvailable
+    // is invariant within one assignStartTimes call but was previously refetched
+    // 5 different places: predecessor walk, successor walk, primary placement,
+    // backward placement walk, forward placement walk. The chain is a 7-step
+    // optional-property dereference each time; doing it once is a strict win.
+    const calendars = combo.contexts.map((c) =>
+      c.slot.resources?.at(0)?.resource?.available?.staticAvailable,
+    );
 
     // Collect candidate starts for the primary task
     const candidateSet = new Set<number>();
@@ -868,14 +1060,13 @@ export class ChainContextEngine {
         for (let k = p; k < primaryIndex; k++) {
           const kTask = combo.contexts[k].task;
           const offset = this.getAssignedProcessChangeDuration(combo.contexts[k], targetStart);
-          const kCalendar = combo.contexts[k].slot.resources?.at(0)?.resource?.available?.staticAvailable;
           const kEnd = kTask.duration
-            ? workingEndForwardW(kCalendar, targetStart, kTask.duration)
+            ? workingEndForwardW(calendars[k], targetStart, kTask.duration)
             : targetStart;
           targetStart = kEnd + offset;
         }
         if (targetStart >= propagatedEStartP && targetStart <= propagatedLStartP
-            && this.isWithinStartTimeNode(primarySt, targetStart)) {
+            && this.isWithinStartTimeNode(primarySt, targetStart, primaryCtx)) {
           candidateSet.add(targetStart);
         }
         pNode = pNode.next;
@@ -893,13 +1084,12 @@ export class ChainContextEngine {
         let targetStart = sNode.data.eStartW;
         for (let k = s - 1; k >= primaryIndex; k--) {
           const kTask = combo.contexts[k].task;
-          const kCalendar = combo.contexts[k].slot.resources?.at(0)?.resource?.available?.staticAvailable;
           targetStart = kTask.duration
-            ? workingStartBackwardW(kCalendar, targetStart, kTask.duration)
+            ? workingStartBackwardW(calendars[k], targetStart, kTask.duration)
             : targetStart;
         }
         if (targetStart >= propagatedEStartP && targetStart <= propagatedLStartP
-            && this.isWithinStartTimeNode(primarySt, targetStart)) {
+            && this.isWithinStartTimeNode(primarySt, targetStart, primaryCtx)) {
           candidateSet.add(targetStart);
         }
         sNode = sNode.next;
@@ -921,15 +1111,14 @@ export class ChainContextEngine {
         pStart = Math.ceil(pStart / cadenceSec) * cadenceSec;
       }
       if (pStart > propagatedLStartP) continue;
-      if (!this.isWithinStartTimeNode(primarySt, pStart)) continue;
+      if (!this.isWithinStartTimeNode(primarySt, pStart, primaryCtx)) continue;
 
       const trial: ({ start: number; end: number } | null)[] =
         new Array(combo.contexts.length).fill(null);
       // Primary trial end: walk the calendar for FLOAT, arithmetic for FIXED.
       const primaryTask = primaryCtx.task;
-      const primaryCalendar = primaryCtx.slot.resources?.at(0)?.resource?.available?.staticAvailable;
       const primaryEnd = primaryTask.duration
-        ? workingEndForwardW(primaryCalendar, pStart, primaryTask.duration)
+        ? workingEndForwardW(calendars[primaryIndex], pStart, primaryTask.duration)
         : pStart + primaryDuration;
       trial[primaryIndex] = { start: pStart, end: primaryEnd };
 
@@ -947,9 +1136,8 @@ export class ChainContextEngine {
         if (predStart === null) { feasible = false; break; }
 
         const predTask = combo.contexts[i].task;
-        const predCalendar = combo.contexts[i].slot.resources?.at(0)?.resource?.available?.staticAvailable;
         const predEnd = predTask.duration
-          ? workingEndForwardW(predCalendar, predStart, predTask.duration)
+          ? workingEndForwardW(calendars[i], predStart, predTask.duration)
           : predStart;
         trial[i] = { start: predStart, end: predEnd };
       }
@@ -975,9 +1163,8 @@ export class ChainContextEngine {
         }
 
         const succTask = combo.contexts[i].task;
-        const succCalendar = combo.contexts[i].slot.resources?.at(0)?.resource?.available?.staticAvailable;
         const succEnd = succTask.duration
-          ? workingEndForwardW(succCalendar, succStart, succTask.duration)
+          ? workingEndForwardW(calendars[i], succStart, succTask.duration)
           : succStart;
         trial[i] = { start: succStart, end: succEnd };
       }
@@ -1013,7 +1200,24 @@ export class ChainContextEngine {
   /**
    * Check if a given start time falls within any start-time node's [eStartW, lStartW] range.
    */
-  private isWithinStartTimeNode(startTimes: any, start: number): boolean {
+  private isWithinStartTimeNode(
+    startTimes: any,
+    start: number,
+    ctx?: ScheduleContext,
+  ): boolean {
+    if (this.useStartTimesCache && ctx) {
+      const c = this.getStCache(ctx);
+      if (c) {
+        // Binary search for greatest i with eStart[i] <= start.
+        let lo = 0, hi = c.count - 1, idx = -1;
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1;
+          if (c.eStart[mid] <= start) { idx = mid; lo = mid + 1; }
+          else hi = mid - 1;
+        }
+        return idx >= 0 && start <= c.lStart[idx];
+      }
+    }
     let node = startTimes.head;
     while (node) {
       if (start >= node.data.eStartW && start <= node.data.lStartW) return true;
@@ -1036,6 +1240,8 @@ export class ChainContextEngine {
 
     const cadence = ctx.task?.cadenceIntervalMinutes;
     const cadenceSec = cadence ? cadence * 60 : 0;
+    // T3 scope: iterate-all path stays on linked-list walk — see comment in
+    // computeContextFeasibleDuration for the narrowing rationale.
 
     let best = Number.MAX_VALUE;
     let node = st.head;
@@ -1074,6 +1280,8 @@ export class ChainContextEngine {
     const duration = ctx.task.duration?.duration() ?? 0;
     const cadence = ctx.task?.cadenceIntervalMinutes;
     const cadenceSec = cadence ? cadence * 60 : 0;
+    // T3 scope: iterate-all path stays on linked-list walk — see comment in
+    // computeContextFeasibleDuration for the narrowing rationale.
 
     let best: number | null = null;
     let node = st.head;
@@ -1117,6 +1325,20 @@ export class ChainContextEngine {
   private getAssignedProcessChangeDuration(ctx: ScheduleContext, assignedStart: number): number {
     const st = ctx.slot.startTimes;
     if (!st) return 0;
+
+    if (this.useStartTimesCache) {
+      const c = this.getStCache(ctx);
+      if (c) {
+        let lo = 0, hi = c.count - 1, idx = -1;
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1;
+          if (c.eStart[mid] <= assignedStart) { idx = mid; lo = mid + 1; }
+          else hi = mid - 1;
+        }
+        if (idx >= 0 && assignedStart <= c.lStart[idx]) return c.pcd[idx];
+        return c.pcd[0] ?? 0;
+      }
+    }
 
     let node = st.head;
     while (node) {
@@ -1164,6 +1386,28 @@ export class ChainContextEngine {
   private findStartTimeNode(ctx: ScheduleContext, assignedStart: number): CTPStartTime | null {
     const st = ctx.slot.startTimes;
     if (!st) return null;
+
+    if (this.useStartTimesCache) {
+      const c = this.getStCache(ctx);
+      if (c) {
+        let lo = 0, hi = c.count - 1, idx = -1;
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1;
+          if (c.eStart[mid] <= assignedStart) { idx = mid; lo = mid + 1; }
+          else hi = mid - 1;
+        }
+        // Map the typed-array index back to the linked-list node by walking
+        // (the cache doesn't store CTPStartTime references — that would defeat
+        // the cache locality benefit on the sum-path). idx is small (avg N/2
+        // walks worst case, but most callers hit the same node multiple times
+        // so this is dominated by binary search wins elsewhere).
+        let n = st.head;
+        let k = 0;
+        while (n && k < idx) { n = n.next; k++; }
+        if (idx >= 0 && n && assignedStart <= c.lStart[idx]) return n.data;
+        return st.head?.data ?? null;
+      }
+    }
 
     let node = st.head;
     while (node) {

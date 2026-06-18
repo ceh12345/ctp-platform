@@ -1,0 +1,23 @@
+{
+  "ticketId": "ticket-06",
+  "description": "crossProductContexts: pre-T6 iterative spread (`newResult.push([...existing, ctx])` per combo, allocating a fresh array at every level) vs T6 BaseX counter (pre-allocated output array of exact total size, digit counter with carry, row writes by index). Both impls enumerate combos in the same right-most-digit-fastest order, so projected output is bit-identical — no sort needed in the projection.",
+  "fixture": "4 sets × 8 contexts each = 4096 combos (matches spec acceptance example). Projection includes the id-mapping step so both impls pay the same projection cost.",
+  "timestamp": "2026-05-23T19:29:44.147Z",
+  "node": "v22.14.0",
+  "correctness": "PASS",
+  "old": {
+    "medianMs": 0.26,
+    "p95Ms": 0.8255,
+    "minMs": 0.1948,
+    "heapDeltaBytes": -166856
+  },
+  "new": {
+    "medianMs": 0.1108,
+    "p95Ms": 0.2624,
+    "minMs": 0.087,
+    "heapDeltaBytes": -2616
+  },
+  "speedup": 2.34657,
+  "minSpeedupRequired": 2,
+  "acceptancePass": true
+}

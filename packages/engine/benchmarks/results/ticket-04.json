@@ -1,0 +1,23 @@
+{
+  "ticketId": "ticket-04",
+  "description": "scoreChainCombos PATH-B (score raw values once per unique context, blend per-combo with this combo's min/max) vs ORIGINAL (computeScores called per combo). PATH-B preserves per-combo normalization semantics exactly — the spec's 'global normalization' variant was rejected because it changed combo rankings. See CODE-OPTIMIZATION-SPRINT.md T4 for details.",
+  "fixture": "500 combos × 3 contexts/combo drawing from 21 unique contexts (duplication 71×); 30 startTimes per context; 2 scoring rules (Earliest+Latest)",
+  "timestamp": "2026-05-23T18:39:58.632Z",
+  "node": "v22.14.0",
+  "correctness": "PASS",
+  "old": {
+    "medianMs": 2.8072,
+    "p95Ms": 3.7078,
+    "minMs": 2.5129,
+    "heapDeltaBytes": -159624
+  },
+  "new": {
+    "medianMs": 0.1346,
+    "p95Ms": 0.2313,
+    "minMs": 0.1127,
+    "heapDeltaBytes": 7944
+  },
+  "speedup": 20.85587,
+  "minSpeedupRequired": 4,
+  "acceptancePass": true
+}

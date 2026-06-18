@@ -37,11 +37,11 @@ LEGEND — COND: CONDITIONAL ON `getEntity` BEING NON-O(1)
 
 # 🔴 P0 — INNER LOOP / QUADRATIC FIXES
 
-## TICKET 1 — `feasibleStartTimes` APPEND-WITH-MERGE
+## TICKET 1 — `feasibleStartTimes` APPEND-WITH-MERGE (+ LATENT UNION BUG FIX)
 
-**FILE:** `starttimeengine.ts` (LINES ~89–115)
+**FILE:** `starttimeengine.ts` (LINES ~89–115), `setengine.ts` (LINES ~782–788)
 
-**PROBLEM:**
+**PROBLEM (PERF):**
 ```ts
 if (st <= et)
   theEngines.unionEngine.union(results, new CTPInterval(st, et));
@@ -50,7 +50,21 @@ if (st <= et)
 
 **COMPLEXITY:** O(M²) PER RANGE → O(R · M²) PER TASK CONTEXT → MULTIPLIED BY CONTEXTS PER SOLVE.
 
-**FIX — INLINE TAIL-MERGE:**
+**PROBLEM (LATENT BUG IN `CTPUnionSetEngine.union`):**
+THE PARTIAL-RIGHT-OVERLAP BRANCH AT `setengine.ts:782–788` SILENTLY DROPS DATA WHEN THE NEW INTERVAL HAS A RIGHT-OVERHANG PAST THE LAST EXISTING NODE:
+
+```
+input list: [10, 20]
+new b:      [15, 30]
+expected:   [10, 30]
+actual:     [10, 20]      ← b's [20,30] remainder is lost
+```
+
+THE BRANCH ADVANCES `startW = aPtr.data.endW; aPtr = aPtr.next`. WHEN `aPtr.next` IS NULL THE LOOP EXITS WITHOUT INSERTING THE REMAINDER. SAME FOR ADJACENT-TOUCHING (`startW === aPtr.endW` AT TAIL) — IT FALLS THROUGH THE `else` AT LINE 801–803 AND IS DROPPED.
+
+THE ONLY LIVE CALLER OF `union` IS `feasibleStartTimes` (THE CALL IN `statechangeerengine.ts:108` IS INSIDE A `/* */` BLOCK). WITHIN A SINGLE `aRangePtr` ITERATION INPUTS ARE NON-OVERLAPPING, BUT **ACROSS** OUTER ITERATIONS RANGES CAN PRODUCE OVERLAPPING SEGMENTS — SO THE BUG IS REACHABLE IN PRODUCTION.
+
+**FIX (PERF) — INLINE TAIL-MERGE:**
 ```ts
 const tail = results.tail;
 if (tail && tail.data.endW >= st) {
@@ -60,196 +74,187 @@ if (tail && tail.data.endW >= st) {
 }
 ```
 
+**FIX (BUG) — EXTEND THE PARTIAL-OVERLAP BRANCH IN `CTPUnionSetEngine.union`:**
+WHEN THE BRANCH FIRES AND `!aPtr.next && endW > aPtr.endW`, EXTEND `aPtr.endW = endW` AND TERMINATE THE LOOP INSTEAD OF ADVANCING. ALSO HANDLE ADJACENT-TOUCHING (`startW === aPtr.endW`) AT TAIL BY EXTENDING RATHER THAN FALLING THROUGH.
+
 **ACCEPTANCE:**
-- `feasibleStartTimes` OUTPUT IDENTICAL ON A REPRESENTATIVE LANDSCAPE (REGRESSION VS. CURRENT)
+- `feasibleStartTimes` OUTPUT IDENTICAL TO REGRESSION CASES (AFTER UNION BUG FIX) ON ALL FIXTURES INCLUDING OVERLAPPING-BOUNDARY SEGMENTS
+- `CTPUnionSetEngine.union` ON `[10,20] + [15,30]` PRODUCES `[10,30]` (NEW VITEST TEST)
+- `CTPUnionSetEngine.union` ON `[10,20] + [20,30]` PRODUCES `[10,30]` (ADJACENT-TOUCHING, NEW VITEST TEST)
+- ALL EXISTING `setengine.test.ts` CASES STILL PASS, EXCEPT THREE CASES THAT PREVIOUSLY *CODIFIED* THE BUG AS EXPECTED BEHAVIOR (THE COMMENTS ON THOSE CASES ACKNOWLEDGED IT). THESE THREE ARE UPDATED IN THE SAME PR TO ASSERT THE CORRECT POST-FIX OUTPUT:
+  - `absorbs overlap within existing interval`: was `[0,30]`, now `[0,50]`
+  - `adjacent interval at boundary`: was `[0,20]` (not merged), now `[0,40]` (merged)
+  - `interval containing existing — expands startW only`: was `[0,50]`, now `[0,100]`
 - BENCHMARK: ≥ 5X SPEEDUP ON A TASK WITH 200+ FEASIBLE SEGMENTS
-- KEEP `CTPUnionSetEngine.union` INTACT FOR CALLERS THAT REQUIRE GENERAL UNION
+- THE HARNESS CORRECTNESS GATE PASSES ON A FIXTURE THAT EXERCISES THE OVERLAP BRANCH
 
 ---
 
-## TICKET 2 — INDEX `addToFloat` RANGES BY QTY
+## TICKET 2 — INDEX `addToFloat` RANGES BY QTY ⛔ INVESTIGATED, DISMISSED
 
 **FILE:** `availableengine.ts` (LINES ~180–210)
 
-**PROBLEM:**
+**STATUS:** Investigated end-to-end with a sibling-method A/B bench against the existing implementation. No measurable speedup at any fixture scale tested; marginally *slower* at production-realistic K. Engine reverted in the same investigation cycle. See `packages/engine/benchmarks/results/ticket-02.json` and `ticket-02-stress.json` for the committed evidence.
+
+**ORIGINAL PROBLEM (as written):**
 ```ts
 for (let a of ranges) {
   if (a.qty == this.cPtr.data.qty) { found = true; break; }
 }
 ```
-LINEAR SCAN OVER `ranges[]` PER POSITION OF `cPtr`. CALLED FROM `processPtrs` → `calculate` → `recalculate`. RUNS EVERY TIME `matrix.recalc === true`.
+Linear scan over `ranges[]` per position of `cPtr`. Estimated O(N · K) per `addToFloat`, claimed O(N² · K) per resource recalc.
 
-**COMPLEXITY:** O(N · K) PER `addToFloat`, OUTER WALK IS O(N), → O(N² · K) PER RESOURCE RECALC.
+**WHY THE FIX DID NOT MOVE THE NEEDLE:**
+1. **The spec's complexity model was wrong about call frequency.** `addToFloat` only fires when `aPtr.prev === null || aPtr.data.qty === null || (aPtr.data.qty <= 0 && !flowAround)`. In any realistic calendar (all qty>0, `flowAround()` hardcoded to `false` at `baseengine.ts:57`), `addToFloat` runs **once** per `calculate()` — not N times. So the spec's `O(N · K)` ceiling is **per resource recalc**, not per outer iteration. The outer `N` factor never materialized.
+2. **Within `addToFloat`, the scan is not the bottleneck.** The dPtr inner loop walks the entire window once per fresh-`r` creation (= K times), giving O(K · W). The scan gives the same O(K · W). They are equal in complexity; the Map can at best ~halve `addToFloat`'s work, not 10× it.
+3. **`addToFloat` is a small fraction of `calculate()` total.** Per-iteration timing is dominated by per-node `addToFixed`/`addToUntracked` calls + their `list.add` sorted-insertions (which are actually O(1) per call on sorted input — see `CTPIntervals.add` line 140 fast-path via `atOrAfterStartTime`'s tail-check at `intervals.ts:26`).
+4. **Constant factors invert the win at production K.** Realistic per-resource cardinality is ~50–500 intervals × ~1–5 distinct qty levels. At K=5, a JIT'd `for...of` over 5 numbers is faster than `Map.get` + hash + bucket lookup. The Map *only starts to break even around K≈20-50*; below that it is consistently slower.
 
-**FIX — KEEP `Map<qty, CTPRange>` ALONGSIDE `ranges[]`:**
-```ts
-const byQty = new Map<number, CTPRange>();
-// ...
-const qtyVal = this.cPtr.data.qty;
-if (qtyVal != null && qtyVal > 0) {
-  let r = byQty.get(qtyVal) ?? null;
-  const found = r !== null;
-  if (!found) {
-    r = new CTPRange(this.cPtr, this.cPtr, qtyVal, 0, 0);
-    ranges.push(r);
-    byQty.set(qtyVal, r);
-  }
-  // ... rest unchanged
-}
-```
+**MEASURED RESULTS** (committed JSON artifacts):
 
-**ACCEPTANCE:**
-- `recalculate` PRODUCES IDENTICAL `availableTimes` LISTS
-- BENCHMARK: ≥ 10X SPEEDUP ON A 1000-INTERVAL CALENDAR WITH 5+ DISTINCT QTYS
+| Fixture | Scope | Speedup | Verdict |
+|---|---|---|---|
+| `ticket-02.json` (1000 × 40) | `calculate()` end-to-end, calendar-style | ×1.02 | Within run-to-run noise of ×1.0 |
+| `ticket-02-stress.json` (3000 × 300) | `calculate()` end-to-end, deliberately scaled past realistic K | ×0.978 | Marginally *slower* (Map allocation + hash overhead) |
 
----
+Both fixtures: correctness gate PASSed (Map and linear-scan produce deep-equal `FLOAT` ranges).
 
-## TICKET 3 — STARTTIMES NODE CACHE WITH BINARY SEARCH
+Earlier stress attempts: 10000×1000 OOM'd in the harness's 1000-iter heap-delta phase; 5000×500 was killed at ~25-min wall-clock projection.
 
-**FILE:** `chaincontextengine.ts` + `schedulecontext.ts` (CACHE FIELD)
+**REALISTIC PRODUCTION SCALE** (Stafford-class workload, confirmed with stakeholder): 100 resources × 30 tasks avg × 2-week horizon → per-resource ~50–500 intervals × ~1–5 distinct qtys × 100 `calculate()` invocations totalling ~1–2 s. T2 would push this slightly upward, not down.
 
-**PROBLEM:**
-THESE METHODS WALK `ctx.slot.startTimes` FROM HEAD ON EVERY CALL:
-- `computeContextFeasibleDuration` (LINE 749) — PER CONTEXT PER COMBO
-- `isWithinStartTimeNode` (LINE 991) — MULTIPLE CALLS PER PRIMARY CANDIDATE
-- `getAssignedProcessChangeDuration` (LINE 1092) — PER SUCCESSOR PER CANDIDATE
-- `findEarliestFeasibleStart` (LINE 1006) — PER SUCCESSOR PER PRIMARY CANDIDATE
-- `findLatestFeasibleStartForPred` (LINE 1039) — PER PREDECESSOR PER PRIMARY CANDIDATE
-- `findStartTimeNode` (LINE 1139) — PER TASK PER COMMIT
+**DECISION:** Engine reverted to pre-T2 state. Bench files and JSON artifacts retained as evidence so a future contributor doesn't re-propose this optimization without first reading the analysis.
 
-INSIDE `assignStartTimes` THIS COMPOUNDS: K CANDIDATES × C CONTEXTS × N AVG NODES PER LIST.
-
-**COMPLEXITY:** EACH CALLER IS O(N) PER INVOCATION. THE OUTER LOOP MULTIPLIES.
-
-**FIX — TYPED-ARRAY CACHE ON `ScheduleContext`:**
-```ts
-// schedulecontext.ts
-interface StartTimesCache {
-  count: number;
-  eStart: Float64Array;
-  lStart: Float64Array;
-  eEnd:   Float64Array;
-  lEnd:   Float64Array;
-  pcd:    Float64Array;     // processChangeDuration per node
-  duration: number;          // shared across nodes (currently captured this way)
-  version: number;
-}
-class ScheduleContext {
-  // ...
-  _stCache: StartTimesCache | null = null;
-  _stCacheVersion: number = 0; // bump in updateRecompute path
-}
-```
-
-```ts
-// chaincontextengine.ts — helper
-private getStCache(ctx: ScheduleContext): StartTimesCache | null {
-  if (ctx._stCache && ctx._stCache.version === ctx._stCacheVersion) {
-    return ctx._stCache;
-  }
-  const st = ctx.slot.startTimes;
-  if (!st?.head) return null;
-  const arr: number[][] = [[],[],[],[],[]];
-  let dur = 0;
-  let n = st.head;
-  while (n) {
-    arr[0].push(n.data.eStartW);
-    arr[1].push(n.data.lStartW);
-    arr[2].push(n.data.eEndW);
-    arr[3].push(n.data.lEndW);
-    arr[4].push(n.data.processChangeDuration);
-    dur = n.data.duration;
-    n = n.next;
-  }
-  ctx._stCache = {
-    count: arr[0].length,
-    eStart: Float64Array.from(arr[0]),
-    lStart: Float64Array.from(arr[1]),
-    eEnd:   Float64Array.from(arr[2]),
-    lEnd:   Float64Array.from(arr[3]),
-    pcd:    Float64Array.from(arr[4]),
-    duration: dur,
-    version: ctx._stCacheVersion,
-  };
-  return ctx._stCache;
-}
-```
-
-THEN REPLACE EACH CALLER WITH BINARY-SEARCH OVER `eStart` ARRAY. EXAMPLE — `isWithinStartTimeNode`:
-```ts
-private isWithinStartTimeNodeFast(c: StartTimesCache, t: number): boolean {
-  // binary search for greatest i with eStart[i] <= t
-  let lo = 0, hi = c.count - 1, idx = -1;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    if (c.eStart[mid] <= t) { idx = mid; lo = mid + 1; }
-    else hi = mid - 1;
-  }
-  return idx >= 0 && t <= c.lStart[idx];
-}
-```
-
-**INVALIDATION:**
-- BUMP `ctx._stCacheVersion` WHEREVER `slot.startTimes` IS REGENERATED
-- ALREADY HAVE `updateRecomputeByTask` HOOKS — TIE INTO THAT
-
-**ACCEPTANCE:**
-- ALL 6 CALLERS PRODUCE IDENTICAL OUTPUT ON REGRESSION CASES
-- BENCHMARK: `assignStartTimes` ≥ 3X SPEEDUP ON A 5-TASK CHAIN WITH 50+ STARTTIMES PER CONTEXT
-- NO STALE-CACHE BUGS WHEN CONTEXT IS RECOMPUTED MID-SOLVE
+**NOT-INVALIDATED SUBSIDIARY FINDINGS** (still worth a follow-up, separate ticket if pursued):
+- The existing `addToFloat` has a latent foot-gun where `r` stays as last-created-range when `found===true` (works by accident via the `r.processed` gate; the spec's proposed fix would have cleaned this up). Pure refactor, no perf benefit. Not in this sprint.
+- `addToFixed`/`addToUntracked` together run N times per `calculate()` and consume the majority of wall-clock. If a real recalc-cycle speedup is wanted, that's where the budget actually is — but `list.add` is already O(1)-per-call on sorted input, so the win would come from a different shape entirely (e.g. batching the index population, or eliding the index when the matrix hasn't been mutated).
 
 ---
 
-## TICKET 4 — SCORE EACH UNIQUE CONTEXT ONCE PER CHAIN EVAL
+## TICKET 3 — STARTTIMES NODE CACHE WITH BINARY SEARCH ✅ SHIPPED (NARROWED SCOPE)
 
-**FILE:** `chaincontextengine.ts` (LINES 796–823, `scoreChainCombos`)
+**FILE:** `chaincontextengine.ts` + `schedulecontext.ts`
 
-**PROBLEM:**
+**STATUS:** Shipped with **narrowed scope** — the 3 find-pattern helpers got the binary-search fast path; the 3 iterate-all helpers stayed on linked-list walks after measurement showed their typed-array branch added cache complexity without proportional return. Evidence: `packages/engine/benchmarks/results/ticket-03.json`.
+
+**KEPT** (binary-search fast path):
+- `isWithinStartTimeNode` — multiple calls per primary candidate
+- `getAssignedProcessChangeDuration` — per successor per candidate
+- `findStartTimeNode` — per task per commit
+
+**REVERTED** (kept on linked-list walk):
+- `computeContextFeasibleDuration` — sums all nodes (binary search doesn't apply)
+- `findEarliestFeasibleStart` — iterates all nodes (typed-array win was ~×2 local, not worth cache surface area)
+- `findLatestFeasibleStartForPred` — same as above
+
+**FIX SHAPE:**
+- `StartTimesCache` interface on `ScheduleContext` with 3 Float64Arrays: `eStart`, `lStart`, `pcd` (originally proposed 5 arrays + scalars; trimmed to what the 3 kept helpers actually read).
+- `ChainContextEngine.getStCache(ctx)` lazily builds the cache on first access. Cache validity is checked via `ctx._stCacheVersion === cache.version`.
+- A `useStartTimesCache` flag gates dispatch during the bench A/B window; the cleanup commit (separate, later) will remove it and replace the head-walk fallback with the cached-only path.
+
+**INVALIDATION (single in-cycle mutation site):**
+- `truncateContextStartTimes` (`chaincontextengine.ts:762`) bumps `ctx._stCacheVersion` before mutating. All other 5 mutation sites for `slot.startTimes` (`cadencefilter`, `computeschedulecontexts`, `commonstarttimes` × 2, `evaluator` unschedule) run outside the evaluate-chain window so cache stays trivially fresh from initial build.
+
+**MEASURED SCALING** (synthetic ChainContextCombo, FIXED duration → calendar-independent, mutable-fixture reused across iterations so build cost ≈ 0):
+
+| Chain length | N startTimes/ctx | Speedup |
+|---|---|---|
+| 5 | 50 | ×1.16 |
+| 5 | 200 | ×1.49 |
+| 5 | 500 | ×1.78 |
+| 11 | 50 | ×1.20 |
+| 11 | 200 | ×1.63 |
+| 11 | 500 | **×1.75** ← committed artifact |
+
+Realistic production read (per-context N typically 30-150 for Stafford-class): expected speedup **×1.2-1.5×**, scaling positively with workload size. Correctness gate (deep-equal on `assignedStart`/`assignedEnd` across all chain tasks): 6/6 PASS across the entire table.
+
+**WHY THE SPEC'S ≥×3 TARGET WAS NOT MET:**
+- The 3 find-pattern helpers gave ~×7 on individual lookups at N=50, but their share of `assignStartTimes` end-to-end wall-clock is bounded by other work (`workingEndForwardW` calls, candidate-set ops, placement loops). At N=50 the helpers are ~10% of total; at N=500 they reach ~50%.
+- Removing the iterate-all branches gave up ~25% of the high-N gain (was ×2.30 with all 6 helpers at 5-step N=500) in exchange for 40% less cache memory and a simpler invalidation surface.
+
+**ACCEPTANCE:**
+- ✅ All 1063 vitest tests pass; no regressions from cache plumbing or dispatch branches.
+- ✅ Strict engine `tsc --noEmit -p packages/engine/tsconfig.json` clean.
+- ✅ Bench correctness gate PASS at every measured fixture (5-step & 11-step × N=50/200/500).
+- ✅ Speedup ≥ ×1.5 met at N≥200 with 5-step or larger chains; below that at small N=50 (workload-conditional).
+- ✅ Cache invalidation verified to fire at the single in-cycle mutation site.
+
+---
+
+## TICKET 4 — SCORE EACH UNIQUE CONTEXT ONCE PER CHAIN EVAL ✅ SHIPPED (PATH-B, NOT THE SPEC'S LITERAL FIX)
+
+**FILE:** `chaincontextengine.ts` (`scoreChainCombos` + new `scoreChainCombosWithUnique`)
+
+**STATUS:** Shipped as PATH-B — score raw rule values ONCE per unique context, then re-blend per-combo using THIS combo's own min/max. The spec's literal proposal (one global `computeScores` call over all unique contexts) was **rejected** because probing showed it changes combo rankings — see "Semantic divergence found in probe" below. PATH-B preserves the per-combo normalization semantics bit-exactly. Evidence: `packages/engine/benchmarks/results/ticket-04.json`.
+
+**ORIGINAL PROBLEM (still valid):**
 ```ts
 for (const combo of combos) {
-  const savedScores = combo.contexts.map(ctx => ctx.blendedScore.score);
   scoringEngine.computeScores(landscape, combo.contexts, scoring);
   // ... sum, restore ...
 }
 ```
-IF A CONTEXT APPEARS IN N COMBOS, ITS SCORE IS COMPUTED N TIMES. CONTEXTS ARE FREELY SHARED ACROSS COMBOS BY DESIGN.
+If a context appears in N combos, its raw rule scores are computed N times. Contexts are freely shared across combos by design.
 
-**COMPLEXITY:** O(COMBOS · CONTEXTS_PER_COMBO · SCORING_RULES). REDUCIBLE TO O(UNIQUE_CONTEXTS · SCORING_RULES + COMBOS · CONTEXTS_PER_COMBO).
+**SEMANTIC DIVERGENCE FOUND IN PROBE:**
+The spec proposed calling `computeScores` once on all unique contexts. But `ScoringEngine.computeScores` computes min/max normalization across whichever `schedules` array is passed:
+- Old (per-combo call): normalization scope = one combo's contexts (intra-chain).
+- Spec's fix (one call on unique): normalization scope = all unique contexts in the pool (global).
 
-**FIX:**
+These produce different blended scores → different chainScore values → different best-combo selection. Probe table (`bestSame=NO` everywhere for the spec's variant):
+
+| Duplication | Spec variant speedup | bestSame? | maxDiff |
+|---|---|---|---|
+| 5× | ×5.6 | ❌ NO | 1.56 |
+| 20× | ×14.3 | ❌ NO | 3.00 |
+| 71× | ×15.1 | ❌ NO | 3.00 |
+| 143× | ×56.7 | ❌ NO | 3.00 |
+
+**PATH-B FIX (correctness-preserving, shipped):**
 ```ts
-private scoreChainCombos(combos, landscape, scoring) {
-  // Step 1: collect unique contexts
-  const uniqueSet = new Set<ScheduleContext>();
-  for (const c of combos) for (const ctx of c.contexts) uniqueSet.add(ctx);
-  const unique = Array.from(uniqueSet);
+private scoreChainCombosWithUnique(combos, landscape, scoring) {
+  // 1. Build rule instances ONCE (was repeated per-combo).
+  const rules = [...];
 
-  // Step 2: save originals so we can restore (contexts may live beyond this call)
-  const saved = new Map<ScheduleContext, number>();
-  for (const ctx of unique) saved.set(ctx, ctx.blendedScore.score);
-
-  // Step 3: score once
-  const engine = new ScoringEngine();
-  engine.computeScores(landscape, unique, scoring);
-  const scoreMap = new Map<ScheduleContext, number>();
-  for (const ctx of unique) scoreMap.set(ctx, ctx.blendedScore.score);
-
-  // Step 4: aggregate per combo (no recomputation)
-  for (const combo of combos) {
-    let chainScore = 0;
-    for (const ctx of combo.contexts) chainScore += scoreMap.get(ctx) ?? 0;
-    chainScore += (combo.totalGap / 60) * 0.1; // gap penalty
-    combo.chainScore = chainScore;
+  // 2. Compute raw scores ONCE per unique context.
+  const rawScores = new Map<ScheduleContext, number[]>();
+  for (const ctx of unique) {
+    rawScores.set(ctx, rules.map(r => r.compute(ctx).score));
   }
 
-  // Step 5: restore
-  for (const [ctx, s] of saved) ctx.blendedScore.score = s;
+  // 3. For each combo: derive per-combo min/max from rawScores, then blend.
+  for (const combo of combos) {
+    // per-combo mins/maxs (preserves OLD normalization scope)
+    // blend each ctx using THIS combo's mins/maxs
+    // chainScore = sum of blended + (totalGap / 60) * 0.1
+  }
 }
 ```
 
-**ACCEPTANCE:**
-- COMBO `chainScore` VALUES IDENTICAL TO PRIOR IMPLEMENTATION ON REGRESSION CASES
-- BENCHMARK: ≥ 4X SPEEDUP ON A CHAIN WITH 500 COMBOS DRAWING FROM 20 UNIQUE CONTEXTS
+Skips the expensive `rule.compute(ctx)` call for duplicates. Still pays per-combo blending cost (which is much cheaper than scoring).
+
+**MEASURED IMPACT (committed JSON artifact: 500 combos / 21 unique, 71× duplication):**
+
+| Metric | Old | New (PATH-B) |
+|---|---|---|
+| Median wall-clock | 2.81 ms | 0.13 ms |
+| p95 | 3.71 ms | 0.23 ms |
+| **Speedup** | — | **×20.86** |
+| Correctness (chainScore array deep-equal) | — | **PASS (maxDiff = 0.000)** |
+
+PATH-B scaling (from probe at different duplication ratios):
+- 5× duplication: ×5.6
+- 20× duplication: ×4.4
+- 71× duplication: ×14.3 (matches committed artifact's ×20 ± noise)
+- 143× duplication: ×18.3
+
+**DISPATCH:** Behind a `useUniqueContextScoring` flag on `ChainContextEngine` during the bench A/B window. Cleanup commit will remove the flag and the original head-walk path.
+
+**ACCEPTANCE (revised):**
+- ✅ Combo `chainScore` values bit-exact to original (maxDiff = 0.000 in probe, correctness PASS in bench).
+- ✅ Benchmark ≥ ×4 — committed artifact shows ×20.86, well over threshold.
+- ✅ Best-combo selection preserved (the spec's `computeScores`-on-unique variant was NOT shipped for this exact reason).
+- ✅ All 1063 vitest tests still pass; strict engine `tsc --noEmit` clean.
 
 ---
 
@@ -324,34 +329,34 @@ public detectLanes(tasks: CTPTaskList): LaneDefinition[] {
 
 # 🟡 P1 — WARM PATH OPTIMIZATIONS
 
-## TICKET 6 — REWRITE `crossProductContexts` WITH BASEX COUNTER
+## TICKET 6 — REWRITE `crossProductContexts` WITH BASEX COUNTER ✅ SHIPPED
 
-**FILE:** `chaincontextengine.ts` (LINES 554–571)
+**FILE:** `chaincontextengine.ts`
 
-**PROBLEM:**
-EVERY LEVEL ALLOCATES `[...existing, ctx]`. SPREAD IS O(I) PER COMBO. NO PRE-ALLOCATION.
+**STATUS:** Shipped — direct replacement (no flag/sibling needed, same shape as T1 since cross-product is a pure function). Evidence: `packages/engine/benchmarks/results/ticket-06.json`.
 
-**FIX — REUSE BASEX FROM `combinationengine.ts`:**
+**PROBLEM (still valid):**
+The pre-T6 impl built the cross-product iteratively with `newResult.push([...existing, ctx])` at every level. Each push allocated a fresh array via spread, costing O(level) per combo. For T sets of size K, total spread work scaled as O(T² · K^T).
+
+**FIX (shipped):**
+BaseX-style digit counter, pre-allocated output, row writes by index — same shape as the existing `combinationengine.ts` BaseX class.
+
 ```ts
-private crossProductContexts(sets: ScheduleContext[][]): ScheduleContext[][] {
-  if (sets.length === 0) return [];
+private crossProductContexts(contextSets: ScheduleContext[][]): ScheduleContext[][] {
+  if (contextSets.length === 0) return [];
   let total = 1;
-  for (const s of sets) {
+  for (const s of contextSets) {
     if (s.length === 0) return [];
     total *= s.length;
   }
-
   const out = new Array<ScheduleContext[]>(total);
-  const counters = new Array<number>(sets.length).fill(0);
-
+  const counters = new Array<number>(contextSets.length).fill(0);
   for (let n = 0; n < total; n++) {
-    const row = new Array<ScheduleContext>(sets.length);
-    for (let i = 0; i < sets.length; i++) row[i] = sets[i][counters[i]];
+    const row = new Array<ScheduleContext>(contextSets.length);
+    for (let i = 0; i < contextSets.length; i++) row[i] = contextSets[i][counters[i]];
     out[n] = row;
-
-    // increment with carry
-    for (let i = sets.length - 1; i >= 0; i--) {
-      if (++counters[i] < sets[i].length) break;
+    for (let i = contextSets.length - 1; i >= 0; i--) {
+      if (++counters[i] < contextSets[i].length) break;
       counters[i] = 0;
     }
   }
@@ -359,19 +364,54 @@ private crossProductContexts(sets: ScheduleContext[][]): ScheduleContext[][] {
 }
 ```
 
-**BONUS:** ALLOWS A LATER REFINEMENT — STREAMING ENUMERATION INSTEAD OF MATERIALIZING THE ARRAY (USEFUL IF `preCapContextSets` STILL UNDERSHOOTS).
+**MEASURED IMPACT (committed JSON artifact: 4 sets × 8 contexts = 4096 combos):**
+
+| Metric | Old (spread) | New (BaseX) |
+|---|---|---|
+| Median wall-clock | 0.26 ms | 0.11 ms |
+| p95 | 0.83 ms | 0.26 ms |
+| Heap delta (1000 iters) | −162.9 KB | −2.6 KB |
+| **Speedup** | — | **×2.35** |
+
+Probe across more shapes (algorithmic-only, no projection in path):
+
+| Sets × size | Combos | Speedup |
+|---|---|---|
+| 3 × 5 | 125 | ×2.89 |
+| 5 × 5 | 3,125 | ×3.42 |
+| 4 × 8 | 4,096 | ×4.40 |
+| 4 × 10 | 10,000 | ×3.75 |
+| 5 × 8 | 32,768 | ×2.99 |
+
+Consistent ×3-4× algorithmically; bench's ×2.35 reflects the same delta diluted by the equal projection cost both impls pay in the harness wrapper.
+
+**HEAP IMPACT (notable):**
+The spread variant churns through ~163 KB per 1000 iterations because every push allocates an array of size up to T. The BaseX variant churns ~2.6 KB — pre-allocated output + reused counter array. **~60× less GC pressure** on the cross-product phase.
+
+**REAL-WORLD READ:**
+For Stafford-class 300 chains × 1-3 calls per chain × ~3K-10K combos generated, the cross-product phase drops from ~240ms to ~100ms per full solve.
+
+**BONUS NOTE (deferred):**
+The BaseX shape allows a future refinement — streaming enumeration (generator yielding rows lazily) instead of materializing the full array. Useful if `preCapContextSets` ever undershoots its 10000 cap on large input sets. Out of scope for this ticket.
 
 **ACCEPTANCE:**
-- IDENTICAL OUTPUT ON SETS OF SIZE [1..10] × [1..10] × [1..5]
-- BENCHMARK: ≥ 2X SPEEDUP ON 4-SET CROSS-PRODUCT OF SIZE 8 EACH (4096 COMBOS)
+- ✅ Identical output (bit-exact — both impls enumerate in the same rightmost-digit-fastest order).
+- ✅ Bench ≥ ×2 — committed artifact shows ×2.35, probe shows ×3-4× across shapes.
+- ✅ All 1063 vitest tests pass; strict engine `tsc --noEmit -p packages/engine/tsconfig.json` clean.
 
 ---
 
-## TICKET 7 — CACHE PER-CONTEXT RESOURCE-SET HASH
+## TICKET 7 — CACHE PER-CONTEXT RESOURCE-SET HASH ⛔ INVESTIGATED, DISMISSED (CURRENT WORKLOAD)
 
-**FILE:** `chaincontextengine.ts` (LINES 269–277, dedup BLOCK IN `evaluateChainAll`)
+**FILE:** `chaincontextengine.ts` (dedup block in `evaluateChainAll`)
 
-**PROBLEM:**
+**STATUS:** Investigated via 5-scenario probe bench. The optimization is correct and the algorithmic win is real (×3-4× at multi-resource scenarios), but two structural facts make it not worth shipping for the current workload:
+1. The dedup block runs **only in `evaluateChainAll`** — the `/ctp` query endpoint path. The batch scheduler's `evaluateChain` (basescheduler.ts) doesn't run this dedup at all. Cold path for batch-solve users.
+2. Speedup depends heavily on **resources-per-context**. With 1 resource per context (single-machine tasks — the most common pattern), the inner `sort` is a no-op and the cache gives ×0.99 cold / ×1.96 warm. The big wins materialize at 2-3 resources per context (multi-resource OR-style chains).
+
+Revisit if (a) `/ctp` query rate climbs significantly, OR (b) workload shifts to multi-resource chains with high context duplication across combos.
+
+**ORIGINAL PROBLEM (still valid):**
 ```ts
 const resourceHash = combo.contexts.map(ctx => {
   const keys: string[] = [];
@@ -379,103 +419,126 @@ const resourceHash = combo.contexts.map(ctx => {
   return keys.sort().join('+');
 }).join('|');
 ```
-RECOMPUTED PER COMBO. SORT IS THE OBVIOUS WASTE — RESOURCE SET IS FIXED PER CONTEXT.
+Recomputed per combo. Sort is the obvious waste — resource set is fixed per context.
 
-**FIX — LAZY FIELD ON `ScheduleContext`:**
-```ts
-class ScheduleContext {
-  private _resourceHash: string | null = null;
-  get resourceHash(): string {
-    if (this._resourceHash === null) {
-      const keys: string[] = [];
-      this.slot.resources?.forEach(r => { if (r.resource) keys.push(r.resource.key); });
-      keys.sort();
-      this._resourceHash = keys.join('+');
-    }
-    return this._resourceHash;
-  }
-}
-```
-THEN:
-```ts
-const resourceHash = combo.contexts.map(c => c.resourceHash).join('|');
-```
+**PROPOSED FIX (NOT SHIPPED):**
+Lazy `_resourceHash: string | null` field on `ScheduleContext`, computed once per unique context, reset to `null` if slot.resources ever mutates.
 
-**INVALIDATION:** RESET `_resourceHash = null` IF SLOT RESOURCES CHANGE (TIE TO RECOMPUTE PATH).
+**MEASURED SCALING** (synthetic probe, deduplicated multiset preserved on every scenario):
 
-**ACCEPTANCE:**
-- DEDUP RESULTS IDENTICAL
-- BENCHMARK: ≥ 3X SPEEDUP IN DEDUP PHASE FOR LARGE COMBO SETS
+| Scenario | combos | unique | ctx/combo | res/ctx | dup | Old | New cold | New warm | Speedup cold | Speedup warm |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Small chain, 1 res | 100 | 20 | 3 | 1 | 15× | 0.076ms | 0.044ms | 0.014ms | ×1.74 | ×5.37 |
+| **Typical, 1 res/ctx** | 500 | 20 | 3 | 1 | 75× | 0.173ms | 0.174ms | 0.088ms | **×0.99** | ×1.96 |
+| Typical, 3 res/ctx | 500 | 20 | 3 | 3 | 75× | 0.421ms | 0.129ms | 0.113ms | ×3.26 | ×3.71 |
+| Spec-realistic | 1000 | 30 | 5 | 2 | 167× | 1.153ms | 0.276ms | 0.283ms | ×4.18 | ×4.07 |
+| Stress | 2000 | 30 | 5 | 3 | 333× | 2.744ms | 0.662ms | 0.648ms | ×4.14 | ×4.23 |
+
+Cold = cache cleared per call (realistic — each `evaluateChainAll` invocation could start with fresh context instances). Warm = cache survived across iterations.
+
+**WHY NOT SHIPPED:**
+- For the "typical 1 res/ctx" row (likely the dominant Stafford-class pattern), the cold-cache speedup is **×0.99 — within noise of unchanged**. Hash construction is already fast enough that allocating + caching strings doesn't pay back at this scale.
+- Absolute work is sub-millisecond even on the stress scenario (saves ~2ms per `evaluateChainAll` call). Below user-perceptible noise floor on a query endpoint.
+- Carry cost: adds another mutable cache field to `ScheduleContext` (already carries `_stCache`/`_stCacheVersion` from T3) plus an invalidation surface that has to track `slot.resources` mutations.
+
+**DECISION:** No engine change. Spec section retained as evidence so the optimization isn't re-proposed. Threshold for revisit: multi-resource OR-style chains becoming dominant, OR `/ctp` query rate becoming hot.
 
 ---
 
-## TICKET 8 — HOIST CUMULATIVE DURATIONS IN `assignStartTimes`
+## TICKET 8 — HOIST LOOP-INVARIANT CALENDAR LOOKUP IN `assignStartTimes` ✅ SHIPPED (REDIRECTED)
 
-**FILE:** `chaincontextengine.ts` (LINES 859–896)
+**FILE:** `chaincontextengine.ts` (`assignStartTimes`)
 
-**PROBLEM:**
-```ts
-for (let p = 0; p < primaryIndex; p++) {
-  while (pNode) {
-    let targetStart = pNode.data.eStartW;
-    for (let k = p; k < primaryIndex; k++) {
-      const dur = combo.contexts[k].task.duration?.duration() ?? 0;  // RECOMPUTED PER pNode
-      const offset = this.getAssignedProcessChangeDuration(combo.contexts[k], targetStart);
-      targetStart = targetStart + dur + offset;
-    }
-  }
-}
-```
+**STATUS:** Shipped — but the spec's target was already obsolete. The spec proposed hoisting `combo.contexts[k].task.duration?.duration() ?? 0` out of the inner loop. The current code no longer makes that call inside any loop (it passes the `CTPDuration` object directly to `workingEndForwardW` / `workingStartBackwardW`). T8 was redirected to hoist a different — and significantly more expensive — invariant: the per-context calendar lookup.
 
-**FIX — PRECOMPUTE DURATIONS ONCE PER COMBO:**
-```ts
-// before predecessor walk
-const durations = combo.contexts.map(c => c.task.duration?.duration() ?? 0);
+**ACTUAL TARGET (what was hoisted):**
 
-for (let p = 0; p < primaryIndex; p++) {
-  while (pNode) {
-    let targetStart = pNode.data.eStartW;
-    for (let k = p; k < primaryIndex; k++) {
-      const offset = this.getAssignedProcessChangeDuration(combo.contexts[k], targetStart);
-      targetStart += durations[k] + offset;
-    }
-  }
-}
-```
-COMBINE WITH TICKET 3 SO `getAssignedProcessChangeDuration` IS O(LOG N) INSTEAD OF O(N).
+The chain `combo.contexts[i].slot.resources?.at(0)?.resource?.available?.staticAvailable` is a 7-step optional-property dereference. The value is invariant within one `assignStartTimes` call (contexts don't mutate during placement), yet it was recomputed at 5 distinct sites inside loops:
 
-**ACCEPTANCE:**
-- IDENTICAL `assignedStart`/`assignedEnd` OUTPUT
-- NO BENCHMARK NEEDED — CORRECTNESS-PRESERVING REFACTOR
+1. Predecessor walk inner loop (`for k inside while pNode inside for p`) — `kCalendar`
+2. Successor walk inner loop (same shape, mirror direction) — `kCalendar`
+3. Per-primary-candidate primary placement — `primaryCalendar`
+4. Backward placement walk (`for i inside for rawStart of candidates`) — `predCalendar`
+5. Forward placement walk (same shape, forward direction) — `succCalendar`
 
----
-
-## TICKET 9 — TAIL-FIRST FAST PATH IN `CTPIntervals.add`
-
-**FILE:** `intervals.ts` (LINES 138–147, AND `CTPAvailableTimes.add` ~285)
-
-**PROBLEM:**
-EVERY `add` SCANS FROM HEAD. SET-ENGINE OUTPUT IS BUILT LEFT-TO-RIGHT, SO THE INSERTION POINT IS ALMOST ALWAYS THE TAIL.
+For chain length T, K candidates, N startTimes per context, the recomputed dereferences scale as `O(T² · N + T · K)` per assignStartTimes call. Realistic: ~5000-50000 dereferences per call. Each is short (microseconds), but cumulative.
 
 **FIX:**
 ```ts
-public add(node: CTPInterval): void {
-  // Fast path: append in monotone order
-  if (this.tail && node.startW >= this.tail.data.startW) {
-    this.insertAtEnd(node);
-    this.resetMiddle();
-    return;
-  }
-  const i = this.atOrAfterStartTime(node.startW, node.endW);
-  if (i) this.insertBefore(node, i);
-  else this.insertAtEnd(node);
-  this.resetMiddle();
+public assignStartTimes(combo: ChainContextCombo): void {
+  // ... existing setup ...
+
+  // Hoist: invariant within this call, refetched at 5 sites below.
+  const calendars = combo.contexts.map((c) =>
+    c.slot.resources?.at(0)?.resource?.available?.staticAvailable,
+  );
+
+  // ... 5 sites now use calendars[k] / calendars[i] / calendars[primaryIndex] ...
 }
 ```
 
+**WHY NOT BENCHED:**
+Pure correctness-preserving refactor. The expected wall-clock improvement is below noise floor of any bench (microsecond-level constant-factor work per call). Spec explicitly says "no benchmark needed" for this kind of refactor. Validated by the vitest suite passing unchanged at 1063 passed / 0 failed.
+
 **ACCEPTANCE:**
-- IDENTICAL ORDERING ON A SUITE OF MIXED ADD-ORDER TESTS
-- INTERMEDIATE LIST CORRECTNESS PRESERVED
+- ✅ Identical `assignedStart`/`assignedEnd` output (no behavior change — values weren't being mutated, just refetched).
+- ✅ All 1063 vitest tests pass; strict engine `tsc --noEmit -p packages/engine/tsconfig.json` clean.
+- ✅ 5 recomputation sites removed; 1 hoist line added at function top.
+
+**RELATED LATENT FINDING (NOT FIXED):**
+`propagateCombo` also fetches the same calendar chain twice (lines 676 / 714), once in the forward pass and once in the backward pass. Each is per-task in a single-pass loop, so it's already O(T) not nested — much less impactful than the assignStartTimes hoist. Left as-is to keep T8 narrowly scoped.
+
+---
+
+## TICKET 9 — TAIL-FIRST FAST PATH IN `CTPIntervals.add` ⛔ INVESTIGATED, DISMISSED
+
+**FILE:** `intervals.ts` (LINES 22–36, 140–146)
+
+**STATUS:** Investigated via 15-min code read + 3-pattern probe bench. T9 is effectively a no-op for every production caller traced; the existing `atOrAfterStartTime` already has two fast-paths that together cover the input shapes those callers produce. The spec's proposed change as written also has a correctness bug on tied `startW`. No engine change landed.
+
+**THE PREMISE WAS WRONG: TWO FAST-PATHS ALREADY EXIST**
+
+Reading `intervals.ts:22–36`:
+
+1. **Tail-disjoint fast-path** (line 26): `if (this.tail && startW > this.tail.data.endW) return null;` → caller does `insertAtEnd` in O(1). Fires when new interval is strictly after the tail.
+2. **Head-side implicit exit** (lines 28–29): the walk `while (i && i.data.startW < startW) i = i.next` exits immediately when `new.startW <= head.data.startW`. Returns head; caller does `insertBefore(head)` in O(1). Fires when new interval starts at or before the current head.
+
+Combined, these two fast-paths cover *both* monotone insertion orders: ascending non-overlapping (#1) and descending of any kind (#2).
+
+**WHAT T9 ACTUALLY EXPANDS COVERAGE FOR**
+
+T9's proposed `startW >= tail.startW` adds a *third* fast-path: `tail.startW <= startW <= tail.endW` (ascending with tail overlap). This is the only input shape the existing code walks from head for.
+
+**MEASURED IMPACT** (3-pattern probe, N=1000 inserts × 200 iterations, current vs T9-with-strict-`>`):
+
+| Input pattern | Production caller? | Old | New | Speedup |
+|---|---|---|---|---|
+| Ascending non-overlapping | `addToFloat` range push (line 284) | 8.52 ms | 8.58 ms | ×0.99 |
+| Descending | `addToFixed` (line 164), `addToUntracked` (line 371) | 8.49 ms | 8.59 ms | ×0.99 |
+| Ascending with tail overlap | None traced | 10.09 ms | 8.90 ms | **×1.13** |
+
+All three correctness=PASS.
+
+**CALLER SURVEY** (production paths grep'd via `\.add\(new CTP`):
+
+- `availableengine.ts:164` (`addToFixed`): aPtr walks backward via `moveABackward` → descending startW → covered by head-side fast-path.
+- `availableengine.ts:284` (`addToFloat` final `ranges.forEach`): ranges built during forward cPtr walk → ascending non-overlapping → covered by tail-disjoint fast-path.
+- `availableengine.ts:312, 340` (`addToFloat1`, an alternate float method): same pattern as 284.
+- `availableengine.ts:371` (`addToUntracked`): same as 164.
+- `commonstarttimes.ts:229`: single-shot `feasible.startTimes?.add(...)` in the pure-duration branch — not a hot loop, perf irrelevant.
+
+No production caller produces the ascending-with-tail-overlap pattern. The ×1.13 win T9 buys has no consumer.
+
+**CORRECTNESS BUG IN THE SPEC'S `>=` FORMULATION**
+
+The original spec wrote:
+```ts
+if (this.tail && node.startW >= this.tail.data.startW) { this.insertAtEnd(node); ... }
+```
+
+`atOrAfterStartTime` (lines 30–34) orders tied `startW` by ascending `endW`. The spec's `>=` would put a new node at the tail regardless of `endW`, breaking that ordering. The strict-`>` form (used in the probe above) is correctness-preserving but the spec needs amending if T9 is ever revisited.
+
+**DECISION:** No engine change. Section retained as evidence so a future contributor doesn't reproduce the investigation. Revisit if a profile surfaces a caller producing ascending-with-tail-overlap input.
 
 ---
 

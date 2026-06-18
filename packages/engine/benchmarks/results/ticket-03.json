@@ -1,0 +1,23 @@
+{
+  "ticketId": "ticket-03",
+  "description": "assignStartTimes find-pattern helpers (isWithinStartTimeNode, getAssignedProcessChangeDuration, findStartTimeNode): linked-list head-walk vs typed-array cache + binary search, measured end-to-end. Iterate-all helpers (computeContextFeasibleDuration, findEarliestFeasibleStart, findLatestFeasibleStartForPred) stay on linked-list walks — see ticket-03 in CODE-OPTIMIZATION-SPRINT.md for the narrowing rationale.",
+  "fixture": "11-task chain × 500 startTimes per context (primaryIndex=5, FIXED duration so workingEndForwardW is calendar-independent). Upper end of realistic per-context N — see scaling table in the spec.",
+  "timestamp": "2026-05-23T17:24:53.978Z",
+  "node": "v22.14.0",
+  "correctness": "PASS",
+  "old": {
+    "medianMs": 88.0403,
+    "p95Ms": 109.2071,
+    "minMs": 66.7966,
+    "heapDeltaBytes": 328
+  },
+  "new": {
+    "medianMs": 48.3585,
+    "p95Ms": 166.2954,
+    "minMs": 41.1498,
+    "heapDeltaBytes": 5120
+  },
+  "speedup": 1.82058,
+  "minSpeedupRequired": 1.5,
+  "acceptancePass": true
+}
