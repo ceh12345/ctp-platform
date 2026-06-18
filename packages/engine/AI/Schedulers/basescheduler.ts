@@ -11,6 +11,7 @@ import { List } from "../../Models/Core/list";
 import { CTPAppSettings } from "../../Models/Entities/appsettings";
 import { CTPHorizon } from "../../Models/Entities/horizon";
 import { SchedulingLandscape } from "../../Models/Entities/landscape";
+import { buildAdjacency } from "../../Models/Entities/adjacency";
 import { CTPProcess, CTPProcesses } from "../../Models/Entities/process";
 import {
   CTPResourcePreference,
@@ -582,10 +583,12 @@ export abstract class CTPBaseScheduler {
         // Check if the failure is because predecessor isn't scheduled yet
         // (vs a genuine constraint violation). If predecessor just hasn't been
         // placed yet, skip without marking processed so we retry later.
-        const predKey = task.linkId?.prevLink;
-        const predecessor = predKey ? this.landscape.tasks.getEntity(predKey) : null;
-        if (predecessor && !predecessor.scheduled) {
-          // Predecessor not yet scheduled — skip, don't mark processed
+        const anyPredUnscheduled = task.preds.some(k => {
+          const p = this.landscape.tasks.getEntity(k);
+          return p && !p.scheduled;
+        });
+        if (anyPredUnscheduled) {
+          // A predecessor not yet scheduled — skip, don't mark processed
           task.errors = []; // clear the temporary error
           return;
         }
@@ -629,23 +632,28 @@ export abstract class CTPBaseScheduler {
 
   protected tightenWindowFromPredecessor(task: CTPTask): boolean {
     if (!this.settings?.hasChains) return true;
+    if (task.preds.length === 0) return true; // Chain root or standalone
 
-    const predKey = task.linkId?.prevLink;
-    if (!predKey || predKey === '') return true; // Chain root or standalone
-
-    const predecessor = this.landscape.tasks.getEntity(predKey);
-    if (!predecessor) {
-      task.addError('ChainConstraint', `Predecessor ${predKey} not found`);
-      return false;
+    // Floor the window by the LATEST of all predecessors' scheduled ends.
+    // Linear data => exactly one predecessor, identical to the legacy logic.
+    let predEnd = -Infinity;
+    let latestPredName = '';
+    for (const predKey of task.preds) {
+      const predecessor = this.landscape.tasks.getEntity(predKey);
+      if (!predecessor) {
+        task.addError('ChainConstraint', `Predecessor ${predKey} not found`);
+        return false;
+      }
+      if (!predecessor.scheduled) {
+        task.addError('ChainConstraint',
+          `Predecessor ${predecessor.name} is not scheduled — cannot schedule ${task.name}`);
+        return false;
+      }
+      if (predecessor.scheduled.endW > predEnd) {
+        predEnd = predecessor.scheduled.endW;
+        latestPredName = predecessor.name;
+      }
     }
-
-    if (!predecessor.scheduled) {
-      task.addError('ChainConstraint',
-        `Predecessor ${predecessor.name} is not scheduled — cannot schedule ${task.name}`);
-      return false;
-    }
-
-    const predEnd = predecessor.scheduled.endW;
 
     if (task.window) {
       if (task.window.startW < predEnd) {
@@ -654,7 +662,7 @@ export abstract class CTPBaseScheduler {
 
       if (task.window.startW >= task.window.endW) {
         task.addError('ChainConstraint',
-          `Window collapsed: predecessor ${predecessor.name} ends at ${predEnd} but task window ends at ${task.window.endW}`);
+          `Window collapsed: predecessor ${latestPredName} ends at ${predEnd} but task window ends at ${task.window.endW}`);
         return false;
       }
 
@@ -718,6 +726,12 @@ export abstract class CTPBaseScheduler {
       });
       this.settings.hasChains = detected;
     }
+
+    // Edge-list refactor: build preds[]/succs[] from linkId.prevLink so the
+    // per-task chain sites below (tightenWindowFromPredecessor, retry-skip,
+    // addChainPredecessors) consume explicit edges. Self-build here makes the
+    // scheduler robust for callers that don't run landscape.buildProcesses.
+    buildAdjacency(this.landscape.tasks);
 
     // Optional development-mode validation: opt-in via CTP_VALIDATE_SEQUENCE=1.
     // Off by default — sequence invariant is enforced at sync time in the
@@ -1057,20 +1071,21 @@ export abstract class CTPBaseScheduler {
     orderedList: List<CTPTask>,
     added: Set<string>
   ): void {
-    const predKey = task.linkId?.prevLink;
-    if (!predKey || predKey === '') return;
+    // Recurse over all predecessors (multi-parent safe). Each ancestor is added
+    // before its dependents, preserving Pass-1 chain order. Linear data => one
+    // predecessor, identical to the legacy single-prevLink recursion.
+    for (const predKey of task.preds) {
+      const predecessor = this.landscape.tasks.getEntity(predKey);
+      if (!predecessor) continue;
+      if (predecessor.state === CTPTaskStateConstants.SCHEDULED) continue;
+      if (added.has(predecessor.hashKey)) continue;
 
-    const predecessor = this.landscape.tasks.getEntity(predKey);
-    if (!predecessor) return;
-    if (predecessor.state === CTPTaskStateConstants.SCHEDULED) return;
-    if (added.has(predecessor.hashKey)) return;
+      this.addChainPredecessors(predecessor, orderedList, added);
 
-    // Recurse up the chain first
-    this.addChainPredecessors(predecessor, orderedList, added);
-
-    if (!added.has(predecessor.hashKey) && predecessor.canSolve() && !predecessor.processed) {
-      orderedList.add(predecessor);
-      added.add(predecessor.hashKey);
+      if (!added.has(predecessor.hashKey) && predecessor.canSolve() && !predecessor.processed) {
+        orderedList.add(predecessor);
+        added.add(predecessor.hashKey);
+      }
     }
   }
 
