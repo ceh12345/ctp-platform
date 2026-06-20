@@ -15,6 +15,7 @@ import { CTPTask } from "../../Models/Entities/task";
 import { CTPAppSettings } from "../../Models/Entities/appsettings";
 import { CTPTaskStateConstants } from "../../Models/Core/constants";
 import { SchedulingLandscape } from "../../Models/Entities/landscape";
+import { topoOrder } from "../../Models/Entities/adjacency";
 
 export class ChainFirstFitNeighborhood implements INeighborhoodStrategy {
   public name: string = "ChainFirstFit";
@@ -44,10 +45,11 @@ export class ChainFirstFitNeighborhood implements INeighborhoodStrategy {
     // Find first chain with unscheduled tasks
     for (const [, chainTasks] of chains) {
       if (chainTasks.length > 0) {
-        // Sort by sequence within chain
-        chainTasks.sort((a, b) => a.sequence - b.sequence);
-        // Return ALL remaining tasks in this chain
-        chainTasks.forEach(t => context.add(t));
+        // Edge-list refactor: execution order is the topological order over
+        // preds[]/succs[]. On a linear chain this is identical to the legacy
+        // sequence sort (topoOrder breaks ties by sequence, and falls back to
+        // pure sequence order if no edges are present).
+        topoOrder(chainTasks).forEach(t => context.add(t));
         return context;
       }
     }

@@ -4,6 +4,7 @@ import { SchedulingLandscape } from "../../Models/Entities/landscape";
 import { CTPProcess } from "../../Models/Entities/process";
 import { ScheduleContext, ScheduleContexts } from "../../Models/Entities/schedulecontext";
 import { CTPTask } from "../../Models/Entities/task";
+import { indexByKey, reachableKeys } from "../../Models/Entities/adjacency";
 
 export interface ITimingSequenceAgent {
   name: string;
@@ -34,15 +35,20 @@ export class TimingSequenceAgent implements ITimingSequenceAgent {
   {
     if (process && process.tasks)
     {
+      // Edge-list refactor: "after" (FORWARD) / "before" (BACKWARD) the scheduled
+      // task means an actual descendant / ancestor along preds[]/succs[], not just
+      // a higher/lower sequence number. On a linear chain the reachable set equals
+      // the legacy sequence range; on a branched process it excludes parallel
+      // siblings that the sequence comparison would have wrongly swept in.
+      const byKey = indexByKey(process.tasks);
+      const downstream = settings.scheduleDirection == CTPScheduleDirectionConstants.FORWARD;
+      const affected = reachableKeys(task, byKey, downstream ? "succ" : "pred");
       process.tasks.forEach(t => {
-        if ( 
-          (t.key != task.key) 
+        if (
+          (t.key != task.key)
           && (t.state === CTPTaskStateConstants.NOT_SCHEDULED)
           && !t.processed
-          && (
-            (settings.scheduleDirection == CTPScheduleDirectionConstants.FORWARD  && t.sequence >= task.sequence ) 
-            || (settings.scheduleDirection == CTPScheduleDirectionConstants.BACKWARD  && t.sequence <= task.sequence)
-           )
+          && affected.has(t.key)
           )
           {
               const schedules = scheduleContexts.byTask.getEntity(t.key);

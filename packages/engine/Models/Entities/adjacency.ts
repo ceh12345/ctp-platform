@@ -80,6 +80,34 @@ export function succsOf(task: CTPTask, byKey: Map<string, CTPTask>): CTPTask[] {
 }
 
 /**
+ * Keys transitively reachable from `task` along `succs` ("succ" = descendants) or
+ * `preds` ("pred" = ancestors), excluding `task` itself. Replaces the heuristics'
+ * legacy use of `sequence` comparison to mean "downstream/upstream of this task":
+ * on a single linear chain `reachableKeys(task, ·, "succ")` is exactly the set of
+ * higher-sequence tasks, but on a branched (multi-head) process it correctly
+ * follows only the actual edges instead of the whole sequence range.
+ */
+export function reachableKeys(
+  task: CTPTask,
+  byKey: Map<string, CTPTask>,
+  direction: "succ" | "pred",
+): Set<string> {
+  const out = new Set<string>();
+  const stack = [...(direction === "succ" ? task.succs : task.preds)];
+  while (stack.length > 0) {
+    const k = stack.pop()!;
+    if (out.has(k)) continue;
+    out.add(k);
+    const t = byKey.get(k);
+    if (!t) continue;
+    for (const n of direction === "succ" ? t.succs : t.preds) {
+      if (!out.has(n)) stack.push(n);
+    }
+  }
+  return out;
+}
+
+/**
  * Kahn's topological order over `preds[]`/`succs[]`. Ties broken by `sequence`
  * for determinism. On a cycle, warns and falls back to pure `sequence` order so
  * callers always get a usable ordering (mirrors the hydrator's cycle fallback).

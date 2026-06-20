@@ -15,6 +15,7 @@ import { List } from "../../Models/Core/list";
 import { CTPAppSettings } from "../../Models/Entities/appsettings";
 import { SchedulingLandscape } from "../../Models/Entities/landscape";
 import { CTPTask } from "../../Models/Entities/task";
+import { indexByKey } from "../../Models/Entities/adjacency";
 
 export class ChainNeighborhood implements INeighborhoodStrategy {
   public name: string = "Chain";
@@ -52,13 +53,24 @@ export class ChainNeighborhood implements INeighborhoodStrategy {
     let context = new List<CTPTask>();
     if (!tasks) return context;
 
-    // Find the next unscheduled task per chain (lowest sequence)
+    // Find the next ready task per chain. Edge-list refactor: "ready" means every
+    // predecessor is scheduled (a missing/cross-set pred counts as satisfied).
+    // On a linear chain this is exactly the lowest-sequence unscheduled task — its
+    // single predecessor was scheduled in a prior round — so behavior is preserved;
+    // on a branched chain it correctly admits each ready head/branch. Lowest
+    // sequence is kept as the tiebreak among ready tasks.
     const chainProgress: Map<string, { nextTask: CTPTask, chainRank: number }> = new Map();
+    const byKey = indexByKey(tasks);
 
     tasks.forEach((task) => {
       if (!task.processed && task.canSolve()
           && task.state === CTPTaskStateConstants.NOT_SCHEDULED
           && task.hasLinkId() && task.linkId?.name) {
+        const ready = task.preds.every((pk) => {
+          const pred = byKey.get(pk);
+          return !pred || pred.state === CTPTaskStateConstants.SCHEDULED;
+        });
+        if (!ready) return;
         const chainName = task.linkId.name;
         const existing = chainProgress.get(chainName);
         if (!existing || task.sequence < existing.nextTask.sequence) {
