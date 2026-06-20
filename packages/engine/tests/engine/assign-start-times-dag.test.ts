@@ -50,23 +50,30 @@ describe('assignStartTimes — branched (DAG) combos', () => {
   });
 
   /**
-   * Build a combo from tasks in topological (index) order, with generous
-   * propagated windows and a single wide start-time node per task. preds/succs
-   * are set by the caller before this runs.
+   * Build a combo from tasks in topological (index) order, with a single
+   * start-time node per task. Windows default to generous [baseStart, +24h];
+   * pass `pins` (keyed by task key) to pin a task's [eStartW, lStartW] — used to
+   * force a deterministic placement for exact-window assertions. preds/succs are
+   * set by the caller before this runs.
    */
-  function buildCombo(tasks: CTPTask[], primaryIndex: number): ChainContextCombo {
+  function buildCombo(
+    tasks: CTPTask[],
+    primaryIndex: number,
+    pins: Record<string, { e: number; l: number }> = {},
+  ): ChainContextCombo {
     const windowEnd = baseStart + 24 * ONE_HOUR;
+    const win = (t: CTPTask) => pins[t.key] ?? { e: baseStart, l: windowEnd };
     const contexts: ScheduleContext[] = tasks.map((t) =>
       makeScheduleContext(landscape, t, res, [
-        { eStartW: baseStart, lStartW: windowEnd, duration: t.duration!.duration() },
+        { eStartW: win(t).e, lStartW: win(t).l, duration: t.duration!.duration() },
       ]),
     );
     const startTimes: ChainStartTime[] = tasks.map((t) => ({
       taskKey: t.key,
-      eStartW: baseStart,
-      lStartW: windowEnd,
-      eEndW: baseStart + t.duration!.duration(),
-      lEndW: windowEnd + t.duration!.duration(),
+      eStartW: win(t).e,
+      lStartW: win(t).l,
+      eEndW: win(t).e + t.duration!.duration(),
+      lEndW: win(t).l + t.duration!.duration(),
       assignedStart: 0,
       assignedEnd: 0,
     }));
@@ -141,5 +148,101 @@ describe('assignStartTimes — branched (DAG) combos', () => {
     expect(a.assignedEnd).toBeLessThanOrEqual(c.assignedStart);
     expect(b.assignedEnd).toBeLessThanOrEqual(d.assignedStart);
     expect(c.assignedEnd).toBeLessThanOrEqual(d.assignedStart);
+  });
+
+  it('assigns exact windows when the join is the pinned primary', () => {
+    // primary = D (the join) pinned to baseStart+4h → a single candidate, so the
+    // backward fill is fully deterministic and we can assert exact times. With
+    // the primary on the sink, ALL other nodes are ancestors → pure backward pass.
+    const { A, B, C, D } = diamond();
+    const combo = buildCombo([A, B, C, D], /* D */ 3, {
+      D: { e: baseStart + 4 * ONE_HOUR, l: baseStart + 4 * ONE_HOUR },
+    });
+
+    engine.assignStartTimes(combo);
+
+    const [a, b, c, d] = combo.startTimes;
+    // D pinned; each predecessor packed as late as feasible against its successor.
+    expect(d.assignedStart).toBe(baseStart + 4 * ONE_HOUR);
+    expect(d.assignedEnd).toBe(baseStart + 5 * ONE_HOUR);
+    expect(b.assignedStart).toBe(baseStart + 3 * ONE_HOUR); // 1h leg ends exactly at D
+    expect(b.assignedEnd).toBe(baseStart + 4 * ONE_HOUR);
+    expect(c.assignedStart).toBe(baseStart + 2 * ONE_HOUR); // 2h leg ends exactly at D
+    expect(c.assignedEnd).toBe(baseStart + 4 * ONE_HOUR);
+    // A bounded by the MIN over its two successors' starts (C at +2h is tighter).
+    expect(a.assignedStart).toBe(baseStart + 1 * ONE_HOUR);
+    expect(a.assignedEnd).toBe(baseStart + 2 * ONE_HOUR);
+  });
+
+  it('multi-sink fork: every sink is placed after the shared source', () => {
+    // A → B, A → C, no join. Two terminals (sinks). primary = A → pure forward
+    // pass placing both descendants.
+    const mk = (key: string, dur: number, seq: number) =>
+      makeChainTask({
+        name: key, key, duration: dur, linkName: 'FORK-1', sequence: seq,
+        windowStart: hStart, windowEnd: hStart + 86400,
+        resources: [{ key: 'R', isPrimary: true }],
+      });
+    const A = mk('A', ONE_HOUR, 1);
+    const B = mk('B', ONE_HOUR, 2);
+    const C = mk('C', 2 * ONE_HOUR, 2);
+    A.preds = []; A.succs = ['B', 'C'];
+    B.preds = ['A']; B.succs = [];
+    C.preds = ['A']; C.succs = [];
+
+    const combo = buildCombo([A, B, C], /* A */ 0);
+    engine.assignStartTimes(combo);
+
+    const [a, b, c] = combo.startTimes;
+    for (const st of combo.startTimes) {
+      expect(st.assignedStart).toBeGreaterThan(0);
+      expect(st.assignedEnd).toBeGreaterThan(st.assignedStart);
+    }
+    expect(a.assignedEnd).toBeLessThanOrEqual(b.assignedStart);
+    expect(a.assignedEnd).toBeLessThanOrEqual(c.assignedStart);
+    // The two sinks are independent — neither constrains the other.
+    expect(c.assignedEnd - c.assignedStart).toBe(2 * ONE_HOUR);
+    expect(b.assignedEnd - b.assignedStart).toBe(ONE_HOUR);
+  });
+
+  it('deep unequal branches: the join waits for the multi-task long leg', () => {
+    // A → B1 → B2 → E  (long leg: two 1h tasks)
+    // A → C ────────→ E  (short leg: one 1h task)
+    // E must start no earlier than B2's end, not just C's.
+    const mk = (key: string, dur: number, seq: number) =>
+      makeChainTask({
+        name: key, key, duration: dur, linkName: 'DEEP-1', sequence: seq,
+        windowStart: hStart, windowEnd: hStart + 86400,
+        resources: [{ key: 'R', isPrimary: true }],
+      });
+    const A = mk('A', ONE_HOUR, 1);
+    const B1 = mk('B1', ONE_HOUR, 2);
+    const B2 = mk('B2', ONE_HOUR, 3);
+    const C = mk('C', ONE_HOUR, 2);
+    const E = mk('E', ONE_HOUR, 4);
+    A.preds = []; A.succs = ['B1', 'C'];
+    B1.preds = ['A']; B1.succs = ['B2'];
+    B2.preds = ['B1']; B2.succs = ['E'];
+    C.preds = ['A']; C.succs = ['E'];
+    E.preds = ['B2', 'C']; E.succs = [];
+
+    // index order [A, B1, B2, C, E] is a valid topological order
+    const combo = buildCombo([A, B1, B2, C, E], /* B2 */ 2);
+    engine.assignStartTimes(combo);
+
+    const [a, b1, b2, c, e] = combo.startTimes;
+    for (const st of combo.startTimes) {
+      expect(st.assignedStart).toBeGreaterThan(0);
+      expect(st.assignedEnd).toBeGreaterThan(st.assignedStart);
+    }
+    // Precedence along every edge.
+    expect(a.assignedEnd).toBeLessThanOrEqual(b1.assignedStart);
+    expect(b1.assignedEnd).toBeLessThanOrEqual(b2.assignedStart);
+    expect(b2.assignedEnd).toBeLessThanOrEqual(e.assignedStart);
+    expect(a.assignedEnd).toBeLessThanOrEqual(c.assignedStart);
+    expect(c.assignedEnd).toBeLessThanOrEqual(e.assignedStart);
+    // The long leg (B1+B2) finishes after the short leg (C), so it governs E.
+    expect(b2.assignedEnd).toBeGreaterThan(c.assignedEnd);
+    expect(e.assignedStart).toBeGreaterThanOrEqual(b2.assignedEnd);
   });
 });
