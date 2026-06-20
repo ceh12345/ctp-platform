@@ -278,33 +278,43 @@ export class SchedulingLandscape implements ILandscape {
     let tightenCount = 0;
     const maxIterations = 100;
 
+    // Edge-list refactor: ensure preds[]/succs[] reflect topology (idempotent;
+    // also covers callers that reach this before buildProcesses).
+    if (this.tasks) buildAdjacency(this.tasks);
+
     while (changed && iterations < maxIterations) {
       changed = false;
       iterations++;
 
       this.tasks?.forEach(task => {
         if (!task.window || !task.includeInSolve) return;
-        if (!task.linkId?.prevLink) return;
+        if (task.preds.length === 0) return;
 
-        const pred = this.tasks?.getEntity(task.linkId.prevLink);
-        if (!pred || !pred.window || !pred.duration) return;
+        // Forward: this task can't start before the LATEST predecessor end.
+        // Backward: tighten EACH predecessor's latest end from this task.
+        // Linear data => one predecessor, identical to the legacy logic.
+        let maxEarliestStart = -Infinity;
+        for (const predKey of task.preds) {
+          const pred = this.tasks?.getEntity(predKey);
+          if (!pred || !pred.window || !pred.duration) continue;
 
-        // Forward: tighten successor's earliest start
-        const earliestStart = pred.window.startW + pred.duration.duration();
-        if (earliestStart > task.window.startW) {
-          task.window.startW = earliestStart;
-          changed = true;
-          tightenCount++;
+          const earliestStart = pred.window.startW + pred.duration.duration();
+          if (earliestStart > maxEarliestStart) maxEarliestStart = earliestStart;
+
+          if (task.duration) {
+            const latestEnd = task.window.endW - task.duration.duration();
+            if (latestEnd < pred.window.endW) {
+              pred.window.endW = latestEnd;
+              changed = true;
+              tightenCount++;
+            }
+          }
         }
 
-        // Backward: tighten predecessor's latest end
-        if (task.duration) {
-          const latestEnd = task.window.endW - task.duration.duration();
-          if (latestEnd < pred.window.endW) {
-            pred.window.endW = latestEnd;
-            changed = true;
-            tightenCount++;
-          }
+        if (maxEarliestStart > -Infinity && maxEarliestStart > task.window.startW) {
+          task.window.startW = maxEarliestStart;
+          changed = true;
+          tightenCount++;
         }
 
         // Detect collapsed window — infeasible
@@ -330,20 +340,16 @@ export class SchedulingLandscape implements ILandscape {
   public hydrateDueDates(): void {
     if (!this.tasks || !this.orders) return;
 
-    // Find tasks that have a successor (another task references them as prevLink)
-    const hasSuccessor = new Set<string>();
-    this.tasks.forEach((task) => {
-      if (task.linkId?.prevLink) {
-        hasSuccessor.add(task.linkId.prevLink);
-      }
-    });
+    // Edge-list refactor: build adjacency so terminal detection uses succs[].
+    // A chain-terminal task (sink) has no successors. (idempotent)
+    buildAdjacency(this.tasks);
 
-    // Stamp due dates on terminal tasks only, priority on all
+    // Stamp due dates on terminal tasks (sinks) only, priority on all
     this.tasks.forEach((task) => {
       if (task.linkId?.name) {
         const order = this.orders.getEntity(task.linkId.name);
         if (order) {
-          if (!hasSuccessor.has(task.key)) {
+          if (task.succs.length === 0) {
             task.dueDate = order.dueDate;
             task.lateDueDate = order.lateDueDate;
             if (order.latenessPenaltyPerDay > 0) {
