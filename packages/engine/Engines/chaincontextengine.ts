@@ -1086,6 +1086,41 @@ export class ChainContextEngine {
       c.slot.resources?.at(0)?.resource?.available?.staticAvailable,
     );
 
+    // ── Edge-list resolution (resolve once, use many) — mirrors propagateCombo.
+    // Resolve each context's preds[]/succs[] keys to positions in this combo a
+    // single time. For today's linear data preds/succs are length<=1 and index
+    // order is a valid topological order (pred.sequence < succ.sequence), so the
+    // backward/forward placement below reduces EXACTLY to the legacy i-1 / i+1
+    // spine walk. On a branched (DAG) combo the same passes follow the real
+    // edges: a predecessor is bounded by the MIN of its placed successors, a
+    // successor by the MAX of its placed predecessors.
+    const n = combo.contexts.length;
+    const posByKey = new Map<string, number>();
+    for (let i = 0; i < n; i++) posByKey.set(combo.contexts[i].task.key, i);
+    const resolveIdx = (keys: string[]): number[] => {
+      const out: number[] = [];
+      for (const k of keys) { const p = posByKey.get(k); if (p !== undefined) out.push(p); }
+      return out;
+    };
+    const predIdx: number[][] = combo.contexts.map((c) => resolveIdx(c.task.preds));
+    const succIdx: number[][] = combo.contexts.map((c) => resolveIdx(c.task.succs));
+
+    // Ancestors of the primary (every node with a directed path to it). These are
+    // placed in the backward pass (latest feasible start); the primary anchors;
+    // every other node — descendants and parallel siblings — is placed in the
+    // forward pass (earliest feasible start). On a linear chain the ancestor set
+    // is exactly { indices < primaryIndex }.
+    const isAncestor = new Array<boolean>(n).fill(false);
+    {
+      const stack = [...predIdx[primaryIndex]];
+      while (stack.length > 0) {
+        const a = stack.pop()!;
+        if (isAncestor[a]) continue;
+        isAncestor[a] = true;
+        for (const p of predIdx[a]) if (!isAncestor[p]) stack.push(p);
+      }
+    }
+
     // Collect candidate starts for the primary task
     const candidateSet = new Set<number>();
 
@@ -1179,15 +1214,28 @@ export class ChainContextEngine {
 
       let feasible = true;
 
-      // Walk backward from primary — assign predecessors (latest feasible start)
-      for (let i = primaryIndex - 1; i >= 0; i--) {
-        const succStart = trial[i + 1]!.start;
-        const maxGap = combo.contexts[i + 1].task.linkId?.maxGap ?? null;
+      // Backward pass — place the primary's ancestors at their latest feasible
+      // start, bounded by the MIN over their already-placed successors. Iterating
+      // by descending index is a valid reverse-topological order, so every
+      // successor on a path to the primary is placed before its predecessor.
+      // Linear: each ancestor has the single successor i+1 → identical to the
+      // legacy backward walk.
+      for (let i = n - 1; i >= 0; i--) {
+        if (i === primaryIndex || !isAncestor[i]) continue;
 
-        const predStart = this.findLatestFeasibleStartForPred(
-          combo.contexts[i], succStart, maxGap,
-          combo.startTimes[i].eStartW, combo.startTimes[i].lStartW,
-        );
+        let predStart: number | null = null;
+        for (const s of succIdx[i]) {
+          const placedSucc = trial[s];
+          if (!placedSucc) continue; // successor not on a placed path (a sibling)
+          const maxGap = combo.contexts[s].task.linkId?.maxGap ?? null;
+          const latest = this.findLatestFeasibleStartForPred(
+            combo.contexts[i], placedSucc.start, maxGap,
+            combo.startTimes[i].eStartW, combo.startTimes[i].lStartW,
+          );
+          if (latest === null) { predStart = null; feasible = false; break; }
+          predStart = predStart === null ? latest : Math.min(predStart, latest);
+        }
+        if (!feasible) break;
         if (predStart === null) { feasible = false; break; }
 
         const predTask = combo.contexts[i].task;
@@ -1199,20 +1247,33 @@ export class ChainContextEngine {
 
       if (!feasible) continue;
 
-      // Walk forward from primary — assign successors (earliest feasible start)
-      for (let i = primaryIndex + 1; i < combo.contexts.length; i++) {
-        const prevEnd = trial[i - 1]!.end;
-        const prevOffset = this.getAssignedProcessChangeDuration(
-          combo.contexts[i - 1], trial[i - 1]!.start);
-        const predEffectiveEnd = prevEnd + prevOffset;
+      // Forward pass — place descendants and parallel siblings at their earliest
+      // feasible start, bounded by the MAX over their already-placed predecessors
+      // (pred end + changeover offset). Iterating by ascending index is a valid
+      // topological order, so every predecessor is placed first. Linear: each
+      // node has the single predecessor i-1 → identical to the legacy forward walk.
+      for (let i = 0; i < n; i++) {
+        if (i === primaryIndex || isAncestor[i]) continue;
+
+        let predEffectiveEnd = -Infinity;
+        for (const p of predIdx[i]) {
+          const placedPred = trial[p];
+          if (!placedPred) continue;
+          const offset = this.getAssignedProcessChangeDuration(
+            combo.contexts[p], placedPred.start);
+          const end = placedPred.end + offset;
+          if (end > predEffectiveEnd) predEffectiveEnd = end;
+        }
         const maxGap = combo.contexts[i].task.linkId?.maxGap ?? null;
         const propagatedEStartI = combo.startTimes[i].eStartW;
+        const floorEnd = predEffectiveEnd === -Infinity ? propagatedEStartI : predEffectiveEnd;
 
         const succStart = this.findEarliestFeasibleStart(
-          combo.contexts[i], predEffectiveEnd, propagatedEStartI);
+          combo.contexts[i], floorEnd, propagatedEStartI);
         if (succStart === null) { feasible = false; break; }
 
-        if (maxGap !== null && succStart > predEffectiveEnd + maxGap) {
+        if (maxGap !== null && predEffectiveEnd !== -Infinity
+            && succStart > predEffectiveEnd + maxGap) {
           feasible = false;
           break;
         }
