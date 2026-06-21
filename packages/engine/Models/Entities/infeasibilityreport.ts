@@ -93,7 +93,17 @@ export function classifyConflict(report: InfeasibilityReport): { type: ConflictT
     };
   }
 
-  return { type: 'dependency', reason: 'Chain timing constraints could not be satisfied' };
+  // A bottleneck slot was identified (we are past the `if (!bottleneck)` guard)
+  // but no combo could be formed or placed — the bottleneck resource is simply
+  // too constrained in the window. That is a resource (capacity) constraint, not
+  // a precedence dependency. Successors blocked by an unscheduled predecessor are
+  // relabeled 'dependency' separately, post-solve, in
+  // basescheduler.reclassifyChainInfeasibility — so 'dependency' here would only
+  // mislabel a genuine resource bottleneck on a chain root.
+  return {
+    type: 'capacity',
+    reason: `${bottleneck.slotLabel} — insufficient capacity/availability in the window`,
+  };
 }
 
 export interface InfeasibilityReport {
