@@ -55,8 +55,15 @@ def iso_utc(local_y, local_m, local_d, local_h, local_min, offset_hours):
     return utc_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
-def weekday_intervals(start, end):
-    """Yield Mon-Fri intervals from start to end, each NZ 07:00-15:00."""
+def weekday_intervals(start, end, qty=1):
+    """Yield Mon-Fri intervals from start to end, each NZ 07:00-15:00, at `qty`.
+
+    `qty` is the parallel capacity of the resource (how many jobs it can run at
+    once) — sourced from Genius `NumOfAvgResource` for non-finite pooled work
+    centers. The engine reads capacity from the calendar interval qty, so it MUST
+    be written here; the `parallelCapacity` field on the resource record is not
+    read in the scheduling path.
+    """
     d = start
     while d <= end:
         if d.weekday() < 5:  # Monday=0 .. Friday=4
@@ -64,7 +71,7 @@ def weekday_intervals(start, end):
             yield {
                 'start': iso_utc(d.year, d.month, d.day, SHIFT_START_HOUR, 0, off),
                 'end':   iso_utc(d.year, d.month, d.day, SHIFT_END_HOUR,   0, off),
-                'qty':   1,
+                'qty':   qty,
             }
         d += timedelta(days=1)
 
@@ -95,11 +102,11 @@ def main():
     with RESOURCES_FILE.open(encoding='utf-8') as f:
         resources = json.load(f)['Result']
 
-    weekday_template = list(weekday_intervals(START_DATE, END_DATE))
-    allday_template  = list(all_day_intervals(START_DATE, END_DATE))
+    allday_template = list(all_day_intervals(START_DATE, END_DATE))
+    weekday_count   = sum(1 for _ in weekday_intervals(START_DATE, END_DATE))
 
     print(f'Generating calendar for {len(resources)} resources')
-    print(f'  Weekday shift: 07:00-15:00 NZ, Mon-Fri ({len(weekday_template)} intervals/resource)')
+    print(f'  Weekday shift: 07:00-15:00 NZ, Mon-Fri ({weekday_count} intervals/resource)')
     print(f'  Subcontract:   24/7 unlimited ({len(allday_template)} intervals/resource)')
     print(f'  Coverage:      {START_DATE} → {END_DATE}')
 
@@ -107,6 +114,7 @@ def main():
     # Switched from Code to Id so renames in Genius don't orphan calendar entries.
     output = []
     counts = {'R': 0, 'W': 0, 'S': 0, 'other': 0}
+    pooled = []
     for r in resources:
         rtype = r.get('RessourceType')
         rid = r.get('Id')
@@ -115,18 +123,25 @@ def main():
         if rtype == 'S':
             intervals = allday_template
             counts['S'] += 1
-        elif rtype in ('R', 'W'):
-            intervals = weekday_template
-            counts[rtype] += 1
         else:
-            intervals = weekday_template
-            counts['other'] += 1
+            # Parallel capacity lives in the calendar interval qty — the engine
+            # reads qty, NOT the resource's parallelCapacity field. A non-finite
+            # pooled work center runs NumOfAvgResource jobs at once; finite/named
+            # resources and single-capacity pools stay qty=1.
+            cap = int(r.get('NumOfAvgResource') or 1)
+            qty = cap if (r.get('IsFinite') is False and cap > 1) else 1
+            intervals = list(weekday_intervals(START_DATE, END_DATE, qty))
+            counts[rtype if rtype in ('R', 'W') else 'other'] += 1
+            if qty > 1:
+                pooled.append(f"{r.get('Description1') or rid}={qty}")
         output.append({
             'resourceKey': str(rid),
             'intervals': intervals,
         })
 
     print(f'  By type: {counts}')
+    if pooled:
+        print(f'  Pooled (qty>1): {", ".join(pooled)}')
 
     with OUTPUT_FILE.open('w', encoding='utf-8') as f:
         json.dump(output, f, indent=2)
