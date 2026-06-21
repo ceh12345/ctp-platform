@@ -26,19 +26,25 @@ const fs   = require('fs');
 const path = require('path');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
+// CLI args (all optional; defaults reproduce the original slim-100 build):
+//   --tenant <id>        destination tenant (default stafford-slim-100)
+//   --target <N>         target task count (default 100)
+//   --horizon-days <N>   force a fixed horizon window of N days from slice start
+//                        (default: data range + HORIZON_BUFFER_DAYS)
+const argVal = (flag, def) => { const i = process.argv.indexOf(flag); return (i >= 0 && process.argv[i + 1]) ? process.argv[i + 1] : def; };
 const SRC_TENANT  = 'stafford-engineering-test';
-const DST_TENANT  = 'stafford-slim-100';
+const DST_TENANT  = argVal('--tenant', 'stafford-slim-100');
 const SRC_DIR     = path.join(REPO_ROOT, 'config', 'tenants', SRC_TENANT, 'data');
 const DST_DIR     = path.join(REPO_ROOT, 'config', 'tenants', DST_TENANT, 'data');
 const SRC_TENANT_ROOT = path.join(REPO_ROOT, 'config', 'tenants', SRC_TENANT);
 const DST_TENANT_ROOT = path.join(REPO_ROOT, 'config', 'tenants', DST_TENANT);
 
 // ── Tunables ────────────────────────────────────────────────────────────
-const TARGET_TASKS         = 100;
-const PHASE1_TARGET        = 85;   // Phase-1 (diversity) target; Phase 2 fills remainder with resource picks
-const CUTOFF_DATE          = '2026-04-01';
-const MIN_ORDERS           = 2;
-const GROUP_MAX_TASKS      = 25;   // hard cap: drop monster groups so no single Job blows the budget
+const TARGET_TASKS         = parseInt(argVal('--target', '100'), 10);
+const PHASE1_TARGET        = Math.max(1, Math.round(TARGET_TASKS * 0.85));   // Phase-1 (diversity) target; Phase 2 fills remainder with resource picks
+const CUTOFF_DATE          = argVal('--cutoff', '2026-04-01');  // groups ending before this are excluded
+const MIN_ORDERS           = parseInt(argVal('--min-orders', '2'), 10);
+const GROUP_MAX_TASKS      = parseInt(argVal('--max-group-tasks', '25'), 10);   // hard cap: drop monster groups so no single Job blows the budget
 const W_RES                = 5;    // weight: each new resource added
 const W_PROJ               = 30;   // weight: new project covered
 const W_CUST               = 10;   // weight: new customer covered
@@ -48,6 +54,9 @@ const HORIZON_BUFFER_DAYS  = 30;   // padding past max(sourceEnd) so long-durati
 
 const WRITE            = process.argv.includes('--write');
 const COPY_CALENDARS   = process.argv.includes('--copy-calendars');
+// Optional fixed horizon window (days from slice start). Null = data range + buffer.
+const HORIZON_FIXED_DAYS = process.argv.includes('--horizon-days')
+  ? parseInt(argVal('--horizon-days', '0'), 10) : null;
 
 // ── Load source ─────────────────────────────────────────────────────────
 function load(file) { return JSON.parse(fs.readFileSync(path.join(SRC_DIR, file), 'utf8')); }
@@ -188,6 +197,24 @@ while (totalTasks < TARGET_TASKS && pool.length > 0) {
   totalTasks += (tasksByGroup.get(g.key) ?? []).length;
 }
 
+// Phase 3: bulk fill to target. Phases 1-2 optimise for diversity/resource
+// coverage and stop once resources are saturated — fine for small targets, but
+// a large TARGET_TASKS needs raw volume. Pick remaining groups smallest-first so
+// we land close to the target without a big overshoot.
+const phase3Picked = [];
+if (totalTasks < TARGET_TASKS && pool.length > 0) {
+  pool.sort((a, b) => (tasksByGroup.get(a.key)?.length ?? 0) - (tasksByGroup.get(b.key)?.length ?? 0));
+  while (totalTasks < TARGET_TASKS && pool.length > 0) {
+    const g = pool.shift();
+    picked.push(g);
+    phase3Picked.push(g);
+    for (const r of (groupResources.get(g.key) ?? new Set())) seenResources.add(r);
+    seenProjects.add(projectOf(g));
+    seenCustomers.add(customerOf(g));
+    totalTasks += (tasksByGroup.get(g.key) ?? []).length;
+  }
+}
+
 // ── Build slice ─────────────────────────────────────────────────────────
 const pickedGroupKeys = new Set(picked.map(g => g.key));
 const sliceOrders = [];
@@ -226,7 +253,9 @@ if (minStart && maxEnd && maxEnd > minStart) {
   }
   slicedHorizon = {
     start: minStart.toISOString().slice(0, 10),
-    maxDays: Math.ceil((maxEnd - minStart) / 86400000) + HORIZON_BUFFER_DAYS,
+    maxDays: HORIZON_FIXED_DAYS != null
+      ? HORIZON_FIXED_DAYS
+      : Math.ceil((maxEnd - minStart) / 86400000) + HORIZON_BUFFER_DAYS,
     pastDueExtensionDays: extension,
   };
 }
@@ -242,7 +271,7 @@ const curGroups = safeLoad(path.join(DST_DIR, 'workordergroups.json'));
 console.log();
 console.log('═══ SLICE PREVIEW ═══════════════════════════════════════════');
 console.log();
-console.log('Groups picked:    ', picked.length, '(Phase 1: ' + phase1Picked.length + ', Phase 2: ' + phase2Picked.length + ')');
+console.log('Groups picked:    ', picked.length, '(Phase 1: ' + phase1Picked.length + ', Phase 2: ' + phase2Picked.length + ', Phase 3: ' + phase3Picked.length + ')');
 console.log('Orders:           ', sliceOrders.length);
 console.log('Tasks:            ', sliceTasks.length, '(Phase 1: ' + phase1Tasks + ', Phase 2 added: ' + (sliceTasks.length - phase1Tasks) + ')');
 console.log('Resources copied: ', resources.length, '(all)');
