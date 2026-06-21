@@ -1,7 +1,7 @@
 # Sprint — Engine Refactor to Explicit Pred/Succ Edge Lists
 
-**Status:** Spec (ready for kickoff) — **sequenced after engine-optimization (see §0)**
-**Date:** 2026-06-17
+**Status:** ✅ DONE (2026-06-20) — Phases 0-3 landed; suite 1219/10 byte-identical; UI-verified on acme-outpatient + stafford-slim-100. Commits `5b5f4f4` (P0), `2c77009`/`1da2646`/`dd200e7`/`9a07bf4` (P1 batches 1-4), `5f858b8` (P2 assignStartTimes), `8dc1872` (P3 DAG fixtures). Deferred: `dependencylookahead`/`greedyneighborhood` (sequence contract pinned by unit tests, production-dead).
+**Date:** 2026-06-17 (spec) / 2026-06-20 (landed)
 **Scope:** Engine — precedence representation
 **Related:** `sprint-parallel-processes-wo-groups.md` (the capability this unblocks), `work-order-group-scheduling-questions.md` (Stafford discovery)
 
