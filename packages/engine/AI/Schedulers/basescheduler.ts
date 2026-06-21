@@ -695,6 +695,9 @@ export abstract class CTPBaseScheduler {
     const horizonEndW = this.landscape?.horizon?.endW;
     tasks.forEach(task => {
       if (task.state === CTPTaskStateConstants.SCHEDULED) return;
+      // The engine already attributed this task's failure at the point of
+      // detection (binding task or its blocked chain-mates) — don't second-guess it.
+      if (task.infeasibilityReport?.attributed) return;
 
       // 1) Ran out of horizon: window capped by the horizon end, too small for work.
       const w = task.window;

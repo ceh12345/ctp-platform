@@ -117,4 +117,11 @@ export interface InfeasibilityReport {
   combosGenerated: number;
   combosSurvivedPropagation: number;
   combosPassedAssignment: number;
+  /**
+   * True when this report was attributed to the specific binding task at the
+   * point of detection (e.g. the chain task with zero feasible contexts), rather
+   * than computed chain-wide. The post-solve reclassification pass leaves these
+   * alone — the engine already identified the real cause.
+   */
+  attributed?: boolean;
 }

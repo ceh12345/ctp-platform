@@ -168,7 +168,14 @@ export class ChainContextEngine {
     for (const task of taskArray) {
       const ctxs = taskContextsMap.get(task.key);
       if (!ctxs || ctxs.length === 0) {
-        this.attachInfeasibilityReport(chain, taskArray, 0, 0, 0, landscape);
+        // Attribute the report to this task only if it's a genuine schedulable
+        // task with no feasible context. Pinned/already-committed actuals are
+        // anchored, not context-scheduled, so they legitimately have no contexts
+        // and must NOT be blamed (that would mask the real cause downstream).
+        const binding = (!task.pinned
+          && task.state !== CTPTaskStateConstants.SCHEDULED
+          && task.canSolve()) ? task : undefined;
+        this.attachInfeasibilityReport(chain, taskArray, 0, 0, 0, landscape, binding);
         return null;
       }
     }
@@ -1546,7 +1553,41 @@ export class ChainContextEngine {
     combosSurvivedPropagation: number,
     combosPassedAssignment: number,
     landscape: SchedulingLandscape,
+    bindingTask?: CTPTask,
   ): void {
+    // When the engine identified the specific infeasible task (e.g. the chain
+    // task with zero feasible contexts), attribute the report to THAT task —
+    // bottleneck computed from its resources, reason naming it — and mark every
+    // other chain task as blocked by it. This is the engine's own finding at the
+    // point of detection, so it's flagged `attributed` and the post-solve pass
+    // won't second-guess it. Without a binding task (combo/propagation failure),
+    // fall back to the chain-wide report stamped on all tasks.
+    if (bindingTask) {
+      const report = this.buildInfeasibilityReport(
+        chain, tasks, combosGenerated, combosSurvivedPropagation, combosPassedAssignment,
+        landscape, bindingTask,
+      );
+      report.attributed = true;
+      chain.tasks?.forEach(task => {
+        if (task.key === bindingTask.key) {
+          task.infeasibilityReport = report;
+          task.addError('ChainContextEngine', report.reason);
+        } else {
+          const reason = `[DEPENDENCY] ${task.key} blocked by infeasible ${bindingTask.key}`;
+          task.infeasibilityReport = {
+            ...report,
+            taskKey: task.key,
+            conflictType: 'dependency',
+            conflictTypeReason: `chain blocked by infeasible ${bindingTask.key}`,
+            reason,
+            attributed: true,
+          };
+          task.addError('ChainContextEngine', reason);
+        }
+      });
+      return;
+    }
+
     const report = this.buildInfeasibilityReport(
       chain, tasks, combosGenerated, combosSurvivedPropagation, combosPassedAssignment, landscape,
     );
@@ -1563,11 +1604,16 @@ export class ChainContextEngine {
     combosSurvivedPropagation: number,
     combosPassedAssignment: number,
     landscape: SchedulingLandscape,
+    bindingTask?: CTPTask,
   ): InfeasibilityReport {
     const slots: ResourceSlotReport[] = [];
     const chainKey = chain.key || tasks[0]?.linkId?.name || null;
 
-    for (const task of tasks) {
+    // When a specific binding task is identified, analyze only its resources so
+    // the bottleneck reflects that task's real constraint; otherwise analyze the
+    // whole chain.
+    const reportTasks = bindingTask ? [bindingTask] : tasks;
+    for (const task of reportTasks) {
       if (!task.capacityResources) continue;
 
       const windowStart = task.window?.startW ?? 0;
@@ -1653,7 +1699,8 @@ export class ChainContextEngine {
 
     const bottleneckSlot = slots.find(s => s.isBottleneck);
 
-    let reason = `No valid placement for ${chainKey || tasks[0]?.key}`;
+    const subjectKey = bindingTask?.key ?? chainKey ?? tasks[0]?.key;
+    let reason = `No valid placement for ${subjectKey}`;
     if (bottleneckSlot) {
       reason += ` — ${bottleneckSlot.slotLabel} is the bottleneck`;
       const blockedRes = bottleneckSlot.resources.filter(r => r.status === 'blocked');
@@ -1664,7 +1711,7 @@ export class ChainContextEngine {
     }
 
     const report: InfeasibilityReport = {
-      taskKey: tasks[0]?.key || '',
+      taskKey: bindingTask?.key ?? tasks[0]?.key ?? '',
       chainKey,
       reason,
       bottleneckSlot: bottleneckSlot?.slotLabel || null,
