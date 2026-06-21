@@ -31,7 +31,7 @@ export interface ResourceSlotReport {
   resources: ResourceAvailabilityDetail[];
 }
 
-export type ConflictType = 'availability' | 'capacity' | 'dependency';
+export type ConflictType = 'availability' | 'capacity' | 'dependency' | 'horizon';
 
 export function classifyConflict(report: InfeasibilityReport): { type: ConflictType; reason: string } {
   const bottleneck = report.slots.find(s => s.isBottleneck);

@@ -57,6 +57,13 @@ export class ScheduleEngine implements IScheduleEngine {
     }
 
     task.state = CTPTaskStateConstants.SCHEDULED;
+    // A successfully placed task must not carry a scheduling-failure stamp. When
+    // the whole chain was deemed infeasible upstream, attachInfeasibilityReport
+    // stamps every chain task with the chain's error + infeasibilityReport; once
+    // this task is actually scheduled that stamp is stale. Clear it so scheduled
+    // tasks never report a phantom "no valid placement" (keeps error counts,
+    // Conflicts, and AI context honest). validationErrors are untouched.
+    task.clearErrors();
 
     if (task.scheduled === null) task.scheduled = new CTPInterval();
     task.scheduled.set(st, et, 1);

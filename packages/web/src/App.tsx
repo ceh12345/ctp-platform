@@ -8030,8 +8030,9 @@ function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskCli
     capacity:     { icon: '\uD83D\uDD34', color: '#f44336', label: 'Capacity Conflicts' },
     dependency:   { icon: '\uD83D\uDD17', color: '#ff9800', label: 'Dependency Conflicts' },
     material:     { icon: '\uD83D\uDCE6', color: '#2196f3', label: 'Material Conflicts' },
+    horizon:      { icon: '\u23F3', color: '#9c27b0', label: 'Horizon Conflicts' },
   };
-  const typeOrder = ['availability', 'capacity', 'dependency', 'material'];
+  const typeOrder = ['availability', 'capacity', 'dependency', 'material', 'horizon'];
   const grouped = new Map<string, any[]>();
   for (const type of typeOrder) grouped.set(type, []);
   conflicts.forEach((c: any) => {
@@ -8069,7 +8070,8 @@ function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskCli
                   c.reason === 'availability' ? '#9e9e9e' :
                   c.reason === 'capacity' ? '#f44336' :
                   c.reason === 'dependency' ? '#ff9800' :
-                  c.reason === 'material' ? '#2196f3' : C.orange
+                  c.reason === 'material' ? '#2196f3' :
+                  c.reason === 'horizon' ? '#9c27b0' : C.orange
                 } />
                 <span style={{ fontWeight: 600, color: C.text, fontSize: 13 }}>{c.taskName}</span>
                 {c.orderRef && <span style={{ color: C.textDim, fontSize: 12 }}>({c.orderRef})</span>}
@@ -9311,6 +9313,7 @@ function ConflictsTab({ tasks, resources, materials, onTaskClick }: {
           { value: 'capacity', label: 'Capacity', color: '#f44336' },
           { value: 'dependency', label: 'Dependency', color: '#ff9800' },
           { value: 'material', label: t('material', 'Material'), color: C.cyan },
+          { value: 'horizon', label: 'Horizon', color: '#9c27b0' },
         ]} active={reason} onChange={setReason} />
         <span style={{ fontSize: 12, color: C.textDim, marginLeft: 'auto' }}>
           {filtered.length} of {conflicts.length}

@@ -677,6 +677,65 @@ export abstract class CTPBaseScheduler {
     return true;
   }
 
+  /**
+   * Post-solve reclassification of unscheduled tasks. Window tightening only
+   * finalizes during scheduling, so when a chain was first judged infeasible the
+   * windows weren't tightened and every task inherited the same chain-level
+   * "resource bottleneck" report. Now that windows + states are final, relabel:
+   *
+   *   1. HORIZON  — the task whose window is capped by the horizon end and is
+   *      too small for the work it needs: it genuinely ran out of horizon.
+   *   2. DEPENDENCY — a task whose predecessor is itself unscheduled: it is
+   *      blocked by the predecessor, not by a resource/capacity conflict of its
+   *      own. This cascades down the chain from the first failure.
+   *
+   * Each relabel clones the (chain-shared) report so only this task changes.
+   */
+  protected reclassifyChainInfeasibility(tasks: List<CTPTask>): void {
+    const horizonEndW = this.landscape?.horizon?.endW;
+    tasks.forEach(task => {
+      if (task.state === CTPTaskStateConstants.SCHEDULED) return;
+
+      // 1) Ran out of horizon: window capped by the horizon end, too small for work.
+      const w = task.window;
+      const need = task.duration?.duration() ?? 0;
+      if (horizonEndW != null && w && need > 0
+          && w.endW >= horizonEndW - 60 && (w.endW - w.startW) < need) {
+        const chainKey = task.linkId?.name ?? task.key;
+        const needH = (need / 3600).toFixed(1);
+        const roomH = (Math.max(0, w.endW - w.startW) / 3600).toFixed(1);
+        const reason = `[HORIZON] ${chainKey} ran out of scheduling horizon at ${task.key} — needs ${needH}h but only ${roomH}h remain before the horizon ends`;
+        task.errors = [{ agent: 'HorizonCheck', reason, type: '' }];
+        if (task.infeasibilityReport) {
+          task.infeasibilityReport = {
+            ...task.infeasibilityReport,
+            conflictType: 'horizon',
+            conflictTypeReason: `${task.key} window is capped by the horizon end; ${needH}h of work required, ${roomH}h available`,
+            reason,
+          };
+        }
+        return;
+      }
+
+      // 2) Blocked by an unscheduled predecessor → dependency, not capacity.
+      const blockingPred = task.preds
+        .map(k => this.landscape.tasks?.getEntity(k))
+        .find(p => !!p && p.state !== CTPTaskStateConstants.SCHEDULED);
+      if (blockingPred) {
+        const reason = `[DEPENDENCY] ${task.key} blocked by unscheduled predecessor ${blockingPred.key}`;
+        task.errors = [{ agent: 'DependencyCheck', reason, type: '' }];
+        if (task.infeasibilityReport) {
+          task.infeasibilityReport = {
+            ...task.infeasibilityReport,
+            conflictType: 'dependency',
+            conflictTypeReason: `predecessor ${blockingPred.key} is not scheduled`,
+            reason,
+          };
+        }
+      }
+    });
+  }
+
   protected abstract initScheduling(tasks: List<CTPTask>): void;
   protected abstract initUnScheduling(tasks: List<CTPTask>): void;
 
@@ -793,6 +852,11 @@ export abstract class CTPBaseScheduler {
     }
 
     this.endScheduling();
+
+    // Now that windows + states are final, relabel unscheduled tasks with their
+    // true cause: horizon exhaustion, or dependency on an unscheduled predecessor
+    // (more accurate than the resource-bottleneck reason set during chain eval).
+    this.reclassifyChainInfeasibility(tasks);
 
     // Capture final solution state
     const finalState = SolutionStateBuilder.capture(this.landscape, 'Final');
