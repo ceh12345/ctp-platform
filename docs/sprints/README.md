@@ -6,6 +6,16 @@ _None_
 
 ## Up Next
 
+### 🎯 Next sprint sequence (downloading in order — Jun 2026)
+
+Run in this order; specs downloaded one at a time for review.
+
+1. **[Cross-WO Linking — Hydrator-Derived Group Precedence](SPRINT-cross-wo-linking.md)** — Hydrator wires task-level `prevLink` across Work-Order boundaries from the BOM tree (`parentOrderKey`) when the tenant sets `crossWOLinking: "bomParentChild"` (default `none`; Stafford opts in). Cross-WO links become just longer chains, so the **engine is unchanged**; partial scheduling respects them for free. Scope: config schema + enum validation, hydrator chain head/tail identification + cross-WO wiring per Group, Stafford config update, tests. Out: `explicit` mode, DAG-within-WO (`successorOf` one-successor limit), cross-Group precedence, UI. Open issue OI-1 (unscheduled predecessors during partial scheduling) flagged for a quick CC check. Small sprint, additive on `main`. **Spec downloaded; ready for review.**
+2. **[Processing Sequences — Tenant-Defined Demand Prioritisation](SPRINT-processing-sequences.md)** — Replace the hardcoded inter-Group priority rule with tenant-configurable **named sequences**. Composite weighted ranking under the hood: criteria use path expressions (`group.deliveryDate`, `order.salesOrderNumber`, `order.attributes.Strategy`, `hierarchy.*`) with either `importance` shorthand (primary/secondary/… → 1.0/0.01/… weights) or explicit `weight`. Hydrator computes per-WO `processingRanks[sequenceName]` (float) at sync; engine sorts demand by ascending rank at solve start (active sequence selectable per solve; Group rank = head WO). Platform default `order.dueDate asc`; Stafford gets `delivery-date-first`. Additive on `main`, no engine compute. Replaces Stafford's hardcoded priority criterion (same behaviour, expressed as data). **Spec downloaded; ready for review.**
+3. **[Snapshot as Partitioned Read Surface](snapshot-read-surface-sprint.md)** — Solve writes a **partitioned** on-disk snapshot; UI reads a **<100 KB summary partition** on landing and **lazy-reads heavy detail** on tab entry. Kills the **16.6 MB landing payload** and the **double `solve-and-sync`** (from `investigation-ui-at-scale.md`). Partitions: summary (headline + bucketed per-resource utilization + alerts) / detail (full tasks, lazy) / calendars (~3.8 MB intervals, on-demand) / meta (id+timestamp). New `GET /v1/snapshot/{summary,detail,calendars,meta}`; `POST /ctp/solve` rewrites the snapshot and returns light meta. Overview renders a utilization heatmap from `summary` only (no tasks array). 4 phases, engine read path untouched. **Supersedes** the prior "Engine — Solve Snapshots" backlog item. **Spec downloaded; ready for review.**
+
+> Basis doc for #3: [`investigation-ui-at-scale.md`](investigation-ui-at-scale.md) (read-only scale findings; the spec references it as `ui-scale-investigation.md` — same content, filename differs).
+
 | Sprint | Name | Notes |
 |--------|------|-------|
 | [Parallel Processes Within a Chain](sprint-parallel-processes-wo-groups.md) | Engine support for concurrent tasks in one `linkId.name` (Work Order Groups) | **Design captured (2026-06-17), no code.** Code-traced findings: precedence is enforced by `sequence` adjacency not `prevLink`; availability eval is a read-only snapshot with commit-deferred consumption; qty/capacity already models pooled (`qty>1`) and unit (`qty=1`) uniformly (reusable = windowed draw, consumable = horizon). Proposed model: `sequence`-as-rank with barrier (diamond) semantics. Only true new work = rank-aware `propagateCombo`/anchor + hydrator topological leveling; resource correctness reuses existing `revertAvailable()`/`subtractEngine` primitives (intra-combo soft allocation), deferrable under a disjoint-resource assumption + qty-aware guard. **Open decision: clean diamonds (rank model) vs unequal/partial-dep branches (true `prevLinks` DAG).** Depends on WO Group entity. |
@@ -117,8 +127,9 @@ _None_
 | Solver 9 — Phase B Tabu Search | Tabu search on disjunctive graph critical blocks | Depends on Phase A (done). Thorough tier: 100 iterations, 5-30s. Critical-block neighborhood (Taillard N7 / Nowicki-Smutnicki). |
 | Solver 10 — Phase B ILS | Iterated Local Search (multi-pass) | Depends on Solver 9. Best Quality tier: perturbation + restart. 30s-5min. |
 | Engine — Cost Analytics KPIs | Cost group in Analytics catalog | Depends on cost scoring rules. Total cost, cost by resource, cost by order, changeover cost, overtime premium. |
-| Engine — Solve Snapshots | Store and compare solve outputs | Per-task assignments, scores, costs. Named snapshots with diff. Powers What-If comparison. |
+| ~~Engine — Solve Snapshots~~ | Store and compare solve outputs | **Superseded by [Snapshot as Partitioned Read Surface](snapshot-read-surface-sprint.md)** (Up Next #3) — redesigned around the UI-scale findings into a partitioned read surface. Original: per-task assignments, scores, costs; named snapshots with diff; powers What-If comparison (the diff/compare angle can fold back in later). |
 | UI Sprint 6 | What-If Mode | Solve Snapshots (or simplified output comparison) |
+| UI — Cross-WO Gantt arrows | Predecessor arrows between WO rows on the Case/Order Gantt | **Pure frontend** — cross-WO edges + component membership are already on the hydrated model after the Cross-WO Enforcement sprint; do NOT re-scope as engine work. Split out of `SPRINT-cross-wo-enforcement-rev.md` (D3). |
 | UI Sprint 7 | Time Fence | — |
 | UI Sprint 8 | Task Swap | UI Sprint 4 |
 | UI Sprint 9 | Capacity Adjustment | API work |
@@ -236,6 +247,10 @@ INFRA TRACK
   engine-cadence-profiles.md         ← Boundary-snap filtering (replaces PB-TIMESLOT)
   engine-sprint-chain-primary-anchor.md ← Primary-task-driven chain placement
   sprint-parallel-processes-wo-groups.md ← Design note: concurrent tasks in one chain (sequence-as-rank + soft-allocation); code-traced engine findings, scope decisions, work items, open topology question
+  SPRINT-cross-wo-linking.md          ← [Next-sprint #1] hydrator wires cross-WO prevLink from BOM tree (parentOrderKey) when tenant crossWOLinking="bomParentChild"; engine unchanged; default none, Stafford opts in
+  SPRINT-processing-sequences.md      ← [Next-sprint #2] tenant-configurable named demand-priority sequences; composite weighted ranking (path-expr criteria + importance/weight); hydrator writes processingRanks[seq] per WO; engine sorts by rank; default order.dueDate asc
+  snapshot-read-surface-sprint.md     ← [Next-sprint #3] partitioned solve snapshot; UI reads <100KB summary on landing + lazy detail on tab entry; kills 16.6MB payload + double solve-and-sync; GET /v1/snapshot/{summary,detail,calendars,meta}; supersedes "Engine — Solve Snapshots"
+  investigation-ui-at-scale.md        ← Read-only findings: UI at ~2000 tasks (slim-2000) — full-array Gantt, no virtualization/memo, 16.6MB solve payload, double solve-and-sync on load; A-E report
   sprint-engine-edge-list-refactor.md ← DONE (2026-06-20): replaced implicit i±1/prevLink precedence with explicit preds[]/succs[] edge lists (behavior-preserving); Phase 0 adjacency.ts foundation, Phase 1 (4 batches) mechanical conversion, Phase 2 assignStartTimes topological fill, Phase 3 DAG fixtures (packages/engine/tests/engine/assign-start-times-dag.test.ts)
   cpsat-integration-prompt.md          ← CP-SAT global optimizer exploration (C#, OR-Tools)
   solver-5-global-optimizer.md         ← Global optimizer spec
