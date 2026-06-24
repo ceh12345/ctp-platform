@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "tenantId": "demo-manufacturing",
+  "_note": "demo-manufacturing is the de-facto base tenant. Its demand sort is declared explicitly here (not inherited from the code platform default), so it self-documents the default for tenants cloned from it. See config/_templates/tenant-mapping.template.json.",
+  "processingSequences": [
+    {
+      "name": "wo-priority",
+      "displayName": "Work Order Priority",
+      "criteria": [
+        { "field": "order.priority", "direction": "asc", "importance": "primary" }
+      ]
+    }
+  ],
+  "defaultSequence": "wo-priority"
+}
