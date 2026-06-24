@@ -1561,6 +1561,7 @@ function SolvePreview({ orders, tasks, materials, resources,
   previousOrderModes, previousTaskPins, previousTaskExcludes, previousMaterialModes,
   strategy, onStrategyChange, strategyOptions,
   tier, onTierChange, tierOptions,
+  sequence, onSequenceChange, sequenceOptions,
   experienceLevel,
   configName, scoringSummary,
   onConfirm, onCancel }: {
@@ -1584,6 +1585,9 @@ function SolvePreview({ orders, tasks, materials, resources,
   tier: string;
   onTierChange: (t: string) => void;
   tierOptions: SolverTierOption[];
+  sequence: string;
+  onSequenceChange: (s: string) => void;
+  sequenceOptions: { name: string; displayName: string; summary?: string }[];
   experienceLevel: ExperienceLevel;
   configName?: string;
   scoringSummary?: string;
@@ -2017,6 +2021,46 @@ function SolvePreview({ orders, tasks, materials, resources,
                       >
                         <span style={{ fontSize: 10 }}>{opt.icon}</span>
                         {opt.label}
+                      </button>
+                    </HoverTooltip>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Demand sort (processing sequence) — intermediate+ */}
+          {showAt(experienceLevel, 'intermediate') && sequenceOptions.length > 0 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8,
+              padding: '8px 10px', background: C.bg, borderRadius: 8,
+              border: `1px solid ${C.border}`,
+            }}>
+              <span style={{ fontSize: 10, color: C.textDim, fontWeight: 600, whiteSpace: 'nowrap' }}>Sort:</span>
+              <div style={{ display: 'flex', gap: 2, flex: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
+                {sequenceOptions.map(opt => {
+                  const isActive = opt.name === sequence;
+                  const tooltip = (
+                    <div style={{ maxWidth: 260 }}>
+                      <div style={{ fontWeight: 700, marginBottom: 4, color: C.text }}>{opt.displayName}</div>
+                      <div style={{ fontSize: 11, color: C.textDim, lineHeight: 1.4 }}>
+                        {opt.summary || 'Demand prioritisation sequence'}
+                      </div>
+                    </div>
+                  );
+                  return (
+                    <HoverTooltip key={opt.name} content={tooltip}>
+                      <button onClick={() => onSequenceChange(opt.name)}
+                        style={{
+                          padding: '4px 7px', borderRadius: 5, cursor: 'pointer',
+                          fontSize: 10, fontWeight: 600, fontFamily: FONT,
+                          background: isActive ? C.accent + '22' : 'transparent',
+                          color: isActive ? C.accent : C.textMuted,
+                          border: isActive ? `1px solid ${C.accent}44` : `1px solid transparent`,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {opt.displayName}
                       </button>
                     </HoverTooltip>
                   );
@@ -9709,6 +9753,7 @@ function SolverSection({ stats, solveResult, configName }: { stats?: any; solveR
         {configName && <span>Config: <strong style={{ color: C.text }}>{configName}</strong></span>}
         <span>Strategy: <strong style={{ color: C.text }}>{stats.strategy || '-'}</strong></span>
         {sr?.tier && <span>Tier: <strong style={{ color: C.text }}>{sr.tier}</strong></span>}
+        {sr?.activeSequence && <span>Sort: <strong style={{ color: C.text }}>{sr.availableSequences?.find((s: any) => s.name === sr.activeSequence)?.displayName || sr.activeSequence}</strong></span>}
         <span>Time: <strong style={{ color: C.text }}>{(stats.totalTimeMs / 1000).toFixed(2)}s</strong></span>
         {sr?.contextsEvaluated != null && (
           <span>Contexts: <strong style={{ color: C.text }}>{sr.contextsEvaluated}</strong></span>
@@ -14587,6 +14632,8 @@ export default function App() {
   const [strategyOptions, setStrategyOptions] = useState<StrategyOption[]>(FALLBACK_STRATEGIES);
   const [selectedTier, setSelectedTier] = useState('balanced');
   const [tierOptions, setTierOptions] = useState<SolverTierOption[]>(FALLBACK_TIERS);
+  const [activeSequence, setActiveSequence] = useState('platform-default');
+  const [sequenceOptions, setSequenceOptions] = useState<{ name: string; displayName: string; summary?: string }[]>([]);
   const [solveStale, setSolveStale] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [resourcePreferenceOverrides, setResourcePreferenceOverrides] = useState<Record<string, Record<string, string>>>({});
@@ -14802,6 +14849,9 @@ export default function App() {
           }
         }
       }
+      // Processing Sequences — populate the demand-sort selector + default.
+      if (strategiesData?.sequences?.length > 0) setSequenceOptions(strategiesData.sequences);
+      if (strategiesData?.defaultSequence) setActiveSequence(strategiesData.defaultSequence);
     } catch (e: any) {
       setError(e.message || 'Failed to load data');
     }
@@ -14933,6 +14983,7 @@ export default function App() {
 
       body.strategy = solverStrategy;
       body.tier = selectedTier;
+      body.activeSequence = activeSequence;
       body.detailLevel = experienceLevel;
       if (activeConfigKey) body.configurationKey = activeConfigKey;
       if (scoringOverrides && scoringOverrides.length > 0) body.scoringOverrides = scoringOverrides;
@@ -15063,6 +15114,7 @@ export default function App() {
         preserveLandscape: true,
         resourcePreferenceOverrides: newOverrides,
         strategy: solverStrategy,
+        activeSequence,
         detailLevel: experienceLevel,
       };
       // Include other active overrides
@@ -17063,6 +17115,9 @@ export default function App() {
           tier={selectedTier}
           onTierChange={handleTierChange}
           tierOptions={tierOptions}
+          sequence={activeSequence}
+          onSequenceChange={setActiveSequence}
+          sequenceOptions={sequenceOptions}
           experienceLevel={experienceLevel}
           configName={activeConfig?.name}
           scoringSummary={activeScoringRules.filter(r => r.includeInSolve).slice(0, 6).map(r => `${RULE_ABBREV[r.ruleName] || displayRuleName(r.ruleName)} ${Math.round(r.weight * 100)}%`).join(' \u00B7 ')}

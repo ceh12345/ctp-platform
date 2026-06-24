@@ -16,6 +16,8 @@ export class StrategyConfigService {
     defaultStrategy: string;
     tiers: SolverTierConfig[];
     defaultTier: string;
+    sequences: { name: string; displayName: string; summary: string }[];
+    defaultSequence: string;
   } {
     const overrides = this.configService.getStrategyOverrides();
     const customs = this.configService.getCustomStrategies();
@@ -73,7 +75,20 @@ export class StrategyConfigService {
       ? tenantStrategy
       : DEFAULT_STRATEGY_KEY;
 
-    return { strategies, defaultStrategy, tiers, defaultTier: DEFAULT_TIER_KEY };
+    // Processing Sequences — demand-prioritisation sequences selectable per solve.
+    // List the tenant's configured sequences + the always-available platform default.
+    const profile = this.configService.getMappingProfile?.();
+    const sequences = (profile?.processingSequences ?? []).map(s => ({
+      name: s.name,
+      displayName: s.displayName ?? s.name,
+      summary: (s.criteria ?? []).map(c => `${c.field} ${c.direction ?? 'asc'}`).join(', '),
+    }));
+    if (!sequences.some(s => s.name === 'platform-default')) {
+      sequences.push({ name: 'platform-default', displayName: 'Work Order Priority (platform default)', summary: 'order.priority asc' });
+    }
+    const defaultSequence = profile?.defaultSequence || 'platform-default';
+
+    return { strategies, defaultStrategy, tiers, defaultTier: DEFAULT_TIER_KEY, sequences, defaultSequence };
   }
 
   /** Check if a strategy key is available for the current tenant. */
