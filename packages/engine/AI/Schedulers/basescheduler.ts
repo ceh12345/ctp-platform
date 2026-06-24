@@ -692,10 +692,14 @@ export abstract class CTPBaseScheduler {
    * in another chain — not in the per-WO adjacency). Called before context
    * explosion so the chain's contexts respect the constraint. Chain ordering
    * guarantees the predecessor is already scheduled; if it is unscheduled, leave
-   * the window and record a dependency error so the task surfaces as blocked
-   * (cascade) rather than scheduling early.
+   * the window and record a dependency error, and return false so the caller
+   * cascade-blocks the chain (does NOT schedule it early).
+   *
+   * @returns true if every cross-WO predecessor is committed (safe to schedule);
+   *          false if any is unscheduled (chain must be deferred / blocked).
    */
-  protected floorCrossWOWindows(chainTasks: List<CTPTask>): void {
+  protected floorCrossWOWindows(chainTasks: List<CTPTask>): boolean {
+    let ok = true;
     chainTasks.forEach(t => {
       const xprev = t.linkId?.prevLink;
       if (!xprev || xprev === t.key) return;
@@ -704,12 +708,14 @@ export abstract class CTPBaseScheduler {
       if (!xpred.scheduled) {
         t.addError('ChainConstraint',
           `cross-WO predecessor ${xpred.key} is not scheduled — cannot schedule ${t.name}`);
+        ok = false;
         return;
       }
       if (t.window && t.window.startW < xpred.scheduled.endW) {
         t.window.startW = xpred.scheduled.endW;
       }
     });
+    return ok;
   }
 
   /** Apply a predecessor-end floor to a task's window, with collapse guards. */
@@ -1368,8 +1374,13 @@ export abstract class CTPBaseScheduler {
 
         // Cross-WO floor BEFORE context explosion, so contexts respect the
         // committed cross-WO predecessor end (chain ordering guarantees it's
-        // already scheduled).
-        this.floorCrossWOWindows(chainTaskList);
+        // already scheduled). If a cross-WO predecessor is unscheduled, cascade:
+        // defer this chain (bump-retry / infeasibility) rather than schedule it
+        // early ahead of its predecessor.
+        if (!this.floorCrossWOWindows(chainTaskList)) {
+          failedChains.push(chain);
+          continue;
+        }
 
         // Explode contexts for all tasks in the chain
         this.explodeScheduleContexts(chainTaskList);
