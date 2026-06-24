@@ -2948,6 +2948,17 @@ export class CTPService {
     return result;
   }
 
+  /** Selectable demand-prioritisation sequences for the active tenant (config +
+   *  the always-available platform default). Surfaced in the solve result. */
+  private listAvailableSequences(): { name: string; displayName: string }[] {
+    const seqs = this.configService.getMappingProfile?.()?.processingSequences ?? [];
+    const out = seqs.map(s => ({ name: s.name, displayName: s.displayName ?? s.name }));
+    if (!out.some(s => s.name === 'platform-default')) {
+      out.push({ name: 'platform-default', displayName: 'Work Order Priority (platform default)' });
+    }
+    return out;
+  }
+
   private computeCapacityWaterfall(landscape: SchedulingLandscape): any[] {
     const resourceTasks = new Map<string, Map<string, { tasks: number; seconds: number }>>();
 
@@ -3730,6 +3741,11 @@ export class CTPService {
     if (criticalPathResult) {
       result.criticalPath = criticalPathResult;
     }
+
+    // Processing Sequences: expose the demand sort used + selectable sequences,
+    // so the order is never silently assumed (visible in the UI / API).
+    (result as any).activeSequence = landscape.appSettings?.activeSequence ?? null;
+    (result as any).availableSequences = this.listAvailableSequences();
 
     // Capacity waterfall (commitment stack layers per resource)
     (result as any).capacityWaterfall = this.computeCapacityWaterfall(landscape);

@@ -33,7 +33,7 @@ Three outcomes this sprint earns:
 
 5. **Sequences are user-named, user-selectable.** Each sequence has a name the user sees; users (or solve API callers) pick which sequence to use per solve.
 
-6. **Backward compatibility via sensible defaults.** Tenants without explicit sequences fall back to a platform default (probably `order.dueDate asc`) so the engine never lacks a rank field.
+6. **Backward compatibility via sensible defaults.** Tenants without explicit sequences fall back to a platform default (probably `order.priority asc`) so the engine never lacks a rank field.
 
 ---
 
@@ -161,7 +161,7 @@ If a tenant config has no `processingSequences` defined, the platform provides a
 {
   "name": "platform-default",
   "criteria": [
-    { "field": "order.dueDate", "direction": "asc", "importance": "primary" }
+    { "field": "order.priority", "direction": "asc", "importance": "primary" }
   ]
 }
 ```
@@ -180,7 +180,7 @@ Sensible behaviour for any tenant; never leaves the engine without a rank field 
 - Engine reads `processingRanks[activeSequence]` at solve start; sorts demand by ascending rank.
 - Group-aware integration: Group's effective rank = head WO's rank.
 - Importance-to-weight mapping for ergonomic config.
-- Platform default sequence (`order.dueDate asc`) when tenant has none defined.
+- Platform default sequence (`order.priority asc`) when tenant has none defined.
 - Validation at config load: paths must resolve; sequence names unique; default must reference a defined sequence.
 - Stafford tenant config updated with `delivery-date-first` sequence as their default.
 - Logging of sequence-resolution issues during sync (null fields, invalid paths, missing groups for `group.*` references).
@@ -209,7 +209,7 @@ Sensible behaviour for any tenant; never leaves the engine without a rank field 
 3. Ranks are consistent with the sequence's intended order — sorting WOs by rank ascending produces the same order as sorting by (group.deliveryDate asc, order.salesOrderNumber asc).
 4. Engine reads `processingRanks` at solve start; demand order matches expectation.
 5. Group-aware solving consumes Group's head WO rank; Groups process in priority order.
-6. Tenants without `processingSequences` defined get the platform default (`order.dueDate asc`).
+6. Tenants without `processingSequences` defined get the platform default (`order.priority asc`).
 7. Path-expression validation rejects invalid paths at config load with clear error messages.
 8. A second test sequence (e.g. `customer-priority-first`) can be defined and selected at solve time; the resulting order differs from the default.
 

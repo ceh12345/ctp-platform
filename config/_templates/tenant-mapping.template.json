@@ -1,0 +1,17 @@
+{
+  "_note": "Base template for a tenant's integration/mapping.json. Copy into config/tenants/<id>/integration/ when onboarding a tenant. Declare processingSequences + defaultSequence EXPLICITLY so the demand sort is exposed in the config, not assumed. If omitted, the platform falls back to order.priority asc and logs a warning at load; the active sequence is also reported in every solve result.",
+  "version": "1.0",
+  "tenantId": "<tenant-id>",
+  "_crossWOLinkingNote": "Set to 'bomParentChild' only for tenants whose WorkOrderGroups carry BOM parent/child precedence (e.g. Stafford). Default 'none'.",
+  "crossWOLinking": "none",
+  "processingSequences": [
+    {
+      "name": "wo-priority",
+      "displayName": "Work Order Priority",
+      "criteria": [
+        { "field": "order.priority", "direction": "asc", "importance": "primary" }
+      ]
+    }
+  ],
+  "defaultSequence": "wo-priority"
+}

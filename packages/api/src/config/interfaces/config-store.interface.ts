@@ -323,7 +323,7 @@ export interface IMappingProfile {
    * Tenant-defined demand-prioritisation sequences (Processing Sequences sprint).
    * The hydrator computes a numeric `processingRanks[name]` per WO at sync time;
    * the engine sorts demand by the active sequence's rank ascending. If unset,
-   * the platform default (`order.dueDate asc`) applies.
+   * the platform default (`order.priority asc` — lower = more urgent) applies.
    */
   processingSequences?: IProcessingSequence[];
   /** Name of the sequence used when a solve request doesn't specify one. */

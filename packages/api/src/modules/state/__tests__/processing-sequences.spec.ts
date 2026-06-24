@@ -62,12 +62,20 @@ describe('computeProcessingRanks', () => {
     expect([B, C, D].sort(order('delivery-date-first')).map(o => o.key)).toEqual(['B', 'C', 'D']);
   });
 
-  it('platform default sequence ranks by order.dueDate asc', () => {
-    const seq = [{ name: 'platform-default', criteria: [{ field: 'order.dueDate', direction: 'asc' as const, importance: 'primary' as const }] }];
+  it('platform default ranks by order.priority asc (lower = more urgent)', () => {
+    const seq = [{ name: 'platform-default', criteria: [{ field: 'order.priority', direction: 'asc' as const, importance: 'primary' as const }] }];
+    const urgent = mkOrder('urgent', null, 0, null); urgent.priority = 1;
+    const low = mkOrder('low', null, 0, null); low.priority = 6;
+    StateHydratorService.computeProcessingRanks([low, urgent], new Map(), seq as any);
+    expect(urgent.processingRanks['platform-default']).toBeLessThan(low.processingRanks['platform-default']);
+  });
+
+  it('resolves order.dueDate as a sortable path (asc)', () => {
+    const seq = [{ name: 'edd', criteria: [{ field: 'order.dueDate', direction: 'asc' as const, importance: 'primary' as const }] }];
     const late = mkOrder('late', null, 300, null);
     const early = mkOrder('early', null, 100, null);
     StateHydratorService.computeProcessingRanks([late, early], new Map(), seq as any);
-    expect(early.processingRanks['platform-default']).toBeLessThan(late.processingRanks['platform-default']);
+    expect(early.processingRanks['edd']).toBeLessThan(late.processingRanks['edd']);
   });
 
   it('explicit weights are honoured (equal weights → secondary can flip a near-tie)', () => {

@@ -478,4 +478,10 @@ export class CTPSolveResultDto {
 
   @ApiPropertyOptional({ description: 'Tenant locale configuration' })
   locale?: any;
+
+  @ApiPropertyOptional({ description: 'Processing sequence that ordered demand for this solve (exposed, not assumed)' })
+  activeSequence?: string | null;
+
+  @ApiPropertyOptional({ description: 'Selectable demand-prioritisation sequences (name + display label)' })
+  availableSequences?: { name: string; displayName: string }[];
 }

@@ -209,9 +209,12 @@ export class StateHydratorService {
   private static readonly IMPORTANCE_WEIGHT: Record<string, number> = {
     primary: 1.0, secondary: 0.01, tertiary: 0.0001, quaternary: 0.000001,
   };
+  // Platform default: order WOs by their own priority (lower = more urgent, per
+  // the RUSH/HIGH/NORMAL/LOW tiers). Honours the planner-set work-order priority
+  // for tenants without explicit processingSequences.
   private static readonly PLATFORM_DEFAULT_SEQUENCE: IProcessingSequence = {
     name: 'platform-default',
-    criteria: [{ field: 'order.dueDate', direction: 'asc', importance: 'primary' }],
+    criteria: [{ field: 'order.priority', direction: 'asc', importance: 'primary' }],
   };
 
   /**
@@ -230,6 +233,11 @@ export class StateHydratorService {
       sequences = profile.processingSequences;
     } else {
       sequences = [StateHydratorService.PLATFORM_DEFAULT_SEQUENCE];
+      console.warn(
+        '[StateHydratorService] processingSequences: tenant declares none — applying the ' +
+        'platform default (order.priority asc). Add processingSequences + defaultSequence to ' +
+        'the tenant mapping to make demand order explicit rather than assumed.',
+      );
     }
 
     const rawGroups = new Map<string, Record<string, unknown>>();
