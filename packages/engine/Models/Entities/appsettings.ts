@@ -34,6 +34,7 @@ export class CTPAppSettings implements IAppSettings {
   public resetUageAfterProcessChange: boolean = true;
   public scheduleDirection: number = CTPScheduleDirectionConstants.FORWARD;
   public solverStrategy: string = 'Chain';
+  public activeSequence: string | null = null;  // Processing Sequences: demand-priority sequence name for this solve
   /** Computed at solve time — true when any task has a linkId (chain). Not a config setting. */
   public hasChains: boolean = false;
   public maxBacktrackAttempts: number = 3;

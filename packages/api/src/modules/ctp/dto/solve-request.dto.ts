@@ -76,6 +76,13 @@ export class SolveRequestDto {
   tier?: string;
 
   @ApiPropertyOptional({
+    description: 'Processing-sequence name to prioritise demand by (default: tenant defaultSequence)',
+  })
+  @IsOptional()
+  @IsString()
+  activeSequence?: string;
+
+  @ApiPropertyOptional({
     description: 'Detail level for response',
     enum: ['novice', 'intermediate', 'expert', 'diagnostic'],
     default: 'novice',

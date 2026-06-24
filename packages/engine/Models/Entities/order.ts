@@ -25,6 +25,12 @@ export class CTPOrder extends CTPKeyEntity implements IOrder {
   public groupKey: string | null = null;       // → CTPWorkOrderGroup.key
   public parentOrderKey: string | null = null; // → another CTPOrder.key, for the WO tree
 
+  // Demand-prioritisation ranks (Processing Sequences). Per-sequence float, lower
+  // = higher priority. Computed at hydrate from the tenant's processingSequences;
+  // the engine sorts demand by the active sequence's rank. Empty for tenants with
+  // no sequences (engine falls back to task priority).
+  public processingRanks: Record<string, number> = {};
+
   // Mapping-output fields not in IOrderData. Populated by the hydrator from the
   // mapping engine's per-order output. Read by downstream engines (e.g. rollup
   // cancellationPredicate) that need source-shaped data without coupling to

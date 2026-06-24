@@ -38,6 +38,7 @@ import {
   IStateChangeData,
   IOrderData,
   IWorkOrderGroupData,
+  IProcessingSequence,
 } from '../../config/interfaces/config-store.interface';
 import { IRawDataPayload } from '../integration/adapter.interface';
 import { WorkOrderGroupService } from './workordergroup.service';
@@ -198,7 +199,179 @@ export class StateHydratorService {
     // derivation (head/tail identified by sequence). No-op for default `none`.
     this.wireCrossWOLinks(landscape);
 
+    // Processing Sequences — compute per-WO demand-prioritisation ranks from the
+    // tenant's processingSequences (or the platform default). No-op-safe.
+    this.deriveProcessingRanks(landscape);
+
     return landscape;
+  }
+
+  private static readonly IMPORTANCE_WEIGHT: Record<string, number> = {
+    primary: 1.0, secondary: 0.01, tertiary: 0.0001, quaternary: 0.000001,
+  };
+  private static readonly PLATFORM_DEFAULT_SEQUENCE: IProcessingSequence = {
+    name: 'platform-default',
+    criteria: [{ field: 'order.dueDate', direction: 'asc', importance: 'primary' }],
+  };
+
+  /**
+   * Processing Sequences — compute `order.processingRanks[sequenceName]` for every
+   * WO from the tenant's `processingSequences` (composite weighted ranking with
+   * min/max normalisation), or the platform default (`order.dueDate asc`) when
+   * none are configured. Lower rank = higher priority. Resolves path expressions
+   * source-shaped (entity first-class fields, else `order.rawFields`, the
+   * `attributes[]`/`hierarchies[]` arrays, and raw group data for `group.*`).
+   */
+  private deriveProcessingRanks(landscape: SchedulingLandscape): void {
+    const profile = this.configService.getMappingProfile?.();
+    let sequences: IProcessingSequence[];
+    if (profile?.processingSequences && profile.processingSequences.length > 0) {
+      StateHydratorService.validateProcessingSequences(profile.processingSequences, profile.defaultSequence);
+      sequences = profile.processingSequences;
+    } else {
+      sequences = [StateHydratorService.PLATFORM_DEFAULT_SEQUENCE];
+    }
+
+    const rawGroups = new Map<string, Record<string, unknown>>();
+    for (const g of (this.configService.getWorkOrderGroupsData?.() ?? [])) {
+      rawGroups.set(g.key, g as unknown as Record<string, unknown>);
+    }
+
+    const orders: CTPOrder[] = [];
+    landscape.orders.forEach(o => orders.push(o));
+    if (orders.length === 0) return;
+
+    StateHydratorService.computeProcessingRanks(orders, rawGroups, sequences);
+    console.log(
+      `[StateHydratorService] processingSequences: computed ranks [${sequences.map(s => s.name).join(', ')}] ` +
+      `over ${orders.length} WOs.`,
+    );
+  }
+
+  /**
+   * Config-load validation (AC#7): unique sequence names, non-empty criteria,
+   * each criterion has exactly one of weight|importance with valid enum values,
+   * and `defaultSequence` references a defined sequence. Throws loudly at sync.
+   */
+  static validateProcessingSequences(sequences: IProcessingSequence[], defaultSequence?: string): void {
+    const names = new Set<string>();
+    for (const seq of sequences) {
+      if (!seq.name) throw new Error('[StateHydratorService] processingSequences: a sequence is missing "name".');
+      if (names.has(seq.name)) throw new Error(`[StateHydratorService] processingSequences: duplicate sequence name "${seq.name}".`);
+      names.add(seq.name);
+      if (!seq.criteria || seq.criteria.length === 0) {
+        throw new Error(`[StateHydratorService] processingSequences: sequence "${seq.name}" has no criteria.`);
+      }
+      for (const c of seq.criteria) {
+        if (!c.field) throw new Error(`[StateHydratorService] processingSequences: "${seq.name}" has a criterion missing "field".`);
+        const hasW = c.weight !== undefined, hasI = c.importance !== undefined;
+        if (hasW === hasI) {
+          throw new Error(`[StateHydratorService] processingSequences: "${seq.name}" criterion "${c.field}" must set exactly one of weight | importance.`);
+        }
+        if (hasI && !(c.importance! in StateHydratorService.IMPORTANCE_WEIGHT)) {
+          throw new Error(`[StateHydratorService] processingSequences: "${seq.name}" criterion "${c.field}" has invalid importance "${c.importance}".`);
+        }
+        if (c.direction && c.direction !== 'asc' && c.direction !== 'desc') {
+          throw new Error(`[StateHydratorService] processingSequences: "${seq.name}" criterion "${c.field}" has invalid direction "${c.direction}".`);
+        }
+        if (c.nullsHandling && c.nullsHandling !== 'first' && c.nullsHandling !== 'last') {
+          throw new Error(`[StateHydratorService] processingSequences: "${seq.name}" criterion "${c.field}" has invalid nullsHandling "${c.nullsHandling}".`);
+        }
+      }
+    }
+    if (defaultSequence && !names.has(defaultSequence)) {
+      throw new Error(`[StateHydratorService] processingSequences: defaultSequence "${defaultSequence}" is not a defined sequence.`);
+    }
+  }
+
+  /**
+   * Pure composite-weighted ranking: stamps `order.processingRanks[name]` for each
+   * sequence (lower = higher priority). Weights come from explicit `weight` or the
+   * importance→weight table; values are min/max normalised across the WO set with
+   * direction + nullsHandling applied. Exposed for unit testing.
+   */
+  static computeProcessingRanks(
+    orders: CTPOrder[],
+    rawGroups: Map<string, Record<string, unknown>>,
+    sequences: IProcessingSequence[],
+  ): void {
+    for (const seq of sequences) {
+      if (!seq.criteria || seq.criteria.length === 0) continue;
+      const weights = seq.criteria.map(c =>
+        c.weight ?? StateHydratorService.IMPORTANCE_WEIGHT[c.importance ?? 'primary'] ?? 1.0);
+      const wSum = weights.reduce((a, b) => a + b, 0) || 1;
+      const wNorm = weights.map(w => w / wSum);
+
+      // Resolve each criterion's value per WO, then min/max over non-null values.
+      const vals: (number | null)[][] = seq.criteria.map(c =>
+        orders.map(o => StateHydratorService.resolveCriterionValue(o, rawGroups, c.field)));
+      const bounds = vals.map(col => {
+        const nums = col.filter((v): v is number => v != null);
+        return { min: nums.length ? Math.min(...nums) : 0, max: nums.length ? Math.max(...nums) : 0 };
+      });
+
+      orders.forEach((o, oi) => {
+        let rank = 0;
+        seq.criteria.forEach((c, ci) => {
+          const { min, max } = bounds[ci];
+          const v = vals[ci][oi];
+          let norm: number;
+          if (v == null) {
+            norm = c.nullsHandling === 'first' ? 0 : 1; // 'last' → sorts after (higher rank)
+          } else {
+            norm = max > min ? (v - min) / (max - min) : 0;
+            if (c.direction === 'desc') norm = 1 - norm;
+          }
+          rank += wNorm[ci] * norm;
+        });
+        o.processingRanks[seq.name] = rank;
+      });
+    }
+  }
+
+  /** Resolve a path-expression criterion to a sortable number (or null). */
+  private static resolveCriterionValue(
+    order: CTPOrder,
+    rawGroups: Map<string, Record<string, unknown>>,
+    field: string,
+  ): number | null {
+    const parts = field.split('.');
+    const raw = (order.rawFields ?? {}) as Record<string, unknown>;
+    let val: unknown = null;
+    if (parts[0] === 'order') {
+      if (parts[1] === 'attributes') val = StateHydratorService.findNamed(raw['attributes'], parts[2]);
+      else if (parts[1] === 'dueDate') val = order.dueDate;
+      else if (parts[1] === 'priority') val = order.priority;
+      else val = raw[parts[1]];
+    } else if (parts[0] === 'group') {
+      const g = order.groupKey ? rawGroups.get(order.groupKey) : undefined;
+      if (g) {
+        if (parts[1] === 'attributes') val = StateHydratorService.findNamed(g['attributes'], parts[2]);
+        else val = g[parts[1]];
+      }
+    } else if (parts[0] === 'hierarchy') {
+      val = StateHydratorService.findNamed(raw['hierarchies'], parts[1]);
+    }
+    return StateHydratorService.toSortable(val);
+  }
+
+  /** Find {name,value} (or {name} attr/hierarchy) by name in a source array. */
+  private static findNamed(arr: unknown, name: string): unknown {
+    if (!Array.isArray(arr)) return null;
+    const hit = arr.find(e => e && typeof e === 'object' && (e as any).name === name);
+    return hit ? (hit as any).value : null;
+  }
+
+  /** Coerce a resolved value to a sortable number: numeric, numeric-string, or ISO date. */
+  private static toSortable(v: unknown): number | null {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+    const s = String(v).trim();
+    if (s === '') return null;
+    const n = Number(s);
+    if (!Number.isNaN(n)) return n;
+    const d = Date.parse(s);
+    return Number.isNaN(d) ? null : d;
   }
 
   /**

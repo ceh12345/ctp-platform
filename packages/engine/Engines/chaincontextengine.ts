@@ -1885,6 +1885,20 @@ export function getChainPriority(
   landscape: SchedulingLandscape,
 ): number {
   if (!chain?.tasks) return Number.MAX_VALUE;
+
+  // Processing Sequences: if an active sequence is set and this WO has a rank,
+  // demand priority is the sequence rank (lower = higher priority). The WO key is
+  // the chain's linkId.name (= order key). Falls back to task priority otherwise,
+  // so tenants without sequences are unchanged.
+  const active = landscape.appSettings?.activeSequence;
+  if (active) {
+    let orderKey: string | undefined;
+    chain.tasks.forEach(t => { if (!orderKey && t.linkId?.name) orderKey = t.linkId.name; });
+    const order = orderKey ? landscape.orders?.getEntity(orderKey) : undefined;
+    const rank = order?.processingRanks?.[active];
+    if (typeof rank === 'number') return rank;
+  }
+
   let best = Number.MAX_VALUE;
   chain.tasks.forEach(task => {
     if (task.priority < best) best = task.priority;

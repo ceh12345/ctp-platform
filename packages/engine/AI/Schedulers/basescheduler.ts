@@ -1481,17 +1481,21 @@ export abstract class CTPBaseScheduler {
     const compOf = (c: CTPProcess) => c.tasks?.at(0)?.componentKey ?? c.key ?? '';
     const topoOf = (c: CTPProcess) => c.tasks?.at(0)?.componentTopoPos ?? 0;
 
-    const compMinPrio = new Map<string, number>();
+    // Component anchor = the HEAD WO's priority/rank (componentKey == head WO key,
+    // and a chain's WO key is its linkId.name). So the component sorts where its
+    // final-assembly WO would (Processing Sequences §6). Single-WO components are
+    // their own head → anchor = own rank → plain priority order (strict-gen).
+    const compHeadRank = new Map<string, number>();
     for (const c of chains) {
       const k = compOf(c);
-      const p = prio(c);
-      if (!compMinPrio.has(k) || p < compMinPrio.get(k)!) compMinPrio.set(k, p);
+      const woKey = c.tasks?.at(0)?.linkId?.name;
+      if (woKey === k) compHeadRank.set(k, prio(c));
     }
 
     chains.sort((a, b) => {
-      const aa = compMinPrio.get(compOf(a)) ?? prio(a);
-      const bb = compMinPrio.get(compOf(b)) ?? prio(b);
-      if (aa !== bb) return aa - bb;            // component anchor (min priority)
+      const aa = compHeadRank.get(compOf(a)) ?? prio(a);
+      const bb = compHeadRank.get(compOf(b)) ?? prio(b);
+      if (aa !== bb) return aa - bb;            // component anchor (head-WO rank)
       const ta = topoOf(a), tb = topoOf(b);
       if (ta !== tb) return ta - tb;            // child WO before parent WO
       return prio(a) - prio(b);                 // stable tiebreak

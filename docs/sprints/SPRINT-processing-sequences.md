@@ -39,6 +39,16 @@ Three outcomes this sprint earns:
 
 ## Backend / Model
 
+### Phase 0 — RESOLVED (locked, 2026-06-24)
+
+Verified against the Stafford data; two spec field names don't exist and are remapped:
+- **`group.deliveryDate` → `group.promiseDate`** (the delivery commitment; `group.sourceEnd` is the alternative). `deliveryDate` is not a field on the group.
+- **`order.salesOrderNumber` → `hierarchy.SalesOrder`** (hierarchy slot 3, populated 27/29 on slim-100; empties sort last). SalesOrder is a HIERARCHY slot, **not** an attribute (attributes are Strategy / JobType / CustomerSource / DbrEndDate / ProjectManager*).
+
+Resolution is **source-shaped, computed at hydrate**: the lean entity classes don't expose attributes/hierarchies as typed fields, so the resolver reads `order.dueDate` / `order.priority` (first-class) else `order.rawFields[...]`, the `attributes[]` / `hierarchies[]` arrays, and `group.promiseDate` / `sourceEnd` from the raw group data (`getWorkOrderGroupsData()`), not the reduced `CTPWorkOrderGroup`.
+
+Storage + read seam: net-new `processingRanks: Record<sequenceName, number>` per WO (on `CTPOrder`), read at solve start. Engine seam = `getChainPriority` / `getChainsInPriorityOrder` (`basescheduler.ts`); ranks key on the **component head WO** (composes with Phase 1 §6) with WO-topo position kept as the hard within-component tiebreak. Active sequence via `SolveRequestDto.activeSequence` (default = tenant `defaultSequence`).
+
 ### Schema additions
 
 **Tenant config:**
@@ -52,12 +62,12 @@ Three outcomes this sprint earns:
       "displayName": "Delivery Date Priority",
       "criteria": [
         {
-          "field": "group.deliveryDate",
+          "field": "group.promiseDate",
           "direction": "asc",
           "importance": "primary"
         },
         {
-          "field": "order.salesOrderNumber",
+          "field": "hierarchy.SalesOrder",
           "direction": "asc",
           "importance": "secondary"
         }

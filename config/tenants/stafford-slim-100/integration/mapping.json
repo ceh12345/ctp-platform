@@ -1,5 +1,16 @@
 {
   "version": "1.0",
   "tenantId": "stafford-slim-100",
-  "crossWOLinking": "bomParentChild"
+  "crossWOLinking": "bomParentChild",
+  "processingSequences": [
+    {
+      "name": "delivery-date-first",
+      "displayName": "Delivery Date Priority",
+      "criteria": [
+        { "field": "group.promiseDate", "direction": "asc", "importance": "primary" },
+        { "field": "hierarchy.SalesOrder", "direction": "asc", "importance": "secondary" }
+      ]
+    }
+  ],
+  "defaultSequence": "delivery-date-first"
 }

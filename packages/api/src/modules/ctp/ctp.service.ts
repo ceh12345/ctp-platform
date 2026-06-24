@@ -384,6 +384,18 @@ export class CTPService {
     // Pass requested strategy to the engine via appSettings
     if (landscape.appSettings) {
       landscape.appSettings.solverStrategy = strategy;
+      // Processing Sequences: pick the demand-priority sequence for this solve.
+      // Reject an explicitly-requested sequence that isn't defined (OI-4).
+      const mp = this.configService.getMappingProfile?.();
+      if (request?.activeSequence) {
+        const names = (mp?.processingSequences ?? []).map(s => s.name);
+        if (request.activeSequence !== 'platform-default' && !names.includes(request.activeSequence)) {
+          throw new HttpException({ error: { code: 'INVALID_SEQUENCE', message: `Unknown activeSequence '${request.activeSequence}'. Defined: ${names.join(', ') || '(none)'}`, category: 'validation' } }, HttpStatus.BAD_REQUEST);
+        }
+      }
+      landscape.appSettings.activeSequence = request?.activeSequence
+        || mp?.defaultSequence
+        || 'platform-default';
       if (request?.recordSolveSteps) {
         landscape.appSettings.recordSolveSteps = true;
       }

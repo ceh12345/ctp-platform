@@ -277,6 +277,27 @@ export interface IAdapterConfig {
   errorPolicy?: Record<string, any>;
 }
 
+/**
+ * One sort criterion in a processing sequence (Processing Sequences sprint).
+ * `field` is a path expression resolved source-shaped at hydrate (order.<f> /
+ * order.attributes.<n> / group.<f> / group.attributes.<n> / hierarchy.<slot>).
+ * Exactly one of `weight` | `importance` is required.
+ */
+export interface IProcessingSequenceCriterion {
+  field: string;
+  direction?: 'asc' | 'desc';                                  // default 'asc'
+  importance?: 'primary' | 'secondary' | 'tertiary' | 'quaternary';
+  weight?: number;
+  nullsHandling?: 'first' | 'last';                            // default 'last'
+}
+
+/** A named, user-selectable demand-prioritisation sequence. */
+export interface IProcessingSequence {
+  name: string;                 // unique, lowercase-hyphenated
+  displayName?: string;
+  criteria: IProcessingSequenceCriterion[];
+}
+
 export interface IMappingProfile {
   version?: string;
   tenantId?: string;
@@ -297,6 +318,16 @@ export interface IMappingProfile {
    *   chain head waits for its child WO's chain tail. Requires WorkOrderGroups.
    */
   crossWOLinking?: 'none' | 'bomParentChild';
+
+  /**
+   * Tenant-defined demand-prioritisation sequences (Processing Sequences sprint).
+   * The hydrator computes a numeric `processingRanks[name]` per WO at sync time;
+   * the engine sorts demand by the active sequence's rank ascending. If unset,
+   * the platform default (`order.dueDate asc`) applies.
+   */
+  processingSequences?: IProcessingSequence[];
+  /** Name of the sequence used when a solve request doesn't specify one. */
+  defaultSequence?: string;
 
   /**
    * Named-default values referenced by rules via `{ "fromDefault": "name" }`.
