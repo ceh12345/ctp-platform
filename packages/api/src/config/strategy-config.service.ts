@@ -83,7 +83,9 @@ export class StrategyConfigService {
       displayName: s.displayName ?? s.name,
       summary: (s.criteria ?? []).map(c => `${c.field} ${c.direction ?? 'asc'}`).join(', '),
     }));
-    if (!sequences.some(s => s.name === 'platform-default')) {
+    // Only surface the platform default when the tenant declares no sequences of
+    // its own — otherwise it's a redundant duplicate of the tenant's sequence.
+    if (sequences.length === 0) {
       sequences.push({ name: 'platform-default', displayName: 'Work Order Priority (platform default)', summary: 'order.priority asc' });
     }
     const defaultSequence = profile?.defaultSequence || 'platform-default';

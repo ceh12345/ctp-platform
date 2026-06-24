@@ -2953,7 +2953,8 @@ export class CTPService {
   private listAvailableSequences(): { name: string; displayName: string }[] {
     const seqs = this.configService.getMappingProfile?.()?.processingSequences ?? [];
     const out = seqs.map(s => ({ name: s.name, displayName: s.displayName ?? s.name }));
-    if (!out.some(s => s.name === 'platform-default')) {
+    // Only surface the platform default when the tenant declares none of its own.
+    if (out.length === 0) {
       out.push({ name: 'platform-default', displayName: 'Work Order Priority (platform default)' });
     }
     return out;
