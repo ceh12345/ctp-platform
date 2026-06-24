@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "tenantId": "acme-outpatient",
+  "processingSequences": [
+    {
+      "name": "wo-priority",
+      "displayName": "Work Order Priority",
+      "criteria": [
+        {
+          "field": "order.priority",
+          "direction": "asc",
+          "importance": "primary"
+        }
+      ]
+    }
+  ],
+  "defaultSequence": "wo-priority"
+}
