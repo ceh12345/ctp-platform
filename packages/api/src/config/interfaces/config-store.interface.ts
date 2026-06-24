@@ -290,6 +290,15 @@ export interface IMappingProfile {
   workOrderGroups?: EntityMapping;
 
   /**
+   * Cross-WO precedence derivation mode (Cross-WO Linking sprint).
+   * - `none` (default if unset): WOs remain independent chains.
+   * - `bomParentChild`: hydrator derives cross-WO `prevLink` from the BOM tree
+   *   (`order.parentOrderKey`) within each WorkOrderGroup, so a parent WO's
+   *   chain head waits for its child WO's chain tail. Requires WorkOrderGroups.
+   */
+  crossWOLinking?: 'none' | 'bomParentChild';
+
+  /**
    * Named-default values referenced by rules via `{ "fromDefault": "name" }`.
    * Tenant-scoped placeholder constants for cases where source data is
    * missing or zero — e.g. `subcontractDefaultLeadTimeHours` for OUTWORK

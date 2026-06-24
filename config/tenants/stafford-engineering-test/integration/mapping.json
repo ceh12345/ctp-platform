@@ -3,6 +3,8 @@
   "tenantId": "stafford-engineering-test",
   "source": "genius-api-mock",
 
+  "crossWOLinking": "bomParentChild",
+
   "defaults": {
     "subcontractDefaultLeadTimeHours": 24,
     "_note": "Defensive Q3 workaround: when an OUTWORK task has both TotalPlannedMachineHours=0 AND TaskStartDate==TaskEndDate (no source duration at all), the engine still needs a non-zero placeholder to schedule against. We assume 24h (1 day). Stafford to confirm — see docs/Stafford/QUESTIONS-slim-100.md Q3."

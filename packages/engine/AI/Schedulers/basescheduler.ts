@@ -147,6 +147,10 @@ export abstract class CTPBaseScheduler {
       if (prev === t.key) return; // self-reference; not a real predecessor
       const predecessor = byKey.get(prev);
       if (!predecessor) return; // orphan; hydrator already warned
+      // Cross-chain (cross-WO) prevLinks have independent per-chain sequence
+      // numbering — the strictly-increasing invariant is within-chain only.
+      // Cross-WO precedence rides on preds/succs, not sequence.
+      if ((predecessor.linkId?.name ?? '') !== (t.linkId?.name ?? '')) return;
       if (predecessor.sequence >= t.sequence) {
         throw new Error(
           `[CTPBaseScheduler] task.sequence inconsistent with linkId topology: ` +
@@ -632,10 +636,9 @@ export abstract class CTPBaseScheduler {
 
   protected tightenWindowFromPredecessor(task: CTPTask): boolean {
     if (!this.settings?.hasChains) return true;
-    if (task.preds.length === 0) return true; // Chain root or standalone
 
     // Floor the window by the LATEST of all predecessors' scheduled ends.
-    // Linear data => exactly one predecessor, identical to the legacy logic.
+    // Linear data => exactly one within-chain predecessor, identical to legacy.
     let predEnd = -Infinity;
     let latestPredName = '';
     for (const predKey of task.preds) {
@@ -655,6 +658,62 @@ export abstract class CTPBaseScheduler {
       }
     }
 
+    // Cross-WO predecessor (Cross-WO Enforcement): a `linkId.prevLink` whose
+    // owner lives in another chain is NOT in `task.preds` (the within-chain
+    // adjacency drops it), so honour it explicitly here. Floor by its committed
+    // end whether it was scheduled this solve (topological order guarantees it)
+    // or pinned outside a partial solve. If it is unscheduled, the successor
+    // cannot be floored — block with a specific 'dependency' reason naming the
+    // exact predecessor (do NOT schedule it early).
+    const xprev = task.linkId?.prevLink;
+    if (xprev && xprev !== task.key && !task.preds.includes(xprev)) {
+      const xpred = this.landscape.tasks.getEntity(xprev);
+      if (xpred && (xpred.linkId?.name ?? '') !== (task.linkId?.name ?? '')) {
+        if (!xpred.scheduled) {
+          task.addError('ChainConstraint',
+            `cross-WO predecessor ${xpred.key} is not scheduled — cannot schedule ${task.name}`);
+          return false;
+        }
+        if (xpred.scheduled.endW > predEnd) {
+          predEnd = xpred.scheduled.endW;
+          latestPredName = xpred.name;
+        }
+      }
+    }
+
+    if (predEnd === -Infinity) return true; // no predecessors (chain root / standalone)
+
+    return this.applyPredFloor(task, predEnd, latestPredName);
+  }
+
+  /**
+   * Cross-WO Enforcement: raise each multi-task chain task's window.startW by any
+   * cross-WO predecessor's committed end (a `linkId.prevLink` whose owner lives
+   * in another chain — not in the per-WO adjacency). Called before context
+   * explosion so the chain's contexts respect the constraint. Chain ordering
+   * guarantees the predecessor is already scheduled; if it is unscheduled, leave
+   * the window and record a dependency error so the task surfaces as blocked
+   * (cascade) rather than scheduling early.
+   */
+  protected floorCrossWOWindows(chainTasks: List<CTPTask>): void {
+    chainTasks.forEach(t => {
+      const xprev = t.linkId?.prevLink;
+      if (!xprev || xprev === t.key) return;
+      const xpred = this.landscape.tasks.getEntity(xprev);
+      if (!xpred || (xpred.linkId?.name ?? '') === (t.linkId?.name ?? '')) return; // within-chain — handled normally
+      if (!xpred.scheduled) {
+        t.addError('ChainConstraint',
+          `cross-WO predecessor ${xpred.key} is not scheduled — cannot schedule ${t.name}`);
+        return;
+      }
+      if (t.window && t.window.startW < xpred.scheduled.endW) {
+        t.window.startW = xpred.scheduled.endW;
+      }
+    });
+  }
+
+  /** Apply a predecessor-end floor to a task's window, with collapse guards. */
+  protected applyPredFloor(task: CTPTask, predEnd: number, latestPredName: string): boolean {
     if (task.window) {
       if (task.window.startW < predEnd) {
         task.window.startW = predEnd;
@@ -1307,6 +1366,11 @@ export abstract class CTPBaseScheduler {
         const chainTaskList = new List<CTPTask>();
         chainTasks.forEach(t => chainTaskList.add(t));
 
+        // Cross-WO floor BEFORE context explosion, so contexts respect the
+        // committed cross-WO predecessor end (chain ordering guarantees it's
+        // already scheduled).
+        this.floorCrossWOWindows(chainTaskList);
+
         // Explode contexts for all tasks in the chain
         this.explodeScheduleContexts(chainTaskList);
         this.reComputeScheduleContexts();
@@ -1395,9 +1459,32 @@ export abstract class CTPBaseScheduler {
   private getChainsInPriorityOrder(): CTPProcess[] {
     const chains: CTPProcess[] = [];
     this.landscape.processes?.forEach(p => chains.push(p));
-    chains.sort((a, b) =>
-      getChainPriority(a, this.landscape) - getChainPriority(b, this.landscape)
-    );
+
+    // Cross-WO Enforcement: a component evaluates as a block at its best (min)
+    // chain priority; within the component, child WOs precede the parent by
+    // WO-topo position so a cross-WO predecessor is committed before its
+    // successor chain is evaluated (the window-floor then reads its end). A
+    // single-WO component (componentKey unset → its own key, topoPos 0) reduces
+    // to plain priority order, so non-cross-WO tenants are unaffected.
+    const prio = (c: CTPProcess) => getChainPriority(c, this.landscape);
+    const compOf = (c: CTPProcess) => c.tasks?.at(0)?.componentKey ?? c.key ?? '';
+    const topoOf = (c: CTPProcess) => c.tasks?.at(0)?.componentTopoPos ?? 0;
+
+    const compMinPrio = new Map<string, number>();
+    for (const c of chains) {
+      const k = compOf(c);
+      const p = prio(c);
+      if (!compMinPrio.has(k) || p < compMinPrio.get(k)!) compMinPrio.set(k, p);
+    }
+
+    chains.sort((a, b) => {
+      const aa = compMinPrio.get(compOf(a)) ?? prio(a);
+      const bb = compMinPrio.get(compOf(b)) ?? prio(b);
+      if (aa !== bb) return aa - bb;            // component anchor (min priority)
+      const ta = topoOf(a), tb = topoOf(b);
+      if (ta !== tb) return ta - tb;            // child WO before parent WO
+      return prio(a) - prio(b);                 // stable tiebreak
+    });
     return chains;
   }
 

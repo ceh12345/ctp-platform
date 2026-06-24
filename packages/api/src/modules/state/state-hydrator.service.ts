@@ -192,7 +192,246 @@ export class StateHydratorService {
     // to call even when groups is empty (no-op).
     this.workOrderGroupService.rebuildGroups(landscape);
 
+    // Cross-WO Linking — derive cross-WO prevLink edges from the BOM tree when
+    // the tenant opts in (mapping crossWOLinking: "bomParentChild"). Runs after
+    // groups are built (needs membership + groupKey) and after sequence
+    // derivation (head/tail identified by sequence). No-op for default `none`.
+    this.wireCrossWOLinks(landscape);
+
     return landscape;
+  }
+
+  /**
+   * Cross-WO Linking — derive cross-WO precedence from the BOM tree.
+   *
+   * When the mapping profile sets `crossWOLinking: "bomParentChild"`, for each
+   * child WO (`order.parentOrderKey` → a parent order in the SAME
+   * WorkOrderGroup) wire the child WO's chain tail as the parent WO's chain
+   * head's `prevLink`. The engine then schedules the parent only after the child
+   * via the normal preds/succs machinery — adjacency's `realPrevKey` honours the
+   * cross-chain edge because both endpoints share `groupKey`. v1 is single-edge:
+   * one child tail → one parent head per parent (many-to-many deferred).
+   *
+   * Default (`none` / unset): no-op. Throws on an unknown mode, or on
+   * `bomParentChild` with no WorkOrderGroups (clear config error at sync time).
+   */
+  private wireCrossWOLinks(landscape: SchedulingLandscape): void {
+    const mode = this.configService.getMappingProfile?.()?.crossWOLinking;
+    if (!mode || mode === 'none') return;
+    // Config-level validation (AC-7): bomParentChild requires the tenant to
+    // DEFINE WorkOrderGroups capability — file-tenant group data or a rollup
+    // group config. Genuine misconfiguration (neither) is rejected loudly.
+    const hasGroupCapability =
+      (this.configService.getWorkOrderGroupsData?.()?.length ?? 0) > 0 ||
+      this.configService.getWorkOrderGroupsConfig?.() != null;
+    const s = StateHydratorService.deriveCrossWOLinks(landscape, mode, hasGroupCapability);
+    if (s.skipped === 'empty-groups') {
+      console.log(
+        `[StateHydratorService] crossWOLinking 'bomParentChild': no WorkOrderGroups in this ` +
+        `landscape (empty/partial sync) — nothing to wire.`,
+      );
+      return;
+    }
+    console.log(
+      `[StateHydratorService] crossWOLinking 'bomParentChild': wired ${s.linksWired} cross-WO ` +
+      `link(s) across ${s.groupsTouched} group(s).` +
+      (s.parentsAlreadyWired ? ` ${s.parentsAlreadyWired} extra child->parent edge(s) skipped ` +
+        `(v1 single-edge; many-to-many deferred).` : '') +
+      (s.missingParent ? ` ${s.missingParent} parentOrderKey reference(s) not found.` : '') +
+      (s.crossGroup ? ` ${s.crossGroup} child->parent pair(s) skipped (different/no group).` : ''),
+    );
+    // Derive connected precedence components + WO-topo order + head WO (throws on
+    // WO-level cycle or multi-sink). Stamps componentKey/topoPos/anchor on tasks.
+    StateHydratorService.deriveComponents(landscape);
+  }
+
+  /**
+   * Stamp `componentKey` / `componentTopoPos` / `componentAnchorStartW` on every
+   * task from the (now cross-WO-wired) `prevLink` graph. componentKey = the
+   * component's head WO (its single terminal WO). **Throws at hydrate** on a
+   * WO-level cycle or a multi-sink component (no unique head) — both are data
+   * errors with no valid schedule order. Single-WO components stamp their own WO
+   * (topoPos 0), so non-cross-WO chains are unaffected.
+   */
+  static deriveComponents(landscape: Pick<SchedulingLandscape, 'tasks'>): void {
+    const tasksByWO = new Map<string, CTPTask[]>();
+    const byKey = new Map<string, CTPTask>();
+    landscape.tasks.forEach(t => {
+      byKey.set(t.key, t);
+      const wo = t.linkId?.name; if (!wo) return;
+      if (!tasksByWO.has(wo)) tasksByWO.set(wo, []);
+      tasksByWO.get(wo)!.push(t);
+    });
+
+    // WO-level directed edges: predWO -> thisWO (predWO precedes thisWO).
+    const woEdges = new Map<string, Set<string>>();
+    for (const wo of tasksByWO.keys()) woEdges.set(wo, new Set());
+    const uf = new Map<string, string>();
+    for (const wo of tasksByWO.keys()) uf.set(wo, wo);
+    const find = (x: string): string => { while (uf.get(x) !== x) { uf.set(x, uf.get(uf.get(x)!)!); x = uf.get(x)!; } return x; };
+    const union = (a: string, b: string) => { const ra = find(a), rb = find(b); if (ra !== rb) uf.set(ra, rb); };
+
+    landscape.tasks.forEach(t => {
+      const prev = t.linkId?.prevLink; if (!prev) return;
+      const pred = byKey.get(prev); if (!pred) return;
+      const thisWO = t.linkId?.name, predWO = pred.linkId?.name;
+      if (!thisWO || !predWO || predWO === thisWO) return; // intra-WO handled by the chain
+      woEdges.get(predWO)!.add(thisWO);
+      union(predWO, thisWO);
+    });
+
+    // Group WOs into components.
+    const compWOs = new Map<string, string[]>();
+    for (const wo of tasksByWO.keys()) {
+      const r = find(wo);
+      if (!compWOs.has(r)) compWOs.set(r, []);
+      compWOs.get(r)!.push(wo);
+    }
+
+    for (const [root, wos] of compWOs) {
+      const set = new Set(wos);
+      const outWithin = (w: string) => [...woEdges.get(w)!].filter(x => set.has(x));
+      // Single terminal WO (sink = no outgoing edge within the component).
+      const sinks = wos.filter(w => outWithin(w).length === 0);
+      if (sinks.length > 1) {
+        throw new Error(
+          `[StateHydratorService] crossWOLinking: component (root ${root}) has ${sinks.length} ` +
+          `terminal WOs (no unique head): ${sinks.join(', ')}. Multi-sink BOMs are not supported — ` +
+          `fix the data or extend the design (deliberate future sprint).`,
+        );
+      }
+      // Kahn topo (child WOs first); detect cycle.
+      const indeg = new Map<string, number>(wos.map(w => [w, 0]));
+      for (const w of wos) for (const x of outWithin(w)) indeg.set(x, indeg.get(x)! + 1);
+      const pos = new Map<string, number>();
+      let i = 0, seen = 0;
+      let frontier = wos.filter(w => indeg.get(w)! === 0);
+      while (frontier.length) {
+        const next: string[] = [];
+        for (const w of frontier) {
+          pos.set(w, i++); seen++;
+          for (const x of outWithin(w)) { indeg.set(x, indeg.get(x)! - 1); if (indeg.get(x)! === 0) next.push(x); }
+        }
+        frontier = next;
+      }
+      if (seen < wos.length) {
+        throw new Error(
+          `[StateHydratorService] crossWOLinking: WO-level cycle in component (root ${root}) among ` +
+          `${wos.join(', ')} — no valid schedule order. Fix the data.`,
+        );
+      }
+      const headWO = sinks[0] ?? wos[0];
+      let anchor = Number.MAX_SAFE_INTEGER;
+      for (const w of wos) for (const t of tasksByWO.get(w)!) {
+        const s = t.window?.startW;
+        if (typeof s === 'number' && s < anchor) anchor = s;
+      }
+      if (anchor === Number.MAX_SAFE_INTEGER) anchor = 0;
+      for (const w of wos) for (const t of tasksByWO.get(w)!) {
+        t.componentKey = headWO;
+        t.componentTopoPos = pos.get(w) ?? 0;
+        t.componentAnchorStartW = anchor;
+      }
+    }
+  }
+
+  /**
+   * Pure cross-WO wiring over a landscape's collections (config already read by
+   * the caller). Throws on an unknown mode or missing group capability. Returns
+   * a summary; `skipped: 'empty-groups'` when nothing is loaded to wire.
+   */
+  static deriveCrossWOLinks(
+    landscape: Pick<SchedulingLandscape, 'tasks' | 'orders' | 'groups'>,
+    mode: string,
+    hasGroupCapability: boolean,
+  ): {
+    skipped?: 'empty-groups';
+    linksWired: number;
+    parentsAlreadyWired: number;
+    missingParent: number;
+    crossGroup: number;
+    groupsTouched: number;
+  } {
+    if (mode !== 'bomParentChild') {
+      throw new Error(
+        `[StateHydratorService] Unrecognised crossWOLinking value ${JSON.stringify(mode)}; ` +
+        `expected 'none' or 'bomParentChild'.`,
+      );
+    }
+    if (!hasGroupCapability) {
+      throw new Error(
+        `[StateHydratorService] crossWOLinking 'bomParentChild' requires WorkOrderGroups ` +
+        `to be configured (group data or rollup config), but the tenant defines neither.`,
+      );
+    }
+    let groupCount = 0;
+    landscape.groups.forEach(() => { groupCount++; });
+    if (groupCount === 0) {
+      return { skipped: 'empty-groups', linksWired: 0, parentsAlreadyWired: 0, missingParent: 0, crossGroup: 0, groupsTouched: 0 };
+    }
+
+    // Index tasks by chain (linkId.name === order key).
+    const tasksByChain = new Map<string, CTPTask[]>();
+    landscape.tasks.forEach(t => {
+      const name = t.linkId?.name;
+      if (!name) return;
+      if (!tasksByChain.has(name)) tasksByChain.set(name, []);
+      tasksByChain.get(name)!.push(t);
+    });
+
+    // Deterministic iteration over child order keys.
+    const childKeys: string[] = [];
+    landscape.orders.forEach(o => childKeys.push(o.key));
+    childKeys.sort();
+
+    let linksWired = 0;
+    let parentsAlreadyWired = 0;
+    let missingParent = 0;
+    let crossGroup = 0;
+    const wiredParentHeads = new Set<string>();
+    const groupsTouched = new Set<string>();
+
+    for (const childKey of childKeys) {
+      const child = landscape.orders.getEntity(childKey);
+      if (!child) continue;
+      const parentKey = child.parentOrderKey;
+      if (!parentKey || parentKey === child.key) continue; // no parent / self
+      const parent = landscape.orders.getEntity(parentKey);
+      if (!parent) { missingParent++; continue; }
+      // BOM precedence is within a Group: both WOs must share a non-null group.
+      if (!child.groupKey || child.groupKey !== parent.groupKey) { crossGroup++; continue; }
+
+      const childTasks = tasksByChain.get(child.key) ?? [];
+      const parentTasks = tasksByChain.get(parent.key) ?? [];
+      if (childTasks.length === 0 || parentTasks.length === 0) continue;
+
+      // Tail = max sequence in child chain; head = min sequence in parent chain.
+      const childTail = childTasks.reduce((a, b) => (b.sequence > a.sequence ? b : a));
+      const parentHead = parentTasks.reduce((a, b) => (b.sequence < a.sequence ? b : a));
+
+      // v1 single-edge: one cross-WO predecessor per parent head. If a parent
+      // already received one (multiple children → one parent), keep the first
+      // (deterministic by sorted child key) and skip the rest — counted.
+      if (wiredParentHeads.has(parentHead.key)) { parentsAlreadyWired++; continue; }
+
+      if (parentHead.linkId) {
+        parentHead.linkId.prevLink = childTail.key;
+        // Cross-WO edge is precedence-only — a subassembly may sit in inventory
+        // before the parent consumes it. Set maxGap = null EXPLICITLY; never
+        // inherit the chain-head's incidental null (so a future chain-head change
+        // can't silently introduce a gap constraint on a cross-WO link).
+        parentHead.linkId.maxGap = null;
+      }
+      // Denormalise groupKey onto both endpoints (diagnostics / future grouping).
+      childTail.groupKey = child.groupKey;
+      parentHead.groupKey = parent.groupKey;
+
+      wiredParentHeads.add(parentHead.key);
+      groupsTouched.add(child.groupKey);
+      linksWired++;
+    }
+
+    return { linksWired, parentsAlreadyWired, missingParent, crossGroup, groupsTouched: groupsTouched.size };
   }
 
   private hydrateWorkOrderGroups(
@@ -901,6 +1140,10 @@ export class StateHydratorService {
       if (prev === t.key) return; // self-reference; not a real predecessor
       const predecessor = byKey.get(prev);
       if (!predecessor) return; // orphan; warned during derivation
+      // Cross-chain (cross-WO) prevLinks have independent per-chain sequence
+      // numbering, so the strictly-increasing invariant only applies within a
+      // chain. Precedence for cross-WO edges rides on preds/succs, not sequence.
+      if ((predecessor.linkId?.name ?? '') !== (t.linkId?.name ?? '')) return;
       if (predecessor.sequence >= t.sequence) {
         throw new Error(
           `[StateHydratorService] task.sequence inconsistent with linkId topology ` +

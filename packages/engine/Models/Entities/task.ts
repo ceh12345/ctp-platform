@@ -244,6 +244,14 @@ export class CTPTask extends CTPKeyEntity implements ITask {
   // Denormalised from parent order's CTPWorkOrderGroup (lets task-level queries group without joining through orders)
   public groupKey: string | null = null;
 
+  // Cross-WO precedence component metadata (in-memory, NOT serialized) — stamped
+  // at hydrate by deriveComponents over the full prevLink graph. For a single-WO
+  // component these reduce to the WO's own values (componentKey = linkId.name,
+  // topoPos = 0), so non-cross-WO tenants are unaffected.
+  public componentKey: string | null = null;       // head WO of the connected precedence component
+  public componentTopoPos: number = 0;             // this WO's position in the component's WO-level topo order (child < parent)
+  public componentAnchorStartW: number = 0;        // min window.startW across the component (K-mode sort anchor)
+
   // Cadence — resolved interval in minutes (null = no cadence, tasks start whenever)
   public cadenceIntervalMinutes: number | null = null;
 
