@@ -8,7 +8,25 @@
 **Depends on:** Cross-WO linking hydrator work (edges wired; `predKey` present on solved data).
 **Triggers:** slim-100 live test — 10 cross-WO links wired, edge present (`29575-A-1.predKey === "29576-QC-4"`), but all 9 wired pairs schedule the parent *before* the child. Precedence is not enforced.
 
-**Status:** ✅ **Phase-1-ready** — Phase 0 confirmed, all design decisions resolved. The section directly below is authoritative; where earlier prose in this doc differs, this wins.
+**Status:** ✅ **DONE / LANDED** (commits `684f242`, `9d7c2ab`). Phase 0 confirmed, all decisions resolved, implemented + verified. The section directly below is authoritative; where earlier prose differs, this wins.
+
+---
+
+## Phase 1 — LANDED (path correction)
+
+Implemented and pushed. One correction to where the hooks live vs. where Phase 0 first guessed:
+
+**The Chain solve runs through `scheduleChainPass` → `getChainsInPriorityOrder` → `ChainContextEngine.evaluateChain`** — NOT the per-task `chainneighborhood` frontier or `tightenWindowFromPredecessor` (those serve the greedy / single-task path). The first floor attempt landed there and measured 0/9 (two no-ops). The working hooks:
+
+- **Ordering** — `getChainsInPriorityOrder` (`basescheduler.ts`): component-aware sort `(component min-priority, WO-topo position, priority)`. Single-WO components reduce to plain priority order → strict generalization (non-cross-WO tenants byte-identical).
+- **Floor (multi-task chains)** — `floorCrossWOWindows` before context explosion in `scheduleChainPass`; returns a status so an unscheduled cross-WO predecessor **cascades** (chain deferred to bump-retry, never scheduled early).
+- **Floor (single-task / greedy)** — cross-WO branch in `tightenWindowFromPredecessor` (shared `applyPredFloor`).
+- **Hydrate** — `deriveCrossWOLinks` (wire + null cross-WO maxGap) + `deriveComponents` (componentKey, WO-topo, head WO; throws on cycle / multi-sink).
+- **R (readiness-gate) dropped** — it's a frontier concept; the chain pass is a single ordered pass, so ordering + floor is the only applicable mechanism.
+
+**Verification:** slim-100 schedulable cross-WO pairs **5/5 enforced**, committed actuals untouched, **90/99 scheduled preserved**. Tests: `cross-wo-linking.spec.ts` (wiring/components/cycle/multi-sink), `cross-wo-enforcement.test.ts` (planned-successor-behind-pinned-predecessor floor), `cross-wo-conjunctive.test.ts` (optimizer conjunctive-arc protection). 1231 tests pass; strict tsc clean.
+
+**Remaining (optional):** automated slim-100-data integration test; the §7 inter-WO Gantt arrows (backlogged).
 
 ---
 
