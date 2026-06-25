@@ -7,8 +7,27 @@
       "name": "delivery-date-first",
       "displayName": "Delivery Date Priority",
       "criteria": [
-        { "field": "group.promiseDate", "direction": "asc", "importance": "primary" },
-        { "field": "hierarchy.SalesOrder", "direction": "asc", "importance": "secondary" }
+        {
+          "field": "group.promiseDate",
+          "direction": "asc",
+          "importance": "primary"
+        },
+        {
+          "field": "hierarchy.SalesOrder",
+          "direction": "asc",
+          "importance": "secondary"
+        }
+      ]
+    },
+    {
+      "name": "wo-priority",
+      "displayName": "Work Order Priority",
+      "criteria": [
+        {
+          "field": "order.priority",
+          "direction": "asc",
+          "importance": "primary"
+        }
       ]
     }
   ],

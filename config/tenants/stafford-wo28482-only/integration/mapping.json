@@ -17,6 +17,17 @@
           "importance": "secondary"
         }
       ]
+    },
+    {
+      "name": "wo-priority",
+      "displayName": "Work Order Priority",
+      "criteria": [
+        {
+          "field": "order.priority",
+          "direction": "asc",
+          "importance": "primary"
+        }
+      ]
     }
   ],
   "defaultSequence": "delivery-date-first"
