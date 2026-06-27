@@ -226,6 +226,15 @@ export class CTPTask extends CTPKeyEntity implements ITask {
   public processed: boolean;
   public pinned: boolean;
 
+  /**
+   * True when the scheduler created this task during a solve (e.g. a CHANGEOVER
+   * state-change task) — it has no row in the static/base input. The snapshot
+   * overlay carries generated tasks whole (definition + placement) so they can
+   * be reconstructed from disk without re-solving. Config-defined SETUP/TEAR_DOWN
+   * tasks are NOT generated (they exist in base). Default false.
+   */
+  public generated: boolean = false;
+
   public errors: IError[];                             // per-solve scheduler errors — cleared at solve start
   public validationErrors: IValidationError[] = [];    // persistent data-quality errors — survive solves
 
