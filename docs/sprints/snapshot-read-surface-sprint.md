@@ -79,6 +79,12 @@ The landscape rebuilds from disk by composing the current layers:
 - **Steady state, the other direction:** the live in-memory landscape is the working truth; each solve writes the overlay out (memory → disk). So the snapshot is the durable bridge both ways — written from memory each solve, read back into memory on restart.
 - **Carry-forward (partial solves):** a partial solve recomputes only the movable tasks; unchanged tasks are carried forward **from the in-memory landscape**, not round-tripped through disk. Memory is the source of truth during uptime; the snapshot is pure output.
 
+### Base ⋈ overlay reconciliation — overlay wins *within a version*
+
+When composing, **the overlay overwrites base for every field it owns, for every task present in the overlay.** Base supplies a field only as the seed for tasks *not* in the overlay (e.g. a newly-synced work order never solved). Worked example — the **window**: it is overlay-owned because the solve *tightens* it (`startW/endW`) and `setTaskWindow` *overrides* it (and resets `origStartW/origEndW` to the new bound — `ctp.service.ts:1463-1467`). On reconstruction the overlay's full window (`startW/endW` working bound + `origStartW/origEndW` outer bound) **replaces** base's config window. The config window isn't lost — it remains in immutable `base/` for a future "reset to original" — but the live landscape uses the overlay.
+
+**The guard: overlay-overwrites-base is valid only when `overlay.sourceDataVersion == base.version`.** Otherwise overlaying resurrects stale state over changed inputs — e.g. a source re-pull moves a due date so base's config window becomes `[A,C]`, but the pre-pull overlay still carries `[A,B]`; blindly applying it would silently restore the old window. So reconstruction is **version-pinned**: it joins the overlay to the *exact* base version the overlay names, never "latest base." On a base-version bump the overlay is stale-by-construction → `staleFlag` → **re-solve** (which regenerates a fresh overlay against the new base), rather than reconstructing from the stale overlay. Same version → exact reconstruction (the normal restart/reload case); base advanced → re-solve, don't overlay. This version check *is* the reconciliation; it is not optional polish.
+
 ---
 
 ## 5. Read surface (projections off the overlay)
@@ -206,12 +212,12 @@ Ordered to **de-risk the requirement first**: the make-or-break (can the landsca
 ### Wire-up & load
 
 **P4 — Write the overlay on every mutation** *(service integration)*
-- Deliver: solve, schedule/unschedule, pin, window-extend, priority-override each call serialize → persist → promote and return **light meta** (snapshotId), not the fat result (§7, §8). Set `meta.staleFlag` from the fixture-input version.
-- **Test:** per endpoint — hit it, assert a new snapshotId promoted, `current` repointed, overlay reflects the change. One assertion each.
+- Deliver: solve, schedule/unschedule, pin, window-extend, priority-override each call serialize → persist → promote (§7, §8). **Stamp `meta.sourceDataVersion` with a real base-input version** at promote time — a content hash / mtime of the tenant's base inputs (tasks/resources/calendars/orders) — so the overlay records the exact base it was written against (deferred-population: a stable token now, the Genius feed's version later). *(Endpoint return-shape change to light meta is folded into P7 with the lockstep caller updates.)*
+- **Test:** per endpoint — hit it, assert a new snapshotId promoted, `current` repointed, overlay reflects the change, and `meta.sourceDataVersion` is populated (and stable across mutations that don't change base).
 
-**P5 — Reconstruct on load + restart durability** *(integration)* ← **gate**
-- Deliver: server load rehydrates from `current` via P2 instead of solving; cold-start (no snapshot) path; seed → solve → verify in the deploy checklist (incl. file-tenant seed CLI for `stafford-slim-100`).
-- **Test:** seed → mutate (pin a task, extend a window) → restart `ctp-api` → landscape == pre-restart, **still pinned, extension preserved**. Cold-start with no snapshot → "not solved" signal. (The walkthrough's lost-edit failure, now a passing test.)
+**P5 — Reconstruct on load + restart durability (version-pinned)** *(integration)* ← **gate**
+- Deliver: server load rehydrates from `current` via P2 instead of solving; the API-level re-derive (cross-WO components, consumption replay, WO-group rollups) wraps the engine reconstruct. **Version-pinned reconciliation (the reconciliation guard, §4):** before applying the overlay, compare `overlay.sourceDataVersion` to the *current* base version. **Match → reconstruct (overlay overwrites base, exact). Mismatch → do NOT overlay stale state**: set `meta.staleFlag`, surface "newer data available · Solve to refresh," and serve the snapshot read-only until a re-solve regenerates a fresh overlay against the new base. Cold-start (no snapshot) → "not solved" signal; seed → solve → verify in the deploy checklist (incl. file-tenant seed CLI for `stafford-slim-100`).
+- **Test:** (1) seed → mutate (pin a task, extend a window) → restart `ctp-api` → landscape == pre-restart, **still pinned, extension preserved**. (2) **Version-bump guard:** reconstruct with a base whose version ≠ the overlay's → reconstruction refuses to overlay the stale window, `staleFlag` set; after a re-solve the new overlay reconstructs exactly. (3) Cold-start with no snapshot → "not solved" signal. (The walkthrough's lost-edit failure, now a passing test.)
 
 ### Read surface
 
