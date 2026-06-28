@@ -5,6 +5,7 @@ import {
   SchedulingLandscape,
   serializeOverlay,
   reconstructOverlay,
+  summarizeLandscape,
   OverlayDoc,
   CTPTask,
   CTPTaskStateConstants,
@@ -94,6 +95,9 @@ export class SnapshotService {
    */
   promote(landscape: SchedulingLandscape, eventType: 'solve' | 'seed' | 'mutation'): string {
     const overlay = serializeOverlay(landscape);
+    const summary = summarizeLandscape(landscape, {
+      materialShortages: this.computeMaterialShortages(landscape),
+    });
     const tenantId = this.configService.getTenantId();
     const meta: SnapshotMeta = {
       snapshotId: '',
@@ -102,7 +106,25 @@ export class SnapshotService {
       sourceDataVersion: this.baseVersion(tenantId), // the base this overlay was written against
       staleFlag: false,
     };
-    return this.storeFor(tenantId).promote({ meta, overlay });
+    return this.storeFor(tenantId).promote({ meta, overlay, summary });
+  }
+
+  /**
+   * Count materials whose on-hand inventory is exceeded by the gross input
+   * requirements of currently-scheduled tasks. Materials live in tenant config,
+   * not the engine landscape, so the summary projection takes this from here.
+   */
+  private computeMaterialShortages(landscape: SchedulingLandscape): number {
+    const materials = this.configService.getMaterials();
+    if (!materials.length) return 0;
+    const consumed = new Map<string, number>();
+    landscape.tasks?.forEach((task: CTPTask) => {
+      if (task.state !== CTPTaskStateConstants.SCHEDULED) return;
+      task.grossInputRequirements().forEach((qty, productKey) => {
+        consumed.set(productKey, (consumed.get(productKey) ?? 0) + qty);
+      });
+    });
+    return materials.filter(m => (consumed.get(m.key) ?? 0) > m.onHand).length;
   }
 
   /**
