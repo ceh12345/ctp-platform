@@ -624,6 +624,7 @@ export class CTPService {
     const requiresResolve = previousMode !== mode &&
       (previousMode === CTPResourceModeConstants.REQUIRED || mode === CTPResourceModeConstants.REQUIRED);
 
+    this.promoteSnapshot('mutation');
     return { taskKey, resourceKey, mode, requiresResolve };
   }
 
@@ -863,6 +864,7 @@ export class CTPService {
       ? CTPDateTime.toDateTime(task.scheduled.endW).toISO()!
       : CTPDateTime.toDateTime(requestedStartW + (task.duration?.duration() ?? 0)).toISO()!;
 
+    this.promoteSnapshot('mutation');
     return {
       taskKey,
       success: true,
@@ -2347,6 +2349,7 @@ export class CTPService {
       task.commitmentLevel = 'dispatched';
       results.push({ taskKey: key, result: 'ok' });
     }
+    this.promoteSnapshot('mutation');
     return { status: 'ok', results };
   }
 
@@ -2365,6 +2368,7 @@ export class CTPService {
     }
     task.pinned = true;
     task.commitmentLevel = 'running';
+    this.promoteSnapshot('mutation');
     return { status: 'ok', taskKey, commitmentLevel: 'running', actualStart: task.actualStart };
   }
 
@@ -2378,6 +2382,7 @@ export class CTPService {
     task.holdStart = holdStart || new Date().toISOString();
     task.pinned = true;
     task.commitmentLevel = 'on_hold';
+    this.promoteSnapshot('mutation');
     return { status: 'ok', taskKey, commitmentLevel: 'on_hold', holdReason };
   }
 
@@ -2389,6 +2394,7 @@ export class CTPService {
     task.holdReason = null;
     task.estimatedResumeTime = null;
     task.commitmentLevel = 'running';
+    this.promoteSnapshot('mutation');
     return { status: 'ok', taskKey, commitmentLevel: 'running' };
   }
 
@@ -2400,6 +2406,7 @@ export class CTPService {
     task.actualEnd = actualEnd || new Date().toISOString();
     task.percentComplete = 100;
     task.includeInSolve = false;
+    this.promoteSnapshot('mutation');
     return { status: 'ok', taskKey, actualEnd: task.actualEnd };
   }
 
@@ -2420,6 +2427,7 @@ export class CTPService {
       task.pinned = true;
       results.push({ taskKey: key, result: 'ok' });
     }
+    this.promoteSnapshot('mutation');
     return { status: 'ok', results };
   }
 
@@ -2649,6 +2657,7 @@ export class CTPService {
     if (!task) throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
     if (body.percentComplete != null) task.percentComplete = body.percentComplete;
     if (body.remainingDuration != null) task.remainingDuration = body.remainingDuration;
+    this.promoteSnapshot('mutation');
     return { status: 'ok', taskKey, percentComplete: task.percentComplete, remainingDuration: task.effectiveRemainingDuration() };
   }
 

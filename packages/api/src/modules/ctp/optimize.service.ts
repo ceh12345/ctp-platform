@@ -14,6 +14,7 @@ import {
   IterationSample,
 } from '@ctp/engine';
 import { ConfigService } from '../../config/config.service';
+import { SnapshotService } from '../snapshot/snapshot.service';
 
 // ═══════════════════════════════════════════════════════════════
 //  Job Interfaces
@@ -112,7 +113,10 @@ export class OptimizeService {
   /** In-memory job store. Production: replace with Redis or Azure Service Bus. */
   private jobs = new Map<string, OptimizeJob>();
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly snapshotService?: SnapshotService,
+  ) {}
 
   // ─── Job Lifecycle ───
 
@@ -222,6 +226,10 @@ export class OptimizeService {
     // Release stored graphs — snapshot no longer needed
     job.bestGraph = undefined;
     job.originalGraph = undefined;
+
+    // Same uniform technique as CTPService mutations: promote a snapshot after
+    // the optimized graph is applied to the live landscape. Best-effort.
+    try { this.snapshotService?.promote(liveLandscape, 'mutation'); } catch { /* best-effort durability */ }
 
     return result;
   }
