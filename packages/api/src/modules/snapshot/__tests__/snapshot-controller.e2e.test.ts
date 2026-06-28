@@ -32,7 +32,7 @@ function createServices() {
     new StrategyConfigService(configService), new LoggerService(),
     new ScheduleConfigurationService(configService), undefined, snapshotService,
   );
-  return { ctpService, snapshotService, controller: new SnapshotController(snapshotService) };
+  return { ctpService, stateService, snapshotService, controller: new SnapshotController(snapshotService, ctpService) };
 }
 
 describe('P7 — SnapshotController (slim-100)', () => {
@@ -86,5 +86,37 @@ describe('P7 — SnapshotController (slim-100)', () => {
     const meta = controller.getMeta();
     expect(meta.snapshotId).toBeNull();
     expect(meta.data).toBeNull();
+  });
+
+  it('detail: projects the full task shape from the live landscape (no solve), with snapshotId', async () => {
+    const { ctpService, snapshotService, controller } = createServices();
+    await ctpService.solve();
+    const current = snapshotService.resolveCurrent();
+
+    const detail = await controller.getDetail();
+    expect(detail.snapshotId).toBe(current);
+    const data = detail.data as any;
+    expect(data.tasks.length).toBeGreaterThan(0);
+    expect(data.tasks.some((t: any) => t.state === 1)).toBe(true); // some scheduled
+    expect(Array.isArray(data.orders)).toBe(true);
+  });
+
+  it('detail cold-load: a fresh process reconstructs placements from the snapshot, no solve', async () => {
+    // process 1: solve → snapshot on disk
+    const a = createServices();
+    await a.ctpService.solve();
+    const scheduledKeys = new Set<string>();
+    a.stateService.getLandscape()!.tasks.forEach((t: any) => { if (t.state === 1) scheduledKeys.add(t.key); });
+    expect(scheduledKeys.size).toBeGreaterThan(0);
+
+    // process 2: fresh services, NO solve — detail must reconstruct from `current`
+    const b = createServices();
+    expect(b.stateService.getLandscape()).toBeNull();      // cold
+    const detail = await b.controller.getDetail();
+    const data = detail.data as any;
+    const scheduledInDetail = data.tasks.filter((t: any) => t.state === 1).map((t: any) => t.key);
+    // the same tasks are scheduled, restored from disk without solving
+    expect(scheduledInDetail.length).toBe(scheduledKeys.size);
+    expect(scheduledInDetail.every((k: string) => scheduledKeys.has(k))).toBe(true);
   });
 });

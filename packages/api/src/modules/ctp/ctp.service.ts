@@ -707,6 +707,23 @@ export class CTPService {
     return this.extractResults(landscape, taskList, stats, detailLevel);
   }
 
+  /**
+   * Read-only detail projection for the snapshot read surface (P8). Returns the
+   * full task shape WITHOUT solving:
+   *   - uptime: project the live in-memory landscape (current state).
+   *   - cold process: build base from config, then reconstruct the scheduled
+   *     state from the current snapshot (version-pinned) — no solve — then project.
+   * If no snapshot exists, the base is projected unsolved (cold-start).
+   */
+  async getDetailFromSnapshot(detailLevel: string = 'novice'): Promise<CTPSolveResult> {
+    if (!this.stateService.getLandscape()) {
+      await this.stateService.syncFromAdapter();        // build base from config/adapter
+      const base = this.stateService.getLandscape();
+      if (base && this.snapshotService) this.snapshotService.reconstruct(base); // apply overlay (no solve)
+    }
+    return this.getState(detailLevel);
+  }
+
   // ═══════════════════════════════════════
   // Endpoint 8: Where-To (Read-Only Evaluation)
   // ═══════════════════════════════════════
