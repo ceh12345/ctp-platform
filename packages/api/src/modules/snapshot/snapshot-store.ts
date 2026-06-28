@@ -71,10 +71,19 @@ export class SnapshotStore {
     this.snapshotsDir = path.join(path.resolve(dataRoot), 'tenants', tenantId, 'snapshots');
   }
 
-  /** Stable, sortable UTC id: 20260627T175437Z (lexical order == chronological). */
+  /**
+   * Stable, sortable UTC id with ms precision: 20260627T175437123Z (lexical order
+   * == chronological). Appends `-N` if a same-ms id already exists so rapid
+   * mutations never collide; the suffix sorts after the bare id, preserving order.
+   */
   private generateId(): string {
-    const iso = this.now().toISOString();          // 2026-06-27T17:54:37.123Z
-    return iso.replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z'); // 20260627T175437Z
+    const base = this.now().toISOString().replace(/[-:.]/g, ''); // 20260627T175437123Z
+    let id = base;
+    let n = 0;
+    while (fs.existsSync(this.snapshotDir(id)) || fs.existsSync(this.snapshotDir(id) + '.tmp')) {
+      id = `${base}-${++n}`;
+    }
+    return id;
   }
 
   private snapshotDir(id: string): string {

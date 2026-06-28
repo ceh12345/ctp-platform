@@ -23,3 +23,6 @@ inspector-*.xlsx
 
 # Excel temp files (Office locks the file while open)
 ~$*.xlsx
+
+# Snapshot data root (durable scheduling snapshots — runtime, not committed)
+.ctp-data/

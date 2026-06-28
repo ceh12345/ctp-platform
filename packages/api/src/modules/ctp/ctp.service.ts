@@ -44,6 +44,7 @@ import {
 import { ErrorCodes } from '../../common/error-codes';
 import { StateService } from '../state/state.service';
 import { WorkOrderGroupService } from '../state/workordergroup.service';
+import { SnapshotService } from '../snapshot/snapshot.service';
 import { ConfigService } from '../../config/config.service';
 import { StrategyConfigService } from '../../config/strategy-config.service';
 import { LoggerService } from '../../logging/logger.service';
@@ -147,6 +148,7 @@ export class CTPService {
   private results = new Map<string, CTPSolveResult>();
 
   private readonly workOrderGroupService: WorkOrderGroupService;
+  private readonly snapshotService: SnapshotService | null;
 
   constructor(
     private readonly stateService: StateService,
@@ -155,11 +157,31 @@ export class CTPService {
     private readonly logger: LoggerService,
     private readonly scheduleConfigService: ScheduleConfigurationService,
     workOrderGroupService?: WorkOrderGroupService,
+    snapshotService?: SnapshotService,
   ) {
     // Optional injection — Nest supplies it in production; tests that
     // don't touch group rollups can omit. Falls back to a service
     // built from the same configService.
     this.workOrderGroupService = workOrderGroupService ?? new WorkOrderGroupService(configService);
+    // Optional: when present (production / snapshot tests), every schedule-state
+    // mutation promotes a durable snapshot. Null in direct-construction unit
+    // tests → no snapshot side-effects.
+    this.snapshotService = snapshotService ?? null;
+  }
+
+  /**
+   * Promote a durable snapshot of the current landscape after a mutation.
+   * Best-effort: a snapshot-write failure must never break the user's action —
+   * the last good snapshot remains valid and the next mutation re-promotes.
+   */
+  private promoteSnapshot(eventType: 'solve' | 'mutation'): void {
+    if (!this.snapshotService) return;
+    try {
+      const landscape = this.stateService.getLandscape();
+      if (landscape) this.snapshotService.promote(landscape, eventType);
+    } catch {
+      // best-effort durability — swallow; observability hardening is a follow-on
+    }
   }
 
   // ═══════════════════════════════════════
@@ -502,6 +524,7 @@ export class CTPService {
     // injected service. Empty groups collection: this is a no-op.
     this.workOrderGroupService.refreshRollups(landscape, Math.floor(Date.now() / 1000));
 
+    this.promoteSnapshot('solve');
     return result;
   }
 
@@ -520,7 +543,9 @@ export class CTPService {
       landscape.horizon, landscape.tasks, landscape.resources,
       landscape.stateChanges, landscape.processes,
     );
-    return scheduler.unscheduleBulk(taskKeys);
+    const result = scheduler.unscheduleBulk(taskKeys);
+    this.promoteSnapshot('mutation');
+    return result;
   }
 
   // ═══════════════════════════════════════
@@ -562,6 +587,7 @@ export class CTPService {
     const result = scheduler.scheduleBulk(expansion.full);
     result.summary.requestedCount = expansion.requested.length;
     result.summary.expandedCount = expansion.expanded.length;
+    this.promoteSnapshot('mutation');
     return result;
   }
 
@@ -647,6 +673,7 @@ export class CTPService {
     task.pinned = pinned;
     task.includeInSolve = !pinned;
 
+    this.promoteSnapshot('mutation');
     return { taskKey, pinned, requiresResolve: true };
   }
 
@@ -1460,6 +1487,7 @@ export class CTPService {
       task.includeInSolve = true;
     }
 
+    this.promoteSnapshot('mutation');
     return {
       taskKey,
       previousWindow: { start: previousStart, end: previousEnd },
@@ -1486,6 +1514,7 @@ export class CTPService {
     const previousPriority = task.priority;
     task.priority = priority;
 
+    this.promoteSnapshot('mutation');
     return {
       taskKey,
       previousPriority,
