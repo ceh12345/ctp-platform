@@ -2492,6 +2492,7 @@ export class CTPService {
       }
     });
 
+    this.promoteSnapshot('mutation');
     return {
       status: 'ok',
       resourceKey,
@@ -2552,6 +2553,7 @@ export class CTPService {
     }
 
     resource.recompute = true;
+    this.promoteSnapshot('mutation');
     return {
       status: 'ok',
       resourceKey,

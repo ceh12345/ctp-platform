@@ -13,6 +13,7 @@
  */
 import { SchedulingLandscape } from '../Models/Entities/landscape';
 import { CTPTask } from '../Models/Entities/task';
+import { CTPAssignmentConstants } from '../Models/Core/constants';
 
 /** Bump when the overlay shape changes; reconstruction reads it for migrations. */
 export const OVERLAY_SCHEMA_VERSION = 1;
@@ -89,11 +90,16 @@ export interface OverlayRow {
   generated?: OverlayGeneratedDef;
 }
 
-/** Resource-downtime interval — overlay sidecar (durable, no-solve; affects consumption). */
+/**
+ * Resource-downtime (MAINTENANCE) interval — overlay sidecar. A durable, no-solve
+ * resource override that reduces availability; not derived from task placements,
+ * so it must be persisted and replayed on reconstruction.
+ */
 export interface OverlayResourceDowntime {
   resourceKey: string;
   startW: number;
   endW: number;
+  reason: string | null;
 }
 
 /** The full overlay document written per snapshot. */
@@ -184,9 +190,25 @@ export function serializeOverlay(landscape: SchedulingLandscape): OverlayDoc {
     });
   }
 
-  // Resource-downtime sidecar (P0 decision 2) — populated in P3 when the
-  // overlay write pipeline lands; the shape exists now (deferred-population).
+  // Resource-downtime sidecar — extract MAINTENANCE intervals from each resource's
+  // assignment list (task bookings are derived/replayed separately, not here).
   const resourceDowntime: OverlayResourceDowntime[] = [];
+  if (landscape.resources) {
+    landscape.resources.forEach((res) => {
+      let node = res.assignments?.head ?? null;
+      while (node) {
+        if (node.data.type === CTPAssignmentConstants.MAINTENANCE) {
+          resourceDowntime.push({
+            resourceKey: res.key,
+            startW: node.data.startW,
+            endW: node.data.endW,
+            reason: node.data.name ?? null,
+          });
+        }
+        node = node.next;
+      }
+    });
+  }
 
   return {
     version: OVERLAY_SCHEMA_VERSION,

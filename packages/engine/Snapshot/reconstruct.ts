@@ -21,7 +21,8 @@ import {
   CTPTaskResourceList,
 } from '../Models/Entities/task';
 import { CTPInterval, CTPDuration } from '../Models/Core/window';
-import { CTPDurationConstants } from '../Models/Core/constants';
+import { CTPAssignments } from '../Models/Intervals/intervals';
+import { CTPDurationConstants, CTPAssignmentConstants } from '../Models/Core/constants';
 import { buildAdjacency } from '../Models/Entities/adjacency';
 import { OverlayDoc, OverlayRow } from './overlay';
 
@@ -114,8 +115,23 @@ export function reconstructOverlay(
     applyRow(task, row);
   }
 
+  // Replay resource downtime (overlay-owned MAINTENANCE intervals) onto resource
+  // assignment lists. Unlike task bookings, downtime is NOT derived from
+  // placements, so it must be restored here. recompute=true → consumption replay
+  // (P5) re-subtracts it from availability via setLists.
+  for (const dt of overlay.resourceDowntime ?? []) {
+    const res = base.resources?.getEntity(dt.resourceKey);
+    if (!res) continue;
+    if (!res.assignments) res.assignments = new CTPAssignments();
+    const a = new CTPInterval(dt.startW, dt.endW);
+    a.name = dt.reason ?? 'Downtime';
+    a.type = CTPAssignmentConstants.MAINTENANCE;
+    res.assignments.add(a);
+    res.recompute = true;
+  }
+
   // Re-derive adjacency from base precedence (no solve). The remaining derived
-  // re-derivation (components / consumption / rollups) is orchestrated at load (P5).
+  // re-derivation (consumption / rollups) is orchestrated at load (P5).
   buildAdjacency(base.tasks);
 
   return base;

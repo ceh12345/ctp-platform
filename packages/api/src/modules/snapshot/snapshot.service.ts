@@ -141,7 +141,6 @@ export class SnapshotService {
    */
   private static replayConsumption(landscape: SchedulingLandscape): void {
     if (!landscape.tasks || !landscape.resources) return;
-    const touched = new Set<string>();
 
     landscape.tasks.forEach((task: CTPTask) => {
       if (task.state !== CTPTaskStateConstants.SCHEDULED || !task.scheduled) return;
@@ -157,12 +156,13 @@ export class SnapshotService {
         a.type = CTPAssignmentConstants.PROCESS;
         res.assignments.add(a);
         res.recompute = true;
-        touched.add(res.key);
       }
     });
 
+    // Recompute availability for any resource whose assignments changed — task
+    // bookings above OR downtime replayed by reconstructOverlay (both set recompute).
     landscape.resources.forEach((res) => {
-      if (touched.has(res.key) && res.original) {
+      if (res.recompute && res.original) {
         res.available.setLists(res.original, res.assignments);
         res.recompute = false;
       }

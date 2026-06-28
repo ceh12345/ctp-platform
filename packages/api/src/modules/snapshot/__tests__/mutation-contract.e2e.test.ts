@@ -100,5 +100,10 @@ describe('P5.1 — every mutation promotes a snapshot (contract)', () => {
     // dispatch → revert
     expectAdvances('dispatchTasks(2)', () => ctpService.dispatchTasks([D.key]));
     expectAdvances('revertDispatch', () => ctpService.revertDispatch([D.key]));
+
+    // resource downtime (direct mutation, overlay-captured)
+    const someResourceKey = ls.resources.toArray()[0].key;
+    expectAdvances('addResourceDowntime', () => ctpService.addResourceDowntime(someResourceKey, { reason: 'PM' }));
+    expectAdvances('endResourceDowntime', () => ctpService.endResourceDowntime(someResourceKey, {}));
   });
 });

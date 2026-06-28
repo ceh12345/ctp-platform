@@ -8,6 +8,9 @@ import {
 } from '../../Models/Entities/task';
 import { CTPInterval } from '../../Models/Core/window';
 import { CTPLinkId } from '../../Models/Core/linkid';
+import { CTPResource } from '../../Models/Entities/resource';
+import { CTPAssignments } from '../../Models/Intervals/intervals';
+import { CTPAssignmentConstants } from '../../Models/Core/constants';
 import { TaskFactory } from '../../Factories/taskfactory';
 import { serializeOverlay } from '../../Snapshot/overlay';
 import { reconstructOverlay } from '../../Snapshot/reconstruct';
@@ -115,6 +118,32 @@ describe('reconstructOverlay (P2)', () => {
     expect(t1.pinned).toBe(true);
     expect(t1.canSolve()).toBe(false); // pinned ⇒ not solvable — override took effect
     expect(t1.scheduled!.startW).toBe(1000);
+  });
+
+  it('round-trips resource downtime (MAINTENANCE intervals) through serialize/reconstruct', () => {
+    // landscape with a resource carrying a downtime interval
+    const res = new CTPResource('REUSABLE', 'Machine', 'M1', 'R1');
+    res.assignments = new CTPAssignments();
+    const dt = new CTPInterval(5000, 9000);
+    dt.name = 'Planned PM';
+    dt.type = CTPAssignmentConstants.MAINTENANCE;
+    res.assignments.add(dt);
+
+    const solved = new SchedulingLandscape();
+    solved.resources.addEntity(res);
+    const overlay1 = serializeOverlay(solved);
+    expect(overlay1.resourceDowntime).toEqual([
+      { resourceKey: 'R1', startW: 5000, endW: 9000, reason: 'Planned PM' },
+    ]);
+
+    // reconstruct onto a clean base resource (no downtime)
+    const baseRes = new CTPResource('REUSABLE', 'Machine', 'M1', 'R1');
+    baseRes.assignments = new CTPAssignments();
+    const base = new SchedulingLandscape();
+    base.resources.addEntity(baseRes);
+    reconstructOverlay(base, overlay1);
+
+    expect(serializeOverlay(base).resourceDowntime).toEqual(overlay1.resourceDowntime);
   });
 
   it('re-derives preds/succs adjacency from base precedence without solving', () => {
