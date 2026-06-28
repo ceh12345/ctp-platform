@@ -6,10 +6,11 @@ import { CTPService } from './ctp.service';
 import { OptimizeController } from './optimize.controller';
 import { OptimizeService } from './optimize.service';
 import { SnapshotService } from '../snapshot/snapshot.service';
+import { SnapshotController } from '../snapshot/snapshot.controller';
 
 @Module({
   imports: [ConfigModule, StateModule],
-  controllers: [CTPController, OptimizeController],
+  controllers: [CTPController, OptimizeController, SnapshotController],
   providers: [CTPService, OptimizeService, SnapshotService],
   exports: [CTPService, SnapshotService],
 })
