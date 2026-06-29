@@ -14602,6 +14602,9 @@ export default function App() {
   const [solving, setSolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [solveResult, setSolveResult] = useState<any>(null);
+  // Snapshot the landing read resolved to. null = cold-start: this tenant has
+  // never been solved (no snapshot), so there's no schedule yet to show.
+  const [currentSnapshotId, setCurrentSnapshotId] = useState<string | null>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('Overview');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -14807,9 +14810,10 @@ export default function App() {
         api('/data/strategies').catch(() => null),
         api('/health/version').catch(() => null),
       ]);
-      // Unwrap the snapshot envelope { snapshotId, data }. snapshotId capture +
-      // session threading lands in P9 (with the summary/overlay reads that use it).
+      // Unwrap the snapshot envelope { snapshotId, data }. A null snapshotId is
+      // cold-start (never solved) — drives the "no schedule yet" empty state.
       const result = detailEnv?.data ?? null;
+      setCurrentSnapshotId(detailEnv?.snapshotId ?? null);
       if (versionData) setVersionInfo(versionData);
       // Load configurations
       try {
@@ -14997,6 +15001,8 @@ export default function App() {
       });
       setSolveResult(result);
       setSolveStale(false);
+      // A solve always promotes a snapshot — re-pin so the cold-start state clears.
+      try { const m = await api('/snapshot/meta'); if (m?.snapshotId) setCurrentSnapshotId(m.snapshotId); } catch { /* non-fatal */ }
 
       // Auto-fit Gantt zoom to the schedule's critical path span
       if (result.criticalPath?.makespan) {
@@ -16671,6 +16677,32 @@ export default function App() {
       {/* Tab content */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
       <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
+        {/* Cold-start: tenant never solved (no snapshot) → guide the user to Solve. */}
+        {currentSnapshotId === null && !loading && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            textAlign: 'center', gap: 14, padding: '56px 24px', maxWidth: 520, margin: '32px auto',
+            background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
+          }}>
+            <div style={{ fontSize: 40 }}>📋</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: C.text }}>No schedule yet</div>
+            <div style={{ fontSize: 13, color: C.textDim, lineHeight: 1.5 }}>
+              This tenant hasn’t been solved. Click <strong>{t('solve', 'Solve')}</strong> to
+              generate a schedule from the current data — it’ll then load instantly on every visit.
+            </div>
+            <button
+              onClick={() => handleSolveConfirm()}
+              disabled={solving}
+              style={{
+                marginTop: 6, background: C.yellow, color: C.bg, border: 'none', borderRadius: 8,
+                padding: '10px 28px', fontSize: 14, fontWeight: 700,
+                cursor: solving ? 'default' : 'pointer', fontFamily: FONT, opacity: solving ? 0.6 : 1,
+              }}
+            >
+              {solving ? '⏳ Solving…' : `🚀 ${t('solve', 'Solve')}`}
+            </button>
+          </div>
+        )}
         {activeTab === 'Overview' && (
           <OverviewTab summary={summary} tasks={tasks} resources={resources}
             orders={orders} materials={materials} products={products} colors={colors} onTabChange={setActiveTab}
