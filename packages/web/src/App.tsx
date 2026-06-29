@@ -14795,11 +14795,11 @@ export default function App() {
   const loadData = useCallback(async () => {
     try {
       setError(null);
-      const [result, prods, colorsData, termData, localeData, strategiesData, versionData] = await Promise.all([
-        api('/ctp/solve-and-sync', {
-          method: 'POST',
-          body: JSON.stringify({ detailLevel: experienceLevel }),
-        }),
+      // Load never solves: read the durable snapshot's detail projection
+      // (server-side, no solve) instead of solve-and-sync. `detail` returns the
+      // same CTPSolveResult shape wrapped as { snapshotId, data }.
+      const [detailEnv, prods, colorsData, termData, localeData, strategiesData, versionData] = await Promise.all([
+        api(`/snapshot/detail?detailLevel=${encodeURIComponent(experienceLevel)}`),
         api('/data/products'),
         api('/data/colors').catch(() => null),
         api('/data/terminology').catch(() => ({})),
@@ -14807,6 +14807,9 @@ export default function App() {
         api('/data/strategies').catch(() => null),
         api('/health/version').catch(() => null),
       ]);
+      // Unwrap the snapshot envelope { snapshotId, data }. snapshotId capture +
+      // session threading lands in P9 (with the summary/overlay reads that use it).
+      const result = detailEnv?.data ?? null;
       if (versionData) setVersionInfo(versionData);
       // Load configurations
       try {
