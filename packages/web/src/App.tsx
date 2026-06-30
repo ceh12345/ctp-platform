@@ -16936,56 +16936,8 @@ export default function App() {
           >
             {solving ? '⏳ Syncing...' : '🔄 Sync'}
           </button>
-          <button
-            onClick={async () => {
-              setUserOpen(false);
-              setSolving(true);
-              showToast('Syncing and solving...');
-              try {
-                setError(null);
-                const result = await api('/ctp/solve-and-sync', {
-                  method: 'POST',
-                  body: JSON.stringify({ detailLevel: experienceLevel }),
-                });
-                setSolveResult(result);
-                setSolveStale(false);
-                setResourcePreferenceOverrides({});
-                setPriorityOverrides({});
-                setWindowOverrides({});
-                setTaskUnschedules(new Set());
-                setTaskPins({});
-                setTaskExcludes({});
-                setOrderModes({});
-                setMaterialModeOverrides({});
-                setResourceModeOverrides({});
-                setSelectedTasks(new Set());
-                setSelectedTask(null);
-                setSelectedResource(null);
-                setWhereToTaskKey(null); setWhereToOptions([]); setWhereToCurrentAssignment(null);
-                setAnalyticsKpis([]); setAnalyticsDetail(null); setSelectedKpi(null);
-                if (result.colors) setColors(result.colors);
-                if (result.terminology) _terminology = result.terminology;
-                if (result.locale) _locale = result.locale;
-                showToast('Data reloaded and solved');
-              } catch (e: any) {
-                setError(e.message || 'Sync & Solve failed');
-                showToast('Sync & Solve failed');
-              } finally {
-                setSolving(false);
-              }
-            }}
-            disabled={solving}
-            style={{
-              width: '100%', padding: '10px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-              fontFamily: FONT, border: `1px solid ${C.border}`, background: C.surface2,
-              color: solving ? C.textDim : C.accent, cursor: solving ? 'default' : 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            }}
-          >
-            {solving ? '⏳ Solving...' : '🔄 Sync & Solve'}
-          </button>
           <div style={{ fontSize: 10, color: C.textDim, textAlign: 'center' }}>
-            Sync reloads config from disk. Sync & Solve also runs the scheduler.
+            Sync reloads config from disk (debug). Use Solve to schedule.
           </div>
         </div>
       </Modal>
