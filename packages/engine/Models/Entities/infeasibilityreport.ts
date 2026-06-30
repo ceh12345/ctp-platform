@@ -79,6 +79,22 @@ export function classifyConflict(report: InfeasibilityReport): { type: ConflictT
     };
   }
 
+  // No contention from here down (anyBlockedByOthers is false). If the task's
+  // window runs into the horizon and the bottleneck can't supply the hours it
+  // needs before then, that's a HORIZON limit — the resource isn't a bottleneck,
+  // there simply isn't enough time left. Decided here (detection time) so it's
+  // immune to demand-ordering shifts that move the window around.
+  if (report.windowCappedByHorizon
+      && report.requiredMinutes != null
+      && bottleneck.bestAvailableMinutes < report.requiredMinutes) {
+    const needH = (report.requiredMinutes / 60).toFixed(1);
+    const haveH = (bottleneck.bestAvailableMinutes / 60).toFixed(1);
+    return {
+      type: 'horizon',
+      reason: `${bottleneck.slotLabel} — window capped by the horizon: ${needH}h required, only ${haveH}h available before the horizon ends`,
+    };
+  }
+
   if (report.combosGenerated > 0 && report.combosSurvivedPropagation === 0) {
     return {
       type: 'dependency',
@@ -93,17 +109,79 @@ export function classifyConflict(report: InfeasibilityReport): { type: ConflictT
     };
   }
 
-  // A bottleneck slot was identified (we are past the `if (!bottleneck)` guard)
-  // but no combo could be formed or placed — the bottleneck resource is simply
-  // too constrained in the window. That is a resource (capacity) constraint, not
-  // a precedence dependency. Successors blocked by an unscheduled predecessor are
-  // relabeled 'dependency' separately, post-solve, in
-  // basescheduler.reclassifyChainInfeasibility — so 'dependency' here would only
-  // mislabel a genuine resource bottleneck on a chain root.
+  // A bottleneck slot was identified, nothing else is contending for it
+  // (anyBlockedByOthers is false here), and it's not horizon-capped — so the
+  // resource simply doesn't have enough availability in the window. That is an
+  // availability constraint, not a capacity (contention) one. Calling it
+  // 'capacity' with no blocking tasks is the misleading attribution we're fixing.
+  // Successors blocked by an unscheduled predecessor are relabeled 'dependency'
+  // separately, post-solve, in basescheduler.reclassifyChainInfeasibility.
   return {
-    type: 'capacity',
-    reason: `${bottleneck.slotLabel} — insufficient capacity/availability in the window`,
+    type: 'availability',
+    reason: `${bottleneck.slotLabel} — insufficient availability in the window`,
   };
+}
+
+/**
+ * Assemble the shared tail of an infeasibility report. Both scheduling paths —
+ * the ChainContextEngine (chain-as-unit) and the base scheduler (per-task /
+ * bump-and-retry) — build resource `slots` their own way, then delegate here so
+ * the bottleneck pick, reason text, HORIZON signals, and classification live in
+ * ONE place. Previously this tail was duplicated in two builders, which let the
+ * horizon signal silently diverge between them (the regression this fixes).
+ */
+export function assembleInfeasibilityReport(opts: {
+  taskKey: string;
+  chainKey: string | null;
+  baseReason: string;
+  slots: ResourceSlotReport[];
+  horizonEndW?: number | null;
+  subjectWindowEndW?: number | null;
+  requiredMinutes?: number;
+  combosGenerated?: number;
+  combosSurvivedPropagation?: number;
+  combosPassedAssignment?: number;
+}): InfeasibilityReport {
+  // Bottleneck = the slot with the least availability.
+  if (opts.slots.length > 0) {
+    const sorted = [...opts.slots].sort((a, b) => a.bestAvailableMinutes - b.bestAvailableMinutes);
+    sorted[0].isBottleneck = true;
+  }
+  const bottleneckSlot = opts.slots.find(s => s.isBottleneck);
+
+  let reason = opts.baseReason;
+  if (bottleneckSlot) {
+    reason += ` — ${bottleneckSlot.slotLabel} is the bottleneck`;
+    const blocked = bottleneckSlot.resources.filter(r => r.status === 'blocked');
+    if (blocked.length > 0) {
+      reason += ` (${blocked.map(r => r.resourceName).join(', ')} fully blocked)`;
+    }
+  }
+
+  const windowCappedByHorizon =
+    opts.horizonEndW != null && opts.subjectWindowEndW != null
+    && opts.subjectWindowEndW >= opts.horizonEndW - 60;
+
+  const report: InfeasibilityReport = {
+    taskKey: opts.taskKey,
+    chainKey: opts.chainKey,
+    reason,
+    bottleneckSlot: bottleneckSlot?.slotLabel || null,
+    conflictType: 'dependency',
+    conflictTypeReason: '',
+    slots: opts.slots,
+    combosGenerated: opts.combosGenerated ?? 0,
+    combosSurvivedPropagation: opts.combosSurvivedPropagation ?? 0,
+    combosPassedAssignment: opts.combosPassedAssignment ?? 0,
+    windowCappedByHorizon,
+    requiredMinutes: opts.requiredMinutes,
+  };
+
+  const classification = classifyConflict(report);
+  report.conflictType = classification.type;
+  report.conflictTypeReason = classification.reason;
+  report.reason = `[${classification.type.toUpperCase()}] ${report.reason}`;
+  return report;
 }
 
 export interface InfeasibilityReport {
@@ -124,4 +202,12 @@ export interface InfeasibilityReport {
    * alone — the engine already identified the real cause.
    */
   attributed?: boolean;
+  /**
+   * Detection-time horizon signals, stamped by buildInfeasibilityReport (which
+   * has the landscape horizon + the task's window/duration in hand). Let
+   * classifyConflict decide 'horizon' at the source instead of a fragile
+   * post-solve wall-clock proxy.
+   */
+  windowCappedByHorizon?: boolean;  // task window runs up against the horizon end
+  requiredMinutes?: number;         // working minutes the task needs (duration)
 }

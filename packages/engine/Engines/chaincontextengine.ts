@@ -15,7 +15,7 @@ import { workingEndForwardW, workingStartBackwardW } from '../Models/Core/interv
 import {
   InfeasibilityReport,
   ConflictType,
-  classifyConflict,
+  assembleInfeasibilityReport,
   ResourceSlotReport,
   ResourceAvailabilityDetail,
   BlockingTaskDetail,
@@ -1691,44 +1691,21 @@ export class ChainContextEngine {
       });
     }
 
-    // Identify bottleneck: slot with least availability
-    if (slots.length > 0) {
-      const sorted = [...slots].sort((a, b) => a.bestAvailableMinutes - b.bestAvailableMinutes);
-      sorted[0].isBottleneck = true;
-    }
-
-    const bottleneckSlot = slots.find(s => s.isBottleneck);
-
-    const subjectKey = bindingTask?.key ?? chainKey ?? tasks[0]?.key;
-    let reason = `No valid placement for ${subjectKey}`;
-    if (bottleneckSlot) {
-      reason += ` — ${bottleneckSlot.slotLabel} is the bottleneck`;
-      const blockedRes = bottleneckSlot.resources.filter(r => r.status === 'blocked');
-      if (blockedRes.length > 0) {
-        const names = blockedRes.map(r => r.resourceName).join(', ');
-        reason += ` (${names} fully blocked)`;
-      }
-    }
-
-    const report: InfeasibilityReport = {
+    // Bottleneck pick, reason, horizon stamps, and classification are shared
+    // with the base scheduler's per-task path — assembled in one place.
+    const subjectTask = bindingTask ?? reportTasks[0];
+    return assembleInfeasibilityReport({
       taskKey: bindingTask?.key ?? tasks[0]?.key ?? '',
       chainKey,
-      reason,
-      bottleneckSlot: bottleneckSlot?.slotLabel || null,
-      conflictType: 'dependency',
-      conflictTypeReason: '',
+      baseReason: `No valid placement for ${bindingTask?.key ?? chainKey ?? tasks[0]?.key}`,
       slots,
+      horizonEndW: landscape.horizon?.endW ?? null,
+      subjectWindowEndW: subjectTask?.window?.endW ?? null,
+      requiredMinutes: subjectTask?.duration ? subjectTask.duration.duration() / 60 : undefined,
       combosGenerated,
       combosSurvivedPropagation,
       combosPassedAssignment,
-    };
-
-    const classification = classifyConflict(report);
-    report.conflictType = classification.type;
-    report.conflictTypeReason = classification.reason;
-    report.reason = `[${classification.type.toUpperCase()}] ${report.reason}`;
-
-    return report;
+    });
   }
 
   private analyzeResourceAvailability(

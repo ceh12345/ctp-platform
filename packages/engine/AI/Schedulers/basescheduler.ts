@@ -57,8 +57,7 @@ import {
   markChainInfeasible,
 } from "../../Engines/chaincontextengine";
 import {
-  InfeasibilityReport,
-  classifyConflict,
+  assembleInfeasibilityReport,
   ResourceSlotReport,
   ResourceAvailabilityDetail,
   BlockingTaskDetail,
@@ -757,35 +756,17 @@ export abstract class CTPBaseScheduler {
    * Each relabel clones the (chain-shared) report so only this task changes.
    */
   protected reclassifyChainInfeasibility(tasks: List<CTPTask>): void {
-    const horizonEndW = this.landscape?.horizon?.endW;
     tasks.forEach(task => {
       if (task.state === CTPTaskStateConstants.SCHEDULED) return;
       // The engine already attributed this task's failure at the point of
       // detection (binding task or its blocked chain-mates) — don't second-guess it.
       if (task.infeasibilityReport?.attributed) return;
 
-      // 1) Ran out of horizon: window capped by the horizon end, too small for work.
-      const w = task.window;
-      const need = task.duration?.duration() ?? 0;
-      if (horizonEndW != null && w && need > 0
-          && w.endW >= horizonEndW - 60 && (w.endW - w.startW) < need) {
-        const chainKey = task.linkId?.name ?? task.key;
-        const needH = (need / 3600).toFixed(1);
-        const roomH = (Math.max(0, w.endW - w.startW) / 3600).toFixed(1);
-        const reason = `[HORIZON] ${chainKey} ran out of scheduling horizon at ${task.key} — needs ${needH}h but only ${roomH}h remain before the horizon ends`;
-        task.errors = [{ agent: 'HorizonCheck', reason, type: '' }];
-        if (task.infeasibilityReport) {
-          task.infeasibilityReport = {
-            ...task.infeasibilityReport,
-            conflictType: 'horizon',
-            conflictTypeReason: `${task.key} window is capped by the horizon end; ${needH}h of work required, ${roomH}h available`,
-            reason,
-          };
-        }
-        return;
-      }
-
-      // 2) Blocked by an unscheduled predecessor → dependency, not capacity.
+      // Blocked by an unscheduled predecessor → dependency. This is the ONLY
+      // classification that must be postponed to post-solve: a predecessor's
+      // final scheduled state isn't known until the whole solve completes.
+      // Horizon / availability / capacity are decided at detection time in
+      // classifyConflict (which has the window, horizon, need, and contention).
       const blockingPred = task.preds
         .map(k => this.landscape.tasks?.getEntity(k))
         .find(p => !!p && p.state !== CTPTaskStateConstants.SCHEDULED);
@@ -1295,30 +1276,17 @@ export abstract class CTPBaseScheduler {
       slots.push({ slotIndex: idx, slotLabel, isPrimary: tr.isPrimary, status: slotStatus, bestAvailableMinutes: Math.round(bestAvailMinutes), isBottleneck: false, resources: resourceDetails });
     });
 
-    if (slots.length > 0) {
-      const sorted = [...slots].sort((a, b) => a.bestAvailableMinutes - b.bestAvailableMinutes);
-      sorted[0].isBottleneck = true;
-    }
-    const bottleneckSlot = slots.find(s => s.isBottleneck);
-    let reason = `No feasible schedule for ${task.name || task.key}`;
-    if (bottleneckSlot) {
-      reason += ` — ${bottleneckSlot.slotLabel} is the bottleneck`;
-    }
-
-    const report: InfeasibilityReport = {
-      taskKey: task.key, chainKey: task.linkId?.name || null, reason,
-      bottleneckSlot: bottleneckSlot?.slotLabel || null,
-      conflictType: 'dependency', conflictTypeReason: '',
+    // Bottleneck pick, reason, horizon stamps, and classification are shared
+    // with the ChainContextEngine path — assembled in one place.
+    task.infeasibilityReport = assembleInfeasibilityReport({
+      taskKey: task.key,
+      chainKey: task.linkId?.name || null,
+      baseReason: `No feasible schedule for ${task.name || task.key}`,
       slots,
-      combosGenerated: 0, combosSurvivedPropagation: 0, combosPassedAssignment: 0,
-    };
-
-    const classification = classifyConflict(report);
-    report.conflictType = classification.type;
-    report.conflictTypeReason = classification.reason;
-    report.reason = `[${classification.type.toUpperCase()}] ${report.reason}`;
-
-    task.infeasibilityReport = report;
+      horizonEndW: this.landscape?.horizon?.endW ?? null,
+      subjectWindowEndW: task.window?.endW ?? null,
+      requiredMinutes: task.duration ? task.duration.duration() / 60 : undefined,
+    });
   }
 
   // ── Chain Context Engine integration ──────────────────────────────
