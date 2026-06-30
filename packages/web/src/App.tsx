@@ -9312,6 +9312,10 @@ function ConflictsTab({ tasks, resources, materials, onTaskClick }: {
   const criticalCount = conflicts.filter((c: any) => c.severity === 'critical').length;
   const warningCount = conflicts.filter((c: any) => c.severity === 'warning').length;
   const infeasible = tasks.filter((tk: any) => tk.included && !tk.feasible).length;
+  // The severity row is only meaningful with more than one severity present;
+  // with a single severity it's a degenerate no-op (All == the lone severity),
+  // so hide it. When hidden, severity must not strand the list (treat as 'all').
+  const showSeverityRow = criticalCount > 0 && warningCount > 0;
 
   let filtered = conflicts;
   if (cfSearch) {
@@ -9323,7 +9327,7 @@ function ConflictsTab({ tasks, resources, materials, onTaskClick }: {
       (c.reasonDetail || '').toLowerCase().includes(q),
     );
   }
-  if (severity !== 'all') {
+  if (showSeverityRow && severity !== 'all') {
     filtered = filtered.filter((c: any) => c.severity === severity);
   }
   if (reason !== 'all') {
@@ -9346,11 +9350,13 @@ function ConflictsTab({ tasks, resources, materials, onTaskClick }: {
       {/* Filter bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <SearchBox value={cfSearch} onChange={setCfSearch} placeholder="Search conflicts..." />
-        <StatusToggles options={[
-          { value: 'all', label: 'All', count: conflicts.length },
-          { value: 'critical', label: 'Critical', color: C.red, count: criticalCount },
-          { value: 'warning', label: 'Warning', color: C.yellow, count: warningCount },
-        ]} active={severity} onChange={setSeverity} />
+        {showSeverityRow && (
+          <StatusToggles options={[
+            { value: 'all', label: 'All', count: conflicts.length },
+            { value: 'critical', label: 'Critical', color: C.red, count: criticalCount },
+            { value: 'warning', label: 'Warning', color: C.yellow, count: warningCount },
+          ]} active={severity} onChange={setSeverity} />
+        )}
         <StatusToggles options={[
           { value: 'all', label: 'All Reasons' },
           { value: 'availability', label: 'Availability', color: '#9e9e9e' },
