@@ -8173,11 +8173,77 @@ function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskCli
    TAB CONTENT — OVERVIEW
    ═══════════════════════════════════════════════════════════════ */
 
-function OverviewTab({ summary, tasks, resources, orders, materials, products, colors, onTabChange, onTaskClick, onResourceClick, experienceLevel = 'novice',
-  taskPins, taskExcludes, taskUnschedules, orderModes,
-  onPinTask, onExcludeTask, onUnscheduleTask, onWhereTo,
-  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset, onViewAgenda, criticalPath }: {
-  summary: any; tasks: any[]; resources: any[]; orders: any[]; materials: any[];
+/**
+ * Landing utilization heatmap — rendered purely from the snapshot `summary`
+ * partition (pre-bucketed per-resource utilization), so the Overview needs no
+ * task array. Rows = resources, columns = weekly buckets indexed to bucketMeta.
+ */
+function SummaryHeatmap({ data, onResourceClick }: { data: any; onResourceClick?: (key: string) => void }) {
+  // 'overall' desc (bottlenecks on top) is the default; clicking the Overall
+  // header toggles direction, clicking Resource sorts by name. This absorbs the
+  // old resource-utilization list — Overall % is the first data column.
+  const [sortKey, setSortKey] = useState<'overall' | 'name'>('overall');
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
+  if (!data?.resourceLoad?.length) {
+    return <div style={{ color: C.textDim, fontSize: 13, padding: 16 }}>No utilization data in this snapshot.</div>;
+  }
+  const count: number = data.bucketMeta?.count ?? (data.resourceLoad[0]?.buckets?.length ?? 0);
+  const dir = sortDir === 'desc' ? -1 : 1;
+  const rows = [...data.resourceLoad].sort((a: any, b: any) =>
+    sortKey === 'name'
+      ? dir * String(a.name).localeCompare(String(b.name))
+      : dir * ((a.overallUtilizationPct ?? 0) - (b.overallUtilizationPct ?? 0)));
+  const heat = (u: number) => {
+    if (!u || u <= 0) return C.surface2;
+    const p = Math.min(1, u);
+    return `hsl(${Math.round(120 * (1 - p))}, 62%, 42%)`; // green (idle) → red (full)
+  };
+  const utilColor = (u: number) => u >= 0.85 ? C.red : u >= 0.6 ? C.yellow : C.green;
+  const toggle = (k: 'overall' | 'name') => {
+    if (sortKey === k) setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+    else { setSortKey(k); setSortDir(k === 'overall' ? 'desc' : 'asc'); }
+  };
+  const caret = (k: 'overall' | 'name') => sortKey === k ? (sortDir === 'desc' ? ' ↓' : ' ↑') : '';
+  const thBase: CSSProperties = { padding: '4px 8px', color: C.textDim, cursor: 'pointer', userSelect: 'none' };
+  return (
+    <div style={{ overflow: 'auto', maxHeight: 560 }}>
+      <table style={{ borderCollapse: 'collapse', fontSize: 11, fontFamily: FONT }}>
+        <thead>
+          <tr>
+            <th onClick={() => toggle('name')}
+              style={{ ...thBase, textAlign: 'left', position: 'sticky', left: 0, background: C.surface }}>Resource{caret('name')}</th>
+            <th onClick={() => toggle('overall')} style={{ ...thBase, textAlign: 'right' }}>Overall{caret('overall')}</th>
+            {Array.from({ length: count }).map((_, i) => (
+              <th key={i} style={{ padding: '2px 3px', color: C.textDim, fontWeight: 500 }}>W{i + 1}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r: any) => {
+            const o = r.overallUtilizationPct ?? 0;
+            return (
+              <tr key={r.resourceKey}>
+                <td
+                  onClick={() => onResourceClick?.(r.resourceKey)}
+                  style={{ padding: '2px 8px', whiteSpace: 'nowrap', position: 'sticky', left: 0, background: C.surface, color: C.text, cursor: onResourceClick ? 'pointer' : 'default', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  title={r.workCenter ? `${r.name} · ${r.workCenter}` : r.name}
+                >{r.name}</td>
+                <td style={{ padding: '2px 8px', textAlign: 'right', color: utilColor(o), fontWeight: 700 }}>{Math.round(o * 100)}%</td>
+                {(r.buckets as number[]).map((u, i) => (
+                  <td key={i} title={`${r.name} · W${i + 1}: ${Math.round(u * 100)}%`}
+                    style={{ width: 38, height: 26, background: heat(u), border: `2px solid ${C.bg}`, borderRadius: 3 }} />
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function OverviewTab({ heatmap, tasks, resources, orders, materials, products, onTabChange, onTaskClick, onResourceClick }: {
+  summary: any; heatmap?: any; tasks: any[]; resources: any[]; orders: any[]; materials: any[];
   products: any[]; colors: any; onTabChange: (t: string) => void;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   onViewAgenda?: (r: any) => void;
@@ -8194,133 +8260,97 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
   setScrollOffset?: (v: number | ((prev: number) => number)) => void;
   criticalPath?: any;
 }) {
-  const avgUtil = resources.length > 0
-    ? resources.reduce((s: number, r: any) => s + r.utilization, 0) / resources.length
-    : 0;
-  const lateOrders = orders.filter((o: any) => deriveOrderStatus(o, tasks) === 'late').length;
-  const conflicts = deriveConflicts(tasks, resources, materials);
-  const shortages = materials.filter((m: any) => deriveMaterialStatus(m) === 'shortage').length;
+  const h = heatmap?.headline ?? {};
+  const lateOrders = h.lateOrders ?? 0;
+  const conflicts = h.conflicts ?? 0;
+  const shortages = h.shortages ?? 0;
+  const feas = h.feasibilityRate ?? 0;
+  const conflictList = deriveConflicts(tasks, resources, materials);
+  const orderRank = (s: string) => s === 'late' ? 0 : s === 'at-risk' ? 1 : s === 'on-time' ? 2 : 3;
+  const orderRows = [...orders]
+    .map((o: any) => ({ o, status: deriveOrderStatus(o, tasks) }))
+    .sort((a: any, b: any) => orderRank(a.status) - orderRank(b.status));
+  const pctFmt = (v: number | undefined) => v == null ? '—' : `${Math.round(v * 100)}%`;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* KPI Row */}
+      {/* KPI strip — the one-second "am I healthy" read, from the summary partition */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KPI icon="✓" label={t('feasibility', 'Feasibility')} value={fmtPctDirect(summary?.feasibilityRate)} color={
-          (summary?.feasibilityRate ?? 0) >= 90 ? C.green : (summary?.feasibilityRate ?? 0) >= 70 ? C.yellow : C.red
-        } sub={`${summary?.scheduledTasks ?? 0} of ${summary?.includedTasks ?? 0} ${t('tasks', 'tasks')}`
-          + (summary?.setupTasks && showAt(experienceLevel, 'intermediate') ? ` + ${summary.setupTasks} ${t('setup', 'setup')}s` : '')} />
-        <KPI icon="⚡" label={`Avg ${t('utilization', 'Utilization')}`} value={fmtPctDirect(avgUtil)} color={
-          avgUtil > 85 ? C.red : avgUtil > 60 ? C.yellow : C.green
-        } sub={`${resources.length} ${t('resources', 'resources')}`} />
-        <KPI icon="⏰" label={`Late ${t('orders', 'Orders')}`} value={lateOrders} color={lateOrders > 0 ? C.red : C.green}
-          sub={`of ${orders.length} total`} />
-        <KPI icon="⚠" label={t('conflicts', 'Conflicts')} value={conflicts.length}
-          color={conflicts.length > 0 ? C.red : C.green} sub={`${t('task', 'task')} + ${t('material', 'material')}`} />
-        <KPI icon="📦" label={`${t('shortage', 'Shortage')}s`} value={shortages} color={shortages > 0 ? C.red : C.green}
-          sub={`of ${materials.length} ${t('materials', 'materials')}`} />
-        {showAt(experienceLevel, 'expert') && summary?.makespan != null && (
-          <KPI icon="⏱" label={t('makespan', 'Makespan')} value={fmtDuration(summary.makespan)} color={C.text}
-            sub={`${fmtDateShort(summary.horizonStart)} – ${fmtDateShort(summary.horizonEnd)}`} />
-        )}
-        {criticalPath && (
-          <KPI icon={'\uD83D\uDD17'} label="Critical Path"
-            value={criticalPath.makespanFormatted}
-            color={C.text}
-            sub={`Bottleneck: ${criticalPath.bottleneckResource?.resourceName} (${criticalPath.bottleneckResource?.percentOfCriticalPath}%)`} />
-        )}
+        <KPI icon="✓" label={t('feasibility', 'Feasibility')} value={pctFmt(feas)}
+          color={feas >= 0.9 ? C.green : feas >= 0.7 ? C.yellow : C.red}
+          sub={`${h.scheduledTasks ?? 0} of ${h.includedTasks ?? 0} ${t('tasks', 'tasks')}`} />
+        <KPI icon="⏰" label={`Late ${t('orders', 'Orders')}`} value={lateOrders}
+          color={lateOrders > 0 ? C.red : C.green} sub={`of ${h.totalOrders ?? 0} total`} />
+        <KPI icon="⚠" label={t('conflicts', 'Conflicts')} value={conflicts}
+          color={conflicts > 0 ? C.red : C.green} />
+        <KPI icon="📦" label={`${t('shortage', 'Shortage')}s`} value={shortages}
+          color={shortages > 0 ? C.red : C.green} />
+        <KPI icon="⏱" label={t('makespan', 'Makespan')}
+          value={h.makespanSeconds ? fmtDuration(h.makespanSeconds) : '—'} color={C.text} />
+        <KPI icon="🔧" label="Bottleneck" value={h.bottleneck?.name ?? '—'}
+          color={(h.bottleneck?.pct ?? 0) >= 0.9 ? C.red : C.text}
+          sub={h.bottleneck ? `${pctFmt(h.bottleneck.pct)} utilized` : undefined} />
       </div>
 
-      {/* Gantt + Side panels */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16 }}>
-        <Card title={`${t('schedule', 'Schedule')} Overview`}>
-          <GanttChart tasks={tasks} resources={resources} products={products} colors={colors}
-            onTaskClick={onTaskClick} onResourceClick={onResourceClick}
-            taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
-            orderModes={orderModes}
-            onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask}
-            onWhereTo={onWhereTo}
-            zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
-            scrollOffset={scrollOffset} setScrollOffset={setScrollOffset}
-            onViewAgenda={onViewAgenda} />
+      {/* Three rails, all above the fold: capacity (heatmap) · demand (orders) · conflicts */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 380px 440px', gap: 16, alignItems: 'start' }}>
+        <Card title="Resource Utilization">
+          <SummaryHeatmap data={heatmap} onResourceClick={(key) => {
+            const r = resources.find((x: any) => x.resourceKey === key);
+            if (r) onResourceClick?.(r);
+          }} />
         </Card>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Card title={`${t('resource', 'Resource')} ${t('utilization', 'Utilization')}`}>
-            {(() => {
-              const wcGroups = new Map<string, any[]>();
-              resources.forEach((r: any) => {
-                const wc = r.workCenter || 'Other';
-                if (!wcGroups.has(wc)) wcGroups.set(wc, []);
-                wcGroups.get(wc)!.push(r);
-              });
-              return Array.from(wcGroups.entries()).map(([wcName, wcRes]) => (
-                <div key={wcName}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: C.textDim, marginTop: 12, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    {wcName}
-                  </div>
-                  {wcRes.map((r: any) => (
-                    <UtilBar key={r.resourceKey} pct={r.utilization} label={r.resourceName}
-                      onClick={() => onResourceClick?.(r)} />
-                  ))}
-                </div>
-              ));
-            })()}
-          </Card>
-          <Card title={`${t('order', 'Order')} Status`}>
-            {orders.map((o: any) => {
-              const status = deriveOrderStatus(o, tasks);
-              return (
-                <div key={o.orderKey} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '6px 0', borderBottom: `1px solid ${C.border}`,
-                }}>
-                  <div>
-                    <span style={{ fontWeight: 600, fontSize: 13 }}>{o.orderKey}</span>
-                    <span style={{ color: C.textDim, fontSize: 12, marginLeft: 8 }}>
-                      {products.find((p: any) => p.key === o.productKey)?.name || o.productKey}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Ring pct={o.fillRate} size={24} />
-                    <Badge label={status} />
-                  </div>
-                </div>
-              );
-            })}
-          </Card>
-        </div>
-      </div>
 
-      {/* Alert Banners */}
-      {conflicts.filter((c: any) => c.severity === 'critical').length > 0 && (
-        <div
-          onClick={() => onTabChange('Conflicts')}
-          style={{
-            background: C.redDim, border: `1px solid ${C.red}33`, borderRadius: 10,
-            padding: '12px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center',
-            justifyContent: 'space-between', fontFamily: FONT,
-          }}
-        >
-          <span style={{ color: C.red, fontWeight: 600, fontSize: 13 }}>
-            ⚠ {conflicts.filter((c: any) => c.severity === 'critical').length} critical {t('conflicts', 'conflicts')} detected
-          </span>
-          <span style={{ color: C.red, fontSize: 12 }}>View {t('conflicts', 'Conflicts')} →</span>
-        </div>
-      )}
-      {shortages > 0 && (
-        <div
-          onClick={() => onTabChange('Materials')}
-          style={{
-            background: C.yellowDim, border: `1px solid ${C.yellow}33`, borderRadius: 10,
-            padding: '12px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center',
-            justifyContent: 'space-between', fontFamily: FONT,
-          }}
-        >
-          <span style={{ color: C.yellow, fontWeight: 600, fontSize: 13 }}>
-            📦 {shortages} {t('material', 'material')} {t('shortage', 'shortage')}{shortages > 1 ? 's' : ''} — review inventory
-          </span>
-          <span style={{ color: C.yellow, fontSize: 12 }}>View {t('materials', 'Materials')} →</span>
-        </div>
-      )}
+        <Card title={`${t('order', 'Order')} Status`}>
+          <div style={{ maxHeight: 520, overflow: 'auto', paddingRight: 10 }}>
+            {orderRows.map(({ o, status }: any) => (
+              <div key={o.orderKey} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '6px 0', borderBottom: `1px solid ${C.border}`,
+              }}>
+                <div>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{o.orderKey}</span>
+                  <span style={{ color: C.textDim, fontSize: 12, marginLeft: 8 }}>
+                    {products.find((p: any) => p.key === o.productKey)?.name || o.productKey}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Ring pct={o.fillRate} size={24} />
+                  <Badge label={status} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card title={`${t('conflicts', 'Conflicts')} (${conflictList.length})`}>
+          {conflictList.length === 0 ? (
+            <div style={{ color: C.textDim, fontSize: 13, padding: '8px 0' }}>No conflicts detected 🎉</div>
+          ) : (
+            <div style={{ maxHeight: 520, overflow: 'auto', paddingRight: 10 }}>
+              {conflictList.map((c: any) => {
+                const rc = c.reason === 'availability' ? '#9e9e9e'
+                  : c.reason === 'capacity' ? '#f44336'
+                  : c.reason === 'dependency' ? '#ff9800'
+                  : c.reason === 'material' ? C.cyan
+                  : c.reason === 'horizon' ? '#9c27b0' : C.orange;
+                return (
+                  <div key={c.id}
+                    onClick={() => c.taskKey ? onTaskClick?.(c.taskKey) : onTabChange('Conflicts')}
+                    style={{ padding: '8px 0', borderBottom: `1px solid ${C.border}`, cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 600, fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.taskName || c.taskKey}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', padding: '2px 6px', borderRadius: 4, background: `${rc}22`, color: rc, whiteSpace: 'nowrap' }}>{c.reason}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: C.textDim, marginTop: 2 }}>{c.reasonDetail}</div>
+                    {c.orderRef && <div style={{ fontSize: 10, color: C.textMuted, marginTop: 1 }}>{c.orderRef}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
@@ -14611,6 +14641,9 @@ export default function App() {
   // Snapshot the landing read resolved to. null = cold-start: this tenant has
   // never been solved (no snapshot), so there's no schedule yet to show.
   const [currentSnapshotId, setCurrentSnapshotId] = useState<string | null>(null);
+  // The <100KB summary partition (headline + bucketed utilization) — drives the
+  // Overview heatmap without the task array.
+  const [snapshotSummary, setSnapshotSummary] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('Overview');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -14807,8 +14840,9 @@ export default function App() {
       // Load never solves: read the durable snapshot's detail projection
       // (server-side, no solve) instead of solve-and-sync. `detail` returns the
       // same CTPSolveResult shape wrapped as { snapshotId, data }.
-      const [detailEnv, prods, colorsData, termData, localeData, strategiesData, versionData] = await Promise.all([
+      const [detailEnv, summaryEnv, prods, colorsData, termData, localeData, strategiesData, versionData] = await Promise.all([
         api(`/snapshot/detail?detailLevel=${encodeURIComponent(experienceLevel)}`),
+        api('/snapshot/summary').catch(() => null),
         api('/data/products'),
         api('/data/colors').catch(() => null),
         api('/data/terminology').catch(() => ({})),
@@ -14820,6 +14854,7 @@ export default function App() {
       // cold-start (never solved) — drives the "no schedule yet" empty state.
       const result = detailEnv?.data ?? null;
       setCurrentSnapshotId(detailEnv?.snapshotId ?? null);
+      setSnapshotSummary(summaryEnv?.data ?? null);
       if (versionData) setVersionInfo(versionData);
       // Load configurations
       try {
@@ -16710,7 +16745,7 @@ export default function App() {
           </div>
         )}
         {activeTab === 'Overview' && (
-          <OverviewTab summary={summary} tasks={tasks} resources={resources}
+          <OverviewTab summary={summary} heatmap={snapshotSummary} tasks={tasks} resources={resources}
             orders={orders} materials={materials} products={products} colors={colors} onTabChange={setActiveTab}
             onTaskClick={handleTaskClick} onResourceClick={handleResourceClick}
             experienceLevel={experienceLevel}
