@@ -14613,9 +14613,11 @@ export default function App() {
   // Snapshot the landing read resolved to. null = cold-start: this tenant has
   // never been solved (no snapshot), so there's no schedule yet to show.
   const [currentSnapshotId, setCurrentSnapshotId] = useState<string | null>(null);
-  // The <100KB summary partition (headline + bucketed utilization) — drives the
-  // Overview heatmap without the task array.
+  // The <100KB summary partition (headline + bucketed utilization + slim
+  // orders/conflicts) — drives the entire Overview without the task array.
   const [snapshotSummary, setSnapshotSummary] = useState<any>(null);
+  // True while the detail partition is being lazily fetched (first detail-tab visit).
+  const [detailLoading, setDetailLoading] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('Overview');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -14803,6 +14805,10 @@ export default function App() {
   const resources = solveResult?.resourceUtilization || [];
   const orders = solveResult?.orders || [];
   const materials = solveResult?.materials || [];
+  // Tabs that need the detail partition. When one is active but detail hasn't
+  // loaded yet (summary-only landing, P9.2c), show a loader instead of empties.
+  const DETAIL_TABS = ['Schedule', 'Resources', 'Orders', 'Conflicts', 'Materials', 'Analytics'];
+  const detailPending = currentSnapshotId !== null && !solveResult && DETAIL_TABS.includes(activeTab);
   const workOrderGroups = solveResult?.workOrderGroups || [];
   const summary = solveResult?.summary || null;
 
@@ -14812,8 +14818,7 @@ export default function App() {
       // Load never solves: read the durable snapshot's detail projection
       // (server-side, no solve) instead of solve-and-sync. `detail` returns the
       // same CTPSolveResult shape wrapped as { snapshotId, data }.
-      const [detailEnv, summaryEnv, prods, colorsData, termData, localeData, strategiesData, versionData] = await Promise.all([
-        api(`/snapshot/detail?detailLevel=${encodeURIComponent(experienceLevel)}`),
+      const [summaryEnv, prods, colorsData, termData, localeData, strategiesData, versionData] = await Promise.all([
         api('/snapshot/summary').catch(() => null),
         api('/data/products'),
         api('/data/colors').catch(() => null),
@@ -14822,10 +14827,11 @@ export default function App() {
         api('/data/strategies').catch(() => null),
         api('/health/version').catch(() => null),
       ]);
-      // Unwrap the snapshot envelope { snapshotId, data }. A null snapshotId is
-      // cold-start (never solved) — drives the "no schedule yet" empty state.
-      const result = detailEnv?.data ?? null;
-      setCurrentSnapshotId(detailEnv?.snapshotId ?? null);
+      // Landing is summary-only (P9.2c): the ~16.5MB detail partition is fetched
+      // lazily on first navigation to a detail tab (see ensureDetail), so
+      // solveResult stays null here. A null snapshotId is cold-start (never
+      // solved) — drives the "no schedule yet" empty state.
+      setCurrentSnapshotId(summaryEnv?.snapshotId ?? null);
       setSnapshotSummary(summaryEnv?.data ?? null);
       if (versionData) setVersionInfo(versionData);
       // Load configurations
@@ -14844,11 +14850,10 @@ export default function App() {
           }
         }
       } catch { /* configurations endpoint optional */ }
-      setSolveResult(result);
       setProducts(prods);
-      setColors(result.colors || colorsData || {});
-      _terminology = result.terminology || termData || {};
-      _locale = result.locale || localeData || {};
+      setColors(colorsData || {});
+      _terminology = termData || {};
+      _locale = localeData || {};
       if (strategiesData?.strategies?.length > 0) {
         setStrategyOptions(strategiesData.strategies);
       }
@@ -14876,6 +14881,27 @@ export default function App() {
       setError(e.message || 'Failed to load data');
     }
   }, [experienceLevel]);
+
+  // Lazily fetch the full detail partition (the tabs beyond Overview need the
+  // task array). Called on first navigation away from Overview; no-ops once
+  // loaded or in flight. This is what makes the landing summary-only (P9.2c).
+  const ensureDetail = useCallback(async () => {
+    if (solveResult || detailLoading) return;
+    setDetailLoading(true);
+    try {
+      const env = await api(`/snapshot/detail?detailLevel=${encodeURIComponent(experienceLevel)}`);
+      if (env?.data) setSolveResult(env.data);
+    } catch (e: any) {
+      setError(e.message || 'Failed to load schedule detail');
+    } finally {
+      setDetailLoading(false);
+    }
+  }, [solveResult, detailLoading, experienceLevel]);
+
+  // Trigger the lazy detail load the moment the user leaves Overview.
+  useEffect(() => {
+    if (activeTab !== 'Overview') ensureDetail();
+  }, [activeTab, ensureDetail]);
 
   // ─── Action Queue Helpers ───
   const addToQueue = useCallback((label: string, command: any) => {
@@ -14976,8 +15002,11 @@ export default function App() {
     try {
       setError(null);
 
-      // Build request body with all overrides
-      const body: any = { preserveLandscape: true };
+      // Build request body with all overrides. preserveLandscape only when the
+      // landscape is actually loaded (solveResult present) — on the summary-only
+      // landing (P9.2c) or a cold tenant it's null, so the solve must sync from
+      // the adapter first rather than assume an initialized landscape.
+      const body: any = { preserveLandscape: !!solveResult };
       const activeOrderModes = Object.fromEntries(
         Object.entries(orderModes).filter(([, v]) => v !== 'INCLUDE'),
       );
@@ -15014,8 +15043,13 @@ export default function App() {
       });
       setSolveResult(result);
       setSolveStale(false);
-      // A solve always promotes a snapshot — re-pin so the cold-start state clears.
-      try { const m = await api('/snapshot/meta'); if (m?.snapshotId) setCurrentSnapshotId(m.snapshotId); } catch { /* non-fatal */ }
+      // A solve promotes a snapshot — refresh id + summary so the cold-start
+      // state clears and the summary-driven Overview reflects the new solve.
+      try {
+        const s = await api('/snapshot/summary');
+        if (s?.snapshotId) setCurrentSnapshotId(s.snapshotId);
+        setSnapshotSummary(s?.data ?? null);
+      } catch { /* non-fatal */ }
 
       // Auto-fit Gantt zoom to the schedule's critical path span
       if (result.criticalPath?.makespan) {
@@ -16716,6 +16750,16 @@ export default function App() {
             </button>
           </div>
         )}
+        {detailPending && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: 12, padding: '64px 24px', color: C.textDim, fontFamily: FONT,
+          }}>
+            <div style={{ fontSize: 28 }}>⏳</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Loading schedule…</div>
+            <div style={{ fontSize: 12 }}>Fetching the full task detail for this view.</div>
+          </div>
+        )}
         {activeTab === 'Overview' && (
           <OverviewTab summary={summary} heatmap={snapshotSummary} tasks={tasks} resources={resources}
             orders={orders} materials={materials} products={products} colors={colors} onTabChange={setActiveTab}
@@ -16747,7 +16791,7 @@ export default function App() {
             scrollOffset={ganttScrollOffset} setScrollOffset={setGanttScrollOffset}
             onViewAgenda={(r: any) => { setSelectedTask(null); setSelectedResource(null); setAgendaResource(r); }} />
         )}
-        {activeTab === 'Schedule' && (
+        {activeTab === 'Schedule' && solveResult && (
           <ScheduleTab tasks={tasks} resources={resources} products={products} colors={colors} workOrderGroups={workOrderGroups}
             orders={orders}
             onTaskClick={handleTaskClick} onResourceClick={handleResourceClick}
@@ -16847,7 +16891,7 @@ export default function App() {
             ctpGhostBars={ctpGhostBars} isQueuing={isQueuing}
             onToolbarAction={handleToolbarAction} />
         )}
-        {activeTab === 'Resources' && (
+        {activeTab === 'Resources' && solveResult && (
           <ResourceProfileTab
             resources={resources}
             tasks={tasks}
@@ -16855,12 +16899,12 @@ export default function App() {
             onTaskClick={handleTaskClick}
           />
         )}
-        {activeTab === 'Orders' && <OrdersTab
+        {activeTab === 'Orders' && solveResult && <OrdersTab
           caseFilter={ordersCaseFilter} onClearCaseFilter={() => setOrdersCaseFilter(null)}
           onNavigateToSchedule={(orderKey) => { setScheduleCaseFilter(orderKey); setActiveTab('Schedule'); }} />}
-        {activeTab === 'Conflicts' && <ConflictsTab tasks={tasks} resources={resources} materials={materials}
+        {activeTab === 'Conflicts' && solveResult && <ConflictsTab tasks={tasks} resources={resources} materials={materials}
           onTaskClick={handleTaskClickByKey} />}
-        {activeTab === 'Materials' && <MaterialsTab materials={materials}
+        {activeTab === 'Materials' && solveResult && <MaterialsTab materials={materials}
           materialModes={materialModeOverrides}
           onMaterialModeChange={(key, mode) => { setMaterialModeOverrides(prev => ({ ...prev, [key]: mode })); setSolveStale(true); }} />}
         {activeTab === 'Configurations' && <ConfigurationsTab
@@ -16870,7 +16914,7 @@ export default function App() {
           onRename={handleConfigRename}
           isModified={isConfigModified} modifiedConfig={modifiedConfig} activeConfig={activeConfig}
           onSave={handleConfigSave} onSaveAs={handleConfigSaveAs} onReset={handleConfigReset} />}
-        {activeTab === 'Analytics' && <AnalyticsTab kpis={analyticsKpis} detail={analyticsDetail}
+        {activeTab === 'Analytics' && solveResult && <AnalyticsTab kpis={analyticsKpis} detail={analyticsDetail}
           selectedKpi={selectedKpi} onSelectKpi={handleSelectKpi} loading={analyticsLoading}
           experienceLevel={experienceLevel} onNavigateToCase={(caseKey) => { setScheduleCaseFilter(caseKey); setActiveTab('Schedule'); }}
           tasks={tasks} onNavigateToConflicts={() => setActiveTab('Conflicts')} />}
