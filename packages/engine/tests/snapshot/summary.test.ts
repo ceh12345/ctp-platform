@@ -89,6 +89,17 @@ describe('summarizeLandscape (P6)', () => {
     // alerts mirror counts
     expect(doc.alerts.conflicts.count).toBe(1);
     expect(doc.alerts.materials.count).toBe(2);
+
+    // slim orders list — the sortable demand rail source
+    expect(doc.orders).toHaveLength(2);
+    expect(doc.orders.find(o => o.orderKey === 'O1')!.status).toBe('late');
+    expect(doc.orders.find(o => o.orderKey === 'O2')!.status).toBe('on-track');
+
+    // slim conflicts list — one unscheduled included task; no report → dependency
+    expect(doc.conflicts).toHaveLength(1);
+    expect(doc.conflicts[0].taskKey).toBe('T3');
+    expect(doc.conflicts[0].reason).toBe('dependency');
+    expect(doc.conflicts[0].reasonDetail).toBe('No feasible placement');
   });
 
   it('handles an empty / unsolved landscape without throwing', () => {
@@ -99,5 +110,7 @@ describe('summarizeLandscape (P6)', () => {
     expect(doc.headline.feasibilityRate).toBe(0);
     expect(doc.headline.bottleneck).toBeNull();
     expect(doc.resourceLoad).toEqual([]);
+    expect(doc.orders).toEqual([]);
+    expect(doc.conflicts).toEqual([]);
   });
 });

@@ -52,11 +52,34 @@ export interface SummaryAlert {
   target: string;
 }
 
+/** Slim per-order status for the Overview demand rail — no task objects. */
+export interface SummaryOrder {
+  orderKey: string;
+  name: string;
+  productKey: string | null;
+  fillRate: number;                          // 0..1 (scheduled finished-good qty / demand)
+  dueW: number;                              // due date in seconds; 0 = unset
+  status: 'late' | 'at-risk' | 'on-track';   // vocabulary matches the UI statusColor()
+}
+
+/** Slim per-conflict row for the Overview conflicts rail — unscheduled included tasks. */
+export interface SummaryConflict {
+  taskKey: string;
+  taskName: string;
+  orderKey: string | null;                   // chain/order (linkId.name)
+  reason: string;                            // conflictType: availability|capacity|dependency|horizon
+  reasonDetail: string;                      // the classified infeasibility reason
+  bottleneck: string | null;
+}
+
 export interface SummaryDoc {
   headline: SummaryHeadline;
   bucketMeta: SummaryBucketMeta;
   resourceLoad: SummaryResourceLoad[];
   alerts: { conflicts: SummaryAlert; materials: SummaryAlert };
+  /** Slim lists so the Overview demand/conflicts rails render without the detail partition. */
+  orders: SummaryOrder[];
+  conflicts: SummaryConflict[];
 }
 
 export interface SummarizeOptions {
@@ -85,30 +108,71 @@ export function summarizeLandscape(
   // ── headline task counts + makespan ──
   let totalTasks = 0, scheduledTasks = 0, includedTasks = 0, conflicts = 0;
   let minStart = Number.POSITIVE_INFINITY, maxEnd = Number.NEGATIVE_INFINITY;
-  const chainEnd = new Map<string, number>(); // linkId.name → max scheduled end
+  const chainEnd = new Map<string, number>();        // order.key → max scheduled end
+  const chainSchedQty = new Map<string, number>();   // order.key → scheduled finished-good qty
+  const chainTaskCount = new Map<string, number>();  // order.key → total task count
+  const chainFeasSched = new Map<string, number>();  // order.key → scheduled task count
+  const conflictRows: SummaryConflict[] = [];
 
   landscape.tasks?.forEach((t: CTPTask) => {
     totalTasks++;
     const isScheduled = t.state === CTPTaskStateConstants.SCHEDULED;
     if (isScheduled) scheduledTasks++;
     if (t.includeInSolve || isScheduled) includedTasks++;
-    if (t.includeInSolve && !isScheduled) conflicts++;
+    const chain = t.linkId?.name ?? null;
+    if (chain) chainTaskCount.set(chain, (chainTaskCount.get(chain) ?? 0) + 1);
+    if (t.includeInSolve && !isScheduled) {
+      conflicts++;
+      const rpt = t.infeasibilityReport;
+      conflictRows.push({
+        taskKey: t.key,
+        taskName: t.name ?? t.key,
+        orderKey: chain,
+        reason: rpt?.conflictType ?? 'dependency',
+        reasonDetail: rpt?.reason ?? 'No feasible placement',
+        bottleneck: rpt?.bottleneckSlot ?? null,
+      });
+    }
     if (isScheduled && t.scheduled) {
       minStart = Math.min(minStart, t.scheduled.startW);
       maxEnd = Math.max(maxEnd, t.scheduled.endW);
-      const chain = t.linkId?.name;
-      if (chain) chainEnd.set(chain, Math.max(chainEnd.get(chain) ?? -Infinity, t.scheduled.endW));
+      if (chain) {
+        chainEnd.set(chain, Math.max(chainEnd.get(chain) ?? -Infinity, t.scheduled.endW));
+        chainFeasSched.set(chain, (chainFeasSched.get(chain) ?? 0) + 1);
+        // Finished-good output only — mirrors the detail projection's fillRate.
+        if (t.outputProductKey && t.outputQty > 0) {
+          chainSchedQty.set(chain, (chainSchedQty.get(chain) ?? 0) + t.netOutputQty());
+        }
+      }
     }
   });
   const makespanSeconds = maxEnd > minStart ? maxEnd - minStart : 0;
 
   // ── late orders: scheduled chain completion past the order due date ──
   let lateOrders = 0, totalOrders = 0;
+  const orderRows: SummaryOrder[] = [];
   landscape.orders?.forEach((o) => {
     totalOrders++;
-    const due = o.dueDate;
+    const dueW = o.dueDate ?? 0;
     const end = chainEnd.get(o.key);
-    if (due && due > 0 && end !== undefined && end > due) lateOrders++;
+    const isLate = dueW > 0 && end !== undefined && end > dueW;
+    if (isLate) lateOrders++;
+
+    const demand = o.demandQty ?? 0;
+    let fillRate = demand > 0 ? round4(Math.min(1, (chainSchedQty.get(o.key) ?? 0) / demand)) : 0;
+    // Single-unit orders (cases, one-offs): fill from task completion, like the UI.
+    if (demand <= 1) {
+      const total = chainTaskCount.get(o.key) ?? 0;
+      fillRate = total > 0 && (chainFeasSched.get(o.key) ?? 0) === total ? 1 : 0;
+    }
+    // Matches the UI's deriveOrderStatus: on-track needs ~full fill AND comfortable
+    // lead before due (>48h); otherwise at-risk. Late wins over everything.
+    const within48h = dueW > 0 && end !== undefined && dueW - end < 48 * 3600;
+    const status: SummaryOrder['status'] =
+      isLate ? 'late'
+      : (fillRate >= 0.99 && !within48h) ? 'on-track'
+      : 'at-risk';
+    orderRows.push({ orderKey: o.key, name: o.name ?? o.key, productKey: o.productKey ?? null, fillRate, dueW, status });
   });
 
   // ── per-resource bucketed utilization + bottleneck ──
@@ -158,5 +222,7 @@ export function summarizeLandscape(
       conflicts: { count: conflicts, target: 'conflicts' },
       materials: { count: shortages, target: 'materials' },
     },
+    orders: orderRows,
+    conflicts: conflictRows,
   };
 }

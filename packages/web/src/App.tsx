@@ -368,34 +368,6 @@ function getHierarchyValue(group: any, name: string): string | null {
   return v == null || v === '' ? null : String(v);
 }
 
-function deriveOrderStatus(order: any, tasks?: any[]): string {
-  const raw = order.fillRate ?? 0;
-  // fillRate is a ratio (0.0–N) where 1.0 = 100%. Values > 1 mean overfilled.
-  const fillRate = raw > 100 ? raw / 100 : raw;
-  const due = order.dueDate ? new Date(order.dueDate).getTime() : 0;
-
-  // For single-unit orders (healthcare cases, etc.), derive fill from task feasibility
-  const effectiveFillRate = (order.demandQty ?? 0) <= 1 && tasks
-    ? (tasks.filter((tk: any) => tk.orderRef === order.orderKey).length > 0 &&
-       tasks.filter((tk: any) => tk.orderRef === order.orderKey).every((tk: any) => tk.feasible && tk.scheduledEnd)
-        ? 1.0 : 0)
-    : fillRate;
-
-  if (due > 0 && tasks) {
-    const orderTasks = tasks.filter((tk: any) => tk.orderRef === order.orderKey && tk.feasible && tk.scheduledEnd);
-    const lastEnd = orderTasks.length > 0
-      ? Math.max(...orderTasks.map((tk: any) => new Date(tk.scheduledEnd).getTime()))
-      : 0;
-    if (lastEnd > due) return 'late';
-    if (effectiveFillRate < 0.5) return 'at-risk';
-    if (lastEnd > 0 && due - lastEnd < 48 * 3600 * 1000) return 'at-risk';
-  } else {
-    if (effectiveFillRate < 0.5) return 'at-risk';
-  }
-  if (effectiveFillRate >= 0.99) return 'on-track';
-  return 'at-risk';
-}
-
 function deriveMaterialStatus(mat: any): string {
   const available = (mat.onHand ?? 0) - (mat.consumed ?? 0);
   const net = available + (mat.incoming ?? 0);
@@ -8242,7 +8214,7 @@ function SummaryHeatmap({ data, onResourceClick }: { data: any; onResourceClick?
   );
 }
 
-function OverviewTab({ heatmap, tasks, resources, orders, materials, products, onTabChange, onTaskClick, onResourceClick }: {
+function OverviewTab({ heatmap, resources, products, onTabChange, onTaskClick, onResourceClick }: {
   summary: any; heatmap?: any; tasks: any[]; resources: any[]; orders: any[]; materials: any[];
   products: any[]; colors: any; onTabChange: (t: string) => void;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
@@ -8265,10 +8237,10 @@ function OverviewTab({ heatmap, tasks, resources, orders, materials, products, o
   const conflicts = h.conflicts ?? 0;
   const shortages = h.shortages ?? 0;
   const feas = h.feasibilityRate ?? 0;
-  const conflictList = deriveConflicts(tasks, resources, materials);
-  const orderRank = (s: string) => s === 'late' ? 0 : s === 'at-risk' ? 1 : s === 'on-time' ? 2 : 3;
-  const orderRows = [...orders]
-    .map((o: any) => ({ o, status: deriveOrderStatus(o, tasks) }))
+  // Rails render from the summary partition (P9.2) — no task array needed.
+  const conflictList: any[] = heatmap?.conflicts ?? [];
+  const orderRank = (s: string) => s === 'late' ? 0 : s === 'at-risk' ? 1 : s === 'on-track' ? 2 : 3;
+  const orderRows = [...(heatmap?.orders ?? [])]
     .sort((a: any, b: any) => orderRank(a.status) - orderRank(b.status));
   const pctFmt = (v: number | undefined) => v == null ? '—' : `${Math.round(v * 100)}%`;
 
@@ -8303,7 +8275,7 @@ function OverviewTab({ heatmap, tasks, resources, orders, materials, products, o
 
         <Card title={`${t('order', 'Order')} Status`}>
           <div style={{ maxHeight: 520, overflow: 'auto', paddingRight: 10 }}>
-            {orderRows.map(({ o, status }: any) => (
+            {orderRows.map((o: any) => (
               <div key={o.orderKey} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '6px 0', borderBottom: `1px solid ${C.border}`,
@@ -8316,7 +8288,7 @@ function OverviewTab({ heatmap, tasks, resources, orders, materials, products, o
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Ring pct={o.fillRate} size={24} />
-                  <Badge label={status} />
+                  <Badge label={o.status} />
                 </div>
               </div>
             ))}
@@ -8335,7 +8307,7 @@ function OverviewTab({ heatmap, tasks, resources, orders, materials, products, o
                   : c.reason === 'material' ? C.cyan
                   : c.reason === 'horizon' ? '#9c27b0' : C.orange;
                 return (
-                  <div key={c.id}
+                  <div key={c.taskKey}
                     onClick={() => c.taskKey ? onTaskClick?.(c.taskKey) : onTabChange('Conflicts')}
                     style={{ padding: '8px 0', borderBottom: `1px solid ${C.border}`, cursor: 'pointer' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
@@ -8343,7 +8315,7 @@ function OverviewTab({ heatmap, tasks, resources, orders, materials, products, o
                       <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', padding: '2px 6px', borderRadius: 4, background: `${rc}22`, color: rc, whiteSpace: 'nowrap' }}>{c.reason}</span>
                     </div>
                     <div style={{ fontSize: 11, color: C.textDim, marginTop: 2 }}>{c.reasonDetail}</div>
-                    {c.orderRef && <div style={{ fontSize: 10, color: C.textMuted, marginTop: 1 }}>{c.orderRef}</div>}
+                    {c.orderKey && <div style={{ fontSize: 10, color: C.textMuted, marginTop: 1 }}>{c.orderKey}</div>}
                   </div>
                 );
               })}
