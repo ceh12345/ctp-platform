@@ -50,9 +50,13 @@ export class SnapshotController {
     return { snapshotId, data };
   }
 
-  private read(partition: string, id?: string): { snapshotId: string | null; data: unknown } {
+  private read(partition: string, id?: string): { snapshotId: string | null; data: unknown; staleFlag: boolean } {
     const snapshotId = id ?? this.snapshotService.resolveCurrent();
-    if (!snapshotId) return { snapshotId: null, data: null };
-    return { snapshotId, data: this.snapshotService.readPartition(partition, snapshotId) };
+    if (!snapshotId) return { snapshotId: null, data: null, staleFlag: false };
+    return {
+      snapshotId,
+      data: this.snapshotService.readPartition(partition, snapshotId),
+      staleFlag: this.snapshotService.isStale(snapshotId),
+    };
   }
 }

@@ -119,4 +119,16 @@ describe('P7 — SnapshotController (slim-100)', () => {
     expect(scheduledInDetail.length).toBe(scheduledKeys.size);
     expect(scheduledInDetail.every((k: string) => scheduledKeys.has(k))).toBe(true);
   });
+
+  it('reports staleFlag on the read when the base version drifts from the snapshot', async () => {
+    const { ctpService, snapshotService, controller } = createServices();
+    await ctpService.solve();
+    // Fresh snapshot: base version matches → not stale.
+    expect(controller.getSummary().staleFlag).toBe(false);
+    // Simulate a source re-pull that moved the base version.
+    (snapshotService as any).baseVersions.set(TENANT_ID, 'deadbeefdeadbeef');
+    expect(controller.getSummary().staleFlag).toBe(true);
+    // An unknown explicit id has no meta to compare → guarded to not-stale.
+    expect(controller.getSummary('20990101T000000000Z').staleFlag).toBe(false);
+  });
 });

@@ -198,4 +198,20 @@ export class SnapshotService {
   readPartition<T = unknown>(name: string, id?: string, tenantId?: string): T | null {
     return this.storeFor(tenantId ?? this.configService.getTenantId()).readPartition<T>(name, id);
   }
+
+  /**
+   * Live staleness: true when the snapshot's base version no longer matches the
+   * current base (source config changed underneath it). The same version guard
+   * reconstruct() uses, exposed for the read surface so the UI can prompt a
+   * re-solve. A snapshot writes staleFlag:false; staleness is only ever a
+   * function of the base moving, so it's computed here at read time.
+   */
+  isStale(snapshotId?: string, tenantId?: string): boolean {
+    const tid = tenantId ?? this.configService.getTenantId();
+    const id = snapshotId ?? this.resolveCurrent(tid);
+    if (!id) return false;
+    const meta = this.readPartition<SnapshotMeta>('meta', id, tid);
+    if (!meta?.sourceDataVersion) return false;
+    return meta.sourceDataVersion !== this.baseVersion(tid);
+  }
 }

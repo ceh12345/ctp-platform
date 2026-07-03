@@ -14618,6 +14618,9 @@ export default function App() {
   const [snapshotSummary, setSnapshotSummary] = useState<any>(null);
   // True while the detail partition is being lazily fetched (first detail-tab visit).
   const [detailLoading, setDetailLoading] = useState(false);
+  // True when the current snapshot's base version no longer matches source
+  // config (base changed underneath it) — prompts a re-solve.
+  const [snapshotStale, setSnapshotStale] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('Overview');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -14833,6 +14836,7 @@ export default function App() {
       // solved) — drives the "no schedule yet" empty state.
       setCurrentSnapshotId(summaryEnv?.snapshotId ?? null);
       setSnapshotSummary(summaryEnv?.data ?? null);
+      setSnapshotStale(!!summaryEnv?.staleFlag);
       if (versionData) setVersionInfo(versionData);
       // Load configurations
       try {
@@ -14902,6 +14906,18 @@ export default function App() {
   useEffect(() => {
     if (activeTab !== 'Overview') ensureDetail();
   }, [activeTab, ensureDetail]);
+
+  // Re-read the summary partition after any schedule-state change (solve or
+  // mutation) so the summary-driven Overview stays fresh, and pick up the live
+  // staleness flag. Stable ([] deps) so callers can use it freely.
+  const refreshSummary = useCallback(async () => {
+    try {
+      const s = await api('/snapshot/summary');
+      if (s?.snapshotId) setCurrentSnapshotId(s.snapshotId);
+      setSnapshotSummary(s?.data ?? null);
+      setSnapshotStale(!!s?.staleFlag);
+    } catch { /* non-fatal */ }
+  }, []);
 
   // ─── Action Queue Helpers ───
   const addToQueue = useCallback((label: string, command: any) => {
@@ -15043,13 +15059,9 @@ export default function App() {
       });
       setSolveResult(result);
       setSolveStale(false);
-      // A solve promotes a snapshot — refresh id + summary so the cold-start
-      // state clears and the summary-driven Overview reflects the new solve.
-      try {
-        const s = await api('/snapshot/summary');
-        if (s?.snapshotId) setCurrentSnapshotId(s.snapshotId);
-        setSnapshotSummary(s?.data ?? null);
-      } catch { /* non-fatal */ }
+      // A solve promotes a fresh snapshot — refresh the summary (clears the
+      // cold-start card + staleness, and updates the summary-driven Overview).
+      await refreshSummary();
 
       // Auto-fit Gantt zoom to the schedule's critical path span
       if (result.criticalPath?.makespan) {
@@ -15785,7 +15797,7 @@ export default function App() {
         body: JSON.stringify({ taskKeys: keys }),
       });
       const updated = await api('/ctp/state');
-      if (updated.tasks) setSolveResult(updated);
+      if (updated.tasks) { setSolveResult(updated); refreshSummary(); }
       setSelectedTasks(new Set());
       const s = res.summary;
       if (s) {
@@ -15824,7 +15836,7 @@ export default function App() {
         } catch { /* continue */ }
       }
       const updated = await api('/ctp/state');
-      if (updated.tasks) setSolveResult(updated);
+      if (updated.tasks) { setSolveResult(updated); refreshSummary(); }
       setTaskPins(prev => {
         const next = { ...prev };
         keys.forEach(k => { next[k] = pinned; });
@@ -15881,7 +15893,7 @@ export default function App() {
         body: JSON.stringify({ taskKeys: keys }),
       });
       const updated = await api('/ctp/state');
-      if (updated.tasks) setSolveResult(updated);
+      if (updated.tasks) { setSolveResult(updated); refreshSummary(); }
       setSelectedTasks(new Set());
       const s = res.summary;
       if (s) {
@@ -15942,7 +15954,7 @@ export default function App() {
         }),
       });
       const updated = await api('/ctp/state');
-      if (updated.tasks) setSolveResult(updated);
+      if (updated.tasks) { setSolveResult(updated); refreshSummary(); }
       showToast('Task put on hold');
     } catch (err: any) {
       showToast(err.message || 'Hold failed', 'error');
@@ -15986,7 +15998,7 @@ export default function App() {
         });
       }
       const updated = await api('/ctp/state');
-      if (updated.tasks) setSolveResult(updated);
+      if (updated.tasks) { setSolveResult(updated); refreshSummary(); }
       setSelectedTasks(new Set());
       showToast(`Window extended for ${taskKeys.length} task(s)`);
     } catch (err: any) {
@@ -16072,7 +16084,7 @@ export default function App() {
           body: JSON.stringify({ taskKeys }),
         });
         const updated = await api('/ctp/state');
-        if (updated.tasks) setSolveResult(updated);
+        if (updated.tasks) { setSolveResult(updated); refreshSummary(); }
         setSelectedTasks(new Set());
         showToast(`${taskKeys.length} task(s) reverted to pinned`);
       } catch (err: any) {
@@ -16092,7 +16104,7 @@ export default function App() {
         body: JSON.stringify({ commands, name: `${action} ${taskKeys.length} task(s)` }),
       });
       const updated = await api('/ctp/state');
-      if (updated.tasks) setSolveResult(updated);
+      if (updated.tasks) { setSolveResult(updated); refreshSummary(); }
       setSelectedTasks(new Set());
       const labels: Record<string, string> = {
         dispatch: 'dispatched', start: 'started', hold: 'put on hold', resume: 'resumed', complete: 'completed',
@@ -16724,6 +16736,24 @@ export default function App() {
       {/* Tab content */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
       <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
+        {/* Stale: source data changed since this schedule was solved → prompt re-solve. */}
+        {snapshotStale && currentSnapshotId !== null && (
+          <div
+            onClick={() => handleSolveConfirm()}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+              background: C.yellowDim, border: `1px solid ${C.yellow}55`, borderRadius: 10,
+              padding: '10px 16px', marginBottom: 16, cursor: solving ? 'default' : 'pointer', fontFamily: FONT,
+            }}
+          >
+            <span style={{ color: C.yellow, fontWeight: 600, fontSize: 13 }}>
+              ⚠ Source data changed since this schedule was solved — it may be out of date.
+            </span>
+            <span style={{ color: C.yellow, fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
+              {solving ? 'Solving…' : 'Re-solve →'}
+            </span>
+          </div>
+        )}
         {/* Cold-start: tenant never solved (no snapshot) → guide the user to Solve. */}
         {currentSnapshotId === null && !loading && (
           <div style={{
