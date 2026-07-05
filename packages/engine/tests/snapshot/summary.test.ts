@@ -6,7 +6,7 @@ import { CTPOrder, CTPOrders } from '../../Models/Entities/order';
 import { CTPInterval } from '../../Models/Core/window';
 import { CTPLinkId } from '../../Models/Core/linkid';
 import { CTPAvailable, CTPAssignments } from '../../Models/Intervals/intervals';
-import { summarizeLandscape } from '../../Snapshot/summary';
+import { summarizeLandscape, decodeSummaryOrders } from '../../Snapshot/summary';
 import { makeDuration, makeHorizon } from '../helpers/builders';
 
 function scheduledTask(key: string, startW: number, endW: number, chain?: string): CTPTask {
@@ -90,10 +90,11 @@ describe('summarizeLandscape (P6)', () => {
     expect(doc.alerts.conflicts.count).toBe(1);
     expect(doc.alerts.materials.count).toBe(2);
 
-    // slim orders list — the sortable demand rail source
-    expect(doc.orders).toHaveLength(2);
-    expect(doc.orders.find(o => o.orderKey === 'O1')!.status).toBe('late');
-    expect(doc.orders.find(o => o.orderKey === 'O2')!.status).toBe('on-track');
+    // slim orders list — columnar; the sortable demand rail source
+    const orders = decodeSummaryOrders(doc.orders);
+    expect(orders).toHaveLength(2);
+    expect(orders.find(o => o.orderKey === 'O1')!.status).toBe('late');
+    expect(orders.find(o => o.orderKey === 'O2')!.status).toBe('on-track');
 
     // slim conflicts list — one unscheduled included task; no report → dependency
     expect(doc.conflicts).toHaveLength(1);
@@ -110,7 +111,7 @@ describe('summarizeLandscape (P6)', () => {
     expect(doc.headline.feasibilityRate).toBe(0);
     expect(doc.headline.bottleneck).toBeNull();
     expect(doc.resourceLoad).toEqual([]);
-    expect(doc.orders).toEqual([]);
+    expect(decodeSummaryOrders(doc.orders)).toEqual([]);
     expect(doc.conflicts).toEqual([]);
   });
 });

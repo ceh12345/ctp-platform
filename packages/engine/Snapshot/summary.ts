@@ -52,14 +52,47 @@ export interface SummaryAlert {
   target: string;
 }
 
-/** Slim per-order status for the Overview demand rail — no task objects. */
+/**
+ * Slim per-order status for the Overview demand rail — no task objects.
+ * The client resolves the display name from productKey via its product cache,
+ * so no `name` is carried here. Serialized columnar (see SummaryOrders) so the
+ * 5 keys aren't repeated on every row.
+ */
 export interface SummaryOrder {
   orderKey: string;
-  name: string;
   productKey: string | null;
   fillRate: number;                          // 0..1 (scheduled finished-good qty / demand)
-  dueW: number;                              // due date in seconds; 0 = unset
-  status: 'late' | 'at-risk' | 'on-track';   // vocabulary matches the UI statusColor()
+  status: 'late' | 'at-risk' | 'on-track';   // vocabulary matches the UI statusColor(); already
+                                             // encodes the due-date verdict, so raw dueW isn't carried
+}
+
+/** Column order for the columnar orders encoding. Keep in sync with SummaryOrder. */
+export const SUMMARY_ORDER_COLS = ['orderKey', 'productKey', 'fillRate', 'status'] as const;
+
+/** One order as a positional tuple, indexed by SUMMARY_ORDER_COLS. */
+export type SummaryOrderRow = [string, string | null, number, SummaryOrder['status']];
+
+/**
+ * Columnar orders partition: the column header once + a row tuple per order.
+ * Halves the on-disk bytes vs array-of-objects at scale (562 rows no longer
+ * repeat 5 key names each). Decode with decodeSummaryOrders().
+ */
+export interface SummaryOrders {
+  cols: typeof SUMMARY_ORDER_COLS;
+  rows: SummaryOrderRow[];
+}
+
+/** Expand the columnar orders partition back to objects. Tolerates a legacy
+ *  array-of-objects payload (older snapshots) so reads never break on upgrade. */
+export function decodeSummaryOrders(orders: SummaryOrders | SummaryOrder[] | undefined | null): SummaryOrder[] {
+  if (!orders) return [];
+  if (Array.isArray(orders)) return orders;
+  const { cols, rows } = orders;
+  return rows.map((r) => {
+    const o: any = {};
+    cols.forEach((c, i) => { o[c] = r[i]; });
+    return o as SummaryOrder;
+  });
 }
 
 /** Slim per-conflict row for the Overview conflicts rail — unscheduled included tasks. */
@@ -78,7 +111,7 @@ export interface SummaryDoc {
   resourceLoad: SummaryResourceLoad[];
   alerts: { conflicts: SummaryAlert; materials: SummaryAlert };
   /** Slim lists so the Overview demand/conflicts rails render without the detail partition. */
-  orders: SummaryOrder[];
+  orders: SummaryOrders;
   conflicts: SummaryConflict[];
 }
 
@@ -150,7 +183,7 @@ export function summarizeLandscape(
 
   // ── late orders: scheduled chain completion past the order due date ──
   let lateOrders = 0, totalOrders = 0;
-  const orderRows: SummaryOrder[] = [];
+  const orderRows: SummaryOrderRow[] = [];
   landscape.orders?.forEach((o) => {
     totalOrders++;
     const dueW = o.dueDate ?? 0;
@@ -172,7 +205,9 @@ export function summarizeLandscape(
       isLate ? 'late'
       : (fillRate >= 0.99 && !within48h) ? 'on-track'
       : 'at-risk';
-    orderRows.push({ orderKey: o.key, name: o.name ?? o.key, productKey: o.productKey ?? null, fillRate, dueW, status });
+    // Columnar tuple — order MUST match SUMMARY_ORDER_COLS. dueW drives `status`
+    // above but isn't emitted (no client reads the raw due date).
+    orderRows.push([o.key, o.productKey ?? null, fillRate, status]);
   });
 
   // ── per-resource bucketed utilization + bottleneck ──
@@ -222,7 +257,7 @@ export function summarizeLandscape(
       conflicts: { count: conflicts, target: 'conflicts' },
       materials: { count: shortages, target: 'materials' },
     },
-    orders: orderRows,
+    orders: { cols: SUMMARY_ORDER_COLS, rows: orderRows },
     conflicts: conflictRows,
   };
 }

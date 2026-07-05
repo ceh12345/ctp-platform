@@ -8240,7 +8240,17 @@ function OverviewTab({ heatmap, resources, products, onTabChange, onTaskClick, o
   // Rails render from the summary partition (P9.2) — no task array needed.
   const conflictList: any[] = heatmap?.conflicts ?? [];
   const orderRank = (s: string) => s === 'late' ? 0 : s === 'at-risk' ? 1 : s === 'on-track' ? 2 : 3;
-  const orderRows = [...(heatmap?.orders ?? [])]
+  // summary.orders is columnar ({cols, rows}) to keep the landing payload small;
+  // expand to objects here. Tolerates a legacy array-of-objects payload.
+  const rawOrders: any = heatmap?.orders;
+  const decodedOrders: any[] = Array.isArray(rawOrders)
+    ? rawOrders
+    : (rawOrders?.rows ?? []).map((r: any[]) => {
+        const o: any = {};
+        (rawOrders?.cols ?? []).forEach((c: string, i: number) => { o[c] = r[i]; });
+        return o;
+      });
+  const orderRows = decodedOrders
     .sort((a: any, b: any) => orderRank(a.status) - orderRank(b.status));
   const pctFmt = (v: number | undefined) => v == null ? '—' : `${Math.round(v * 100)}%`;
 

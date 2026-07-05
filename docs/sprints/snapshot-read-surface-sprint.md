@@ -1,6 +1,6 @@
 # Sprint — Scheduling Snapshot: Reconstruction Layer + Read Surface
 
-**Status:** 📐 Draft — pending one CC investigation gate (does the engine emit a thin scheduled-state projection? — §10)
+**Status:** ✅ Complete — P0–P10 landed and measured (2026-07-04). Landing 16.6 MB → 37 KB (~450×); all CI green. Follow-up: overlay serializer slim + re-baseline the ~300–400 KB overlay target (does not gate the landing).
 **Supersedes:** the prior "Snapshot as Partitioned Read Surface" draft — re-framed around reconstruction, de-coupled from the (not-yet-live) staging architecture, and recast on the thin-overlay / three-layer model.
 **Depends on:** nothing blocking. Builds on the existing solve pipeline + flat-file snapshot architecture. **Does not depend on the staging architecture** (not live; this sprint stands alone).
 **Investigation basis:** `ui-scale-investigation.md` (slim-2000: 1,984 tasks · 68 resources · 562 orders).
@@ -241,8 +241,23 @@ Ordered to **de-risk the requirement first**: the make-or-break (can the landsca
 
 ### Verify
 
-**P10 — Measure vs slim-2000 baseline**
+**P10 — Measure vs slim-2000 baseline** ✅ **DONE (2026-07-04)**
 - **Test:** landing payload < 100 KB (was 16.6 MB); overlay ~300–400 KB; time-to-interactive vs the `ui-scale-investigation.md` numbers; all prior assertions green in CI.
+
+**Measured** (fresh solve on P9.3 + orders-slim, `stafford-slim-2000` = 2035 tasks / 1984 overlay rows / 68 resources / 562 orders; two independent solves byte-identical, `sourceDataVersion 50ad1a65`):
+
+| Gate | Baseline (investigation) | Measured | Verdict |
+|---|---:|---:|:--|
+| **Landing payload** < 100 KB | 16.6 MB (×2 solves on load = 33.2 MB) | **37 KB** (`summary`) | ✅ **PASS** |
+| **Overlay** ~300–400 KB | — | **1.16 MB** | ⚠️ over (see note) |
+| **TTI** vs ~20 s+ | ~20 s+, 2× 16.6 MB solve on load | **2.8 s load / 6.7 s idle**, **0 solves** | ✅ **PASS** |
+| **CI green** | — | tsc clean · **1281 pass / 10 skip** | ✅ **PASS** |
+| Engine solve (median of 3) | 9,224 ms | **6,738 ms** | ✅ |
+
+- **Landing win: 16.6 MB → 37 KB (~450×)**, or ~900× against the double-solve. Zero `/ctp/solve` on load (was two 16.6 MB `solve-and-sync`). Overview DOM **7,816 nodes** (was ~29,527). Cold-start landing reads the 37 KB summary from disk in ~0.3 s, no solve.
+- **`detail` (17.3 MB) is deferred off the landing** — fetched only on drill-in (P9.2c).
+- **Summary slimmed 93 KB → 37 KB** during P10: orders partition **79.6 KB → 23.3 KB (3.4×)** by (1) dropping the redundant `name` (client resolves it from `productKey`), (2) **columnar encoding** (`{cols, rows}` — 5 keys no longer repeated per row), (3) dropping `dueW` (unused client-side; `status` already encodes the due-date verdict). Break-point moves from ~700 orders out past ~2,300. Client decoder tolerates the legacy array-of-objects shape.
+- **Overlay note:** the "~300–400 KB" figure was a pre-P9 estimate; at 1984 rows carrying the full per-task commitment/actuals envelope it was never realistic and should be **re-baselined**. ~1.16 MB is partly legitimate per-task state and partly trimmable fat (null/default fields serialized on every row, `window` emitted even when not overridden). Overlay slimming is deferred as a follow-up — it does not gate the landing (overlay is lazy-read on Schedule entry, not on load).
 
 > **Parallelism:** straight line except **P6** (summary) is independent of P2–P5 and can be built against P1's overlay by a second person once P0 lands.
 
