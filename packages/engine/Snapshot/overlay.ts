@@ -13,7 +13,8 @@
  */
 import { SchedulingLandscape } from '../Models/Entities/landscape';
 import { CTPTask } from '../Models/Entities/task';
-import { CTPAssignmentConstants } from '../Models/Core/constants';
+import { InfeasibilityReport } from '../Models/Entities/infeasibilityreport';
+import { CTPAssignmentConstants, CTPTaskStateConstants } from '../Models/Core/constants';
 
 /** Bump when the overlay shape changes; reconstruction reads it for migrations. */
 export const OVERLAY_SCHEMA_VERSION = 1;
@@ -88,6 +89,12 @@ export interface OverlayRow {
 
   // ── generated tasks only ──
   generated?: OverlayGeneratedDef;
+
+  // ── infeasibility (solve output; present only on unschedulable tasks) ──
+  // The report is the solver's placement-attempt result — it CANNOT be re-derived
+  // without re-solving, so it is an overlay field, not a derived one. Absent on
+  // scheduled/feasible tasks, so the vast majority of rows are unaffected.
+  infeasibilityReport?: InfeasibilityReport;
 }
 
 /**
@@ -173,6 +180,21 @@ function serializeTask(task: CTPTask): OverlayRow {
       process: task.process,
       durationSeconds: task.duration ? task.duration.duration() : 0,
     };
+  }
+
+  // Solve output for UNSCHEDULED tasks only — the placement-attempt result that
+  // can't be re-derived without re-solving. A scheduled task's report is stale
+  // bump-and-retry residue, not durable state, so it is not persisted.
+  //
+  // We persist the *classification* (conflictType, reason, bottleneckSlot, …) but
+  // DROP the fat `slots` array (per-resource availability breakdown — ~97% of the
+  // report's bytes). The classification is what the summary + Conflicts tab group
+  // and label by; the slot breakdown only powers a card's expandable detail, which
+  // a fresh solve always repopulates. This keeps the overlay lean on conflict-heavy
+  // tenants. Deep-cloned so the overlay is a pure value snapshot, not a live ref.
+  if (task.infeasibilityReport && task.state !== CTPTaskStateConstants.SCHEDULED) {
+    const { slots, ...classification } = task.infeasibilityReport;
+    row.infeasibilityReport = { ...JSON.parse(JSON.stringify(classification)), slots: [] };
   }
 
   return row;

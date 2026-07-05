@@ -92,6 +92,12 @@ function applyRow(task: CTPTask, row: OverlayRow): void {
   task.holdReason = row.holdReason;
   task.holdStart = row.holdStart;
   task.estimatedResumeTime = row.estimatedResumeTime;
+
+  // Solve output — restore the placement-attempt result for unschedulable tasks.
+  // Not re-derivable without re-solving, so it lives in the overlay (see overlay.ts).
+  task.infeasibilityReport = row.infeasibilityReport
+    ? JSON.parse(JSON.stringify(row.infeasibilityReport))
+    : null;
 }
 
 /**

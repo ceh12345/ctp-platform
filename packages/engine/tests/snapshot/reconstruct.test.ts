@@ -14,6 +14,7 @@ import { CTPAssignmentConstants } from '../../Models/Core/constants';
 import { TaskFactory } from '../../Factories/taskfactory';
 import { serializeOverlay } from '../../Snapshot/overlay';
 import { reconstructOverlay } from '../../Snapshot/reconstruct';
+import { InfeasibilityReport } from '../../Models/Entities/infeasibilityreport';
 import { makeDuration } from '../helpers/builders';
 
 /**
@@ -85,6 +86,64 @@ describe('reconstructOverlay (P2)', () => {
     const overlay2 = serializeOverlay(rebuilt);
 
     expect(overlay2).toEqual(overlay1);
+  });
+
+  it('round-trips an infeasible task’s report classification (solve output → overlay), dropping the fat slots', () => {
+    // The report is the solver's placement-attempt result; it cannot be recreated
+    // without re-solving, so the CLASSIFICATION must survive serialize → reconstruct
+    // (regression for cold-load losing horizon → dependency). The fat `slots`
+    // breakdown is intentionally dropped to keep the overlay lean.
+    const report: InfeasibilityReport = {
+      taskKey: 'X1',
+      chainKey: null,
+      reason: 'No feasible schedule within horizon',
+      bottleneckSlot: 'Mill',
+      conflictType: 'horizon',
+      conflictTypeReason: 'horizon-capped',
+      slots: [
+        { slotIndex: 0, slotLabel: 'Mill', isPrimary: true, status: 'blocked',
+          bestAvailableMinutes: 0, isBottleneck: true, resources: [] },
+      ],
+      combosGenerated: 0,
+      combosSurvivedPropagation: 0,
+      combosPassedAssignment: 0,
+    };
+    // What the overlay should persist: everything except the fat slots array.
+    const persisted: InfeasibilityReport = { ...report, slots: [] };
+
+    // Solved: X1 is included but unschedulable, carrying the report (state = NOT_SCHEDULED).
+    const solved = new SchedulingLandscape();
+    solved.tasks = new CTPTasks();
+    const x1 = new CTPTask('PROCESS', 'Blocked Op', 'X1');
+    x1.duration = makeDuration(3600);
+    x1.state = 0;
+    x1.includeInSolve = true;
+    const s = new CTPTaskResourceList();
+    s.add(new CTPTaskResource('R1', true, 0));
+    x1.capacityResources = s;
+    x1.infeasibilityReport = report;
+    solved.tasks.addEntity(x1);
+
+    const overlay = serializeOverlay(solved);
+    // Classification kept, slots stripped.
+    expect(overlay.rows[0].infeasibilityReport).toEqual(persisted);
+    expect(overlay.rows[0].infeasibilityReport!.conflictType).toBe('horizon');
+
+    // Base: X1's definition only — no placement, no report.
+    const base = new SchedulingLandscape();
+    base.tasks = new CTPTasks();
+    const bx1 = new CTPTask('PROCESS', 'Blocked Op', 'X1');
+    bx1.duration = makeDuration(3600);
+    const bs = new CTPTaskResourceList();
+    bs.add(new CTPTaskResource('R1', true, 0));
+    bx1.capacityResources = bs;
+    base.tasks.addEntity(bx1);
+
+    reconstructOverlay(base, overlay);
+
+    // Restored onto the task, and the round-trip is exact.
+    expect(base.tasks.getEntity('X1')!.infeasibilityReport).toEqual(persisted);
+    expect(serializeOverlay(base)).toEqual(overlay);
   });
 
   it('is idempotent: reconstructing a landscape from its own overlay is a no-op', () => {

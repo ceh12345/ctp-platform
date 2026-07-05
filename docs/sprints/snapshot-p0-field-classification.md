@@ -42,6 +42,7 @@
 | `includeInSolve` | set by pin/exclude/order-modes (no solve) | `landscape.ts:177-215` |
 | `priority`, `manualPriority` | priority override (no solve); solve applies `priorityOverrides` | `ctp.service.ts:1487`; `task.ts:414` |
 | **generated CHANGEOVER tasks** (fat rows) | solve-created, unreconstructable | Q3 |
+| `infeasibilityReport` **classification** (unschedulable tasks only) | solve output — the placement-attempt result; **cannot be re-derived without re-solving** (same rule as generated tasks). Persist the classification (`conflictType`/`reason`/`bottleneckSlot`); **drop the fat `slots` breakdown** (~97% of the bytes; a card's expandable detail a fresh solve repopulates). Absent on scheduled tasks. Cold reconstruct was dropping it → the Conflicts tab reclassified horizon as dependency. | `overlay.ts` |
 
 **OVERLAY-ACTUALS — floor state; mutated without solve; v1 carries inline in the overlay (→ extracted to the actuals layer in v2):**
 `commitmentLevel`, `wipstate`, `dispatched`, `dispatchedAt`, `materialsPulled`, `percentComplete`, `remainingDuration`, `actualStart`, `actualEnd`, `actualResources`, `holdReason`, `holdStart`, `estimatedResumeTime`. Evidence: `ctp.service.ts:2297-2390,2617`. *(These are the “actuals” of the three-layer model. The layer/series/convergence is deferred — §9 of the spec — but the fields must be durable in v1, so they ride in the overlay now.)*
@@ -50,7 +51,9 @@
 `key`, `name`, `type` (incl. config SETUP/TEAR_DOWN), `linkId` (`name`/`type`/`prevLink`/`maxGap`), `duration`, `capacityResources` *definitions* (resource/qty/isPrimary/preferences/default-mode), `materialsResources`, `inputMaterials`, `outputProductKey`/`outputQty`/`outputScrapRate`, `process`/`subType`/`requiresSetup`, `cadenceIntervalMinutes`, `hierarchy`/`attributes`/`typedAttributes`, `batchRuleKey`/`batchQty`, `originalPriority`, due-date hydration (`dueDate`/`lateDueDate`/`orderPriority`/`latenessPenaltyPerDay`, stamped from order at hydrate). *(Note: `originalPriority` is base — captured at hydrate; `priority` is overlay.)*
 
 **DERIVED — re-derived on load, not persisted:**
-`preds`/`succs` (buildAdjacency from `linkId.prevLink` — `task.ts:212`), `componentKey`/`componentTopoPos`/`componentAnchorStartW` (deriveComponents — `task.ts:247`), `sequence` (from linkId topology), `feasible`, `score` (debug), `errors`, `infeasibilityReport`, `_tempPinned`, `processed`, `recompute`, `groupKey` (re-derivable from cross-WO links / order). *(Per `task.ts` comments these are explicitly “NOT serialized.”)*
+`preds`/`succs` (buildAdjacency from `linkId.prevLink` — `task.ts:212`), `componentKey`/`componentTopoPos`/`componentAnchorStartW` (deriveComponents — `task.ts:247`), `sequence` (from linkId topology), `feasible`, `score` (debug), `errors`, `_tempPinned`, `processed`, `recompute`, `groupKey` (re-derivable from cross-WO links / order). *(Per `task.ts` comments these are explicitly “NOT serialized.”)*
+
+> **Correction (post-P10):** `infeasibilityReport` was originally listed here as DERIVED, but it is solve output and **not** re-derivable on load without re-solving — the same rule that puts generated CHANGEOVER tasks in OVERLAY (Q3). It is now an OVERLAY field (see table above). Cold reconstruct was silently dropping it, so the Conflicts tab re-derived a wrong classification (horizon → dependency) while the persisted summary stayed correct. `feasible` stays DERIVED (it is recovered from `includeInSolve && state`).
 
 ### Resource (`CTPResource`, `resource.ts`)
 
