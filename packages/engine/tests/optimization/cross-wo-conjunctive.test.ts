@@ -55,3 +55,43 @@ describe('cross-WO precedence is a conjunctive (inviolable) arc in the optimizer
       && ((e.from === ci && e.to === pi) || (e.from === pi && e.to === ci)))).toBe(false);
   });
 });
+
+/**
+ * Self-loop guard — regression for the makespan-0 optimizer failure.
+ *
+ * Some source feeds (e.g. Genius chain heads) emit `linkId.prevLink === own key`.
+ * Left unguarded, `buildFromLandscape` turns that into a conjunctive self-loop,
+ * which makes Kahn's topological sort in recomputeCriticalPath() report a cycle
+ * and null the ENTIRE critical path (makespan 0 → the ILS/tabu optimizer bails
+ * with `insufficient_critical_tasks`). One bad link poisons the whole graph.
+ */
+describe('self-referential chain link does not poison the critical path', () => {
+  it('skips a prevLink === own key self-loop so the critical path still computes', () => {
+    const st = DateTime.fromObject({ year: 2025, month: 5, day: 12 });
+    const ls = new SchedulingLandscape(st, st.plus({ days: 7 }), new CTPAppSettings());
+    const tasks = new CTPTasks();
+    // A normal 2-task chain — gives a real critical path (makespan 200).
+    tasks.addEntity(schedTask('T1', 'C1', '', 0, 100));
+    tasks.addEntity(schedTask('T2', 'C1', 'T1', 100, 200));
+    // A task whose chain predecessor is ITSELF (malformed feed data).
+    tasks.addEntity(schedTask('SELF', 'C2', 'SELF', 0, 150));
+    ls.tasks = tasks;
+    ls.resources = new CTPResources();
+
+    const g = DisjunctiveGraph.buildFromLandscape(ls, 0);
+
+    // The self-loop is dropped, not turned into an edge.
+    const si = g.nodeIndex.get('SELF')!;
+    expect(g.nodes[si].conjPredecessors).not.toContain(si);
+    expect(g.edges.some(e => e.type === 'conjunctive' && e.from === si && e.to === si)).toBe(false);
+
+    // The whole graph still has a valid critical path — not nulled by the bad link.
+    expect(g.criticalPath).not.toBeNull();
+    expect(g.criticalPath!.makespan).toBeGreaterThan(0);
+
+    // The legitimate T1 → T2 arc is unaffected — the guard is surgical.
+    const t1 = g.nodeIndex.get('T1')!;
+    const t2 = g.nodeIndex.get('T2')!;
+    expect(g.nodes[t2].conjPredecessors).toContain(t1);
+  });
+});

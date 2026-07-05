@@ -165,6 +165,12 @@ export class DisjunctiveGraph {
 
       const predIdx = graph.nodeIndex.get(task.linkId.prevLink);
       if (predIdx === undefined) continue;
+      // Guard against a self-referential chain link (prevLink === own key). Some
+      // source feeds emit these on chain heads; left unguarded they create a
+      // conjunctive self-loop, which makes the topological sort in
+      // recomputeCriticalPath() report a cycle and null the entire critical path
+      // (makespan 0 → optimizer bails with insufficient_critical_tasks).
+      if (predIdx === i) continue;
 
       // Legacy single-link fields
       node.conjunctivePred = predIdx;
