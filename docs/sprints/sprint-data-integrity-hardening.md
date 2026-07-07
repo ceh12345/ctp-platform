@@ -23,8 +23,9 @@ Four bugs surfaced in yesterday's walkthrough (see `docs/testing/mock-genius-wal
 | **A** | (any REST tenant) | MEDIUM | `/ctp/state` reads orders from `configService.getOrders()` (file), not from the REST-hydrated landscape. Order priorities/dates returned to clients bypass MappingEngine entirely. |
 | **B** | `bad-data-null-machine` | LOW (Sprint 2) | `MachineCode: null` → task silently becomes pure-duration. Probably a data-quality issue, silently masked. |
 | — | `chain-cycle` | LOW (Sprint 2) | Two tasks sharing SequenceNumber silently linearize via stable sort. |
+| — | `chain-self-loop` | LOW (Sprint 2) | `linkId.prevLink === own key` — a task is its own chain predecessor. Confirmed in the Stafford feed: **102 tasks / 24 chains** in slim-2000 (`genius-master`), all pure self-loops (zero dangling). Silently disables the ILS/tabu optimizer (self-loop → topo sort reports a cycle → critical path null → `insufficient_critical_tasks`). Detected today only as a `StateHydratorService` log. See the Sprint 2 note below. |
 
-This sprint addresses **C**, **D**, and **A**. B and chain-cycle go to Sprint 2 (warning layer).
+This sprint addresses **C**, **D**, and **A**. B, chain-cycle, and chain-self-loop go to Sprint 2 (warning layer).
 
 With Sprint 1a's scaffolding in place (`IValidationError` on entities, `schedulable` getter on `CTPTask`, `MappingError` channel on `MappingEngine.transform()`, empty `validation-pass.ts` and landscape-invariant hook, `SyncResult.validationSummary`, scheduler respects `schedulable`), this sprint's work collapses to:
 - **Bug C (transform half):** `toUTC` pushes a `MappingError` into the accumulator when `DateTime.fromISO(...).isValid === false`.
@@ -339,13 +340,50 @@ Before committing:
 
 ---
 
+## Sprint 2 — chain integrity (documented finding from feature-a)
+
+A concrete, quantified instance of the deferred `chain-cycle` warning class,
+surfaced while slimming the snapshot read surface on `feature/scheduling-snapshot`.
+Captured here so Sprint 2 inherits the evidence and the exact insertion site.
+
+**`chain-self-loop` — `linkId.prevLink === own key`.** A task names *itself* as its
+chain predecessor. Real, not hypothetical: **102 of 2035 tasks across 24 chains** in
+`stafford-slim-2000` (source `genius-master`), all pure self-loops (zero dangling
+refs). The feed/mapping emits `prevLink = <own key>` on chain heads instead of null.
+
+- **Impact.** The scheduler tolerates it (each head starts independently), so it is
+  invisible in the schedule — but it silently disables the ILS/tabu optimizer: the
+  disjunctive graph gets a conjunctive self-loop, the critical-path topological sort
+  reports a cycle and returns `null`, makespan reads 0, and the optimizer exits with
+  `insufficient_critical_tasks` (0% improvement). Today the only trace is a
+  `StateHydratorService` log (`"no head found (cycle in linkId.prevLink)"` /
+  `"expected 1 head, found N"`).
+- **Home.** `validateReferences()` in `integration/validation-pass.ts` — the
+  post-mapping, landscape-level pass that already hosts `ORPHAN_RESOURCE`. A
+  CTP-shape invariant (`prevLink === key`) is checkable there, and
+  `task.addValidationError()` is the native channel (surfaced via
+  `SyncResult.validationSummary` + the persisted `ValidationReport`).
+- **Behavior.** Severity **warning** (the schedule still runs). **Repair:** null the
+  self-link so the chain gets a clean head. **Report:** one warning per affected
+  task/chain, remediation pointing at the **source feed** (fix `prevLink` upstream,
+  not the schedule) — this is a data-integrity signal, not a scheduling conflict.
+- **Defense-in-depth (already shipped).** The engine graph builder now guards
+  `predIdx === i` when building conjunctive arcs (commit `c9ad110`, scheduling-snapshot
+  line), so the optimizer stays robust even on unrepaired data. This validation layer
+  is the source-side complement: detect + repair + report at ingest so the bad link
+  never reaches the engine. The two are independent and merge cleanly.
+- **Extends to.** The same pass should cover the sibling chain defects the hydrator
+  already walks: dangling `prevLink` (points to a missing task) and multi-hop cycles.
+
+---
+
 ## Out of scope
 
 - **UI affordance for validation errors and mapping errors.** No icons, no filters, no details panel. Sprint 2.
 - **Auditing `concat`, `lookup`, `factor`, `durationCalc` for the same class of silent failure.** Only `toUTC` is hardened in this sprint. Sprint 2 does the sweep.
 - **Configurable field-level `onError` policy (strict / skip / default).** This sprint records transform errors and passes raw values through. A configurable policy engine depends on the transform audit and is Sprint 2+.
 - **Cross-entity validation beyond the one orphan-resource check.** Things like "order references a product that doesn't exist," "chain has no START," "duplicate task keys" wait for Sprint 3's `validateLandscape()` design.
-- **Warnings** (severity:warning). The type allows them, but this sprint emits only errors. Warnings are a Sprint 2 concern (e.g. null MachineCode → warning, chain-cycle → warning).
+- **Warnings** (severity:warning). The type allows them, but this sprint emits only errors. Warnings are a Sprint 2 concern (e.g. null MachineCode → warning, chain-cycle → warning, chain-self-loop → warning — see the Sprint 2 note above).
 - **Data-quality dashboard.** Sprint 2.
 - **The catalog of engine's implicit data-shape assumptions.** Sprint 3 — we deliberately don't do that audit yet; this sprint fixes the known-critical sites and lays scaffolding.
 
