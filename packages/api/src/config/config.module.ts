@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import * as path from 'path';
 import { FileConfigStore } from './file-config-store';
 import { ConfigService } from './config.service';
+import { ClockService } from './clock.service';
 import { StrategyConfigService } from './strategy-config.service';
 import { ScheduleConfigurationService } from './schedule-configuration.service';
 import { ScheduleConfigurationController } from './schedule-configuration.controller';
@@ -20,9 +21,10 @@ import { ScheduleConfigurationController } from './schedule-configuration.contro
       },
     },
     ConfigService,
+    ClockService,
     StrategyConfigService,
     ScheduleConfigurationService,
   ],
-  exports: ['CONFIG_STORE', ConfigService, StrategyConfigService, ScheduleConfigurationService],
+  exports: ['CONFIG_STORE', ConfigService, ClockService, StrategyConfigService, ScheduleConfigurationService],
 })
 export class ConfigModule {}

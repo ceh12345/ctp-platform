@@ -45,6 +45,7 @@ import { ErrorCodes } from '../../common/error-codes';
 import { StateService } from '../state/state.service';
 import { WorkOrderGroupService } from '../state/workordergroup.service';
 import { ConfigService } from '../../config/config.service';
+import { ClockService } from '../../config/clock.service';
 import { StrategyConfigService } from '../../config/strategy-config.service';
 import { LoggerService } from '../../logging/logger.service';
 import { SolveRequestDto } from './dto/solve-request.dto';
@@ -148,6 +149,9 @@ export class CTPService {
 
   private readonly workOrderGroupService: WorkOrderGroupService;
 
+  /** Evaluation clock (asOf). Domain-time "now" — never call Date.now() for evaluation. */
+  private readonly clock: ClockService;
+
   constructor(
     private readonly stateService: StateService,
     private readonly configService: ConfigService,
@@ -155,11 +159,13 @@ export class CTPService {
     private readonly logger: LoggerService,
     private readonly scheduleConfigService: ScheduleConfigurationService,
     workOrderGroupService?: WorkOrderGroupService,
+    clock?: ClockService,
   ) {
     // Optional injection — Nest supplies it in production; tests that
     // don't touch group rollups can omit. Falls back to a service
     // built from the same configService.
     this.workOrderGroupService = workOrderGroupService ?? new WorkOrderGroupService(configService);
+    this.clock = clock ?? new ClockService(configService);
   }
 
   // ═══════════════════════════════════════
@@ -500,7 +506,7 @@ export class CTPService {
     // counts on each WorkOrderGroup using the new task scheduled times.
     // Reads bufferDays + cancellationPredicate from tenant config via the
     // injected service. Empty groups collection: this is a no-op.
-    this.workOrderGroupService.refreshRollups(landscape, Math.floor(Date.now() / 1000));
+    this.workOrderGroupService.refreshRollups(landscape, this.clock.asOfSeconds());
 
     return result;
   }
@@ -2405,7 +2411,7 @@ export class CTPService {
 
     const startW = body.startTime
       ? CTPDateTime.fromDateTime(body.startTime)
-      : CTPDateTime.fromDateTime(DateTime.now().toISO()!);
+      : CTPDateTime.fromDateTime(this.clock.asOf().toISO()!);
     const INDEFINITE = 9_007_199_254_740_991; // Number.MAX_SAFE_INTEGER — sentinel for open-ended downtime
     const endW = body.endTime
       ? CTPDateTime.fromDateTime(body.endTime)
@@ -2476,7 +2482,7 @@ export class CTPService {
 
     const upTimeW = body.actualUpTime
       ? CTPDateTime.fromDateTime(body.actualUpTime)
-      : CTPDateTime.fromDateTime(DateTime.now().toISO()!);
+      : CTPDateTime.fromDateTime(this.clock.asOf().toISO()!);
 
     let trimmed = false;
     let removed = false;
@@ -2530,7 +2536,7 @@ export class CTPService {
     const resource = landscape.resources?.getEntity(resourceKey);
     if (!resource) throw new HttpException('Resource not found', HttpStatus.NOT_FOUND);
 
-    const nowW = CTPDateTime.fromDateTime(DateTime.now().toISO()!);
+    const nowW = CTPDateTime.fromDateTime(this.clock.asOf().toISO()!);
     const downtimes: any[] = [];
 
     if (resource.assignments) {
@@ -2575,7 +2581,7 @@ export class CTPService {
 
   getAllResourceDowntimes(): any {
     const landscape = this.ensureLandscape();
-    const nowW = CTPDateTime.fromDateTime(DateTime.now().toISO()!);
+    const nowW = CTPDateTime.fromDateTime(this.clock.asOf().toISO()!);
     const results: any[] = [];
 
     landscape.resources?.forEach(resource => {
@@ -3433,7 +3439,7 @@ export class CTPService {
       }
 
       // Collect all MAINTENANCE downtimes within the planning horizon for Gantt visualization
-      const nowW = CTPDateTime.fromDateTime(DateTime.now().toISO()!);
+      const nowW = CTPDateTime.fromDateTime(this.clock.asOf().toISO()!);
       const resourceDowntimes: any[] = [];
       if (resource.assignments) {
         let dtNode = resource.assignments.head;
@@ -3530,7 +3536,7 @@ export class CTPService {
     // array by design — the rollup engine mirrors hierarchy values into
     // attributes so consumers iterating only `attributes` still see the
     // group's dimension values. Not a duplication bug; uniformity is the point.
-    const nowSeconds = Math.floor(Date.now() / 1000);
+    const nowSeconds = this.clock.asOfSeconds();
     const workOrderGroups = landscape.groups.toArray().map((group) => {
       const attributes: { name: string; value: string }[] = [];
       group.attributes.forEach((nv) => {

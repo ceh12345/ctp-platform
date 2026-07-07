@@ -6,12 +6,20 @@ import { StateHydratorService } from '../../state/state-hydrator.service';
 import { ConfigService } from '../../../config/config.service';
 import { FileConfigStore } from '../../../config/file-config-store';
 import { StrategyConfigService } from '../../../config/strategy-config.service';
+import { ClockService } from '../../../config/clock.service';
 import { ScheduleConfigurationService } from '../../../config/schedule-configuration.service';
 import { LoggerService } from '../../../logging/logger.service';
 import { DateTime } from 'luxon';
 
 const CONFIG_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..', '..', 'config');
 const TENANT_ID = 'demo-manufacturing';
+
+// Evaluation clock ("as of") for this tenant — the same instant the service
+// evaluates downtime activity against. Domain-time fixtures must build from
+// this, not wall time, or "active" windows won't contain the evaluation now.
+const ASOF_MS = new ClockService(
+  new ConfigService(new FileConfigStore(CONFIG_ROOT, TENANT_ID)),
+).asOfMs();
 
 function createServices() {
   const store = new FileConfigStore(CONFIG_ROOT, TENANT_ID);
@@ -31,9 +39,9 @@ function getAnyResourceKey(ctpService: CTPService): string {
   return state.resourceUtilization[0].resourceKey;
 }
 
-// Helper: ISO string offset from now
+// Helper: ISO string offset from the evaluation clock (asOf), not wall time.
 function isoOffset(hours: number): string {
-  return DateTime.now().plus({ hours }).toISO()!;
+  return DateTime.fromMillis(ASOF_MS).plus({ hours }).toISO()!;
 }
 
 describe('Resource Downtime Management', async () => {
@@ -65,17 +73,17 @@ describe('Resource Downtime Management', async () => {
       expect(result.downtime.endTime).toBeTruthy();
     });
 
-    it('defaults startTime to now when omitted', async () => {
+    it('defaults startTime to the evaluation clock (asOf) when omitted', async () => {
       const resourceKey = getAnyResourceKey(ctpService);
-      const before = Date.now();
       const result = ctpService.addResourceDowntime(resourceKey, {
         endTime: isoOffset(4), reason: 'Test',
       });
-      const after = Date.now();
 
+      // Default start is domain-now (asOf), not wall time — so a downtime added
+      // "now" on a fixed tenant lands inside the horizon, not months away.
       const startMs = new Date(result.downtime.startTime).getTime();
-      expect(startMs).toBeGreaterThanOrEqual(before - 1000);
-      expect(startMs).toBeLessThanOrEqual(after + 1000);
+      expect(startMs).toBeGreaterThanOrEqual(ASOF_MS - 1000);
+      expect(startMs).toBeLessThanOrEqual(ASOF_MS + 1000);
     });
 
     it('marks downtime as indefinite when endTime omitted', async () => {

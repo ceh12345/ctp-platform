@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '../../config/config.service';
+import { ClockService } from '../../config/clock.service';
 import { IOrderData, IWorkOrderGroupData } from '../../config/interfaces/config-store.interface';
 import {
   OrdersRowDto,
@@ -33,12 +34,15 @@ export interface DistinctParams {
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly clock: ClockService,
+  ) {}
 
   listOrders(params: ListOrdersParams): OrdersListResponseDto {
     const all = this.configService.getOrders();
     const groupsByKey = this.indexGroups();
-    const statusByKey = deriveStatuses(all, groupsByKey);
+    const statusByKey = deriveStatuses(all, groupsByKey, this.clock.asOfMs());
     const filtered = applyFilters(all, params.filters, statusByKey);
     const sorted = sortRows(filtered, params.sortBy, params.sortDir, statusByKey);
     const start = (params.page - 1) * params.pageSize;
@@ -62,7 +66,7 @@ export class OrdersService {
   distinct(params: DistinctParams): DistinctResponseDto {
     const all = this.configService.getOrders();
     const groupsByKey = this.indexGroups();
-    const statusByKey = deriveStatuses(all, groupsByKey);
+    const statusByKey = deriveStatuses(all, groupsByKey, this.clock.asOfMs());
     // Excel-style scoping: strip the requested column from the filter set
     // before computing distincts for it.
     const scopedFilters = { ...params.filters };
@@ -103,8 +107,9 @@ type DerivedStatus = 'ON_TRACK' | 'AT_RISK' | 'LATE' | 'COMPLETED' | 'CANCELLED'
 function deriveStatuses(
   rows: IOrderData[],
   groupsByKey: Map<string, IWorkOrderGroupData>,
+  nowMs: number,
 ): Map<string, DerivedStatus> {
-  const now = Date.now();
+  const now = nowMs;
   const out = new Map<string, DerivedStatus>();
   for (const row of rows) {
     const r = row as any;
