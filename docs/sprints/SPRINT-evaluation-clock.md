@@ -39,7 +39,7 @@ Side effect worth naming: **fixed-tenant solves become fully deterministic** —
 
 **Phase 1 — ClockService + replacement + lint.**
 Add tenant-scoped `ClockService.asOf()` resolving from the horizon anchor (mode flag read in exactly one place). Replace every Phase 0 *evaluation* site with `clock.asOf()`; leave *operational* sites untouched. Add the lint rule barring raw now-calls in evaluation modules, with the operational exceptions explicit. Migrate tenant horizon config to an explicit `anchor` (or keep `start` as the identity anchor and document it — migration preferred), and set fixed tenants' anchor to the corrected frontier value (slim-100 → ~Jun 7).
-*First slice (already scoped):* `ClockService` (`packages/api/src/config/clock.service.ts`, registered in `ConfigModule`) + wire `orders.service:107` to prove the drill-head LATE clears end-to-end, then backfill the remaining evaluation sites.
+*Status — DONE.* `ClockService` (`packages/api/src/config/clock.service.ts`, in `ConfigModule`). Evaluation sites wired to `asOf`: `orders.service` LATE/at-risk; `ctp.service` rollup now-arg, group `isLate`, downtime active / currently-down, downtime add-default; and the WIP action-event stamps (`dispatchedAt`/`actualStart`/`holdStart`/`actualEnd`). Operational now-sites (perf timers, id keys, log/audit stamps, the horizon anchor resolution) left on `Date.now()`, each annotated `// clock:operational`. Invariant enforced by `evaluation-clock-guard.spec.ts` (vitest — the project has no eslint). Config: kept `start` as the identity anchor (Open Decision 2); slim-100 anchor corrected to Jun 7. Rolling tenants unaffected (`asOf ≡ Date.now()`).
 
 **Phase 2 — UI asOf.**
 Serve `asOf` to the frontend; "today" line, LATE/at-risk chips, and any client-side date judgment read served asOf. Browser clock is no longer an evaluation input anywhere.
@@ -89,7 +89,7 @@ Serve `asOf` to the frontend; "today" line, LATE/at-risk chips, and any client-s
 - [ ] Phase 0 inventory delivered: every now-site classified evaluation/operational; anchor semantics recorded (window-start == anchor, `asOf = horizon.start`); the anchor-*value* source specified (pull-date/frontier).
 - [ ] Fixed anchor **value** = the data's as-of/WIP frontier (slim-100 anchors to ~Jun 7, not Apr 25); the drill head schedules in June.
 - [ ] All evaluation sites (LATE/at-risk, downtime, UI "today", gap math) read `asOf`; all operational sites unchanged.
-- [ ] Lint rule bars raw now-calls in evaluation modules; verified by a planted violation.
+- [x] Invariant guard bars raw now-calls in evaluation modules — vitest `config/__tests__/evaluation-clock-guard.spec.ts` (no eslint in project); operational sites annotated `// clock:operational`.
 - [ ] Fixed tenant + fake-timer clock advance ⇒ **zero status changes** (the bug, as a test).
 - [ ] Rolling tenant behavior is byte-identical to before.
 - [ ] Fixed-tenant solves are deterministic across days (same inputs → identical outputs).
@@ -101,8 +101,6 @@ Serve `asOf` to the frontend; "today" line, LATE/at-risk chips, and any client-s
 ## Open Decisions
 
 1. **`horizon.start` semantics** — *Resolved from code (Phase 0b):* window-start == anchor, forward-only window, no `pastDays` → `asOf = horizon.start` (identity). Recommended end state still an explicit `anchor` field for clarity, but the derivation is trivial.
-2. **Config migration vs. derivation** — migrate tenant horizon config to `anchor`, or keep `start` as the identity anchor. Migration preferred (one date, structurally); confirm the tenant-config change is acceptable for Stafford's deployed configs.
+2. **Config migration vs. derivation** — *Resolved:* kept `start` as the **identity anchor** (Phase 0b proved `asOf = horizon.start`). No `start`→`anchor` migration: renaming across 15 tenant configs + `IHorizonConfig` + every reader carries real test risk for zero behavioral gain. An explicit `anchor` field remains an optional clarity refinement, not a blocker.
 3. **Anchor value source** — the fixed anchor must be the **pull-date / WIP frontier (max committed-task end)**, not the earliest included task (today's mis-derivation). Decide: (a) stamp a provenance `asOf` at ingest, or (b) compute the frontier at load. Provenance-stamp preferred; back-compat fallback to `horizon.start` if absent.
 4. **How the UI receives asOf** — field on the landing payload vs. a small clock endpoint. Landing-payload field recommended (no extra round trip; it's per-tenant state the landing read already carries).
-</content>
-</invoke>

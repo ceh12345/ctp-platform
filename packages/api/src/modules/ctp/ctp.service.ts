@@ -173,7 +173,7 @@ export class CTPService {
   // ═══════════════════════════════════════
 
   async solve(request?: SolveRequestDto): Promise<CTPSolveResult> {
-    const startTime = Date.now();
+    const startTime = Date.now();  // clock:operational — solve perf timer
 
     // Only reload from adapter if NOT preserving landscape state
     if (!request?.preserveLandscape) {
@@ -350,9 +350,9 @@ export class CTPService {
     }
 
     // ─── 2. Constraint propagation ───
-    const propStart = Date.now();
+    const propStart = Date.now();  // clock:operational — perf timer
     stats.windowsTightened = landscape.propagateConstraints();
-    stats.propagationTimeMs = Date.now() - propStart;
+    stats.propagationTimeMs = Date.now() - propStart;  // clock:operational — perf timer
 
     // ─── 3. Build scoring (resolve from configuration if provided) ───
     const resolvedConfig = request?.configurationKey
@@ -439,7 +439,7 @@ export class CTPService {
       }
     });
 
-    stats.totalTimeMs = Date.now() - startTime;
+    stats.totalTimeMs = Date.now() - startTime;  // clock:operational — perf timer
     stats.finalize();
 
     // ─── 6. Build response ───
@@ -474,7 +474,7 @@ export class CTPService {
     this.logger.solve({
       tenantId: this.configService.getTenantId(),
       strategy: result.stats?.strategy ?? 'unknown',
-      solveTimeMs: result.stats?.totalTimeMs ?? (Date.now() - startTime),
+      solveTimeMs: result.stats?.totalTimeMs ?? (Date.now() - startTime),  // clock:operational — perf timer
       propagationTimeMs: result.stats?.propagationTimeMs,
       taskCount: result.summary.totalTasks,
       scheduledCount: result.summary.scheduledTasks,
@@ -1212,7 +1212,7 @@ export class CTPService {
     newOrderName: string,
     landscape: SchedulingLandscape,
   ): { chain: CTPProcess; tasks: CTPTask[] } {
-    const newChainKey = `CTP-${Date.now()}`;
+    const newChainKey = `CTP-${Date.now()}`;  // clock:operational — unique id
     const chain = new CTPProcess(newOrderName);
     chain.key = newChainKey;
     chain.category = sourceChain.category;
@@ -1549,7 +1549,7 @@ export class CTPService {
   diagnose(request: DiagnoseRequestDto): DiagnoseResponse {
     const landscape = this.ensureLandscape();
     const landscapeHash = this.computeLandscapeHash();
-    const timestamp = new Date().toISOString();
+    const timestamp = new Date().toISOString();  // clock:operational — diagnostic response stamp
 
     // 1. Identify target tasks
     let targetTasks: CTPTask[] = [];
@@ -2311,7 +2311,7 @@ export class CTPService {
         continue;
       }
       task.dispatched = true;
-      task.dispatchedAt = new Date().toISOString();
+      task.dispatchedAt = this.clock.asOf().toISO()!;
       task.materialsPulled = true;
       task.pinned = true;
       if (actualResources?.length) {
@@ -2332,7 +2332,7 @@ export class CTPService {
     const task = landscape.tasks.getEntity(taskKey);
     if (!task) throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
     task.wipstate = CTPWipStateConstants.IN_PROCESS;
-    task.actualStart = actualStart || new Date().toISOString();
+    task.actualStart = actualStart || this.clock.asOf().toISO()!;
     if (actualResources?.length) {
       task.actualResources = actualResources;
       if (task.capacityResources) {
@@ -2352,7 +2352,7 @@ export class CTPService {
     task.wipstate = CTPWipStateConstants.ON_HOLD;
     task.holdReason = holdReason;
     task.estimatedResumeTime = estimatedResumeTime || null;
-    task.holdStart = holdStart || new Date().toISOString();
+    task.holdStart = holdStart || this.clock.asOf().toISO()!;
     task.pinned = true;
     task.commitmentLevel = 'on_hold';
     return { status: 'ok', taskKey, commitmentLevel: 'on_hold', holdReason };
@@ -2374,7 +2374,7 @@ export class CTPService {
     const task = landscape.tasks.getEntity(taskKey);
     if (!task) throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
     task.wipstate = CTPWipStateConstants.COMPLETED;
-    task.actualEnd = actualEnd || new Date().toISOString();
+    task.actualEnd = actualEnd || this.clock.asOf().toISO()!;
     task.percentComplete = 100;
     task.includeInSolve = false;
     return { status: 'ok', taskKey, actualEnd: task.actualEnd };
@@ -2850,7 +2850,7 @@ export class CTPService {
   // ═══════════════════════════════════════
 
   private resolveHorizonStart(value: string, timezone: string): DateTime {
-    const now = DateTime.now().setZone(timezone).startOf('day');
+    const now = DateTime.now().setZone(timezone).startOf('day');  // clock:operational — horizon anchor (Clock A) rolling resolution
     if (value === 'NOW') return now;
     const offsetMatch = value.match(/^NOW([+-])(\d+)d$/i);
     if (offsetMatch) {
@@ -3924,7 +3924,7 @@ export class CTPService {
       data.tenantId = targetTenant;
       data.name = displayName || targetTenant.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
       data.clonedFrom = sourceTenant;
-      data.updatedAt = new Date().toISOString();
+      data.updatedAt = new Date().toISOString();  // clock:operational — config-save audit stamp
       fs.writeFileSync(tenantJsonPath, JSON.stringify(data, null, 2), 'utf-8');
     }
 
