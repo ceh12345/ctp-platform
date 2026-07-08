@@ -88,6 +88,52 @@ describe('reconstructOverlay (P2)', () => {
     expect(overlay2).toEqual(overlay1);
   });
 
+  it('omits default-valued fields — a plain planned task is a lean row that still round-trips', () => {
+    const ls = new SchedulingLandscape();
+    ls.tasks = new CTPTasks();
+    const t = new CTPTask('PROCESS', 'Plain Op', 'P1');
+    t.duration = makeDuration(3600);
+    t.state = 1;
+    t.scheduled = new CTPInterval(0, 3600);
+    const slots = new CTPTaskResourceList();
+    slots.add(new CTPTaskResource('R1', true, 0, 'R1'));
+    t.capacityResources = slots;
+    t.commitmentLevel = 'planned'; // realistic for a freshly scheduled task
+    ls.tasks.addEntity(t);
+
+    const row = serializeOverlay(ls).rows[0] as Record<string, unknown>;
+    // placement core present…
+    expect(row.taskKey).toBe('P1');
+    expect(row.state).toBe(1);
+    expect(row.scheduled).toEqual({ startW: 0, endW: 3600 });
+    // …default-valued planning/actuals fields omitted entirely
+    for (const k of ['pinned', 'includeInSolve', 'priority', 'manualPriority', 'dispatched',
+      'dispatchedAt', 'materialsPulled', 'percentComplete', 'remainingDuration', 'actualStart',
+      'actualEnd', 'actualResources', 'holdReason', 'holdStart', 'estimatedResumeTime', 'wipstate']) {
+      expect(row[k]).toBeUndefined();
+    }
+    expect(row.commitmentLevel).toBe('planned'); // != default 'unscheduled', so kept
+
+    // reconstruct restores the defaults, and re-serialize is byte-identical
+    const base = new SchedulingLandscape();
+    base.tasks = new CTPTasks();
+    const bp = new CTPTask('PROCESS', 'Plain Op', 'P1');
+    bp.duration = makeDuration(3600);
+    const bslots = new CTPTaskResourceList();
+    bslots.add(new CTPTaskResource('R1', true, 0));
+    bp.capacityResources = bslots;
+    base.tasks.addEntity(bp);
+
+    reconstructOverlay(base, serializeOverlay(ls));
+    const rt = base.tasks.getEntity('P1')!;
+    expect(rt.pinned).toBe(false);
+    expect(rt.includeInSolve).toBe(true);
+    expect(rt.priority).toBe(100);
+    expect(rt.dispatched).toBe(false);
+    expect(rt.actualResources).toEqual([]);
+    expect(serializeOverlay(base)).toEqual(serializeOverlay(ls));
+  });
+
   it('round-trips an infeasible task’s report classification (solve output → overlay), dropping the fat slots', () => {
     // The report is the solver's placement-attempt result; it cannot be recreated
     // without re-solving, so the CLASSIFICATION must survive serialize → reconstruct

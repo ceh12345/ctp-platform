@@ -249,7 +249,7 @@ Ordered to **de-risk the requirement first**: the make-or-break (can the landsca
 | Gate | Baseline (investigation) | Measured | Verdict |
 |---|---:|---:|:--|
 | **Landing payload** < 100 KB | 16.6 MB (×2 solves on load = 33.2 MB) | **37 KB** (`summary`) | ✅ **PASS** |
-| **Overlay** ~300–400 KB | — | **1.16 MB** | ⚠️ over (see note) |
+| **Overlay** ~300–400 KB (est.) | — | **612 KB** (was 1.16 MB) | ✅ re-baselined |
 | **TTI** vs ~20 s+ | ~20 s+, 2× 16.6 MB solve on load | **2.8 s load / 6.7 s idle**, **0 solves** | ✅ **PASS** |
 | **CI green** | — | tsc clean · **1281 pass / 10 skip** | ✅ **PASS** |
 | Engine solve (median of 3) | 9,224 ms | **6,738 ms** | ✅ |
@@ -257,7 +257,7 @@ Ordered to **de-risk the requirement first**: the make-or-break (can the landsca
 - **Landing win: 16.6 MB → 37 KB (~450×)**, or ~900× against the double-solve. Zero `/ctp/solve` on load (was two 16.6 MB `solve-and-sync`). Overview DOM **7,816 nodes** (was ~29,527). Cold-start landing reads the 37 KB summary from disk in ~0.3 s, no solve.
 - **`detail` (17.3 MB) is deferred off the landing** — fetched only on drill-in (P9.2c).
 - **Summary slimmed 93 KB → 37 KB** during P10: orders partition **79.6 KB → 23.3 KB (3.4×)** by (1) dropping the redundant `name` (client resolves it from `productKey`), (2) **columnar encoding** (`{cols, rows}` — 5 keys no longer repeated per row), (3) dropping `dueW` (unused client-side; `status` already encodes the due-date verdict). Break-point moves from ~700 orders out past ~2,300. Client decoder tolerates the legacy array-of-objects shape.
-- **Overlay note:** the "~300–400 KB" figure was a pre-P9 estimate; at 1984 rows carrying the full per-task commitment/actuals envelope it was never realistic and should be **re-baselined**. ~1.16 MB is partly legitimate per-task state and partly trimmable fat (null/default fields serialized on every row, `window` emitted even when not overridden). Overlay slimming is deferred as a follow-up — it does not gate the landing (overlay is lazy-read on Schedule entry, not on load).
+- **Overlay slimmed 1.16 MB → 612 KB (1.9×)** by omitting the ~15 planning/actuals fields that sit at their `CTPTask` default on every row (a plain planned task shed its whole commitment/hold/dispatch envelope; `reconstruct` re-applies defaults on absence — round-trip identity preserved, `serialize(reconstruct(serialize(L)))===serialize(L)`). The **"~300–400 KB" figure was a pre-P9 estimate** and is now re-baselined: the residual 612 KB is genuine per-task state — `window` (174 KB), `assignments` (97 KB), `scheduled` (95 KB), `slotModes` (79 KB), `commitmentLevel` (53 KB), `taskKey` (42 KB) — not fat. Further compression (drop `window.orig*` when re-derivable from base; columnar-encode the core) is a possible follow-up with diminishing returns. Overlay size does not gate the landing: it's lazy-read on Schedule entry, and the client currently reads `detail`, not `overlay`.
 
 > **Parallelism:** straight line except **P6** (summary) is independent of P2–P5 and can be built against P1's overlay by a second person once P0 lands.
 

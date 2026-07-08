@@ -55,37 +55,43 @@ export interface OverlayGeneratedDef {
 /**
  * One overlay row per landscape task. Carries ONLY overlay-bucket fields.
  * (No linkId / preds / score / duration-definition / etc. — those are base or derived.)
+ *
+ * Every field except the placement core is **omitted when at its CTPTask default**
+ * (see DEFAULTS below) and restored on reconstruct — a task's whole actuals/hold/
+ * dispatch envelope and unset overrides drop out, so a plain planned task is a
+ * handful of bytes instead of 23 keys. The round-trip identity holds because
+ * serialize and reconstruct agree on the same defaults.
  */
 export interface OverlayRow {
   taskKey: string;
 
-  // ── placement ──
+  // ── placement core (always present) ──
   state: number;
   scheduled: { startW: number; endW: number } | null;
   assignments: OverlayAssignment[];
-
-  // ── planning overrides ──
-  pinned: boolean;
-  includeInSolve: boolean;
-  window: OverlayWindow | null;
-  priority: number;
-  manualPriority: number;
   slotModes: OverlaySlotMode[];
+  window: OverlayWindow | null;
 
-  // ── actuals (inline for v1; extracted to the actuals layer in v2) ──
-  commitmentLevel: string;
-  wipstate: number;
-  dispatched: boolean;
-  dispatchedAt: string | null;
-  materialsPulled: boolean;
-  percentComplete: number;
-  remainingDuration: number | null;
-  actualStart: string | null;
-  actualEnd: string | null;
-  actualResources: string[];
-  holdReason: string | null;
-  holdStart: string | null;
-  estimatedResumeTime: string | null;
+  // ── planning overrides (omitted at default) ──
+  pinned?: boolean;             // default false
+  includeInSolve?: boolean;     // default true
+  priority?: number;            // default 100
+  manualPriority?: number;      // default 0
+
+  // ── actuals (omitted at default; inline for v1, extracted to the actuals layer in v2) ──
+  commitmentLevel?: string;     // default 'unscheduled'
+  wipstate?: number;            // default 0
+  dispatched?: boolean;         // default false
+  dispatchedAt?: string | null; // default null
+  materialsPulled?: boolean;    // default false
+  percentComplete?: number;     // default 0
+  remainingDuration?: number | null;   // default null
+  actualStart?: string | null;  // default null
+  actualEnd?: string | null;    // default null
+  actualResources?: string[];   // default []
+  holdReason?: string | null;   // default null
+  holdStart?: string | null;    // default null
+  estimatedResumeTime?: string | null; // default null
 
   // ── generated tasks only ──
   generated?: OverlayGeneratedDef;
@@ -134,17 +140,15 @@ function serializeTask(task: CTPTask): OverlayRow {
     }
   }
 
+  // Placement core — always present.
   const row: OverlayRow = {
     taskKey: task.key,
-
     state: task.state,
     scheduled: task.scheduled
       ? { startW: task.scheduled.startW, endW: task.scheduled.endW }
       : null,
     assignments,
-
-    pinned: task.pinned,
-    includeInSolve: task.includeInSolve,
+    slotModes,
     window: task.window
       ? {
           startW: task.window.startW,
@@ -153,24 +157,29 @@ function serializeTask(task: CTPTask): OverlayRow {
           origEndW: task.window.origEndW,
         }
       : null,
-    priority: task.priority,
-    manualPriority: task.manualPriority,
-    slotModes,
-
-    commitmentLevel: task.commitmentLevel,
-    wipstate: task.wipstate,
-    dispatched: task.dispatched,
-    dispatchedAt: task.dispatchedAt,
-    materialsPulled: task.materialsPulled,
-    percentComplete: task.percentComplete,
-    remainingDuration: task.remainingDuration,
-    actualStart: task.actualStart,
-    actualEnd: task.actualEnd,
-    actualResources: [...task.actualResources],
-    holdReason: task.holdReason,
-    holdStart: task.holdStart,
-    estimatedResumeTime: task.estimatedResumeTime,
   };
+
+  // Everything else — write only when it differs from the CTPTask default, so a
+  // plain planned task doesn't carry 15 default-valued keys. reconstruct() applies
+  // the same defaults on absence, keeping the round-trip identity exact.
+  if (task.pinned) row.pinned = true;                             // default false
+  if (!task.includeInSolve) row.includeInSolve = false;           // default true
+  if (task.priority !== 100) row.priority = task.priority;        // default 100
+  if (task.manualPriority !== 0) row.manualPriority = task.manualPriority; // default 0
+
+  if (task.commitmentLevel !== 'unscheduled') row.commitmentLevel = task.commitmentLevel;
+  if (task.wipstate !== 0) row.wipstate = task.wipstate;
+  if (task.dispatched) row.dispatched = true;
+  if (task.dispatchedAt !== null) row.dispatchedAt = task.dispatchedAt;
+  if (task.materialsPulled) row.materialsPulled = true;
+  if (task.percentComplete !== 0) row.percentComplete = task.percentComplete;
+  if (task.remainingDuration !== null) row.remainingDuration = task.remainingDuration;
+  if (task.actualStart !== null) row.actualStart = task.actualStart;
+  if (task.actualEnd !== null) row.actualEnd = task.actualEnd;
+  if (task.actualResources.length > 0) row.actualResources = [...task.actualResources];
+  if (task.holdReason !== null) row.holdReason = task.holdReason;
+  if (task.holdStart !== null) row.holdStart = task.holdStart;
+  if (task.estimatedResumeTime !== null) row.estimatedResumeTime = task.estimatedResumeTime;
 
   if (task.generated) {
     row.generated = {

@@ -64,9 +64,9 @@ function applyRow(task: CTPTask, row: OverlayRow): void {
     if (slot) slot.mode = m.mode;
   }
 
-  // ── planning overrides ──
-  task.pinned = row.pinned;
-  task.includeInSolve = row.includeInSolve;
+  // ── planning overrides (absent field ⇒ CTPTask default; mirrors serializeTask) ──
+  task.pinned = row.pinned ?? false;
+  task.includeInSolve = row.includeInSolve ?? true;
   if (row.window) {
     const w = new CTPInterval(row.window.origStartW, row.window.origEndW);
     w.startW = row.window.startW;
@@ -75,23 +75,23 @@ function applyRow(task: CTPTask, row: OverlayRow): void {
   } else {
     task.window = null;
   }
-  task.priority = row.priority;
-  task.manualPriority = row.manualPriority;
+  task.priority = row.priority ?? 100;
+  task.manualPriority = row.manualPriority ?? 0;
 
-  // ── actuals (inline) ──
-  task.commitmentLevel = row.commitmentLevel as CTPTask['commitmentLevel'];
-  task.wipstate = row.wipstate;
-  task.dispatched = row.dispatched;
-  task.dispatchedAt = row.dispatchedAt;
-  task.materialsPulled = row.materialsPulled;
-  task.percentComplete = row.percentComplete;
-  task.remainingDuration = row.remainingDuration;
-  task.actualStart = row.actualStart;
-  task.actualEnd = row.actualEnd;
-  task.actualResources = [...row.actualResources];
-  task.holdReason = row.holdReason;
-  task.holdStart = row.holdStart;
-  task.estimatedResumeTime = row.estimatedResumeTime;
+  // ── actuals (inline; absent ⇒ default) ──
+  task.commitmentLevel = (row.commitmentLevel ?? 'unscheduled') as CTPTask['commitmentLevel'];
+  task.wipstate = row.wipstate ?? 0;
+  task.dispatched = row.dispatched ?? false;
+  task.dispatchedAt = row.dispatchedAt ?? null;
+  task.materialsPulled = row.materialsPulled ?? false;
+  task.percentComplete = row.percentComplete ?? 0;
+  task.remainingDuration = row.remainingDuration ?? null;
+  task.actualStart = row.actualStart ?? null;
+  task.actualEnd = row.actualEnd ?? null;
+  task.actualResources = row.actualResources ? [...row.actualResources] : [];
+  task.holdReason = row.holdReason ?? null;
+  task.holdStart = row.holdStart ?? null;
+  task.estimatedResumeTime = row.estimatedResumeTime ?? null;
 
   // Solve output — restore the placement-attempt result for unschedulable tasks.
   // Not re-derivable without re-solving, so it lives in the overlay (see overlay.ts).
