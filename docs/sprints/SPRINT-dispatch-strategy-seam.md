@@ -37,11 +37,35 @@ The solver-comparison harness compares configs defined today as `(sequence, obje
 | EDD / Stafford-default / slack@t0 | `StaticRankPriority` | varies | The spec's existing "data-only" configs = default plug + a different processing sequence. |
 | ATC | `ATCDispatchPriority` | default | **This sprint** unblocks it as a runnable, comparable config. |
 | DBR | `DBRDispatchPriority` | default | **This sprint.** |
+| Slack/CR (Stafford strategy) | `SlackDispatchPriority` | default | EDD-backwards least-slack within an op-code pool — Kaleb/Logan's rule (`slack = deliveryDate − asOf − remainingWork`). Same due-date family as ATC; additive plug. |
 | ATCS, campaign, … | (future plugs) | default | Additive later; no harness change. |
 
 The **fairness invariant** the bake-off rests on ("only the scheduling policy varies between runs") is preserved *because* every plug reads the same shared `DispatchState` lens — so "now," "the bottleneck," and "average remaining work" are defined **once, one way**, and any KPI difference is attributable to the policy, never to two rules disagreeing about what the clock is.
 
 **Boundary:** this sprint ships the seam + plugs + a parity gate. Wiring the dispatch axis into the bake-off's config manifest and comparison surface is the harness sprint's job, not this one. This sprint's only obligation to the harness is that a dispatch plug is selectable per solve and reads a shared, read-only state window.
+
+---
+
+## Client strategy alignment (Kaleb + Logan, mid-week email)
+
+Stafford independently designed a scheduling strategy. It maps onto this seam almost entirely — validating the selection-model architecture from the customer side — and the exercise located the few items that need a home elsewhere. Captured here because it is the concrete first consumer of the seam and it resolves a long-open data question.
+
+**What is a selection plug (this seam's job):**
+- **The core rule is EDD-backwards / least-slack.** "Working backwards from the job delivery date, remaining hours and tasks, work out the priority of each task relative to others with the same operation code." That is a critical-ratio computation — `slack = deliveryDate − asOf − remainingWork`, ranked within an operation-code pool — the same due-date-driven family as ATC. It is a **named dynamic plug** (slack/CR), additive next to ATC/DBR: one class + one registry line. Their output ("update task sequence numbers 1..N within an op-code pool") is exactly the ranked pick this seam emits.
+- **Their headline KPI is our signed gap.** Point 5 — the "production delivery gap," job-in-date (floating) vs. job-delivery-date (fixed), positive or negative — **is** the bake-off's signed customer-date gap. Same number, same sign convention. Convergence, not a new metric.
+
+**What is placement, not selection (the important gap to set expectations on):**
+- Points 3.i–3.ii flag that Stafford writes the sequence number at **work-order level** and lacks the granularity to spread "100 open fabrication tasks across 10 fabricators" — the top-ten tasks can all land on one person. **A selection rule ranks; it does not distribute.** The 1..N priority order is the selection half; spreading that ranked work across the fabricator pool is a **placement** concern (`ScoringEngine` + resource-preference / load-balancing), a different mechanism. CTP does both, but they are two halves of the two-model asymmetry — the ranking does not by itself solve the distribution. Set this expectation explicitly with Kaleb; it is the most useful clarification for the catch-up. (Placement work is **not** this sprint — this sprint ships the ranking half.)
+
+**What is a constraint with an existing home (confirm, don't build):**
+- **Started task stays with its person (4.i)** and **locked machine/person (4.iv)** are **pins** — hard assignment constraints, the same idea as the shipped lane/affinity `isPrimary` hard constraint. Open part: source the pin from Genius state (task started → pinned to assignee) rather than hand-setting.
+- **Started-out-of-order predecessors (4.ii)** is a **correctness** item, not a preference. Kaleb notes Genius checks only the *one* immediate predecessor, so a task started out of order can appear ready while upstream work is incomplete. This seam's **ready-set gather walks all predecessors** (the `SCHEDULED` gate, Phase 0(f)), which is the fix — but it is **stricter than Genius**, so it will change behavior Stafford is used to (lands as "CTP caught what Genius didn't," not a bug). Route to Allan: does hydrate map Genius "complete" onto the predecessor model such that all-preds-complete is enforced?
+- **SequenceNumber = 9999 → treat as complete (point 2)** is a **hydrate/mapping rule** at the single named mapping point. Confirm with Allan it's a stable Genius convention, not overloaded.
+
+**Material availability (4.iii) — in CTP's scope, but not modelable yet (no data).**
+Material readiness is neither resource capacity, precedence, nor calendar — it is a **per-task release gate** ("cannot start before material arrives"). The natural model is a task-level **earliest-start floor** carried by the existing Option-K window-floor mechanism. It is legitimate CTP territory, but **Stafford does not yet have the data to source the constraint** — there is no material-ready date on the current entities. So: architecturally homed (window floor), **blocked on data**, not built here. Named follow-on.
+
+**Data-source resolution (points 1–2) — RESOLVED; the delivery date is already pulled.** `WorkOrderWithAdvancedInformationViewEntity.DeliveryDate` (an **active adapter endpoint** — `adapter.json` `workOrders`/`salesOrders`; not `ProductionTaskWithAdvancedInfoViewEntity`) is **already mapped**: in the Stafford mapping `"from": "DeliveryDate"` lands in **`order.lateDueDate`** and **`group.promiseDate`** today — while `dueDate`/`sourceEnd` come from a *different* Genius field, **`JobEndDate`**. So the authoritative customer date is **not a new field wire; it is already in the data** under `lateDueDate`/`promiseDate`. The work is a **re-point** — treat `DeliveryDate` as *the* customer date for Slack/CR, the signed gap, and the eval-clock `asOf` — plus a call on whether to re-map it onto the primary `dueDate` or keep reading `lateDueDate`. Verified in slim-100: `JobEndDate`→`dueDate` = **Jun 8** vs `DeliveryDate`→`promiseDate`/`lateDueDate` = **Jun 10**. **Consequence for the bake-off + eval-clock:** today's lateness/status judge against `dueDate` (= `JobEndDate`), so adopting the true customer date shifts which date the gap measures against — a deliberate change, not a silent one.
 
 ---
 
@@ -162,8 +186,11 @@ Add `IDispatchPriority` + `DispatchState` (read-only lens **over existing state 
 **Phase 3 — DBR plug.**
 Extend `DispatchState` with `bottleneckQueue`/`resourceState`; `DBRDispatchPriority` uses `prepare()` to identify the constraint **once per solve** and build its index. v1 semantics: **down-ranking, not gating** — bottleneck-bound work with a deep constraint queue sinks in the pick order so non-bottleneck work flows first, but if only bottleneck-bound heads are ready, one is released (progress guaranteed by construction). Unit tests: (i) bottleneck-bound work is deprioritized behind non-bottleneck work even when due-date-urgent; (ii) an all-bottleneck-bound ready set still schedules (no stall). Confirm ATC and the default are unaffected by the state-lens extension.
 
+**Phase 3.5 — Slack/CR plug (Stafford's rule — the first real consumer).**
+`SlackDispatchPriority`: priority = **least slack**, `slack = deliveryDate − asOf − remainingWork`. Reuses ATC's due-date inputs (`asOf` + remaining work) — one class + one registry line, no new `DispatchState` accessor. Customer date is sourced from `WorkOrderWithAdvancedInformationViewEntity.Delivery date` at the single mapping point (see Data-source resolution above). Slack is an absolute time quantity, so the ranking is globally comparable; Stafford's "priority relative to others with the same operation code" is how they *apply* the ranking (sequence 1..N within a pool) — an output/placement convention, not a ranking-scope constraint (see the selection-vs-distribution note above). Unit test: within a ready set, the least-slack job ranks first; at equal delivery dates the job with more remaining work outranks the lighter one. Confirm default / ATC / DBR are untouched. *(In scope because Stafford is the first consumer and the rule is nearly free once ATC's machinery exists.)*
+
 **Phase 4 — Verification.**
-Run the full regression + strict type-check (`tsc --noEmit -p packages/api/tsconfig.json`). Confirm: default parity still holds; ATC and DBR produce *distinguishable* schedules from the default on a Stafford slim tenant; the lens is read-only (a plug cannot mutate the landscape — enforce by type and by test). Record which `now`/weight decisions were taken so they are diffable later.
+Run the full regression + strict type-check (`tsc --noEmit -p packages/api/tsconfig.json`). Confirm: default parity still holds; ATC, DBR, and Slack/CR produce *distinguishable* schedules from the default on a Stafford slim tenant; the lens is read-only (a plug cannot mutate the landscape — enforce by type and by test). Record which `now`/weight decisions were taken so they are diffable later.
 
 **Phase 5 — Harness handoff (doc only, no harness code here).**
 Document the dispatch axis for the bake-off: how a config names its plug, how the shared lens guarantees comparability, and the config taxonomy (static = default plug + sequence; dynamic = plug). The actual manifest/comparison-surface wiring is the harness sprint's Phase 2/3.
@@ -204,6 +231,8 @@ Document the dispatch axis for the bake-off: how a config names its plug, how th
 - **ML / auto-tuning of `k` and weights** — the seam enables it; not built here.
 - **Bake-off harness integration** (config manifest carries a plug reference; comparison surface renders dispatch axis) — the consumer sprint's job.
 - **Per-machine `now`** (replacing the global frontier approximation) — a refinement gated on evidence that the global clock materially misranks.
+- **Material-availability release gate (Kaleb 4.iii)** — a per-task earliest-start floor carried by the existing Option-K window-floor mechanism. Architecturally homed; **blocked on data** — Stafford has no material-ready date on the current entities. Build when the source field exists.
+- **Per-fabricator distribution of ranked work (Kaleb 3.i–3.ii)** — spreading a ranked op-code pool across the resource pool is **placement** (`ScoringEngine` + resource-preference / load-balancing), not selection. This seam ships the ranking (1..N); the distribution half is separate placement work.
 
 ---
 
@@ -231,3 +260,6 @@ Document the dispatch axis for the bake-off: how a config names its plug, how th
 5. **`bottleneckQueue` source** — *Resolved (Phase 0c):* derived, not stored. Raw load is on `resource.available.staticAssignments`; the utilization/queue scalar reuses `resourceutilizationscoringrule.ts:37-64`; bottleneck ranking reuses that or the disjunctive-graph bottleneck. The lens wraps these — no landscape schema change.
 6. **Landing base** — branch off `main` now vs. after `feature/scheduling-snapshot` lands. Independent engine areas, so either works; rebase is cheap.
 7. **Extend vs. replace the existing strategy axis** — recommended: **extend** `DISPATCHING_STRATEGIES` (one selection axis, EST/ATC/DBR as new registry entries) rather than add a parallel `selectionStrategy` concept. Open part: whether `Chain`/`Greedy`/`DueDate`/`ShortestFirst` are re-expressed as registry entries over the new seam (so there is literally one list), or the legacy keys are kept as aliases during migration. Settle when the registry type lands (Phase 1).
+8. **Slack/CR plug scope** — Stafford's own strategy (`SlackDispatchPriority`) is the same family as ATC and cheap once the seam exists. Decide whether it ships in this sprint (alongside ATC/DBR, since Stafford will test against it directly) or as the immediate follow-on. Leaning include — it's the config the beta partner actually wants to run.
+9. **Predecessor-completeness semantics (Allan)** — confirm hydrate maps Genius "complete" so the ready-gather enforces *all* predecessors, not Genius's one-prior check. Stricter-than-Genius is correct but visible; not a code change here if the gather already does it, but must be verified against Stafford data.
+10. **Pin sourcing (Allan)** — can started-task and locked-resource pins (Kaleb 4.i/4.iv) be sourced from Genius state at hydrate rather than hand-set? Uses the shipped `isPrimary` hard-constraint mechanism; the open part is the data wire.
