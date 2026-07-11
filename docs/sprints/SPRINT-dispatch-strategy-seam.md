@@ -186,8 +186,8 @@ Add `IDispatchPriority` + `DispatchState` (read-only lens **over existing state 
 
 > **Flagged finding (out-of-scope for this sprint):** the constructive-then-optimize solve is non-deterministic wherever the optimizer runs (`Math.random()` + time-budget). It corrupts any golden/regression fixture built on those tenants and would flake this gate. A seeded RNG + iteration-capped (not time-capped) optimizer would make solves reproducible. Its own investigation, noted here.
 
-**Phase 2 — ATC plug.**
-`ATCDispatchPriority(k)` reading `now` + `avgRemainingDuration`. Register it. Unit test: on a 3-job case, ATC reorders as slack collapses (a job with shrinking slack overtakes a shorter but slack-rich job). Confirm it is selectable per solve and leaves the default untouched.
+**Phase 2 — ATC plug. ✅ DONE.**
+`ATCDispatchPriority(k=3)` — `index = (w/p)·exp(-max(0, d−p−now)/(k·p̄))`, higher = more urgent. `DispatchState` gained memoized `now()` (ready-set frontier) + `avgRemainingDuration()` (`p̄`); `DynamicNeighborhood` restructured to gather → build lens → sort (order-preserving, **parity gate still byte-for-byte**). Wired `resolveStrategy` `case 'ATC'`; deterministic tie-break (rank). v1 approximations: `p` = task duration, `w` = order lateness-penalty (→1). Tests (`atc.test.ts`): tight-slack overtakes a shorter slack-rich job; a job overtakes a competitor as its slack collapses (look-ahead); ties deterministic. Full suite 1255 pass.
 
 **Phase 3 — DBR plug.**
 Extend `DispatchState` with `bottleneckQueue`/`resourceState`; `DBRDispatchPriority` uses `prepare()` to identify the constraint **once per solve** and build its index. v1 semantics: **down-ranking, not gating** — bottleneck-bound work with a deep constraint queue sinks in the pick order so non-bottleneck work flows first, but if only bottleneck-bound heads are ready, one is released (progress guaranteed by construction). Unit tests: (i) bottleneck-bound work is deprioritized behind non-bottleneck work even when due-date-urgent; (ii) an all-bottleneck-bound ready set still schedules (no stall). Confirm ATC and the default are unaffected by the state-lens extension.

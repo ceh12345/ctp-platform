@@ -61,9 +61,6 @@ export class DynamicNeighborhood implements INeighborhoodStrategy {
     let context = new List<CTPTask>();
     if (!tasks) return context;
 
-    const state = new DispatchStateLens(landscape, settings);
-    this.priority.prepare?.(state);
-
     // Next ready task per chain — every predecessor SCHEDULED (missing/cross-set
     // pred counts as satisfied); lowest sequence is the within-chain tiebreak.
     const chainProgress: Map<string, { nextTask: CTPTask }> = new Map();
@@ -86,16 +83,20 @@ export class DynamicNeighborhood implements INeighborhoodStrategy {
       }
     });
 
-    // The ONLY behavioral seam: order chain heads by the pluggable dispatch rule.
-    // Map iteration is insertion order and Array.sort is stable, so with
-    // StaticRankPriority this is identical to ChainNeighborhood's chain sort.
-    const sortedChains = Array.from(chainProgress.values()).sort((a, b) =>
-      this.priority.compare(a.nextTask, b.nextTask, state),
-    );
+    // Build the read-only lens over this round's ready set (the chain heads), then
+    // let the plug precompute; now()/avgRemainingDuration() derive from these heads.
+    const readyHeads = Array.from(chainProgress.values()).map((v) => v.nextTask);
+    const state = new DispatchStateLens(landscape, settings, readyHeads);
+    this.priority.prepare?.(state);
 
-    for (const info of sortedChains) {
+    // The ONLY behavioral seam: order chain heads by the pluggable rule. Map
+    // iteration is insertion order and Array.sort is stable, so with
+    // StaticRankPriority this is identical to ChainNeighborhood's chain sort.
+    const sortedHeads = readyHeads.slice().sort((a, b) => this.priority.compare(a, b, state));
+
+    for (const nextTask of sortedHeads) {
       if (context.length >= numToProcess) break;
-      context.add(info.nextTask);
+      context.add(nextTask);
     }
 
     // Fill remaining slots with standalone tasks (no linkId).

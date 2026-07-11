@@ -75,6 +75,7 @@ export * from './AI/Neighborhoods/chainfirstfitneighborhood';
 export * from './AI/Dispatch/dispatchstate';
 export * from './AI/Dispatch/dispatchpriority';
 export * from './AI/Dispatch/staticrankpriority';
+export * from './AI/Dispatch/atcdispatchpriority';
 
 // AI - Schedulers
 export * from './AI/Schedulers/basescheduler';
