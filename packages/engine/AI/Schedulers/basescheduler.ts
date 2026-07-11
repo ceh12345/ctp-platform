@@ -41,7 +41,8 @@ import { PickBestScheduleAgent } from "../Agents/pickbestschedule";
 import { TimingSequenceAgent } from "../Agents/timing";
 import { INeighborhoodStrategy } from "../Neighborhoods/neighborhood";
 import { GreedyNeighborhood } from "../Neighborhoods/greedyneighborhood";
-import { ChainNeighborhood } from "../Neighborhoods/chainneighborhood";
+import { DynamicNeighborhood } from "../Neighborhoods/dynamicneighborhood";
+import { StaticRankPriority } from "../Dispatch/staticrankpriority";
 import { ChainFirstFitNeighborhood } from "../Neighborhoods/chainfirstfitneighborhood";
 import { DueDateNeighborhood } from "../Neighborhoods/duedateneighborhood";
 import { ShortestFirstNeighborhood } from "../Neighborhoods/shortestfirstneighborhood";
@@ -358,15 +359,15 @@ export abstract class CTPBaseScheduler {
    */
   protected resolveStrategy(name: string | undefined): INeighborhoodStrategy {
     switch (name) {
-      case 'Chain':          return new ChainNeighborhood();
+      case 'Chain':          return new DynamicNeighborhood(new StaticRankPriority());
       case 'ChainFirstFit':  return new ChainFirstFitNeighborhood();
       case 'DueDate':        return new DueDateNeighborhood();
       case 'Greedy':         return new GreedyNeighborhood();
       case 'ShortestFirst':  return new ShortestFirstNeighborhood();
       default:
-        // Default: Chain for chain-aware, Greedy otherwise
+        // Default: chain-aware selection (DynamicNeighborhood + default plug), Greedy otherwise
         return this.settings?.hasChains
-          ? new ChainNeighborhood()
+          ? new DynamicNeighborhood(new StaticRankPriority())
           : new GreedyNeighborhood();
     }
   }
@@ -382,11 +383,12 @@ export abstract class CTPBaseScheduler {
       const strategy = this.resolveStrategy(this.settings?.solverStrategy);
       this.neighborhoodAgent.setStrategy(strategy);
 
-      // Strategy compatibility guard — when chains exist, use ChainNeighborhood
-      // for task selection (respects chain sequence) even if the scheduling path
-      // is per-task (controlled by chainCompatible gate in schedule())
+      // Strategy compatibility guard — when chains exist, use the chain-aware
+      // default selection (DynamicNeighborhood + StaticRankPriority) so chain
+      // sequence is respected even if the scheduling path is per-task
+      // (controlled by the chainCompatible gate in schedule())
       if (this.settings?.hasChains && !strategy.chainCompatible) {
-        this.neighborhoodAgent.setStrategy(new ChainNeighborhood());
+        this.neighborhoodAgent.setStrategy(new DynamicNeighborhood(new StaticRankPriority()));
       }
     }
 

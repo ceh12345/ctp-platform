@@ -6,7 +6,8 @@ import { ConfigService } from '../../../config/config.service';
 import { FileConfigStore } from '../../../config/file-config-store';
 import {
   GreedyNeighborhood,
-  ChainNeighborhood,
+  DynamicNeighborhood,
+  StaticRankPriority,
   DueDateNeighborhood,
   ShortestFirstNeighborhood,
   ChainFirstFitNeighborhood,
@@ -218,7 +219,7 @@ describe('Manufacturing: Greedy vs ChainFirstFit diagnostic (auto-detect chains)
 describe('Manufacturing with hasChains=true — all strategies', async () => {
   const strategies: INeighborhoodStrategy[] = [
     new GreedyNeighborhood(),
-    new ChainNeighborhood(),
+    new DynamicNeighborhood(new StaticRankPriority()),
     new DueDateNeighborhood(),
     new ShortestFirstNeighborhood(),
     new ChainFirstFitNeighborhood(),
