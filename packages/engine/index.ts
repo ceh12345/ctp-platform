@@ -77,6 +77,7 @@ export * from './AI/Dispatch/dispatchpriority';
 export * from './AI/Dispatch/staticrankpriority';
 export * from './AI/Dispatch/atcdispatchpriority';
 export * from './AI/Dispatch/dbrdispatchpriority';
+export * from './AI/Dispatch/slackdispatchpriority';
 
 // AI - Schedulers
 export * from './AI/Schedulers/basescheduler';

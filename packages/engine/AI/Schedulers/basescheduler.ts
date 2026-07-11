@@ -45,6 +45,7 @@ import { DynamicNeighborhood } from "../Neighborhoods/dynamicneighborhood";
 import { StaticRankPriority } from "../Dispatch/staticrankpriority";
 import { ATCDispatchPriority } from "../Dispatch/atcdispatchpriority";
 import { DBRDispatchPriority } from "../Dispatch/dbrdispatchpriority";
+import { SlackDispatchPriority } from "../Dispatch/slackdispatchpriority";
 import { ChainFirstFitNeighborhood } from "../Neighborhoods/chainfirstfitneighborhood";
 import { DueDateNeighborhood } from "../Neighborhoods/duedateneighborhood";
 import { ShortestFirstNeighborhood } from "../Neighborhoods/shortestfirstneighborhood";
@@ -364,6 +365,7 @@ export abstract class CTPBaseScheduler {
       case 'Chain':          return new DynamicNeighborhood(new StaticRankPriority());
       case 'ATC':            return new DynamicNeighborhood(new ATCDispatchPriority());
       case 'DBR':            return new DynamicNeighborhood(new DBRDispatchPriority());
+      case 'Slack':          return new DynamicNeighborhood(new SlackDispatchPriority());
       case 'ChainFirstFit':  return new ChainFirstFitNeighborhood();
       case 'DueDate':        return new DueDateNeighborhood();
       case 'Greedy':         return new GreedyNeighborhood();
