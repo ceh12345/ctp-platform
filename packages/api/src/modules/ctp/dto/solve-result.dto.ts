@@ -260,6 +260,9 @@ export class OrderResultDto {
   @ApiPropertyOptional({ description: 'Late due date (ISO 8601). Null when not set or when the same as dueDate.' })
   lateDueDate!: string | null;
 
+  @ApiPropertyOptional({ description: 'Customer promise date (ISO 8601), inherited-not-authored from WorkOrder.DeliveryDate. Null = no customer date (internal/stock).' })
+  customerDeliveryDate!: string | null;
+
   @ApiProperty({ description: 'Order priority' })
   priority!: number;
 

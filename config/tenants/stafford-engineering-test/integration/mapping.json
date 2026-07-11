@@ -63,6 +63,10 @@
         "from": "DeliveryDate",
         "toUTC": true
       },
+      "customerDeliveryDate": {
+        "from": "DeliveryDate",
+        "toUTC": true
+      },
       "priority": {
         "from": "Strategy",
         "lookup": {

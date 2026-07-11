@@ -129,6 +129,7 @@ export interface IOrderData {
   demandQty: number;
   dueDate: string;
   lateDueDate?: string;
+  customerDeliveryDate?: string;   // inherited-not-authored customer promise date (WorkOrder.DeliveryDate); absent = no customer date (internal/stock WO)
   priority?: number;
   latenessPenaltyPerDay?: number;
   [key: string]: unknown;   // mapping engine may emit extra scalar fields (wostatus, customerName, etc.); hydrator stashes them on CTPOrder.rawFields

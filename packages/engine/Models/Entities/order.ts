@@ -7,6 +7,7 @@ export interface IOrder extends IKeyEntity {
   demandQty: number;
   dueDate: number;
   lateDueDate: number;
+  customerDeliveryDate: number | null;
   fillRate: number;
   priority: number;
 }
@@ -16,6 +17,13 @@ export class CTPOrder extends CTPKeyEntity implements IOrder {
   public demandQty: number = 0;
   public dueDate: number = 0;
   public lateDueDate: number = 0;
+  /**
+   * Customer promise date (epoch seconds), inherited-not-authored from
+   * WorkOrder.DeliveryDate. `null` = no customer date (internal / stock work) —
+   * excluded from the signed-gap KPI. Read-only: never author per-WO; a future
+   * demand-driver entity becomes the author and this stays its inherited copy.
+   */
+  public customerDeliveryDate: number | null = null;
   public fillRate: number = 0;
   public priority: number = 0;
   public scheduledQty: number = 0;
