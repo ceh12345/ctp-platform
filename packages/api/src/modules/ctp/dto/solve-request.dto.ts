@@ -59,7 +59,7 @@ export class SolveRequestDto {
   // --- Override fields ---
 
   @ApiPropertyOptional({
-    description: 'Neighborhood strategy: Chain, ChainFirstFit, DueDate, Greedy, ShortestFirst',
+    description: 'Dispatch strategy: Chain, ATC, DBR, Slack, ChainFirstFit, DueDate, Greedy, ShortestFirst',
     default: 'Chain',
   })
   @IsOptional()

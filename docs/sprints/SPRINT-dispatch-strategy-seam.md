@@ -219,8 +219,8 @@ Reworked the plugs onto a shared **two-class partition** so "no demand date" is 
 **Phase 4 — Verification. ✅ DONE.**
 Full regression **1275 pass**, strict `tsc --noEmit -p packages/api/tsconfig.json` clean, parity gate byte-for-byte. **Read-only lens** enforced by type (interface exposes only `readonly` + accessors) and by test (`lens-readonly.test.ts` — no plug mutates the ready set or its tasks). **Distinguishability** (`dispatch-distinguishable.spec.ts`): on the real hydrated slim-100 chain-head set, ATC / DBR / Slack each **reorder** vs the default and vs each other, deterministically — Slack sinks the null-customer-date (jobType-I) heads to the tail (backfill), ATC leads by internal due-date urgency, DBR sinks the drum-bound head. *Finding: at the **schedule** level slim-100 is contention-free, so pick-order doesn't move final placement — distinguishability is asserted at the **selection** layer (where the seam acts); schedule-level divergence needs contention and is a bake-off concern.* Decisions recorded & diffable: `asOf = horizon.startW`; ATC `w` = order penalty→1, `p` = task duration; dates order-sourced; null = backfill class.
 
-**Phase 5 — Harness handoff (doc only, no harness code here).**
-Document the dispatch axis for the bake-off: how a config names its plug, how the shared lens guarantees comparability, and the config taxonomy (static = default plug + sequence; dynamic = plug). The actual manifest/comparison-surface wiring is the harness sprint's Phase 2/3.
+**Phase 5 — Harness handoff (doc only, no harness code here). ✅ DONE.**
+Written as a standalone handoff artifact: **`HANDOFF-dispatch-seam-to-bakeoff.md`**. Documents the selection API (`request.strategy` → registry → `resolveStrategy`), the config taxonomy (static = default plug + `activeSequence`; dynamic = plug), the fairness invariant (one shared read-only lens, derivations computed once → KPI deltas attributable to policy), the signed-gap **inner-join** requirement (null customer date drops the row, no sentinel), and the gotchas (non-deterministic optimizer tenants, backfill-everywhere data fact, contention-needed-for-schedule-divergence, selection-vs-distribution). The manifest/comparison-surface wiring stays the harness sprint's Phase 2/3.
 
 ---
 
@@ -285,7 +285,7 @@ The two-class partition keys off `deliveryDateOf(task)` → the order's `custome
 - [x] Full regression suite (**1275 pass**) and **strict `tsc --noEmit -p packages/api/tsconfig.json`** pass.
 - [x] No change to `ScoringEngine`, `pickBestSchedule`, or the `processingRanks` machinery.
 - [x] The `asOf` derivation (`horizon.startW`), ATC/DBR weight source, ATC remaining-work coarsening, and bottleneck-stability choice are **documented and diffable** (Phase 3.9/4).
-- [ ] Handoff doc states the bake-off config taxonomy (static = default plug + sequence; dynamic = plug) and how the shared lens preserves comparability. *(Phase 5 — pending.)*
+- [x] Handoff doc states the bake-off config taxonomy (static = default plug + sequence; dynamic = plug) and how the shared lens preserves comparability. *(`HANDOFF-dispatch-seam-to-bakeoff.md`.)*
 
 ---
 
