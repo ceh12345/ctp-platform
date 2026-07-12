@@ -5,8 +5,8 @@ import { CTPTask } from "../../Models/Entities/task";
 
 const DAY = 86400;
 
-// Minimal stubs — Slack reads customerDeliveryDate, dueDate, duration, rank,
-// window off the task and now() off the state. No lens accessor beyond now().
+// Minimal stubs — Slack reads customerDeliveryDate (via deliveryDateOf), duration,
+// rank, window off the task and asOf() off the state. No dueDate fallback.
 function task(opts: {
   customerDeliveryDate?: number | null;
   dueDate?: number;
@@ -22,14 +22,19 @@ function task(opts: {
     window: { startW: 0 },
   } as unknown as CTPTask;
 }
-function state(now = 0): DispatchState {
+function state(asOf = 0): DispatchState {
   return {
     landscape: null,
     settings: null,
     readyTasks: [],
-    now: () => now,
+    now: () => asOf,
+    asOf: () => asOf,
     avgRemainingDuration: () => 0,
     resourceLoad: () => new Map(),
+    // No landscape graph in these stubs → each mock task is its own order.
+    dueDateOf: (t: any) => t.dueDate,
+    deliveryDateOf: (t: any) => t.customerDeliveryDate ?? null,
+    penaltyOf: (t: any) => t.latenessPenaltyPerDay,
   } as unknown as DispatchState;
 }
 
@@ -51,28 +56,32 @@ describe("SlackDispatchPriority", () => {
     expect(slack.compare(heavy, light, s)).toBeLessThan(0); // heavy = less slack = first
   });
 
-  it("customer delivery date drives the ranking over the internal dueDate", () => {
+  it("ranks by the CUSTOMER date only — internal dueDate is ignored", () => {
     // A: near customer promise but far internal dueDate — should still lead.
     const a = task({ customerDeliveryDate: 2 * DAY, dueDate: 40 * DAY, durSec: DAY });
     // B: far customer promise but near internal dueDate.
     const b = task({ customerDeliveryDate: 20 * DAY, dueDate: 3 * DAY, durSec: DAY });
     const s = state(0);
-    expect(slack.compare(a, b, s)).toBeLessThan(0); // customer date wins
+    expect(slack.compare(a, b, s)).toBeLessThan(0); // customer date decides, not dueDate
   });
 
-  it("falls back to internal dueDate when no customer delivery date is set", () => {
-    const nearDue = task({ customerDeliveryDate: null, dueDate: 3 * DAY, durSec: DAY });
-    const farDue = task({ customerDeliveryDate: null, dueDate: 30 * DAY, durSec: DAY });
+  it("null customerDeliveryDate = BACKFILL, below dated work — regardless of internal dueDate", () => {
+    // The stock order has a near internal dueDate but NO customer promise → backfill.
+    const stock = task({ customerDeliveryDate: null, dueDate: 1 * DAY, durSec: DAY });
+    // The customer order is dated, even with a far delivery date.
+    const customer = task({ customerDeliveryDate: 100 * DAY, durSec: DAY });
     const s = state(0);
-    expect(slack.compare(nearDue, farDue, s)).toBeLessThan(0);
+    expect(slack.compare(customer, stock, s)).toBeLessThan(0); // dated customer work first
+    expect(slack.compare(stock, customer, s)).toBeGreaterThan(0); // stock sinks to backfill (no dueDate fallback)
   });
 
-  it("a task with no customer date and no dueDate sorts last but still schedules", () => {
-    const dated = task({ customerDeliveryDate: 5 * DAY, durSec: DAY });
-    const undated = task({ customerDeliveryDate: null, dueDate: 0, durSec: DAY });
+  it("two backfill (null customer date) tasks fall to the legacy order (rank)", () => {
+    const a = task({ customerDeliveryDate: null, dueDate: 3 * DAY, durSec: DAY, rank: 2 });
+    const b = task({ customerDeliveryDate: null, dueDate: 30 * DAY, durSec: DAY, rank: 5 });
     const s = state(0);
-    expect(slack.compare(dated, undated, s)).toBeLessThan(0); // dated leads
-    expect(slack.compare(undated, dated, s)).toBeGreaterThan(0); // undated last (not dropped)
+    // Both backfill → NOT ordered by dueDate; the legacy (rank, window) tie-break decides.
+    expect(slack.compare(a, b, s)).toBeLessThan(0); // lower rank first
+    expect(slack.compare(b, a, s)).toBeGreaterThan(0);
   });
 
   it("is deterministic on ties (falls back to rank)", () => {

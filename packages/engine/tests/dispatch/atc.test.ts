@@ -21,8 +21,14 @@ function state(now: number, avg: number): DispatchState {
     settings: null,
     readyTasks: [],
     now: () => now,
+    asOf: () => now, // ATC measures slack against the snapshot clock
     avgRemainingDuration: () => avg,
-  } as DispatchState;
+    resourceLoad: () => new Map(),
+    // No landscape graph in these stubs → each mock task is its own terminal.
+    dueDateOf: (t: any) => t.dueDate,
+    deliveryDateOf: (t: any) => t.customerDeliveryDate ?? null,
+    penaltyOf: (t: any) => t.latenessPenaltyPerDay,
+  } as unknown as DispatchState;
 }
 
 describe("ATCDispatchPriority", () => {
@@ -52,5 +58,13 @@ describe("ATCDispatchPriority", () => {
     const s = state(0, DAY);
     expect(atc.compare(a, b, s)).toBeLessThan(0); // equal ATC → lower rank first
     expect(atc.compare(b, a, s)).toBeGreaterThan(0);
+  });
+
+  it("treats a task with no internal due date as backfill (below all dated work)", () => {
+    const dated = task(10 * DAY, DAY); // has dueDate → dated under ATC
+    const undated = task(/* dueDate */ 0, DAY); // dueDate 0 → backfill under ATC
+    const s = state(0, DAY);
+    expect(atc.compare(dated, undated, s)).toBeLessThan(0); // dated first
+    expect(atc.compare(undated, dated, s)).toBeGreaterThan(0); // backfill last (still schedules)
   });
 });

@@ -1,5 +1,5 @@
 import { CTPTask } from "../../Models/Entities/task";
-import { IDispatchPriority } from "./dispatchpriority";
+import { BaseDispatchPriority, legacyCompare } from "./dispatchpriority";
 import { DispatchState, primaryResourceKey } from "./dispatchstate";
 
 /**
@@ -13,13 +13,15 @@ import { DispatchState, primaryResourceKey } from "./dispatchstate";
  * sort among themselves (rank, then window) and one is released — progress is
  * guaranteed by construction, no stall.
  *
- * Within each class (bottleneck-bound vs not) the tie-break is the byte-for-byte
- * static order (rank, then window start), so DBR is a pure reordering of the
- * default and stays deterministic.
+ * **Orthogonal to the date axis:** DBR `governingDate` is non-null for every task,
+ * so it never enters the dated/backfill partition — its priority is purely the
+ * resource topology (a null-date stock task competes on bottleneck-boundness like
+ * any other). Within each class (bottleneck-bound vs not) the tie-break is the
+ * `legacyCompare` static order, so DBR is a pure reordering of the default.
  *
  * See docs/sprints/SPRINT-dispatch-strategy-seam.md.
  */
-export class DBRDispatchPriority implements IDispatchPriority {
+export class DBRDispatchPriority extends BaseDispatchPriority {
   public readonly name = "DBR";
 
   /** undefined = not yet computed; null = computed, no constraint found. */
@@ -42,16 +44,17 @@ export class DBRDispatchPriority implements IDispatchPriority {
     this.bottleneckKey = maxKey;
   }
 
-  public compare(a: CTPTask, b: CTPTask, _state: DispatchState): number {
+  // Resource-governed, never off-axis → never backfill. The constant value is
+  // arbitrary (only its non-null-ness matters to the partition).
+  public governingDate(_state: DispatchState, _task: CTPTask): number | null {
+    return 1;
+  }
+
+  protected compareDated(a: CTPTask, b: CTPTask, _state: DispatchState): number {
     const aBound = this.isBottleneckBound(a);
     const bBound = this.isBottleneckBound(b);
     if (aBound !== bBound) return aBound ? 1 : -1; // non-bottleneck first
-
-    // Same class → default static order, so DBR reduces to a reordering.
-    if (a.rank !== b.rank) return a.rank - b.rank;
-    const aStart = a.window ? a.window.startW : Number.MAX_VALUE;
-    const bStart = b.window ? b.window.startW : Number.MAX_VALUE;
-    return aStart - bStart;
+    return legacyCompare(a, b); // same class → default static order (a reordering)
   }
 
   private isBottleneckBound(task: CTPTask): boolean {

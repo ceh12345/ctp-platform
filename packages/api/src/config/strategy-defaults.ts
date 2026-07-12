@@ -86,6 +86,58 @@ export const DISPATCHING_STRATEGIES: StrategyConfig[] = [
     sortOrder: 50,
     tier: 'free',
   },
+  {
+    key: 'ATC',
+    label: 'Apparent Tardiness Cost',
+    icon: '⏳',
+    short: 'Dynamic slack-weighted urgency (WSPT × due-date)',
+    detail:
+      'Look-ahead dispatch rule. Blends shortest-weighted-processing-time with due-date urgency: ' +
+      'a job with slack is deprioritized until its slack collapses, then its priority passes through ' +
+      'at full strength. Ranks against the internal production target (JobEndDate). ' +
+      'Work with no internal due date fills white space behind dated work.',
+    bestFor: 'Tardiness-sensitive shops, mixed due-date pressure, minimizing weighted lateness',
+    time: '1-5s',
+    enabled: true,
+    isGlobal: true,
+    isPublic: true,
+    sortOrder: 60,
+    tier: 'free',
+  },
+  {
+    key: 'DBR',
+    label: 'Drum-Buffer-Rope',
+    icon: '🥁',
+    short: 'Deprioritize bottleneck-bound work (Theory of Constraints)',
+    detail:
+      'Identifies the constraint (highest-loaded resource) once per solve and sinks bottleneck-bound ' +
+      'work behind non-bottleneck work, so the non-constraint flow drains first and the drum is not ' +
+      'overfed. Down-ranking, not gating — never stalls. Orthogonal to due dates.',
+    bestFor: 'Capacity-constrained lines with a clear bottleneck, WIP reduction',
+    time: '1-5s',
+    enabled: true,
+    isGlobal: true,
+    isPublic: true,
+    sortOrder: 70,
+    tier: 'free',
+  },
+  {
+    key: 'Slack',
+    label: 'Least Slack (Customer Delivery)',
+    icon: '📦',
+    short: 'Least customer-delivery slack first',
+    detail:
+      'Ranks by least slack against the customer delivery date (deliveryDate − now − remaining work). ' +
+      'Orders with no customer commitment (internal/stock work) fill white space behind all ' +
+      'customer-dated work. Stafford’s delivery-driven dispatch rule.',
+    bestFor: 'Delivery-commitment-driven make-to-order, late-fee avoidance',
+    time: '1-5s',
+    enabled: true,
+    isGlobal: true,
+    isPublic: true,
+    sortOrder: 80,
+    tier: 'free',
+  },
 ];
 
 // ── Solver tiers (how hard should the solver try?) ──────────────────
