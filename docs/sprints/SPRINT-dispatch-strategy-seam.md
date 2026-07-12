@@ -298,6 +298,18 @@ The two-class partition keys off `deliveryDateOf(task)` → the order's `custome
 5. **`bottleneckQueue` source** — *Resolved (Phase 0c):* derived, not stored. Raw load is on `resource.available.staticAssignments`; the utilization/queue scalar reuses `resourceutilizationscoringrule.ts:37-64`; bottleneck ranking reuses that or the disjunctive-graph bottleneck. The lens wraps these — no landscape schema change.
 6. **Landing base** — branch off `main` now vs. after `feature/scheduling-snapshot` lands. Independent engine areas, so either works; rebase is cheap.
 7. **Extend vs. replace the existing strategy axis** — recommended: **extend** `DISPATCHING_STRATEGIES` (one selection axis, EST/ATC/DBR as new registry entries) rather than add a parallel `selectionStrategy` concept. Open part: whether `Chain`/`Greedy`/`DueDate`/`ShortestFirst` are re-expressed as registry entries over the new seam (so there is literally one list), or the legacy keys are kept as aliases during migration. Settle when the registry type lands (Phase 1).
+
+   **The migration splits along ordering vs. scope — this is what governs *which* legacy strategies can become plugs.** A new plug (`IDispatchPriority`) controls only **ordering**; `DynamicNeighborhood` fixes the **scope** to "one head per chain." A legacy `INeighborhoodStrategy` controls **both** the candidate set and the sort. So:
+
+   | legacy strategy | ordering | scope | plug-able? |
+   |---|---|---|---|
+   | `Chain` | `(rank, window.startW)` | one head/chain | ✅ **done** — `StaticRankPriority` |
+   | `DueDate` | earliest due date (EDD) | all-ready, flat | ✅ ordering-only → a plug (`governingDate: dueDate`); bonus: inherits the two-class backfill partition |
+   | `ShortestFirst` | shortest duration (SPT) | all-ready, flat | ✅ ordering-only → a plug (date-orthogonal, `compareDated: by duration`) |
+   | `Greedy` | 5-key `(earliestEnd, score, rank, window, duration)` | all-ready, **chain-blind** | ⚠️ ordering → a plug (`GreedySortPriority`), but the plug is *chain-safe* (heads only) — a behaviour change, not a rename |
+   | `ChainFirstFit` | sequence within a chain | **whole chain at once** | ❌ pure **scope** rule — no comparator expresses it; stays a neighborhood until *scope* is pluggable |
+
+   So the ordering-only legacy sorts (`DueDate`, `ShortestFirst`) can converge onto plugs cleanly (a behaviour-preserving migration if scope is matched, or a deliberate chain-safe upgrade); `Greedy`'s chain-blind scope and `ChainFirstFit`'s whole-chain scope **cannot** collapse into the current ordering-only seam without also making **scope** pluggable (the bigger A-P-T-R seam). "Literally one list" is reachable for the ordering rules now; the scope rules wait.
 8. **Slack/CR plug scope** — Stafford's own strategy (`SlackDispatchPriority`) is the same family as ATC and cheap once the seam exists. Decide whether it ships in this sprint (alongside ATC/DBR, since Stafford will test against it directly) or as the immediate follow-on. Leaning include — it's the config the beta partner actually wants to run.
 9. **Predecessor-completeness semantics (Allan)** — confirm hydrate maps Genius "complete" so the ready-gather enforces *all* predecessors, not Genius's one-prior check. Stricter-than-Genius is correct but visible; not a code change here if the gather already does it, but must be verified against Stafford data.
 10. **Pin sourcing (Allan)** — can started-task and locked-resource pins (Kaleb 4.i/4.iv) be sourced from Genius state at hydrate rather than hand-set? Uses the shipped `isPrimary` hard-constraint mechanism; the open part is the data wire.
