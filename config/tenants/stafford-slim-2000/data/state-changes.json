@@ -1,0 +1,66 @@
+[
+  {
+    "resourceType": "CNCLathe",
+    "type": "PROCESS CHANGE",
+    "fromState": "DEFAULT CHANGE",
+    "toState": "DEFAULT CHANGE",
+    "duration": 1800,
+    "penalty": 0
+  },
+  {
+    "resourceType": "CNCMill",
+    "type": "PROCESS CHANGE",
+    "fromState": "DEFAULT CHANGE",
+    "toState": "DEFAULT CHANGE",
+    "duration": 1800,
+    "penalty": 0
+  },
+  {
+    "resourceType": "WeldBay",
+    "type": "PROCESS CHANGE",
+    "fromState": "DEFAULT CHANGE",
+    "toState": "DEFAULT CHANGE",
+    "duration": 1200,
+    "penalty": 0
+  },
+  {
+    "resourceType": "PolishBay",
+    "type": "PROCESS CHANGE",
+    "fromState": "DEFAULT CHANGE",
+    "toState": "DEFAULT CHANGE",
+    "duration": 900,
+    "penalty": 0
+  },
+  {
+    "resourceType": "PressBrake",
+    "type": "PROCESS CHANGE",
+    "fromState": "DEFAULT CHANGE",
+    "toState": "DEFAULT CHANGE",
+    "duration": 1200,
+    "penalty": 0
+  },
+  {
+    "resourceType": "AssemblyBay",
+    "type": "PROCESS CHANGE",
+    "fromState": "DEFAULT CHANGE",
+    "toState": "DEFAULT CHANGE",
+    "duration": 900,
+    "penalty": 0
+  },
+  {
+    "resourceType": "Laser",
+    "type": "PROCESS CHANGE",
+    "fromState": "DEFAULT CHANGE",
+    "toState": "DEFAULT CHANGE",
+    "duration": 600,
+    "penalty": 0
+  },
+  {
+    "resourceType": "PaintBooth",
+    "type": "PROCESS CHANGE",
+    "fromState": "DEFAULT CHANGE",
+    "toState": "DEFAULT CHANGE",
+    "duration": 1800,
+    "penalty": 0
+  }
+]

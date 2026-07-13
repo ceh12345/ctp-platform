@@ -1,0 +1,7 @@
+{
+  "currency": "USD",
+  "latePenaltyPerDay": 500,
+  "graceDays": 0,
+  "latePenaltyCapPerOrder": null,
+  "laborRatePerHour": 50
+}

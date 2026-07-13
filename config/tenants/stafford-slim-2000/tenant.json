@@ -1,0 +1,9 @@
+{
+  "tenantId": "stafford-slim-2000",
+  "name": "Stafford Slim 2000",
+  "vertical": "manufacturing",
+  "createdAt": "2026-06-21T00:00:00Z",
+  "updatedAt": "2026-06-21T00:00:00Z",
+  "clonedFrom": "stafford-engineering-test",
+  "description": "Stafford engine-scale test dataset — ~2000 tasks (nearly the full 3 June Genius snapshot) sliced with relaxed filters (min-orders 1, max-group-tasks 100), fixed 8-month horizon. File adapter only — no mock-genius dependency."
+}

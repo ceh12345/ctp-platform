@@ -1,0 +1,169 @@
+[
+  {
+    "key": "default",
+    "name": "Standard",
+    "description": "Default Stafford settings — on-time delivery focus with cost awareness",
+    "owner": "tenant",
+    "isDefault": true,
+    "updatedAt": "2026-03-21T00:00:00Z",
+    "scoring": [
+      {
+        "ruleName": "DueDateScoringRule",
+        "weight": 0.3,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 2,
+        "group": "Schedule Quality"
+      },
+      {
+        "ruleName": "EarliestStartTimeScoringRule",
+        "weight": 0.1,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Schedule Quality"
+      },
+      {
+        "ruleName": "ResourcePreferenceScoringRule",
+        "weight": 0.05,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Schedule Quality"
+      },
+      {
+        "ruleName": "ResourceUtilizationScoringRule",
+        "weight": 0.15,
+        "objective": 1,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Resource Efficiency"
+      },
+      {
+        "ruleName": "ChangeoverScoringRule",
+        "weight": 0.2,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Resource Efficiency"
+      },
+      {
+        "ruleName": "ResourceCostScoringRule",
+        "weight": 0.2,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Cost"
+      }
+    ],
+    "strategy": "Greedy",
+    "tier": "quick",
+    "suggestedExperienceLevel": "intermediate"
+  },
+  {
+    "key": "cost-optimized",
+    "name": "Cost Optimized",
+    "description": "Minimize resource and changeover costs while meeting due dates",
+    "owner": "tenant",
+    "isDefault": false,
+    "updatedAt": "2026-03-21T00:00:00Z",
+    "scoring": [
+      {
+        "ruleName": "DueDateScoringRule",
+        "weight": 0.25,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 2,
+        "group": "Schedule Quality"
+      },
+      {
+        "ruleName": "EarliestStartTimeScoringRule",
+        "weight": 0.1,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Schedule Quality"
+      },
+      {
+        "ruleName": "ResourcePreferenceScoringRule",
+        "weight": 0.05,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Schedule Quality"
+      },
+      {
+        "ruleName": "ResourceUtilizationScoringRule",
+        "weight": 0.1,
+        "objective": 1,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Resource Efficiency"
+      },
+      {
+        "ruleName": "ChangeoverCostScoringRule",
+        "weight": 0.15,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Cost"
+      },
+      {
+        "ruleName": "ResourceCostScoringRule",
+        "weight": 0.2,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Cost"
+      },
+      {
+        "ruleName": "LatenessCostScoringRule",
+        "weight": 0.15,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Cost"
+      }
+    ],
+    "strategy": "Chain",
+    "tier": "balanced",
+    "suggestedExperienceLevel": "intermediate"
+  },
+  {
+    "key": "rush-mode",
+    "name": "Rush Mode",
+    "description": "Maximum priority compliance — ignore cost, minimize lateness",
+    "owner": "tenant",
+    "isDefault": false,
+    "updatedAt": "2026-03-21T00:00:00Z",
+    "scoring": [
+      {
+        "ruleName": "DueDateScoringRule",
+        "weight": 0.5,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 3,
+        "group": "Schedule Quality"
+      },
+      {
+        "ruleName": "EarliestStartTimeScoringRule",
+        "weight": 0.3,
+        "objective": 0,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Schedule Quality"
+      },
+      {
+        "ruleName": "ResourceUtilizationScoringRule",
+        "weight": 0.2,
+        "objective": 1,
+        "includeInSolve": true,
+        "penaltyFactor": 0,
+        "group": "Resource Efficiency"
+      }
+    ],
+    "strategy": "Chain",
+    "tier": "thorough",
+    "suggestedExperienceLevel": "novice"
+  }
+]
