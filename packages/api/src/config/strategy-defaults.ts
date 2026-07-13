@@ -88,9 +88,9 @@ export const DISPATCHING_STRATEGIES: StrategyConfig[] = [
   },
   {
     key: 'ATC',
-    label: 'Apparent Tardiness Cost',
+    label: 'ATC',
     icon: '⏳',
-    short: 'Dynamic slack-weighted urgency (WSPT × due-date)',
+    short: 'Apparent Tardiness Cost — dynamic slack-weighted urgency (WSPT × due-date)',
     detail:
       'Look-ahead dispatch rule. Blends shortest-weighted-processing-time with due-date urgency: ' +
       'a job with slack is deprioritized until its slack collapses, then its priority passes through ' +
@@ -106,9 +106,9 @@ export const DISPATCHING_STRATEGIES: StrategyConfig[] = [
   },
   {
     key: 'DBR',
-    label: 'Drum-Buffer-Rope',
+    label: 'DBR',
     icon: '🥁',
-    short: 'Deprioritize bottleneck-bound work (Theory of Constraints)',
+    short: 'Drum-Buffer-Rope — deprioritize bottleneck-bound work (Theory of Constraints)',
     detail:
       'Identifies the constraint (highest-loaded resource) once per solve and sinks bottleneck-bound ' +
       'work behind non-bottleneck work, so the non-constraint flow drains first and the drum is not ' +
@@ -123,9 +123,9 @@ export const DISPATCHING_STRATEGIES: StrategyConfig[] = [
   },
   {
     key: 'Slack',
-    label: 'Least Slack (Customer Delivery)',
+    label: 'Least Slack',
     icon: '📦',
-    short: 'Least customer-delivery slack first',
+    short: 'Least customer-delivery slack first (Stafford’s delivery rule)',
     detail:
       'Ranks by least slack against the customer delivery date (deliveryDate − now − remaining work). ' +
       'Orders with no customer commitment (internal/stock work) fill white space behind all ' +
