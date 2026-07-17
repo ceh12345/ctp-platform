@@ -44,7 +44,7 @@ ENDPOINTS = {
     'machineAndRessourceEntity':                  'Active=true',
     'salesOrderDetailEntity':                     'ItemStatus!=C',
     'workOrderWithAdvancedInformationViewEntity': 'Wostatus!=CLOSED&Wostatus!=CANCELLED&Job<SYST',
-    'productionTaskWithAdvancedInfoViewEntity':   'IsCompleted=false',
+    'productionTaskWithAdvancedInfoViewEntity':   'IsCompleted=false&JobCode<SYST',
     'JobEntity':                                  'Active=true&Job<SYST',
 }
 

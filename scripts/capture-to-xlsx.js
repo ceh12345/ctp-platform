@@ -100,7 +100,10 @@ function applyOverheadFilter(entity, rows, overheadWOs, includeOverhead) {
     return rows.filter((r) => !isOverheadJob(r.Job));
   }
   if (entity === 'productionTaskWithAdvancedInfoViewEntity') {
-    return rows.filter((r) => !overheadWOs.has(String(r.WorkOrderCode)));
+    // Mirror the adapter's JobCode<SYST clause; the WorkOrderCode link is a
+    // fallback for any overhead task whose JobCode is blank but whose WO is known.
+    return rows.filter((r) =>
+      !isOverheadJob(r.JobCode) && !overheadWOs.has(String(r.WorkOrderCode)));
   }
   return rows;
 }
