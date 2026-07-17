@@ -299,6 +299,104 @@ function addSummarySheet(ws, a, captureName) {
   note.font = { italic: true, size: 9 };
 }
 
+// Placement of a task's assigned resource. A "pool" with capacity 1 is really a
+// single station (can't float), so it's distinguished from genuine float (cap>=2).
+function resourcePlacement(r) {
+  if (!r) return 'unassigned';
+  if (r.RessourceType === 'S') return 'subcontract';
+  if (isPerson(r)) return 'pinned';
+  return (num(r.NumOfAvgResource) || 1) >= 2 ? 'float' : 'poolCap1';
+}
+
+function computeResourceLoad(captureDir, overheadWOs, includeOverhead) {
+  const res = loadEntity(captureDir, 'machineAndRessourceEntity');
+  const tasks = applyOverheadFilter('productionTaskWithAdvancedInfoViewEntity',
+    loadEntity(captureDir, 'productionTaskWithAdvancedInfoViewEntity'),
+    overheadWOs, includeOverhead).filter((t) => taskStatus(t) === 'Open');
+  if (!res.length || !tasks.length) return null;
+
+  const R = new Map(res.map((r) => [String(r.Id), r]));
+  const place = { pinned: 0, poolCap1: 0, float: 0, subcontract: 0, unassigned: 0 };
+  const dept = {}; // code -> { pinned, pool, subcontract, hours }
+  const perRes = new Map(); // machineId -> { open, hours }
+  const ensureDept = (c) => (dept[c] ||= { pinned: 0, pool: 0, subcontract: 0, hours: 0 });
+
+  for (const t of tasks) {
+    const r = R.get(String(t.MachineId));
+    const p = resourcePlacement(r);
+    place[p] += 1;
+    const d = ensureDept((r && r.DepartmentCode) ?? '(none)');
+    if (p === 'pinned') d.pinned += 1;
+    else if (p === 'subcontract') d.subcontract += 1;
+    else if (p !== 'unassigned') d.pool += 1;
+    d.hours += num(t.TotalPlannedMachineHours);
+    const pr = perRes.get(String(t.MachineId)) || { open: 0, hours: 0 };
+    pr.open += 1; pr.hours += num(t.TotalPlannedMachineHours);
+    perRes.set(String(t.MachineId), pr);
+  }
+  const topResources = [...perRes.entries()].map(([mid, v]) => {
+    const r = R.get(mid);
+    return {
+      dept: (r && r.DepartmentCode) ?? '?',
+      name: (r && r.Description1) ?? '(unassigned / dangling id)',
+      kind: resourcePlacement(r),
+      cap: r ? (num(r.NumOfAvgResource) || 1) : 0,
+      open: v.open, hours: v.hours,
+    };
+  }).sort((a, b) => b.open - a.open);
+
+  return { openTotal: tasks.length, place, dept, topResources };
+}
+
+function addResourceLoadSheet(ws, a) {
+  [34, 12, 12, 10, 8, 8, 10].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+  const title = (t) => { const r = ws.addRow([t]); r.font = { bold: true, size: 12 }; return r; };
+  const head = (cells) => { const r = ws.addRow(cells); r.font = { bold: true };
+    r.eachCell((c) => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EEF7' } }; }); return r; };
+  const pct = (n) => a.openTotal ? n / a.openTotal : 0;
+
+  title('Open-task placement — pinned vs float');
+  ws.addRow([`${a.openTotal} open tasks`]);
+  head(['Placement', 'Open tasks', 'Share']);
+  const p = a.place;
+  const lines = [
+    ['Pinned to one named individual', p.pinned],
+    ['Cap-1 pool (effectively single station)', p.poolCap1],
+    ['Genuine float (pool capacity >= 2)', p.float],
+    ['Subcontract (OUTWORK)', p.subcontract],
+    ['Unassigned', p.unassigned],
+  ];
+  for (const [label, n] of lines) ws.addRow([label, n, pct(n)]).getCell(3).numFmt = '0.0%';
+  ws.addRow([]);
+  const bound = p.pinned + p.poolCap1;
+  ws.addRow([`Effectively bound to one resource (pinned + cap-1 pool): ${bound} (${(pct(bound) * 100).toFixed(1)}%)`])
+    .font = { italic: true };
+  ws.addRow([`Can genuinely float across >=2 capacity: ${p.float} (${(pct(p.float) * 100).toFixed(1)}%)`])
+    .font = { italic: true };
+  ws.addRow([]);
+
+  title('By process area');
+  head(['Dept', 'Pinned', 'Pool', 'Subcon', 'Open hrs']);
+  for (const [code, d] of Object.entries(a.dept).sort((x, y) =>
+    (y[1].pinned + y[1].pool + y[1].subcontract) - (x[1].pinned + x[1].pool + x[1].subcontract))) {
+    ws.addRow([code, d.pinned, d.pool, d.subcontract, Math.round(d.hours)]);
+  }
+  ws.addRow([]);
+
+  title('Top resources by open-task count');
+  head(['Dept', 'Resource', 'Kind', 'Cap', 'Open', 'Hrs', 'Open/cap']);
+  const KIND = { pinned: 'pinned', poolCap1: 'pool(1)', float: 'pool(>=2)', subcontract: 'subK', unassigned: '?' };
+  for (const r of a.topResources.slice(0, 20)) {
+    const row = ws.addRow([r.dept, r.name, KIND[r.kind] || r.kind, r.cap, r.open,
+      Math.round(r.hours), r.cap ? r.open / r.cap : null]);
+    if (r.cap) row.getCell(7).numFmt = '0.0';
+  }
+  ws.addRow([]);
+  ws.addRow(['Note: "pinned" = assigned to a specific resource (not the IsSchedulingLocked flag). ' +
+    'A cap-1 pool is a single station, so its tasks cannot float despite the pool label.'])
+    .font = { italic: true, size: 9 };
+}
+
 async function main() {
   const FLAGS = new Set(['--all-columns', '--include-overhead']);
   const rest = process.argv.slice(2).filter((a) => !FLAGS.has(a));
@@ -324,6 +422,7 @@ async function main() {
 
   const idx = wb.addWorksheet('_Index');
   const summarySheet = wb.addWorksheet('_Summary');
+  const resourceLoadSheet = wb.addWorksheet('_ResourceLoad');
   const mapSheet = wb.addWorksheet('_Mapping');
   const summary = [];
   const mapRows = [];
@@ -331,6 +430,10 @@ async function main() {
   const analysis = computeAnalysis(captureDir, overheadWOs, includeOverhead);
   if (analysis) addSummarySheet(summarySheet, analysis, captureName);
   else summarySheet.addRow(['(tasks or resources absent from this capture — no summary)']);
+
+  const resourceLoad = computeResourceLoad(captureDir, overheadWOs, includeOverhead);
+  if (resourceLoad) addResourceLoadSheet(resourceLoadSheet, resourceLoad);
+  else resourceLoadSheet.addRow(['(tasks or resources absent from this capture — no resource load)']);
 
   for (const entity of present) {
     const rows = applyOverheadFilter(
