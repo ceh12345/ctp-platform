@@ -231,6 +231,39 @@ Effect on 2026-06-03 dataset:
 
 No "virtually-head" hack, no phantom-parent synthesis, no orphan policy needed.
 
+#### RESOLVED (2026-07-15) — overhead exclusion via `<SYST`, all job-scoped endpoints
+
+Stafford independently flagged that overhead jobs (`SYST-*`, and the `Z*` buckets —
+`Z-CLEANING`, `Z-REPAIRS`, `Z-TRAINING`, `Z-VBREAK`, `ZWORK`, `ZCON`, `ZCUS`, `ZWOR`)
+were leaking in. Root cause: only `JobEntity` carried the `<SYST` clause; the WO and
+task endpoints did not. So work orders and tasks on overhead jobs were still fetched —
+and because CTP order/task generation is a pure upstream-filtered transform (no SYST
+logic anywhere in engine/API code, by the "ETL filters upstream" rule), whatever the
+adapter fetched got mapped. WOs self-grouped harmlessly *today*, but would orphan the
+moment the group source switches from the WO entity to `JobEntity` (their parent Job is
+excluded there). Overhead tasks orphaned regardless — no parent order.
+
+**Decision: filter `<SYST` on every job-scoped endpoint** so the entire CTP generation
+is overhead-free. Shipped filters (capture script + `adapter.json` in lockstep):
+
+| Endpoint | Filter (shipped) |
+|---|---|
+| `salesOrders` / `workOrders` (both → WO entity) | `Wostatus!=CLOSED & Wostatus!=CANCELLED & Job<SYST` |
+| `tasks` | `IsCompleted=false & JobCode<SYST` |
+| `jobs` (`JobEntity`) | `Active=true & Job<SYST` |
+| `resources` | `Active=true` (not job-scoped — no `<SYST`) |
+
+Effect on the 2026-07-15 WORK7 capture: drops 68 overhead WOs (~13% of 540 → 472) and
+their 16 tasks (1826 → 1810). Overhead carried near-zero schedulable load (2 open tasks,
+0 planned hours), so backlog/resource analysis is unchanged. Commits `836b737`
+(WO/`Job<SYST`) and `506588e` (task/`JobCode<SYST`) on `feature/dispatch-strategy`.
+
+Caveat: `JobCode<SYST` verified to encode correctly and the field exists on task
+records, but Genius's filter parser accepting `JobCode<` against the live API is only
+confirmable on the next VPN capture — watch the capture `_metadata.json` errors block.
+When the group source flips to `JobEntity`, this exclusion means no overhead orphans;
+the cross-filter step (line above) becomes belt-and-suspenders rather than load-bearing.
+
 ### Adapter / payload work this implies
 
 - Add `JobEntity` to the Genius adapter endpoint list with filter `Active=true & Job<SYST`
