@@ -43,7 +43,7 @@ DEFAULT_OUT_BASE = REPO / 'tools/mock-genius/recorded'
 ENDPOINTS = {
     'machineAndRessourceEntity':                  'Active=true',
     'salesOrderDetailEntity':                     'ItemStatus!=C',
-    'workOrderWithAdvancedInformationViewEntity': 'Wostatus!=CLOSED&Wostatus!=CANCELLED',
+    'workOrderWithAdvancedInformationViewEntity': 'Wostatus!=CLOSED&Wostatus!=CANCELLED&Job<SYST',
     'productionTaskWithAdvancedInfoViewEntity':   'IsCompleted=false',
     'JobEntity':                                  'Active=true&Job<SYST',
 }
