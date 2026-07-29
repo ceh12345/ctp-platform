@@ -46,6 +46,7 @@ ENDPOINTS = {
     'workOrderWithAdvancedInformationViewEntity': 'Wostatus!=CLOSED&Wostatus!=CANCELLED&Job<SYST',
     'productionTaskWithAdvancedInfoViewEntity':   'IsCompleted=false&JobCode<SYST',
     'JobEntity':                                  'Active=true&Job<SYST',
+    'operationEntity':                            'Active=true',
 }
 
 PAGE_SIZE = 100
