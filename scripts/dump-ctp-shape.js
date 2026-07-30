@@ -80,6 +80,23 @@ async function main() {
     process.exit(1);
   }
 
+  // ── Dispatch validation report (spec §4) ─────────────────────────────
+  // Sidecar is always written when the dispatch pass ran (it's the review
+  // artifact for Stafford); error-severity findings block promote.
+  if (result.dispatchReport) {
+    const report = result.dispatchReport;
+    const reportPath = path.join(OUT_DIR, '..', '_dispatch-validation-report.json');
+    fs.writeFileSync(reportPath, JSON.stringify(report, null, 2) + '\n');
+    const s = report.summary;
+    console.log(`Dispatch preference pass: ${s.tasks} tasks — ${s.pinned} pinned (R1), ${s.distributed} distributed (R2), ${s.headerFallback} header-parked (R3), ${s.machineFallback} machine-fallback (R4), ${s.crossGroupPins} cross-group pins`);
+    console.log(`  report: ${reportPath} (${report.errors.length} errors, ${report.warnings.length} warnings)`);
+    if (report.errors.length > 0) {
+      console.error(`Dispatch validation FAILED — ${report.errors.length} error(s) block promote:`);
+      for (const e of report.errors.slice(0, 5)) console.error(`  [${e.code}] ${e.message}`);
+      process.exit(1);
+    }
+  }
+
   console.log(`  sync+map ${syncMs}ms — ${result.payload.orders.length} orders / ${result.payload.tasks.length} tasks / ${result.payload.resources.length} resources / ${result.workOrderGroups.length} groups`);
 
   // ── Enrich groups: strip scratch fields, derive head+memberKeys ──────
@@ -137,7 +154,13 @@ async function main() {
     if (!g) continue;
     t.groupKey   = o.groupKey;
     t.hierarchies = g.hierarchies;
-    t.attributes  = g.attributes;
+    // Merge rather than overwrite: the mapping pass stamps task-level
+    // traceability attributes (OperationCode / GroupCode from the dispatch
+    // build) that must survive the group rollup. Group attributes win on
+    // name collision (rollup semantics); task-only names are appended.
+    const groupAttrNames = new Set((g.attributes ?? []).map(a => a.name));
+    const taskOnly = (t.attributes ?? []).filter(a => !groupAttrNames.has(a.name));
+    t.attributes  = [...(g.attributes ?? []), ...taskOnly];
     tasksStamped++;
   }
 

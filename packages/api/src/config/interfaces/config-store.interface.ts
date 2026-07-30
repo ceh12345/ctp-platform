@@ -312,6 +312,16 @@ export interface IMappingProfile {
   workOrderGroups?: EntityMapping;
 
   /**
+   * Dispatch preference pass (docs/Stafford/operation-group-preference-
+   * mapping-spec.md). Presence enables the pass: task capacityResources are
+   * built from the operations master (op → group) + resource group structure
+   * instead of the flat single-machine emit. Shape: IDispatchConfig in
+   * modules/integration/dispatch-preference.ts (kept loose here to avoid a
+   * config → integration import cycle).
+   */
+  dispatch?: Record<string, any>;
+
+  /**
    * Cross-WO precedence derivation mode (Cross-WO Linking sprint).
    * - `none` (default if unset): WOs remain independent chains.
    * - `bomParentChild`: hydrator derives cross-WO `prevLink` from the BOM tree

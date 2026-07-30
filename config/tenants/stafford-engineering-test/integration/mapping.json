@@ -3,6 +3,10 @@
   "tenantId": "stafford-engineering-test",
   "source": "genius-api-mock",
   "crossWOLinking": "bomParentChild",
+  "dispatch": {
+    "distributeUnassigned": true,
+    "_note": "Operation->group->machine preference build (docs/Stafford/operation-group-preference-mapping-spec.md). Requires the adapter's `operations` endpoint (operationEntity). Field names default to Genius conventions: OperationCode / MachineId / TotalRemainingMachineHours."
+  },
   "processingSequences": [
     {
       "name": "delivery-date-first",
