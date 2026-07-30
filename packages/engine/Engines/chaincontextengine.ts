@@ -101,6 +101,10 @@ export class ChainContextEngine {
   // sprint) — the flag remains as a diagnostic kill-switch.
   public useUniqueContextScoring: boolean = true;
 
+  // P1 (solver-performance sprint) observability: running count of combos
+  // skipped by the admissible bound prune in evaluateChain step 7.
+  public combosPruned: number = 0;
+
   /**
    * Build (or return cached) the typed-array snapshot of ctx.slot.startTimes.
    * Invalidated by bumping ctx._stCacheVersion at every in-cycle mutation
@@ -223,11 +227,30 @@ export class ChainContextEngine {
     // Step 6: Score surviving combos
     this.scoreChainCombos(feasible, landscape, scoring);
 
-    // Step 7: Try all combos — assign start times and collect valid placements
+    // Step 7: Try combos — assign start times and collect valid placements.
     feasible.sort((a, b) => a.chainScore - b.chainScore);
 
+    // P1 (solver-performance sprint): admissible bound prune. assignStartTimes
+    // can never place the first task earlier than its propagated eStartW —
+    // the primary's candidates are filtered to >= propagatedEStart, the
+    // backward pass is floor-bounded by startTimes[i].eStartW, and the forward
+    // pass floors at propagatedEStartI. So startTimes[0].eStartW is a true
+    // lower bound on the combo's assignedStart. Once some valid combo starts
+    // at bestStart, a candidate whose bound is >= bestStart can at best TIE on
+    // start with an equal-or-worse chainScore (iteration is score-ascending),
+    // and the final (assignedStart, chainScore) sort would never select it —
+    // skipping is result-identical. Under symmetric preference pools (group
+    // members sharing calendar+efficiency propagate identical bounds) this
+    // collapses the cross-product: the first unconstrained placement prunes
+    // every remaining sibling combo.
     const validCombos: ChainContextCombo[] = [];
+    let bestStart = Infinity;
     for (const candidate of feasible) {
+      const bound = candidate.startTimes[0]?.eStartW ?? -Infinity;
+      if (bound >= bestStart) {
+        this.combosPruned++;
+        continue;
+      }
       this.assignStartTimes(candidate);
 
       const allAssigned = candidate.startTimes.every(
@@ -235,6 +258,8 @@ export class ChainContextEngine {
       );
       if (!allAssigned) continue;
       validCombos.push(candidate);
+      const s0 = candidate.startTimes[0].assignedStart;
+      if (s0 < bestStart) bestStart = s0;
     }
 
     if (validCombos.length === 0) {
