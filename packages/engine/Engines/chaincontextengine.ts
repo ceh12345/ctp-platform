@@ -128,17 +128,23 @@ export class ChainContextEngine {
     const eStart = new Float64Array(count);
     const lStart = new Float64Array(count);
     const pcd = new Float64Array(count);
+    let pcdUniform = true;
+    let lStartMonotone = true;
     n = st.head;
     let i = 0;
     while (n) {
       eStart[i] = n.data.eStartW;
       lStart[i] = n.data.lStartW;
       pcd[i] = n.data.processChangeDuration;
+      if (i > 0) {
+        if (pcd[i] !== pcd[0]) pcdUniform = false;
+        if (lStart[i] < lStart[i - 1]) lStartMonotone = false;
+      }
       i++;
       n = n.next;
     }
     ctx._stCache = {
-      count, eStart, lStart, pcd,
+      count, eStart, lStart, pcd, pcdUniform, lStartMonotone,
       version: ctx._stCacheVersion,
     };
     return ctx._stCache;
@@ -1430,9 +1436,38 @@ export class ChainContextEngine {
     const duration = ctx.task.duration?.duration() ?? 0;
     const cadence = ctx.task?.cadenceIntervalMinutes;
     const cadenceSec = cadence ? cadence * 60 : 0;
-    // T3 scope: iterate-all path stays on linked-list walk — see comment in
-    // computeContextFeasibleDuration for the narrowing rationale.
 
+    // P-slim500 fast path (52% self-time at slim-500 scale): when pcd is
+    // uniform across nodes and lStart is monotone (both true whenever no
+    // process changes fragment the windows — the overwhelmingly common
+    // shape), the per-node candidate min(latestBySucc, lStart[i], propLStart)
+    // is non-increasing scanning from the last node down, so the FIRST
+    // feasible candidate from the top is the max the full walk would find.
+    // Early-exits when the candidate falls below the floor (nothing lower
+    // can be feasible). Result-identical to the walk; non-uniform pcd falls
+    // through to the legacy full walk below.
+    if (this.useStartTimesCache) {
+      const c = this.getStCache(ctx);
+      if (c && c.pcdUniform && c.lStartMonotone) {
+        const pcd0 = c.pcd[0];
+        const latestBySucc = succStart - duration - pcd0;
+        let floor = propagatedEStart;
+        if (maxGap !== null) {
+          floor = Math.max(floor, succStart - maxGap - duration - pcd0);
+        }
+        for (let i = c.count - 1; i >= 0; i--) {
+          let candidateStart = Math.min(latestBySucc, c.lStart[i], propagatedLStart);
+          if (cadenceSec > 0 && candidateStart % cadenceSec !== 0) {
+            candidateStart = Math.floor(candidateStart / cadenceSec) * cadenceSec;
+          }
+          if (candidateStart < floor) return null; // shrinks monotonically — no lower node can pass
+          if (candidateStart >= Math.max(c.eStart[i], floor)) return candidateStart;
+        }
+        return null;
+      }
+    }
+
+    // Legacy full walk (also the non-uniform-pcd fallback).
     let best: number | null = null;
     let node = st.head;
     while (node) {
