@@ -3,7 +3,7 @@
 **Date opened:** 2026-07-29
 **Branch:** `feature/solver-performance` (worktree `ctp-platform-optimization`)
 **Baseline commit:** `225617a` (dispatch preference pass + July-16 data refresh)
-**Status:** IN PROGRESS — P2 first cut + P1 landed 2026-07-29 (5.5× on slim-100); P3–P5 open
+**Status:** IN PROGRESS — P2 first cut + P1 landed 2026-07-29 (5.5× on slim-100); P4 closed not-reproducible; P3/P5 + scale measurement open
 
 ## Why now
 
@@ -108,11 +108,17 @@ per call. Precompute cumulative working-seconds prefix array per (calendar,
 horizon) → binary search + arithmetic per call. slim-100 effectively has one
 shared calendar, so precompute cost is trivial.
 
-### P4 — Warm re-solve regression (investigate before daily-replan builds on it)
-Reproduce: hydrate once, solve twice in-process (see
-`profile-solve.js` pattern below). Find what grows: startTimes lists, ranked
-contexts, usage/state-change accumulation. Fix or document the required
-reset. This blocks any in-process re-solve loop (bake-off harness, replan).
+### P4 — Warm re-solve regression — ✅ CLOSED 2026-07-30: not reproducible
+The original observation (solve #1 10.6 s → solve #2 17.4 s, +65%) was a
+single run taken under `--cpu-prof` while builds/tests were running
+concurrently. Re-measured 2026-07-30 across configs:
+- baseline, no profiler, 4 warm solves: 12.7/11.7/12.5/13.0 s (flat)
+- baseline, WITH `--cpu-prof`, 3 warm solves: 13.3/12.9/11.9 s (flat)
+- P1 build, no profiler, 6 warm solves: 2.29 → 2.02 s (improving, stable)
+No accumulation exists; in-process re-solve loops (bake-off harness, daily
+replan) are safe. Lesson recorded: never conclude from a single profiled
+run — the original spec text drew a +65% claim from one `--cpu-prof`
+sample under machine contention.
 
 ### P5 — slim-100 horizon trim (config-only)
 The 2026-07-29 re-slice wrote a 228-day horizon (Phase-2 pickup group
