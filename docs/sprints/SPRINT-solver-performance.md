@@ -3,7 +3,9 @@
 **Date opened:** 2026-07-29
 **Branch:** `feature/solver-performance` (worktree `ctp-platform-optimization`)
 **Baseline commit:** `225617a` (dispatch preference pass + July-16 data refresh)
-**Status:** IN PROGRESS — P2 first cut + P1 landed 2026-07-29 (5.5× on slim-100); P4 closed not-reproducible; P3/P5 + scale measurement open
+**Status:** P1–P5 COMPLETE (P1/P2/P3 landed — slim-100 9.9 s → 1.25 s, ~8×;
+P4 closed not-reproducible; P5 closed won't-fix). Open: scale measurement on
+stafford-engineering-test (needs mock-genius + real SyncService wiring).
 
 ## Why now
 
@@ -102,11 +104,15 @@ comment already contemplates a `pcd` precompute for the binary search —
 extend to the candidate walks: per-context cache keyed on start-time-node
 bucket (targetStart values are monotone within a walk).
 
-### P3 — Working-time prefix index for interval-walker (~15%)
-`workingEndForwardW`/`workingStartBackwardW` walk calendar intervals linearly
-per call. Precompute cumulative working-seconds prefix array per (calendar,
-horizon) → binary search + arithmetic per call. slim-100 effectively has one
-shared calendar, so precompute cost is trivial.
+### P3 — Working-time prefix index for interval-walker — ✅ DONE (`1d0977b`)
+Calendar lists snapshotted into sorted typed arrays with prefix sums (raw +
+runRate-weighted); both walker functions became binary searches. WeakMap
+cache keyed per list object, invalidated by a new structural `modCount` on
+`LinkedList` (in-place node-data mutation untracked; calendar replacement
+creates a new list object → WeakMap key invalidates). Legacy semantics
+reproduced exactly incl. zero-duration and run-rate-overshoot quirks;
+linked-list walk kept as fallback. slim-100 1.8 s → **1.25 s** median
+(~8× total from the 9.9 s baseline); parity 118/118; suite green.
 
 ### P4 — Warm re-solve regression — ✅ CLOSED 2026-07-30: not reproducible
 The original observation (solve #1 10.6 s → solve #2 17.4 s, +65%) was a
@@ -120,11 +126,14 @@ replan) are safe. Lesson recorded: never conclude from a single profiled
 run — the original spec text drew a +65% claim from one `--cpu-prof`
 sample under machine contention.
 
-### P5 — slim-100 horizon trim (config-only)
-The 2026-07-29 re-slice wrote a 228-day horizon (Phase-2 pickup group
-extended the range); candidate lists scale with horizon. Cap via
-`HORIZON_FIXED_DAYS ≈ 120` in `scripts/slice-stafford-slim.js` or drop the
-Phase-2 group. Demo-latency win only — not an engine fix.
+### P5 — slim-100 horizon trim — ✅ CLOSED 2026-07-30: won't fix
+The 228-day horizon is **data-required, not slack**: 10 of 11 sliced groups
+end by 2026-08-20, but one group runs to 2026-11-19 and the solve genuinely
+places work out to Nov 22 — trimming the horizon below that makes the group
+infeasible. The only "trim" is excluding that group from the slice, which
+churns the fixture + parity golden for nothing: post-P1/P3 the solve is
+1.25 s, so the demo-latency motivation is gone. Horizon derivation in the
+slicer stays as-is (data-driven).
 
 ## Method notes (reproduce the numbers)
 
