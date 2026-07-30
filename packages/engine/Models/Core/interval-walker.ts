@@ -149,12 +149,75 @@ export function walkBackward(
   return { start, end, feasible: more >= consumed, accumulated: more };
 }
 
+// ── Calendar index (P3, solver-performance sprint) ──────────────────────────
+//
+// workingEndForwardW / workingStartBackwardW were the top self-time hotspot
+// under preference-pool workloads: a linear pre-scan to the first interval
+// past startW plus a linear accumulation walk, per call, against calendar
+// lists of hundreds of intervals. This index snapshots a calendar list into
+// sorted typed arrays with prefix sums so both functions become binary
+// searches. Cached per list object in a WeakMap, invalidated by the list's
+// structural modCount (see LinkedList.modCount — in-place mutation of node
+// data is NOT tracked; calendar replacement creates a new list object, which
+// invalidates via the WeakMap key).
+//
+// The fast paths reproduce walkForward/walkBackward semantics exactly for
+// the workingEnd/workingStart call shape (fixedReset=false, one-sided range
+// clip), including the legacy quirks: a zero/negative `required` returns the
+// first covering interval's boundary (not the query point), and run-rate
+// overshoot is subtracted from the wall-clock boundary in scaled units.
+
+interface WalkerIndex {
+  modCount: number;
+  n: number;
+  startW: Float64Array;
+  endW: Float64Array;
+  rr: Float64Array;      // runRate per interval; null runRate → 0
+  cumDur: Float64Array;  // cumulative raw duration through interval i
+  cumRR: Float64Array;   // cumulative runRate-weighted duration through i
+}
+
+const walkerIndexCache = new WeakMap<LinkedList<CTPInterval>, WalkerIndex>();
+
+function getWalkerIndex(list: LinkedList<CTPInterval>): WalkerIndex | null {
+  const cached = walkerIndexCache.get(list);
+  if (cached && cached.modCount === list.modCount) return cached;
+
+  let count = 0;
+  for (let p = list.head; p; p = p.next) count++;
+  if (count === 0) return null;
+
+  const startW = new Float64Array(count);
+  const endW = new Float64Array(count);
+  const rr = new Float64Array(count);
+  const cumDur = new Float64Array(count);
+  const cumRR = new Float64Array(count);
+  let i = 0;
+  let sumDur = 0;
+  let sumRR = 0;
+  for (let p = list.head; p; p = p.next, i++) {
+    startW[i] = p.data.startW;
+    endW[i] = p.data.endW;
+    const rate = p.data.runRate ?? 0;
+    rr[i] = rate;
+    const d = p.data.duration();
+    sumDur += d;
+    sumRR += d * rate;
+    cumDur[i] = sumDur;
+    cumRR[i] = sumRR;
+  }
+  const idx: WalkerIndex = { modCount: list.modCount, n: count, startW, endW, rr, cumDur, cumRR };
+  walkerIndexCache.set(list, idx);
+  return idx;
+}
+
 /**
  * Given a resource calendar (linked list of CTPInterval) and a candidate
  * start time, return the wall-clock end after consuming `duration` of
  * working time. For FIXED durations this is `startW + duration` (no walk
- * needed); for FLOAT durations this walks the calendar starting at the
- * first interval whose end is past `startW`. Pure, no mutation.
+ * needed); for FLOAT durations this consults the calendar index (binary
+ * search over prefix sums; falls back to the linked-list walk when the
+ * index is unavailable). Pure, no mutation.
  *
  * Caller passes the task's CTPDuration so the helper can short-circuit
  * for FIXED. Used by ChainContextEngine, CommonStartTimesAgent, and
@@ -174,10 +237,45 @@ export function workingEndForwardW(
     return startW + required;
   }
   if (!list || !list.head || !list.tail) return startW + required;
+  const useRunRate = dt === CTPDurationConstants.FLOAT_RUN_RATE;
+
+  const idx = getWalkerIndex(list);
+  if (idx) {
+    // First interval with endW > startW (legacy pre-scan, as binary search).
+    let lo = 0, hi = idx.n - 1, first = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (idx.endW[mid] > startW) { first = mid; hi = mid - 1; }
+      else lo = mid + 1;
+    }
+    if (first < 0) return startW + required;
+    // Legacy quirk: zero/negative required breaks immediately with `end`
+    // initialized to the first interval's (unclipped-right) end.
+    if (required <= 0) return idx.endW[first];
+
+    const cum = useRunRate ? idx.cumRR : idx.cumDur;
+    // Amount clipped off the first interval's left edge by rangeStart=startW.
+    const clipLeft = Math.max(0, startW - idx.startW[first]) * (useRunRate ? idx.rr[first] : 1);
+    const base = (first > 0 ? cum[first - 1] : 0) + clipLeft;
+    const total = cum[idx.n - 1] - base;
+    if (total < required) return startW + required; // infeasible → legacy fallback
+
+    // Smallest j >= first with cum[j] - base >= required.
+    const target = base + required;
+    lo = first; hi = idx.n - 1;
+    let j = idx.n - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (cum[mid] >= target) { j = mid; hi = mid - 1; }
+      else lo = mid + 1;
+    }
+    const more = cum[j] - base;
+    return idx.endW[j] - (more - required);
+  }
+
   let head: ListNode<CTPInterval> | null = list.head;
   while (head && head.data.endW <= startW) head = head.next;
   if (!head) return startW + required;
-  const useRunRate = dt === CTPDurationConstants.FLOAT_RUN_RATE;
   const r = walkForward(head, list.tail, required, startW, Number.MAX_SAFE_INTEGER, useRunRate, false);
   return r.feasible ? r.end : startW + required;
 }
@@ -197,10 +295,44 @@ export function workingStartBackwardW(
     return endW - required;
   }
   if (!list || !list.head || !list.tail) return endW - required;
+  const useRunRate = dt === CTPDurationConstants.FLOAT_RUN_RATE;
+
+  const idx = getWalkerIndex(list);
+  if (idx) {
+    // Last interval with startW < endW (legacy tail pre-scan, as binary search).
+    let lo = 0, hi = idx.n - 1, last = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (idx.startW[mid] < endW) { last = mid; lo = mid + 1; }
+      else hi = mid - 1;
+    }
+    if (last < 0) return endW - required;
+    // Legacy quirk mirror: zero/negative required returns the last covering
+    // interval's (rangeStart-clipped) start; rangeStart is 0 here.
+    if (required <= 0) return Math.max(idx.startW[last], 0);
+
+    const cum = useRunRate ? idx.cumRR : idx.cumDur;
+    // Amount clipped off the last interval's right edge by rangeEnd=endW.
+    const clipRight = Math.max(0, idx.endW[last] - endW) * (useRunRate ? idx.rr[last] : 1);
+    const cumThroughLast = cum[last] - clipRight;
+    const totalAt = (j: number): number => cumThroughLast - (j > 0 ? cum[j - 1] : 0);
+    if (totalAt(0) < required) return endW - required; // infeasible → legacy fallback
+
+    // Largest j <= last with totalAt(j) >= required (totalAt decreases in j).
+    lo = 0; hi = last;
+    let j = 0;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (totalAt(mid) >= required) { j = mid; lo = mid + 1; }
+      else hi = mid - 1;
+    }
+    const more = totalAt(j);
+    return Math.max(idx.startW[j], 0) + (more - required);
+  }
+
   let tail: ListNode<CTPInterval> | null = list.tail;
   while (tail && tail.data.startW >= endW) tail = tail.prev;
   if (!tail) return endW - required;
-  const useRunRate = dt === CTPDurationConstants.FLOAT_RUN_RATE;
   const r = walkBackward(tail, list.head, required, 0, endW, useRunRate, false);
   return r.feasible ? r.start : endW - required;
 }
