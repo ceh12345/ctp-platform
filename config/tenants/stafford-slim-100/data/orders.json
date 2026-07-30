@@ -1,16 +1,280 @@
 [
   {
-    "key": "27977",
-    "name": "27977 — WS08/DF1500 SYMETRIC BEATER",
-    "productKey": "SIC FP08W0601817_02",
-    "demandQty": 17,
-    "dueDate": "2026-06-17T12:00:00.000Z",
-    "lateDueDate": "2026-06-18T12:00:00.000Z",
-    "customerDeliveryDate": null,
-    "priority": 10,
-    "groupKey": "S18421",
-    "parentOrderKey": "27977",
-    "jobCode": "S18421",
+    "key": "30086",
+    "name": "30086 — GAS INJECTOR - MAIN SHAFT",
+    "productKey": "POW MSTD-02-011-X01_D",
+    "demandQty": 10,
+    "dueDate": "2026-08-05T01:15:00.000Z",
+    "lateDueDate": "2026-08-06T12:00:00.000Z",
+    "customerDeliveryDate": "2026-08-06T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19630",
+    "parentOrderKey": "30085",
+    "jobCode": "19630",
+    "jobType": "C",
+    "customerCode": "POW",
+    "customerName": "POWDER PROJECTS LTD",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "POWDER PROJECTS LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "GAS INJECTORS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012625"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-07-23T23:30:00.000Z"
+      }
+    ]
+  },
+  {
+    "key": "30088",
+    "name": "30088 — GAS INJECTOR - SINTERED TUBE",
+    "productKey": "POW MSTD-02-011-X05_D",
+    "demandQty": 10,
+    "dueDate": "2026-08-05T01:15:00.000Z",
+    "lateDueDate": "2026-08-06T12:00:00.000Z",
+    "customerDeliveryDate": "2026-08-06T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19630",
+    "parentOrderKey": "30085",
+    "jobCode": "19630",
+    "jobType": "C",
+    "customerCode": "POW",
+    "customerName": "POWDER PROJECTS LTD",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "POWDER PROJECTS LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "GAS INJECTORS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012625"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-07-23T23:30:00.000Z"
+      }
+    ]
+  },
+  {
+    "key": "30087",
+    "name": "30087 — GAS INJECTOR - ADAPTOR WELDMENT",
+    "productKey": "POW MSTD-02-011-XOA_D",
+    "demandQty": 10,
+    "dueDate": "2026-08-05T01:15:00.000Z",
+    "lateDueDate": "2026-08-06T12:00:00.000Z",
+    "customerDeliveryDate": "2026-08-06T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19630",
+    "parentOrderKey": "30085",
+    "jobCode": "19630",
+    "jobType": "C",
+    "customerCode": "POW",
+    "customerName": "POWDER PROJECTS LTD",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "POWDER PROJECTS LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "GAS INJECTORS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012625"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-07-23T23:30:00.000Z"
+      }
+    ]
+  },
+  {
+    "key": "30085",
+    "name": "30085 — 2 1/2\" GAS INJECTOR ASSEMBLY",
+    "productKey": "POW MSTD-02-011_D",
+    "demandQty": 10,
+    "dueDate": "2026-08-05T01:15:00.000Z",
+    "lateDueDate": "2026-08-06T12:00:00.000Z",
+    "customerDeliveryDate": "2026-08-06T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19630",
+    "parentOrderKey": "30085",
+    "jobCode": "19630",
+    "jobType": "C",
+    "customerCode": "POW",
+    "customerName": "POWDER PROJECTS LTD",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "POWDER PROJECTS LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "GAS INJECTORS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012625"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-07-23T23:30:00.000Z"
+      }
+    ]
+  },
+  {
+    "key": "28289",
+    "name": "28289 — MIXER SUPPORT BRACKET",
+    "productKey": "SIC FS01W0600263_1",
+    "demandQty": 15,
+    "dueDate": "2026-08-20T00:15:00.000Z",
+    "lateDueDate": "2026-08-26T12:00:00.000Z",
+    "customerDeliveryDate": "2026-08-26T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "S18504",
+    "parentOrderKey": "28288",
+    "jobCode": "S18504",
     "jobType": "I",
     "customerCode": "SIC",
     "customerName": "SUPERIOR ICE CREAM EQUIPMENT",
@@ -25,12 +289,12 @@
       {
         "slot": 2,
         "name": "Project",
-        "value": null
+        "value": "2026 DF FREEZERS"
       },
       {
         "slot": 3,
         "name": "SalesOrder",
-        "value": ""
+        "value": "00012264"
       },
       {
         "slot": 4,
@@ -41,7 +305,7 @@
     "attributes": [
       {
         "name": "Strategy",
-        "value": "JIT"
+        "value": "ASAP"
       },
       {
         "name": "JobType",
@@ -52,23 +316,31 @@
         "value": "genius-master"
       },
       {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
         "name": "DbrEndDate",
-        "value": "2026-06-17T12:00:00.000Z"
+        "value": "2026-06-04T03:53:12.200Z"
       }
     ]
   },
   {
-    "key": "27978",
-    "name": "27978 — WS08/DF1500 SYMETRIC BEATER",
-    "productKey": "SIC FP08W0601818_02",
-    "demandQty": 17,
-    "dueDate": "2026-06-17T12:00:00.000Z",
-    "lateDueDate": "2026-06-18T12:00:00.000Z",
-    "customerDeliveryDate": null,
-    "priority": 10,
-    "groupKey": "S18421",
-    "parentOrderKey": "27977",
-    "jobCode": "S18421",
+    "key": "28288",
+    "name": "28288 — REAR FRAME",
+    "productKey": "SIC FS01W0602088_01",
+    "demandQty": 15,
+    "dueDate": "2026-08-20T00:15:00.000Z",
+    "lateDueDate": "2026-08-26T12:00:00.000Z",
+    "customerDeliveryDate": "2026-08-26T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "S18504",
+    "parentOrderKey": "28288",
+    "jobCode": "S18504",
     "jobType": "I",
     "customerCode": "SIC",
     "customerName": "SUPERIOR ICE CREAM EQUIPMENT",
@@ -83,12 +355,12 @@
       {
         "slot": 2,
         "name": "Project",
-        "value": null
+        "value": "2026 DF FREEZERS"
       },
       {
         "slot": 3,
         "name": "SalesOrder",
-        "value": ""
+        "value": "00012264"
       },
       {
         "slot": 4,
@@ -99,7 +371,7 @@
     "attributes": [
       {
         "name": "Strategy",
-        "value": "JIT"
+        "value": "ASAP"
       },
       {
         "name": "JobType",
@@ -110,23 +382,31 @@
         "value": "genius-master"
       },
       {
+        "name": "ProjectManagerCode",
+        "value": "050"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "KALEB JAMES"
+      },
+      {
         "name": "DbrEndDate",
-        "value": "2026-06-17T12:00:00.000Z"
+        "value": "2026-06-04T03:53:12.200Z"
       }
     ]
   },
   {
-    "key": "29569",
-    "name": "29569 — PNEUMATICS ASSEMBLY",
-    "productKey": "IRP 009-AP00-00_A",
+    "key": "30240",
+    "name": "30240 — ROBOT AIR PURGE ASSEMBLY",
+    "productKey": "IRP 009-AR00-00_A",
     "demandQty": 1,
-    "dueDate": "2026-06-04T12:00:00.000Z",
-    "lateDueDate": "2026-06-04T12:00:00.000Z",
-    "customerDeliveryDate": "2026-06-04T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "19324",
-    "parentOrderKey": "29569",
-    "jobCode": "19324",
+    "dueDate": "2026-07-26T19:45:00.000Z",
+    "lateDueDate": "2026-07-27T12:00:00.000Z",
+    "customerDeliveryDate": "2026-07-27T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19727",
+    "parentOrderKey": "30240",
+    "jobCode": "19727",
     "jobType": "C",
     "customerCode": "IRP",
     "customerName": "INTELLIGENT ROBOTICS PTY LTD",
@@ -157,7 +437,7 @@
     "attributes": [
       {
         "name": "Strategy",
-        "value": "JIT"
+        "value": "ASAP"
       },
       {
         "name": "JobType",
@@ -177,22 +457,22 @@
       },
       {
         "name": "DbrEndDate",
-        "value": "2026-06-04T12:00:00.000Z"
+        "value": "2026-07-22T23:15:00.000Z"
       }
     ]
   },
   {
-    "key": "29570",
-    "name": "29570 — PNEUMATICS BRACKET",
-    "productKey": "IRP 009-AP00-01_A",
+    "key": "30241",
+    "name": "30241 — ROBOT AIR PURGE BRACKET",
+    "productKey": "IRP 009-AR00-01_A",
     "demandQty": 1,
-    "dueDate": "2026-06-04T12:00:00.000Z",
-    "lateDueDate": "2026-06-04T12:00:00.000Z",
-    "customerDeliveryDate": "2026-06-04T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "19324",
-    "parentOrderKey": "29569",
-    "jobCode": "19324",
+    "dueDate": "2026-07-26T19:45:00.000Z",
+    "lateDueDate": "2026-07-27T12:00:00.000Z",
+    "customerDeliveryDate": "2026-07-27T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19727",
+    "parentOrderKey": "30240",
+    "jobCode": "19727",
     "jobType": "C",
     "customerCode": "IRP",
     "customerName": "INTELLIGENT ROBOTICS PTY LTD",
@@ -223,7 +503,7 @@
     "attributes": [
       {
         "name": "Strategy",
-        "value": "JIT"
+        "value": "ASAP"
       },
       {
         "name": "JobType",
@@ -243,42 +523,42 @@
       },
       {
         "name": "DbrEndDate",
-        "value": "2026-06-04T12:00:00.000Z"
+        "value": "2026-07-22T23:15:00.000Z"
       }
     ]
   },
   {
-    "key": "28767",
-    "name": "28767 — 25KG DOUBLE BAG TIP GENERAL ARRANGEMENT",
-    "productKey": "POW P458-03-001_A",
+    "key": "30189",
+    "name": "30189 — HINGE PIN",
+    "productKey": "APL T682.11_0",
     "demandQty": 1,
-    "dueDate": "2026-06-21T19:45:00.000Z",
-    "lateDueDate": "2026-05-28T12:00:00.000Z",
-    "customerDeliveryDate": "2026-05-28T12:00:00.000Z",
+    "dueDate": "2026-07-28T19:45:00.000Z",
+    "lateDueDate": "2026-07-30T12:00:00.000Z",
+    "customerDeliveryDate": "2026-07-30T12:00:00.000Z",
     "priority": 5,
-    "groupKey": "18816",
-    "parentOrderKey": "28767",
-    "jobCode": "18816",
+    "groupKey": "19664",
+    "parentOrderKey": "30188",
+    "jobCode": "19664",
     "jobType": "C",
-    "customerCode": "POW",
-    "customerName": "POWDER PROJECTS LTD",
+    "customerCode": "APL",
+    "customerName": "ARCHITECTURAL PROFILES LTD",
     "itemFamily": "S-ENG",
     "wostatus": "PRINTED",
     "hierarchies": [
       {
         "slot": 1,
         "name": "Customer",
-        "value": "POWDER PROJECTS LTD"
+        "value": "ARCHITECTURAL PROFILES LTD"
       },
       {
         "slot": 2,
         "name": "Project",
-        "value": "25KG DOUBLE BAG TIP"
+        "value": "MULTI DRILL JIG"
       },
       {
         "slot": 3,
         "name": "SalesOrder",
-        "value": "00012361"
+        "value": "00012637"
       },
       {
         "slot": 4,
@@ -301,50 +581,50 @@
       },
       {
         "name": "ProjectManagerCode",
-        "value": "050"
+        "value": "025"
       },
       {
         "name": "ProjectManagerName",
-        "value": "KALEB JAMES"
+        "value": "JULIAN FORD"
       },
       {
         "name": "DbrEndDate",
-        "value": "2026-05-05T18:03:00.000Z"
+        "value": "2026-07-26T13:10:01.200Z"
       }
     ]
   },
   {
-    "key": "28768",
-    "name": "28768 — 25KG DOUBLE BAG TIP BODY ASSEMBLY",
-    "productKey": "POW P458-03-002_C",
+    "key": "30190",
+    "name": "30190 — 9140133  MULTIDRILL JIG BASE P",
+    "productKey": "APL T682.4_0",
     "demandQty": 1,
-    "dueDate": "2026-06-21T19:45:00.000Z",
-    "lateDueDate": "2026-05-28T12:00:00.000Z",
-    "customerDeliveryDate": "2026-05-28T12:00:00.000Z",
+    "dueDate": "2026-07-28T19:45:00.000Z",
+    "lateDueDate": "2026-07-30T12:00:00.000Z",
+    "customerDeliveryDate": "2026-07-30T12:00:00.000Z",
     "priority": 5,
-    "groupKey": "18816",
-    "parentOrderKey": "28767",
-    "jobCode": "18816",
+    "groupKey": "19664",
+    "parentOrderKey": "30188",
+    "jobCode": "19664",
     "jobType": "C",
-    "customerCode": "POW",
-    "customerName": "POWDER PROJECTS LTD",
+    "customerCode": "APL",
+    "customerName": "ARCHITECTURAL PROFILES LTD",
     "itemFamily": "S-ENG",
     "wostatus": "PRINTED",
     "hierarchies": [
       {
         "slot": 1,
         "name": "Customer",
-        "value": "POWDER PROJECTS LTD"
+        "value": "ARCHITECTURAL PROFILES LTD"
       },
       {
         "slot": 2,
         "name": "Project",
-        "value": "25KG DOUBLE BAG TIP"
+        "value": "MULTI DRILL JIG"
       },
       {
         "slot": 3,
         "name": "SalesOrder",
-        "value": "00012361"
+        "value": "00012637"
       },
       {
         "slot": 4,
@@ -367,50 +647,496 @@
       },
       {
         "name": "ProjectManagerCode",
-        "value": "050"
+        "value": "025"
       },
       {
         "name": "ProjectManagerName",
-        "value": "KALEB JAMES"
+        "value": "JULIAN FORD"
       },
       {
         "name": "DbrEndDate",
-        "value": "2026-05-05T18:03:00.000Z"
+        "value": "2026-07-26T13:10:01.200Z"
       }
     ]
   },
   {
-    "key": "28770",
-    "name": "28770 — HINGED LID DETAILS",
-    "productKey": "POW P458-03-006_A",
+    "key": "30188",
+    "name": "30188 — 9240060 HINGE PLATE & PIN",
+    "productKey": "APL TD01.3.4_0",
+    "demandQty": 1,
+    "dueDate": "2026-07-28T19:45:00.000Z",
+    "lateDueDate": "2026-07-30T12:00:00.000Z",
+    "customerDeliveryDate": "2026-07-30T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19664",
+    "parentOrderKey": "30188",
+    "jobCode": "19664",
+    "jobType": "C",
+    "customerCode": "APL",
+    "customerName": "ARCHITECTURAL PROFILES LTD",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "ARCHITECTURAL PROFILES LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "MULTI DRILL JIG"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012637"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "025"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "JULIAN FORD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-07-26T13:10:01.200Z"
+      }
+    ]
+  },
+  {
+    "key": "26784",
+    "name": "26784 — CUSTOMER SUPPLIED ITEMS",
+    "productKey": "RIO CS ITEMS",
+    "demandQty": 1,
+    "dueDate": "2026-07-21T11:36:00.000Z",
+    "lateDueDate": "2026-09-24T12:00:00.000Z",
+    "customerDeliveryDate": "2026-09-24T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "17750",
+    "parentOrderKey": "26761",
+    "jobCode": "17750",
+    "jobType": "C",
+    "customerCode": "RIO-NU",
+    "customerName": "NUTON LLC",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "NUTON LLC"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "18 x COLUMN MODULES-2026"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012163"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "095"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "DAVE STUART"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T02:14:59.000Z"
+      }
+    ]
+  },
+  {
+    "key": "26786",
+    "name": "26786 — LONG LEADTIME PARTS PER COLUMN",
+    "productKey": "RIO LLT COLUMN",
+    "demandQty": 54,
+    "dueDate": "2026-07-21T11:36:00.000Z",
+    "lateDueDate": "2026-09-24T12:00:00.000Z",
+    "customerDeliveryDate": "2026-09-24T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "17750",
+    "parentOrderKey": "26785",
+    "jobCode": "17750",
+    "jobType": "C",
+    "customerCode": "RIO-NU",
+    "customerName": "NUTON LLC",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "NUTON LLC"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "18 x COLUMN MODULES-2026"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012163"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "095"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "DAVE STUART"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T02:14:59.000Z"
+      }
+    ]
+  },
+  {
+    "key": "26785",
+    "name": "26785 — SEL SUPPLIED LONG LEAD TIME ITEMS",
+    "productKey": "RIO LLT ITEMS",
+    "demandQty": 1,
+    "dueDate": "2026-07-21T11:36:00.000Z",
+    "lateDueDate": "2026-09-24T12:00:00.000Z",
+    "customerDeliveryDate": "2026-09-24T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "17750",
+    "parentOrderKey": "26761",
+    "jobCode": "17750",
+    "jobType": "C",
+    "customerCode": "RIO-NU",
+    "customerName": "NUTON LLC",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "NUTON LLC"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "18 x COLUMN MODULES-2026"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012163"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "095"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "DAVE STUART"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T02:14:59.000Z"
+      }
+    ]
+  },
+  {
+    "key": "26761",
+    "name": "26761 — 3 X 18 COLUMN MODULES 2026 PRE-PURCHASING",
+    "productKey": "SEL MISC PURCHASING",
+    "demandQty": 1,
+    "dueDate": "2026-07-21T11:36:00.000Z",
+    "lateDueDate": "2026-09-24T12:00:00.000Z",
+    "customerDeliveryDate": "2026-09-24T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "17750",
+    "parentOrderKey": "26761",
+    "jobCode": "17750",
+    "jobType": "C",
+    "customerCode": "RIO-NU",
+    "customerName": "NUTON LLC",
+    "itemFamily": "NA",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "NUTON LLC"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "18 x COLUMN MODULES-2026"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012163"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "095"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "DAVE STUART"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-28T02:14:59.000Z"
+      }
+    ]
+  },
+  {
+    "key": "29634",
+    "name": "29634 — ROTARY TIG WELDING MACHINE",
+    "productKey": "SEL 072-0000-00_A",
+    "demandQty": 1,
+    "dueDate": "2026-06-16T12:00:00.000Z",
+    "lateDueDate": "2026-06-18T12:00:00.000Z",
+    "customerDeliveryDate": "2026-06-18T12:00:00.000Z",
+    "priority": 10,
+    "groupKey": "S19354",
+    "parentOrderKey": "29633",
+    "jobCode": "S19354",
+    "jobType": "U",
+    "customerCode": "SEL",
+    "customerName": "STAFFORD ENGINEERING",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "STAFFORD ENGINEERING"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": null
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": ""
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "U"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-16T12:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "key": "29633",
+    "name": "29633 — ROTARY TIG WELDING MACHINE",
+    "productKey": "Z-R&M FABRICATION",
+    "demandQty": 1,
+    "dueDate": "2026-06-16T12:00:00.000Z",
+    "lateDueDate": "2026-06-18T12:00:00.000Z",
+    "customerDeliveryDate": "2026-06-18T12:00:00.000Z",
+    "priority": 10,
+    "groupKey": "S19354",
+    "parentOrderKey": "29633",
+    "jobCode": "S19354",
+    "jobType": "U",
+    "customerCode": "SEL",
+    "customerName": "STAFFORD ENGINEERING",
+    "itemFamily": "C-R&M",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "STAFFORD ENGINEERING"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": null
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": ""
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "JIT"
+      },
+      {
+        "name": "JobType",
+        "value": "U"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-16T12:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "key": "30204",
+    "name": "30204 — BOSS FOR DOOR HANDLE",
+    "productKey": "CRY 251014-A0-01-X02_A",
     "demandQty": 2,
-    "dueDate": "2026-06-21T19:45:00.000Z",
-    "lateDueDate": "2026-05-28T12:00:00.000Z",
-    "customerDeliveryDate": "2026-05-28T12:00:00.000Z",
+    "dueDate": "2026-07-21T19:45:00.000Z",
+    "lateDueDate": "2026-07-23T12:00:00.000Z",
+    "customerDeliveryDate": "2026-07-23T12:00:00.000Z",
     "priority": 5,
-    "groupKey": "18816",
-    "parentOrderKey": "28767",
-    "jobCode": "18816",
+    "groupKey": "19676",
+    "parentOrderKey": "30203",
+    "jobCode": "19676",
     "jobType": "C",
-    "customerCode": "POW",
-    "customerName": "POWDER PROJECTS LTD",
+    "customerCode": "HAL",
+    "customerName": "HAYNES AUTOMATION LIMITED",
     "itemFamily": "S-ENG",
     "wostatus": "PRINTED",
     "hierarchies": [
       {
         "slot": 1,
         "name": "Customer",
-        "value": "POWDER PROJECTS LTD"
+        "value": "HAYNES AUTOMATION LIMITED"
       },
       {
         "slot": 2,
         "name": "Project",
-        "value": "25KG DOUBLE BAG TIP"
+        "value": "CL20 EXTENDED DOOR HANDLE"
       },
       {
         "slot": 3,
         "name": "SalesOrder",
-        "value": "00012361"
+        "value": "00012638"
       },
       {
         "slot": 4,
@@ -433,116 +1159,50 @@
       },
       {
         "name": "ProjectManagerCode",
-        "value": "050"
+        "value": "095"
       },
       {
         "name": "ProjectManagerName",
-        "value": "KALEB JAMES"
+        "value": "DAVE STUART"
       },
       {
         "name": "DbrEndDate",
-        "value": "2026-05-05T18:03:00.000Z"
+        "value": "2026-07-16T22:45:00.000Z"
       }
     ]
   },
   {
-    "key": "28771",
-    "name": "28771 — LID SUPPORT GAS STRUT",
-    "productKey": "POW P458-03-010_A",
-    "demandQty": 1,
-    "dueDate": "2026-06-21T19:45:00.000Z",
-    "lateDueDate": "2026-05-28T12:00:00.000Z",
-    "customerDeliveryDate": "2026-05-28T12:00:00.000Z",
-    "priority": 5,
-    "groupKey": "18816",
-    "parentOrderKey": "28767",
-    "jobCode": "18816",
-    "jobType": "C",
-    "customerCode": "POW",
-    "customerName": "POWDER PROJECTS LTD",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "hierarchies": [
-      {
-        "slot": 1,
-        "name": "Customer",
-        "value": "POWDER PROJECTS LTD"
-      },
-      {
-        "slot": 2,
-        "name": "Project",
-        "value": "25KG DOUBLE BAG TIP"
-      },
-      {
-        "slot": 3,
-        "name": "SalesOrder",
-        "value": "00012361"
-      },
-      {
-        "slot": 4,
-        "name": "Family",
-        "value": "S-ENG"
-      }
-    ],
-    "attributes": [
-      {
-        "name": "Strategy",
-        "value": "ASAP"
-      },
-      {
-        "name": "JobType",
-        "value": "C"
-      },
-      {
-        "name": "CustomerSource",
-        "value": "genius-master"
-      },
-      {
-        "name": "ProjectManagerCode",
-        "value": "050"
-      },
-      {
-        "name": "ProjectManagerName",
-        "value": "KALEB JAMES"
-      },
-      {
-        "name": "DbrEndDate",
-        "value": "2026-05-05T18:03:00.000Z"
-      }
-    ]
-  },
-  {
-    "key": "28769",
-    "name": "28769 — MAIN OPENING INSERT",
-    "productKey": "POW P458-03-011_A",
+    "key": "30203",
+    "name": "30203 — EXTENDED HANDLE",
+    "productKey": "CRY 251014-A0-01_B",
     "demandQty": 2,
-    "dueDate": "2026-06-21T19:45:00.000Z",
-    "lateDueDate": "2026-05-28T12:00:00.000Z",
-    "customerDeliveryDate": "2026-05-28T12:00:00.000Z",
+    "dueDate": "2026-07-21T19:45:00.000Z",
+    "lateDueDate": "2026-07-23T12:00:00.000Z",
+    "customerDeliveryDate": "2026-07-23T12:00:00.000Z",
     "priority": 5,
-    "groupKey": "18816",
-    "parentOrderKey": "28767",
-    "jobCode": "18816",
+    "groupKey": "19676",
+    "parentOrderKey": "30203",
+    "jobCode": "19676",
     "jobType": "C",
-    "customerCode": "POW",
-    "customerName": "POWDER PROJECTS LTD",
+    "customerCode": "HAL",
+    "customerName": "HAYNES AUTOMATION LIMITED",
     "itemFamily": "S-ENG",
     "wostatus": "PRINTED",
     "hierarchies": [
       {
         "slot": 1,
         "name": "Customer",
-        "value": "POWDER PROJECTS LTD"
+        "value": "HAYNES AUTOMATION LIMITED"
       },
       {
         "slot": 2,
         "name": "Project",
-        "value": "25KG DOUBLE BAG TIP"
+        "value": "CL20 EXTENDED DOOR HANDLE"
       },
       {
         "slot": 3,
         "name": "SalesOrder",
-        "value": "00012361"
+        "value": "00012638"
       },
       {
         "slot": 4,
@@ -565,50 +1225,50 @@
       },
       {
         "name": "ProjectManagerCode",
-        "value": "050"
+        "value": "095"
       },
       {
         "name": "ProjectManagerName",
-        "value": "KALEB JAMES"
+        "value": "DAVE STUART"
       },
       {
         "name": "DbrEndDate",
-        "value": "2026-05-05T18:03:00.000Z"
+        "value": "2026-07-16T22:45:00.000Z"
       }
     ]
   },
   {
-    "key": "28773",
-    "name": "28773 — FLOOR PENETRATION UPSTAND DETAIL",
-    "productKey": "POW P458-03-019_A",
+    "key": "29905",
+    "name": "29905 — ELEVATOR PLATE ASSEMBLY",
+    "productKey": "FON 250805-A0-00_A",
     "demandQty": 1,
-    "dueDate": "2026-06-21T19:45:00.000Z",
-    "lateDueDate": "2026-05-28T12:00:00.000Z",
-    "customerDeliveryDate": "2026-05-28T12:00:00.000Z",
+    "dueDate": "2026-07-23T00:45:00.000Z",
+    "lateDueDate": "2026-07-20T12:00:00.000Z",
+    "customerDeliveryDate": "2026-07-20T12:00:00.000Z",
     "priority": 5,
-    "groupKey": "18816",
-    "parentOrderKey": "28767",
-    "jobCode": "18816",
+    "groupKey": "19394",
+    "parentOrderKey": "29905",
+    "jobCode": "19394",
     "jobType": "C",
-    "customerCode": "POW",
-    "customerName": "POWDER PROJECTS LTD",
+    "customerCode": "FON",
+    "customerName": "FONTERRA CO-OPERATIVE GROUP",
     "itemFamily": "S-ENG",
     "wostatus": "PRINTED",
     "hierarchies": [
       {
         "slot": 1,
         "name": "Customer",
-        "value": "POWDER PROJECTS LTD"
+        "value": "FONTERRA CO-OPERATIVE GROUP"
       },
       {
         "slot": 2,
         "name": "Project",
-        "value": "25KG DOUBLE BAG TIP"
+        "value": "LITCHFIELD ELEVATOR PLATE"
       },
       {
         "slot": 3,
         "name": "SalesOrder",
-        "value": "00012361"
+        "value": "00012554"
       },
       {
         "slot": 4,
@@ -631,50 +1291,50 @@
       },
       {
         "name": "ProjectManagerCode",
-        "value": "050"
+        "value": "095"
       },
       {
         "name": "ProjectManagerName",
-        "value": "KALEB JAMES"
+        "value": "DAVE STUART"
       },
       {
         "name": "DbrEndDate",
-        "value": "2026-05-05T18:03:00.000Z"
+        "value": "2026-07-10T04:21:00.000Z"
       }
     ]
   },
   {
-    "key": "29169",
-    "name": "29169 — MANUAL POWDER SAMPLER - FLAT",
-    "productKey": "TET 6-337 17 01019_A",
+    "key": "29907",
+    "name": "29907 — ADAPTOR BOSS",
+    "productKey": "FON 250805-A0-02_A",
     "demandQty": 1,
-    "dueDate": "2026-05-26T12:00:00.000Z",
-    "lateDueDate": "2026-05-28T12:00:00.000Z",
-    "customerDeliveryDate": "2026-05-28T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "19129",
-    "parentOrderKey": "29169",
-    "jobCode": "19129",
+    "dueDate": "2026-07-23T00:45:00.000Z",
+    "lateDueDate": "2026-07-20T12:00:00.000Z",
+    "customerDeliveryDate": "2026-07-20T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19394",
+    "parentOrderKey": "29905",
+    "jobCode": "19394",
     "jobType": "C",
-    "customerCode": "TET",
-    "customerName": "TETRA PAK (NEW ZEALAND) LTD",
+    "customerCode": "FON",
+    "customerName": "FONTERRA CO-OPERATIVE GROUP",
     "itemFamily": "S-ENG",
     "wostatus": "PRINTED",
     "hierarchies": [
       {
         "slot": 1,
         "name": "Customer",
-        "value": "TETRA PAK (NEW ZEALAND) LTD"
+        "value": "FONTERRA CO-OPERATIVE GROUP"
       },
       {
         "slot": 2,
         "name": "Project",
-        "value": "MANUAL POWDER SAMPLER"
+        "value": "LITCHFIELD ELEVATOR PLATE"
       },
       {
         "slot": 3,
         "name": "SalesOrder",
-        "value": "00012487"
+        "value": "00012554"
       },
       {
         "slot": 4,
@@ -685,403 +1345,7 @@
     "attributes": [
       {
         "name": "Strategy",
-        "value": "JIT"
-      },
-      {
-        "name": "JobType",
-        "value": "C"
-      },
-      {
-        "name": "CustomerSource",
-        "value": "genius-master"
-      },
-      {
-        "name": "ProjectManagerCode",
-        "value": "025"
-      },
-      {
-        "name": "ProjectManagerName",
-        "value": "JULIAN FORD"
-      },
-      {
-        "name": "DbrEndDate",
-        "value": "2026-05-26T12:00:00.000Z"
-      }
-    ]
-  },
-  {
-    "key": "29173",
-    "name": "29173 — SAMPLE PLUNGER HANDLE",
-    "productKey": "TET 6-337-17-01013_A",
-    "demandQty": 1,
-    "dueDate": "2026-05-26T12:00:00.000Z",
-    "lateDueDate": "2026-05-28T12:00:00.000Z",
-    "customerDeliveryDate": "2026-05-28T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "19129",
-    "parentOrderKey": "29169",
-    "jobCode": "19129",
-    "jobType": "C",
-    "customerCode": "TET",
-    "customerName": "TETRA PAK (NEW ZEALAND) LTD",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "hierarchies": [
-      {
-        "slot": 1,
-        "name": "Customer",
-        "value": "TETRA PAK (NEW ZEALAND) LTD"
-      },
-      {
-        "slot": 2,
-        "name": "Project",
-        "value": "MANUAL POWDER SAMPLER"
-      },
-      {
-        "slot": 3,
-        "name": "SalesOrder",
-        "value": "00012487"
-      },
-      {
-        "slot": 4,
-        "name": "Family",
-        "value": "S-ENG"
-      }
-    ],
-    "attributes": [
-      {
-        "name": "Strategy",
-        "value": "JIT"
-      },
-      {
-        "name": "JobType",
-        "value": "C"
-      },
-      {
-        "name": "CustomerSource",
-        "value": "genius-master"
-      },
-      {
-        "name": "ProjectManagerCode",
-        "value": "025"
-      },
-      {
-        "name": "ProjectManagerName",
-        "value": "JULIAN FORD"
-      },
-      {
-        "name": "DbrEndDate",
-        "value": "2026-05-26T12:00:00.000Z"
-      }
-    ]
-  },
-  {
-    "key": "29172",
-    "name": "29172 — SAMPLE PLUNGER - FLAT",
-    "productKey": "TET 6-337-17-01014_A",
-    "demandQty": 1,
-    "dueDate": "2026-05-26T12:00:00.000Z",
-    "lateDueDate": "2026-05-28T12:00:00.000Z",
-    "customerDeliveryDate": "2026-05-28T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "19129",
-    "parentOrderKey": "29169",
-    "jobCode": "19129",
-    "jobType": "C",
-    "customerCode": "TET",
-    "customerName": "TETRA PAK (NEW ZEALAND) LTD",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "hierarchies": [
-      {
-        "slot": 1,
-        "name": "Customer",
-        "value": "TETRA PAK (NEW ZEALAND) LTD"
-      },
-      {
-        "slot": 2,
-        "name": "Project",
-        "value": "MANUAL POWDER SAMPLER"
-      },
-      {
-        "slot": 3,
-        "name": "SalesOrder",
-        "value": "00012487"
-      },
-      {
-        "slot": 4,
-        "name": "Family",
-        "value": "S-ENG"
-      }
-    ],
-    "attributes": [
-      {
-        "name": "Strategy",
-        "value": "JIT"
-      },
-      {
-        "name": "JobType",
-        "value": "C"
-      },
-      {
-        "name": "CustomerSource",
-        "value": "genius-master"
-      },
-      {
-        "name": "ProjectManagerCode",
-        "value": "025"
-      },
-      {
-        "name": "ProjectManagerName",
-        "value": "JULIAN FORD"
-      },
-      {
-        "name": "DbrEndDate",
-        "value": "2026-05-26T12:00:00.000Z"
-      }
-    ]
-  },
-  {
-    "key": "29171",
-    "name": "29171 — INNER BODY - FLAT",
-    "productKey": "TET 6-337-17-01018_A",
-    "demandQty": 1,
-    "dueDate": "2026-05-26T12:00:00.000Z",
-    "lateDueDate": "2026-05-28T12:00:00.000Z",
-    "customerDeliveryDate": "2026-05-28T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "19129",
-    "parentOrderKey": "29169",
-    "jobCode": "19129",
-    "jobType": "C",
-    "customerCode": "TET",
-    "customerName": "TETRA PAK (NEW ZEALAND) LTD",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "hierarchies": [
-      {
-        "slot": 1,
-        "name": "Customer",
-        "value": "TETRA PAK (NEW ZEALAND) LTD"
-      },
-      {
-        "slot": 2,
-        "name": "Project",
-        "value": "MANUAL POWDER SAMPLER"
-      },
-      {
-        "slot": 3,
-        "name": "SalesOrder",
-        "value": "00012487"
-      },
-      {
-        "slot": 4,
-        "name": "Family",
-        "value": "S-ENG"
-      }
-    ],
-    "attributes": [
-      {
-        "name": "Strategy",
-        "value": "JIT"
-      },
-      {
-        "name": "JobType",
-        "value": "C"
-      },
-      {
-        "name": "CustomerSource",
-        "value": "genius-master"
-      },
-      {
-        "name": "ProjectManagerCode",
-        "value": "025"
-      },
-      {
-        "name": "ProjectManagerName",
-        "value": "JULIAN FORD"
-      },
-      {
-        "name": "DbrEndDate",
-        "value": "2026-05-26T12:00:00.000Z"
-      }
-    ]
-  },
-  {
-    "key": "28692",
-    "name": "28692 — DRIVE SHAFT DRIVE STUB",
-    "productKey": "TNP BF02-03-037_A",
-    "demandQty": 1,
-    "dueDate": "2026-05-05T12:00:00.000Z",
-    "lateDueDate": "2026-05-07T12:00:00.000Z",
-    "customerDeliveryDate": "2026-05-07T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "18799",
-    "parentOrderKey": "28687",
-    "jobCode": "18799",
-    "jobType": "C",
-    "customerCode": "TNP",
-    "customerName": "TECHNOPAK LIMITED",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "hierarchies": [
-      {
-        "slot": 1,
-        "name": "Customer",
-        "value": "TECHNOPAK LIMITED"
-      },
-      {
-        "slot": 2,
-        "name": "Project",
-        "value": "DRIVESHAFT AND CLAMP"
-      },
-      {
-        "slot": 3,
-        "name": "SalesOrder",
-        "value": "00012412"
-      },
-      {
-        "slot": 4,
-        "name": "Family",
-        "value": "S-ENG"
-      }
-    ],
-    "attributes": [
-      {
-        "name": "Strategy",
-        "value": "JIT"
-      },
-      {
-        "name": "JobType",
-        "value": "C"
-      },
-      {
-        "name": "CustomerSource",
-        "value": "genius-master"
-      },
-      {
-        "name": "ProjectManagerCode",
-        "value": "025"
-      },
-      {
-        "name": "ProjectManagerName",
-        "value": "JULIAN FORD"
-      },
-      {
-        "name": "DbrEndDate",
-        "value": "2026-05-05T12:00:00.000Z"
-      }
-    ]
-  },
-  {
-    "key": "28687",
-    "name": "28687 — DRIVE SHAFT SUB ASSEMBLY",
-    "productKey": "TNP BF02-03-SA11_C",
-    "demandQty": 1,
-    "dueDate": "2026-05-05T12:00:00.000Z",
-    "lateDueDate": "2026-05-07T12:00:00.000Z",
-    "customerDeliveryDate": "2026-05-07T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "18799",
-    "parentOrderKey": "28687",
-    "jobCode": "18799",
-    "jobType": "C",
-    "customerCode": "TNP",
-    "customerName": "TECHNOPAK LIMITED",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "hierarchies": [
-      {
-        "slot": 1,
-        "name": "Customer",
-        "value": "TECHNOPAK LIMITED"
-      },
-      {
-        "slot": 2,
-        "name": "Project",
-        "value": "DRIVESHAFT AND CLAMP"
-      },
-      {
-        "slot": 3,
-        "name": "SalesOrder",
-        "value": "00012412"
-      },
-      {
-        "slot": 4,
-        "name": "Family",
-        "value": "S-ENG"
-      }
-    ],
-    "attributes": [
-      {
-        "name": "Strategy",
-        "value": "JIT"
-      },
-      {
-        "name": "JobType",
-        "value": "C"
-      },
-      {
-        "name": "CustomerSource",
-        "value": "genius-master"
-      },
-      {
-        "name": "ProjectManagerCode",
-        "value": "025"
-      },
-      {
-        "name": "ProjectManagerName",
-        "value": "JULIAN FORD"
-      },
-      {
-        "name": "DbrEndDate",
-        "value": "2026-05-05T12:00:00.000Z"
-      }
-    ]
-  },
-  {
-    "key": "29575",
-    "name": "29575 — 120MM DRILL HEAD ASSEMBLY",
-    "productKey": "CAS 220505-C000-00_A",
-    "demandQty": 1,
-    "dueDate": "2026-06-08T12:00:00.000Z",
-    "lateDueDate": "2026-06-10T12:00:00.000Z",
-    "customerDeliveryDate": "2026-06-10T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "19325",
-    "parentOrderKey": "29575",
-    "jobCode": "19325",
-    "jobType": "C",
-    "customerCode": "CAS",
-    "customerName": "CASH SALE - LOCAL",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "hierarchies": [
-      {
-        "slot": 1,
-        "name": "Customer",
-        "value": "CASH SALE - LOCAL"
-      },
-      {
-        "slot": 2,
-        "name": "Project",
-        "value": "120MM DRILL HEAD"
-      },
-      {
-        "slot": 3,
-        "name": "SalesOrder",
-        "value": "00012510"
-      },
-      {
-        "slot": 4,
-        "name": "Family",
-        "value": "S-ENG"
-      }
-    ],
-    "attributes": [
-      {
-        "name": "Strategy",
-        "value": "JIT"
+        "value": "ASAP"
       },
       {
         "name": "JobType",
@@ -1101,42 +1365,42 @@
       },
       {
         "name": "DbrEndDate",
-        "value": "2026-06-08T12:00:00.000Z"
+        "value": "2026-07-10T04:21:00.000Z"
       }
     ]
   },
   {
-    "key": "29576",
-    "name": "29576 — WOOD DRILL BODY",
-    "productKey": "CAS 220505-C000-01_A",
+    "key": "29908",
+    "name": "29908 — LOCK NUT",
+    "productKey": "FON 250805-A0-03_A",
     "demandQty": 1,
-    "dueDate": "2026-06-08T12:00:00.000Z",
-    "lateDueDate": "2026-06-10T12:00:00.000Z",
-    "customerDeliveryDate": "2026-06-10T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "19325",
-    "parentOrderKey": "29575",
-    "jobCode": "19325",
+    "dueDate": "2026-07-23T00:45:00.000Z",
+    "lateDueDate": "2026-07-20T12:00:00.000Z",
+    "customerDeliveryDate": "2026-07-20T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19394",
+    "parentOrderKey": "29905",
+    "jobCode": "19394",
     "jobType": "C",
-    "customerCode": "CAS",
-    "customerName": "CASH SALE - LOCAL",
+    "customerCode": "FON",
+    "customerName": "FONTERRA CO-OPERATIVE GROUP",
     "itemFamily": "S-ENG",
     "wostatus": "PRINTED",
     "hierarchies": [
       {
         "slot": 1,
         "name": "Customer",
-        "value": "CASH SALE - LOCAL"
+        "value": "FONTERRA CO-OPERATIVE GROUP"
       },
       {
         "slot": 2,
         "name": "Project",
-        "value": "120MM DRILL HEAD"
+        "value": "LITCHFIELD ELEVATOR PLATE"
       },
       {
         "slot": 3,
         "name": "SalesOrder",
-        "value": "00012510"
+        "value": "00012554"
       },
       {
         "slot": 4,
@@ -1147,7 +1411,7 @@
     "attributes": [
       {
         "name": "Strategy",
-        "value": "JIT"
+        "value": "ASAP"
       },
       {
         "name": "JobType",
@@ -1167,42 +1431,42 @@
       },
       {
         "name": "DbrEndDate",
-        "value": "2026-06-08T12:00:00.000Z"
+        "value": "2026-07-10T04:21:00.000Z"
       }
     ]
   },
   {
-    "key": "29577",
-    "name": "29577 — AMAC HIGH SPEED STEEL KNIFE",
-    "productKey": "CAS 220505-C000-02_A",
-    "demandQty": 2,
-    "dueDate": "2026-06-08T12:00:00.000Z",
-    "lateDueDate": "2026-06-10T12:00:00.000Z",
-    "customerDeliveryDate": "2026-06-10T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "19325",
-    "parentOrderKey": "29575",
-    "jobCode": "19325",
+    "key": "29909",
+    "name": "29909 — PISTON ROD",
+    "productKey": "FON 250805-A0-04_A",
+    "demandQty": 1,
+    "dueDate": "2026-07-23T00:45:00.000Z",
+    "lateDueDate": "2026-07-20T12:00:00.000Z",
+    "customerDeliveryDate": "2026-07-20T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19394",
+    "parentOrderKey": "29905",
+    "jobCode": "19394",
     "jobType": "C",
-    "customerCode": "CAS",
-    "customerName": "CASH SALE - LOCAL",
+    "customerCode": "FON",
+    "customerName": "FONTERRA CO-OPERATIVE GROUP",
     "itemFamily": "S-ENG",
     "wostatus": "PRINTED",
     "hierarchies": [
       {
         "slot": 1,
         "name": "Customer",
-        "value": "CASH SALE - LOCAL"
+        "value": "FONTERRA CO-OPERATIVE GROUP"
       },
       {
         "slot": 2,
         "name": "Project",
-        "value": "120MM DRILL HEAD"
+        "value": "LITCHFIELD ELEVATOR PLATE"
       },
       {
         "slot": 3,
         "name": "SalesOrder",
-        "value": "00012510"
+        "value": "00012554"
       },
       {
         "slot": 4,
@@ -1213,7 +1477,7 @@
     "attributes": [
       {
         "name": "Strategy",
-        "value": "JIT"
+        "value": "ASAP"
       },
       {
         "name": "JobType",
@@ -1233,550 +1497,1210 @@
       },
       {
         "name": "DbrEndDate",
-        "value": "2026-06-08T12:00:00.000Z"
+        "value": "2026-07-10T04:21:00.000Z"
       }
     ]
   },
   {
-    "key": "28522",
-    "name": "28522 — DANCER ARM ASSEMBLY",
-    "productKey": "FPH 509007-D-S-001_A",
-    "demandQty": 4,
-    "dueDate": "2026-05-26T12:00:00.000Z",
-    "lateDueDate": "2026-05-28T12:00:00.000Z",
-    "customerDeliveryDate": "2026-05-28T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "18627",
-    "parentOrderKey": "28522",
-    "jobCode": "18627",
-    "jobType": "C",
-    "customerCode": "FPH",
-    "customerName": "FISHER & PAYKEL HEALTHCARE",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "hierarchies": [
-      {
-        "slot": 1,
-        "name": "Customer",
-        "value": "FISHER & PAYKEL HEALTHCARE"
-      },
-      {
-        "slot": 2,
-        "name": "Project",
-        "value": "DE-REELER & DOSING PARTS"
-      },
-      {
-        "slot": 3,
-        "name": "SalesOrder",
-        "value": "00012387"
-      },
-      {
-        "slot": 4,
-        "name": "Family",
-        "value": "S-ENG"
-      }
-    ],
-    "attributes": [
-      {
-        "name": "Strategy",
-        "value": "JIT"
-      },
-      {
-        "name": "JobType",
-        "value": "C"
-      },
-      {
-        "name": "CustomerSource",
-        "value": "genius-master"
-      },
-      {
-        "name": "ProjectManagerCode",
-        "value": "025"
-      },
-      {
-        "name": "ProjectManagerName",
-        "value": "JULIAN FORD"
-      },
-      {
-        "name": "DbrEndDate",
-        "value": "2026-05-26T12:00:00.000Z"
-      }
-    ]
-  },
-  {
-    "key": "28523",
-    "name": "28523 — WIDE PULLEY - PRESS ASSY",
-    "productKey": "FPH 509007-D-S-009_A",
-    "demandQty": 4,
-    "dueDate": "2026-05-26T12:00:00.000Z",
-    "lateDueDate": "2026-05-28T12:00:00.000Z",
-    "customerDeliveryDate": "2026-05-28T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "18627",
-    "parentOrderKey": "28522",
-    "jobCode": "18627",
-    "jobType": "C",
-    "customerCode": "FPH",
-    "customerName": "FISHER & PAYKEL HEALTHCARE",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "hierarchies": [
-      {
-        "slot": 1,
-        "name": "Customer",
-        "value": "FISHER & PAYKEL HEALTHCARE"
-      },
-      {
-        "slot": 2,
-        "name": "Project",
-        "value": "DE-REELER & DOSING PARTS"
-      },
-      {
-        "slot": 3,
-        "name": "SalesOrder",
-        "value": "00012387"
-      },
-      {
-        "slot": 4,
-        "name": "Family",
-        "value": "S-ENG"
-      }
-    ],
-    "attributes": [
-      {
-        "name": "Strategy",
-        "value": "JIT"
-      },
-      {
-        "name": "JobType",
-        "value": "C"
-      },
-      {
-        "name": "CustomerSource",
-        "value": "genius-master"
-      },
-      {
-        "name": "ProjectManagerCode",
-        "value": "025"
-      },
-      {
-        "name": "ProjectManagerName",
-        "value": "JULIAN FORD"
-      },
-      {
-        "name": "DbrEndDate",
-        "value": "2026-05-26T12:00:00.000Z"
-      }
-    ]
-  },
-  {
-    "key": "28842",
-    "name": "28842 — CWF-5 LIW FEEDER & FRAME - LACTOSE HF",
-    "productKey": "GEA 30664331-O-0417-050_1",
-    "demandQty": 1,
-    "dueDate": "2026-06-10T11:59:59.997Z",
-    "lateDueDate": "2026-06-11T12:00:00.000Z",
-    "customerDeliveryDate": "2026-06-11T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "18906",
-    "parentOrderKey": "28842",
-    "jobCode": "18906",
-    "jobType": "C",
-    "customerCode": "GEA",
-    "customerName": "GEA NEW ZEALAND LIMITED",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "hierarchies": [
-      {
-        "slot": 1,
-        "name": "Customer",
-        "value": "GEA NEW ZEALAND LIMITED"
-      },
-      {
-        "slot": 2,
-        "name": "Project",
-        "value": "2 x CWF-5 LIW FEEDERS"
-      },
-      {
-        "slot": 3,
-        "name": "SalesOrder",
-        "value": "00012397"
-      },
-      {
-        "slot": 4,
-        "name": "Family",
-        "value": "S-ENG"
-      }
-    ],
-    "attributes": [
-      {
-        "name": "Strategy",
-        "value": "JIT"
-      },
-      {
-        "name": "JobType",
-        "value": "C"
-      },
-      {
-        "name": "CustomerSource",
-        "value": "genius-master"
-      },
-      {
-        "name": "ProjectManagerCode",
-        "value": "050"
-      },
-      {
-        "name": "ProjectManagerName",
-        "value": "KALEB JAMES"
-      },
-      {
-        "name": "DbrEndDate",
-        "value": "2026-06-10T11:59:59.997Z"
-      }
-    ]
-  },
-  {
-    "key": "28866",
-    "name": "28866 — CWF-5 - 5\" AUGER LACTOSE HF",
-    "productKey": "GEA 30664331-O-0417-051_1",
-    "demandQty": 1,
-    "dueDate": "2026-06-10T11:59:59.997Z",
-    "lateDueDate": "2026-06-11T12:00:00.000Z",
-    "customerDeliveryDate": "2026-06-11T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "18906",
-    "parentOrderKey": "28842",
-    "jobCode": "18906",
-    "jobType": "C",
-    "customerCode": "GEA",
-    "customerName": "GEA NEW ZEALAND LIMITED",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "hierarchies": [
-      {
-        "slot": 1,
-        "name": "Customer",
-        "value": "GEA NEW ZEALAND LIMITED"
-      },
-      {
-        "slot": 2,
-        "name": "Project",
-        "value": "2 x CWF-5 LIW FEEDERS"
-      },
-      {
-        "slot": 3,
-        "name": "SalesOrder",
-        "value": "00012397"
-      },
-      {
-        "slot": 4,
-        "name": "Family",
-        "value": "S-ENG"
-      }
-    ],
-    "attributes": [
-      {
-        "name": "Strategy",
-        "value": "JIT"
-      },
-      {
-        "name": "JobType",
-        "value": "C"
-      },
-      {
-        "name": "CustomerSource",
-        "value": "genius-master"
-      },
-      {
-        "name": "ProjectManagerCode",
-        "value": "050"
-      },
-      {
-        "name": "ProjectManagerName",
-        "value": "KALEB JAMES"
-      },
-      {
-        "name": "DbrEndDate",
-        "value": "2026-06-10T11:59:59.997Z"
-      }
-    ]
-  },
-  {
-    "key": "28987",
-    "name": "28987 — DRIVE SHAFT",
-    "productKey": "MAR 012-C000-06_B",
-    "demandQty": 1,
-    "dueDate": "2026-04-27T12:00:00.000Z",
-    "lateDueDate": "2026-04-29T12:00:00.000Z",
-    "customerDeliveryDate": null,
-    "priority": 10,
-    "groupKey": "18300",
-    "parentOrderKey": "28969",
-    "jobCode": "18300",
-    "jobType": "I",
-    "customerCode": "SCO",
-    "customerName": "SCOTT AUTOMATION & ROBOTICS",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "hierarchies": [
-      {
-        "slot": 1,
-        "name": "Customer",
-        "value": "SCOTT AUTOMATION & ROBOTICS"
-      },
-      {
-        "slot": 2,
-        "name": "Project",
-        "value": "B400 SAW PROTOTYPE #2"
-      },
-      {
-        "slot": 3,
-        "name": "SalesOrder",
-        "value": "00012501"
-      },
-      {
-        "slot": 4,
-        "name": "Family",
-        "value": "S-ENG"
-      }
-    ],
-    "attributes": [
-      {
-        "name": "Strategy",
-        "value": "JIT"
-      },
-      {
-        "name": "JobType",
-        "value": "I"
-      },
-      {
-        "name": "CustomerSource",
-        "value": "genius-master"
-      },
-      {
-        "name": "ProjectManagerCode",
-        "value": "050"
-      },
-      {
-        "name": "ProjectManagerName",
-        "value": "KALEB JAMES"
-      },
-      {
-        "name": "DbrEndDate",
-        "value": "2026-04-27T12:00:00.000Z"
-      }
-    ]
-  },
-  {
-    "key": "27851",
-    "name": "27851 — SCOTT SAFETY SAW PROTOYPE BANDSAW ASSEMBLY (PROTOTYPE #2)",
-    "productKey": "MAR 012-X000-00-X0B_A",
-    "demandQty": 1,
-    "dueDate": "2026-04-27T12:00:00.000Z",
-    "lateDueDate": "2026-04-29T12:00:00.000Z",
-    "customerDeliveryDate": null,
-    "priority": 10,
-    "groupKey": "18300",
-    "parentOrderKey": "27851",
-    "jobCode": "18300",
-    "jobType": "I",
-    "customerCode": "SCO",
-    "customerName": "SCOTT AUTOMATION & ROBOTICS",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "hierarchies": [
-      {
-        "slot": 1,
-        "name": "Customer",
-        "value": "SCOTT AUTOMATION & ROBOTICS"
-      },
-      {
-        "slot": 2,
-        "name": "Project",
-        "value": "B400 SAW PROTOTYPE #2"
-      },
-      {
-        "slot": 3,
-        "name": "SalesOrder",
-        "value": "00012501"
-      },
-      {
-        "slot": 4,
-        "name": "Family",
-        "value": "S-ENG"
-      }
-    ],
-    "attributes": [
-      {
-        "name": "Strategy",
-        "value": "JIT"
-      },
-      {
-        "name": "JobType",
-        "value": "I"
-      },
-      {
-        "name": "CustomerSource",
-        "value": "genius-master"
-      },
-      {
-        "name": "ProjectManagerCode",
-        "value": "050"
-      },
-      {
-        "name": "ProjectManagerName",
-        "value": "KALEB JAMES"
-      },
-      {
-        "name": "DbrEndDate",
-        "value": "2026-04-27T12:00:00.000Z"
-      }
-    ]
-  },
-  {
-    "key": "28969",
-    "name": "28969 — P2 DE-TENSIONING ASSEMBLY",
-    "productKey": "MAR 013-C000-00_A",
-    "demandQty": 1,
-    "dueDate": "2026-04-27T12:00:00.000Z",
-    "lateDueDate": "2026-04-29T12:00:00.000Z",
-    "customerDeliveryDate": null,
-    "priority": 10,
-    "groupKey": "18300",
-    "parentOrderKey": "27851",
-    "jobCode": "18300",
-    "jobType": "I",
-    "customerCode": "SCO",
-    "customerName": "SCOTT AUTOMATION & ROBOTICS",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "hierarchies": [
-      {
-        "slot": 1,
-        "name": "Customer",
-        "value": "SCOTT AUTOMATION & ROBOTICS"
-      },
-      {
-        "slot": 2,
-        "name": "Project",
-        "value": "B400 SAW PROTOTYPE #2"
-      },
-      {
-        "slot": 3,
-        "name": "SalesOrder",
-        "value": "00012501"
-      },
-      {
-        "slot": 4,
-        "name": "Family",
-        "value": "S-ENG"
-      }
-    ],
-    "attributes": [
-      {
-        "name": "Strategy",
-        "value": "JIT"
-      },
-      {
-        "name": "JobType",
-        "value": "I"
-      },
-      {
-        "name": "CustomerSource",
-        "value": "genius-master"
-      },
-      {
-        "name": "ProjectManagerCode",
-        "value": "050"
-      },
-      {
-        "name": "ProjectManagerName",
-        "value": "KALEB JAMES"
-      },
-      {
-        "name": "DbrEndDate",
-        "value": "2026-04-27T12:00:00.000Z"
-      }
-    ]
-  },
-  {
-    "key": "28975",
-    "name": "28975 — P2 DETENSIONING CYLINDER ASSEMBLY",
-    "productKey": "MAR 013-CA00-00_A",
-    "demandQty": 1,
-    "dueDate": "2026-04-27T12:00:00.000Z",
-    "lateDueDate": "2026-04-29T12:00:00.000Z",
-    "customerDeliveryDate": null,
-    "priority": 10,
-    "groupKey": "18300",
-    "parentOrderKey": "28969",
-    "jobCode": "18300",
-    "jobType": "I",
-    "customerCode": "SCO",
-    "customerName": "SCOTT AUTOMATION & ROBOTICS",
-    "itemFamily": "S-ENG",
-    "wostatus": "PRINTED",
-    "hierarchies": [
-      {
-        "slot": 1,
-        "name": "Customer",
-        "value": "SCOTT AUTOMATION & ROBOTICS"
-      },
-      {
-        "slot": 2,
-        "name": "Project",
-        "value": "B400 SAW PROTOTYPE #2"
-      },
-      {
-        "slot": 3,
-        "name": "SalesOrder",
-        "value": "00012501"
-      },
-      {
-        "slot": 4,
-        "name": "Family",
-        "value": "S-ENG"
-      }
-    ],
-    "attributes": [
-      {
-        "name": "Strategy",
-        "value": "JIT"
-      },
-      {
-        "name": "JobType",
-        "value": "I"
-      },
-      {
-        "name": "CustomerSource",
-        "value": "genius-master"
-      },
-      {
-        "name": "ProjectManagerCode",
-        "value": "050"
-      },
-      {
-        "name": "ProjectManagerName",
-        "value": "KALEB JAMES"
-      },
-      {
-        "name": "DbrEndDate",
-        "value": "2026-04-27T12:00:00.000Z"
-      }
-    ]
-  },
-  {
-    "key": "28485",
-    "name": "28485 — DF3000 LOWER GAS PIPING WELDMENT",
-    "productKey": "SIC FS30W0600238-XOA_06",
-    "demandQty": 6,
-    "dueDate": "2026-06-27T12:00:00.000Z",
+    "key": "29447",
+    "name": "29447 — KICK OVER PLATE",
+    "productKey": "GEN 100-0000-01-X13_B",
+    "demandQty": 22,
+    "dueDate": "2026-07-28T02:42:43.200Z",
     "lateDueDate": "2026-06-29T12:00:00.000Z",
     "customerDeliveryDate": "2026-06-29T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "18582",
-    "parentOrderKey": "28482",
-    "jobCode": "18582",
+    "priority": 5,
+    "groupKey": "19294",
+    "parentOrderKey": "29437",
+    "jobCode": "19294",
+    "jobType": "C",
+    "customerCode": "GEN",
+    "customerName": "GENESIS ENERGY LTD",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "GENESIS ENERGY LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "40 x LPG TROLLEYS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012500"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "132"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "BEN FLEETWOOD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-18T19:00:32.400Z"
+      }
+    ]
+  },
+  {
+    "key": "29449",
+    "name": "29449 — KICK PLATE EXTENSION",
+    "productKey": "GEN 100-0000-01-X21_A",
+    "demandQty": 22,
+    "dueDate": "2026-07-28T02:42:43.200Z",
+    "lateDueDate": "2026-06-29T12:00:00.000Z",
+    "customerDeliveryDate": "2026-06-29T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19294",
+    "parentOrderKey": "29437",
+    "jobCode": "19294",
+    "jobType": "C",
+    "customerCode": "GEN",
+    "customerName": "GENESIS ENERGY LTD",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "GENESIS ENERGY LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "40 x LPG TROLLEYS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012500"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "132"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "BEN FLEETWOOD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-18T19:00:32.400Z"
+      }
+    ]
+  },
+  {
+    "key": "29450",
+    "name": "29450 — MODIFIED FRAME TOP",
+    "productKey": "GEN 100-0000-01-X22_B",
+    "demandQty": 22,
+    "dueDate": "2026-07-28T02:42:43.200Z",
+    "lateDueDate": "2026-06-29T12:00:00.000Z",
+    "customerDeliveryDate": "2026-06-29T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19294",
+    "parentOrderKey": "29437",
+    "jobCode": "19294",
+    "jobType": "C",
+    "customerCode": "GEN",
+    "customerName": "GENESIS ENERGY LTD",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "GENESIS ENERGY LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "40 x LPG TROLLEYS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012500"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "132"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "BEN FLEETWOOD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-18T19:00:32.400Z"
+      }
+    ]
+  },
+  {
+    "key": "29425",
+    "name": "29425 — TOOL HOLDER",
+    "productKey": "GEN 100-0000-05_A",
+    "demandQty": 31,
+    "dueDate": "2026-07-28T02:42:43.200Z",
+    "lateDueDate": "2026-06-29T12:00:00.000Z",
+    "customerDeliveryDate": "2026-06-29T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19294",
+    "parentOrderKey": "29407",
+    "jobCode": "19294",
+    "jobType": "C",
+    "customerCode": "GEN",
+    "customerName": "GENESIS ENERGY LTD",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "GENESIS ENERGY LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "40 x LPG TROLLEYS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012500"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "132"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "BEN FLEETWOOD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-18T19:00:32.400Z"
+      }
+    ]
+  },
+  {
+    "key": "29428",
+    "name": "29428 — SERIAL NO. PLATE",
+    "productKey": "GEN 100-0000-06_A",
+    "demandQty": 40,
+    "dueDate": "2026-07-28T02:42:43.200Z",
+    "lateDueDate": "2026-06-29T12:00:00.000Z",
+    "customerDeliveryDate": "2026-06-29T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19294",
+    "parentOrderKey": "29407",
+    "jobCode": "19294",
+    "jobType": "C",
+    "customerCode": "GEN",
+    "customerName": "GENESIS ENERGY LTD",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "GENESIS ENERGY LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "40 x LPG TROLLEYS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012500"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "132"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "BEN FLEETWOOD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-18T19:00:32.400Z"
+      }
+    ]
+  },
+  {
+    "key": "29434",
+    "name": "29434 — SOCKET HEAD SHOULDER BOLT",
+    "productKey": "GEN 100-0000-18_A",
+    "demandQty": 160,
+    "dueDate": "2026-07-28T02:42:43.200Z",
+    "lateDueDate": "2026-06-29T12:00:00.000Z",
+    "customerDeliveryDate": "2026-06-29T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19294",
+    "parentOrderKey": "29407",
+    "jobCode": "19294",
+    "jobType": "C",
+    "customerCode": "GEN",
+    "customerName": "GENESIS ENERGY LTD",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "GENESIS ENERGY LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "40 x LPG TROLLEYS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012500"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "132"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "BEN FLEETWOOD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-18T19:00:32.400Z"
+      }
+    ]
+  },
+  {
+    "key": "29408",
+    "name": "29408 — WHEEL ASSEMBLY",
+    "productKey": "GEN 100-A000-00_D",
+    "demandQty": 80,
+    "dueDate": "2026-07-28T02:42:43.200Z",
+    "lateDueDate": "2026-06-29T12:00:00.000Z",
+    "customerDeliveryDate": "2026-06-29T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19294",
+    "parentOrderKey": "29407",
+    "jobCode": "19294",
+    "jobType": "C",
+    "customerCode": "GEN",
+    "customerName": "GENESIS ENERGY LTD",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "GENESIS ENERGY LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "40 x LPG TROLLEYS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012500"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "132"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "BEN FLEETWOOD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-18T19:00:32.400Z"
+      }
+    ]
+  },
+  {
+    "key": "29413",
+    "name": "29413 — STEPPER ASSEMBLY",
+    "productKey": "GEN 100-E000-00_C",
+    "demandQty": 40,
+    "dueDate": "2026-07-28T02:42:43.200Z",
+    "lateDueDate": "2026-06-29T12:00:00.000Z",
+    "customerDeliveryDate": "2026-06-29T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19294",
+    "parentOrderKey": "29407",
+    "jobCode": "19294",
+    "jobType": "C",
+    "customerCode": "GEN",
+    "customerName": "GENESIS ENERGY LTD",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "GENESIS ENERGY LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "40 x LPG TROLLEYS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012500"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "132"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "BEN FLEETWOOD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-18T19:00:32.400Z"
+      }
+    ]
+  },
+  {
+    "key": "29417",
+    "name": "29417 — RATCHET WHEEL",
+    "productKey": "GEN 100-E000-05_A",
+    "demandQty": 20,
+    "dueDate": "2026-07-28T02:42:43.200Z",
+    "lateDueDate": "2026-06-29T12:00:00.000Z",
+    "customerDeliveryDate": "2026-06-29T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19294",
+    "parentOrderKey": "29413",
+    "jobCode": "19294",
+    "jobType": "C",
+    "customerCode": "GEN",
+    "customerName": "GENESIS ENERGY LTD",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "GENESIS ENERGY LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "40 x LPG TROLLEYS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012500"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "132"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "BEN FLEETWOOD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-18T19:00:32.400Z"
+      }
+    ]
+  },
+  {
+    "key": "29407",
+    "name": "29407 — LPG HAND TRUCK ASSEMBLY WITH STEPPER (HANDLES)",
+    "productKey": "GEN 103-0000-00_A",
+    "demandQty": 40,
+    "dueDate": "2026-07-28T02:42:43.200Z",
+    "lateDueDate": "2026-06-29T12:00:00.000Z",
+    "customerDeliveryDate": "2026-06-29T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19294",
+    "parentOrderKey": "29407",
+    "jobCode": "19294",
+    "jobType": "C",
+    "customerCode": "GEN",
+    "customerName": "GENESIS ENERGY LTD",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "GENESIS ENERGY LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "40 x LPG TROLLEYS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012500"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "132"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "BEN FLEETWOOD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-18T19:00:32.400Z"
+      }
+    ]
+  },
+  {
+    "key": "29437",
+    "name": "29437 — TROLLEY FRAME HANDLES WELDMENT",
+    "productKey": "GEN 103-0000-01_A",
+    "demandQty": 22,
+    "dueDate": "2026-07-28T02:42:43.200Z",
+    "lateDueDate": "2026-06-29T12:00:00.000Z",
+    "customerDeliveryDate": "2026-06-29T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19294",
+    "parentOrderKey": "29407",
+    "jobCode": "19294",
+    "jobType": "C",
+    "customerCode": "GEN",
+    "customerName": "GENESIS ENERGY LTD",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "GENESIS ENERGY LTD"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "40 x LPG TROLLEYS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012500"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "132"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "BEN FLEETWOOD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-06-18T19:00:32.400Z"
+      }
+    ]
+  },
+  {
+    "key": "30274",
+    "name": "30274 — IDLER PULLY AXLE",
+    "productKey": "TNP NP04-02-018_H",
+    "demandQty": 1,
+    "dueDate": "2026-08-05T19:45:00.000Z",
+    "lateDueDate": "2026-08-06T12:00:00.000Z",
+    "customerDeliveryDate": "2026-08-06T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19745",
+    "parentOrderKey": "30273",
+    "jobCode": "19745",
+    "jobType": "C",
+    "customerCode": "TNP",
+    "customerName": "TECHNOPAK LIMITED",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "TECHNOPAK LIMITED"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "PADDLE UNIT FABRICATIONS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012651"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "025"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "JULIAN FORD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-07-29T23:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "key": "30275",
+    "name": "30275 — TENSION PULLEY CLAMP STUD",
+    "productKey": "TNP NP04-02-019_D",
+    "demandQty": 1,
+    "dueDate": "2026-08-05T19:45:00.000Z",
+    "lateDueDate": "2026-08-06T12:00:00.000Z",
+    "customerDeliveryDate": "2026-08-06T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19745",
+    "parentOrderKey": "30273",
+    "jobCode": "19745",
+    "jobType": "C",
+    "customerCode": "TNP",
+    "customerName": "TECHNOPAK LIMITED",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "TECHNOPAK LIMITED"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "PADDLE UNIT FABRICATIONS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012651"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "025"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "JULIAN FORD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-07-29T23:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "key": "30276",
+    "name": "30276 — PIVOT STUD",
+    "productKey": "TNP NP04-02-042_E",
+    "demandQty": 2,
+    "dueDate": "2026-08-05T19:45:00.000Z",
+    "lateDueDate": "2026-08-06T12:00:00.000Z",
+    "customerDeliveryDate": "2026-08-06T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19745",
+    "parentOrderKey": "30273",
+    "jobCode": "19745",
+    "jobType": "C",
+    "customerCode": "TNP",
+    "customerName": "TECHNOPAK LIMITED",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "TECHNOPAK LIMITED"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "PADDLE UNIT FABRICATIONS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012651"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "025"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "JULIAN FORD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-07-29T23:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "key": "30277",
+    "name": "30277 — BASE PLATE",
+    "productKey": "TNP NP04-02-115_H",
+    "demandQty": 1,
+    "dueDate": "2026-08-05T19:45:00.000Z",
+    "lateDueDate": "2026-08-06T12:00:00.000Z",
+    "customerDeliveryDate": "2026-08-06T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19745",
+    "parentOrderKey": "30273",
+    "jobCode": "19745",
+    "jobType": "C",
+    "customerCode": "TNP",
+    "customerName": "TECHNOPAK LIMITED",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "TECHNOPAK LIMITED"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "PADDLE UNIT FABRICATIONS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012651"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "025"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "JULIAN FORD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-07-29T23:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "key": "30278",
+    "name": "30278 — DRIVE GEAR AXLE",
+    "productKey": "TNP NP13-03-1002_G",
+    "demandQty": 1,
+    "dueDate": "2026-08-05T19:45:00.000Z",
+    "lateDueDate": "2026-08-06T12:00:00.000Z",
+    "customerDeliveryDate": "2026-08-06T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19745",
+    "parentOrderKey": "30273",
+    "jobCode": "19745",
+    "jobType": "C",
+    "customerCode": "TNP",
+    "customerName": "TECHNOPAK LIMITED",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "TECHNOPAK LIMITED"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "PADDLE UNIT FABRICATIONS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012651"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "025"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "JULIAN FORD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-07-29T23:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "key": "30279",
+    "name": "30279 — PRESSURE CYLINDER ROD EYE BRACKET",
+    "productKey": "TNP NP27-03-1001_A",
+    "demandQty": 1,
+    "dueDate": "2026-08-05T19:45:00.000Z",
+    "lateDueDate": "2026-08-06T12:00:00.000Z",
+    "customerDeliveryDate": "2026-08-06T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19745",
+    "parentOrderKey": "30273",
+    "jobCode": "19745",
+    "jobType": "C",
+    "customerCode": "TNP",
+    "customerName": "TECHNOPAK LIMITED",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "TECHNOPAK LIMITED"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "PADDLE UNIT FABRICATIONS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012651"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "025"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "JULIAN FORD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-07-29T23:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "key": "30273",
+    "name": "30273 — PADDLE UNIT BASE FRONT - L-R",
+    "productKey": "TNP NP27-03-SA03_G",
+    "demandQty": 1,
+    "dueDate": "2026-08-05T19:45:00.000Z",
+    "lateDueDate": "2026-08-06T12:00:00.000Z",
+    "customerDeliveryDate": "2026-08-06T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "19745",
+    "parentOrderKey": "30273",
+    "jobCode": "19745",
+    "jobType": "C",
+    "customerCode": "TNP",
+    "customerName": "TECHNOPAK LIMITED",
+    "itemFamily": "S-ENG",
+    "wostatus": "PRINTED",
+    "hierarchies": [
+      {
+        "slot": 1,
+        "name": "Customer",
+        "value": "TECHNOPAK LIMITED"
+      },
+      {
+        "slot": 2,
+        "name": "Project",
+        "value": "PADDLE UNIT FABRICATIONS"
+      },
+      {
+        "slot": 3,
+        "name": "SalesOrder",
+        "value": "00012651"
+      },
+      {
+        "slot": 4,
+        "name": "Family",
+        "value": "S-ENG"
+      }
+    ],
+    "attributes": [
+      {
+        "name": "Strategy",
+        "value": "ASAP"
+      },
+      {
+        "name": "JobType",
+        "value": "C"
+      },
+      {
+        "name": "CustomerSource",
+        "value": "genius-master"
+      },
+      {
+        "name": "ProjectManagerCode",
+        "value": "025"
+      },
+      {
+        "name": "ProjectManagerName",
+        "value": "JULIAN FORD"
+      },
+      {
+        "name": "DbrEndDate",
+        "value": "2026-07-29T23:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "key": "28472",
+    "name": "28472 — DF1500 LOWER GAS PIPING WELDMENT",
+    "productKey": "SIC FS30W0600195-XOA_08",
+    "demandQty": 9,
+    "dueDate": "2026-11-19T21:30:00.000Z",
+    "lateDueDate": "2026-07-30T12:00:00.000Z",
+    "customerDeliveryDate": "2026-07-30T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "18580",
+    "parentOrderKey": "28468",
+    "jobCode": "18580",
     "jobType": "C",
     "customerCode": "SIC",
     "customerName": "SUPERIOR ICE CREAM EQUIPMENT",
@@ -1807,7 +2731,7 @@
     "attributes": [
       {
         "name": "Strategy",
-        "value": "JIT"
+        "value": "ASAP"
       },
       {
         "name": "JobType",
@@ -1827,22 +2751,22 @@
       },
       {
         "name": "DbrEndDate",
-        "value": "2026-06-27T12:00:00.000Z"
+        "value": "2026-05-06T15:22:26.400Z"
       }
     ]
   },
   {
-    "key": "28482",
-    "name": "28482 — DF3000 EVAPORATOR VESSEL",
-    "productKey": "SIC FS30W0600238_07",
-    "demandQty": 6,
-    "dueDate": "2026-06-27T12:00:00.000Z",
-    "lateDueDate": "2026-06-29T12:00:00.000Z",
-    "customerDeliveryDate": "2026-06-29T12:00:00.000Z",
-    "priority": 10,
-    "groupKey": "18582",
-    "parentOrderKey": "28482",
-    "jobCode": "18582",
+    "key": "28468",
+    "name": "28468 — DF1500 EVAPORATOR VESSEL",
+    "productKey": "SIC FS30W0600195_08",
+    "demandQty": 9,
+    "dueDate": "2026-11-19T21:30:00.000Z",
+    "lateDueDate": "2026-07-30T12:00:00.000Z",
+    "customerDeliveryDate": "2026-07-30T12:00:00.000Z",
+    "priority": 5,
+    "groupKey": "18580",
+    "parentOrderKey": "28468",
+    "jobCode": "18580",
     "jobType": "C",
     "customerCode": "SIC",
     "customerName": "SUPERIOR ICE CREAM EQUIPMENT",
@@ -1873,7 +2797,7 @@
     "attributes": [
       {
         "name": "Strategy",
-        "value": "JIT"
+        "value": "ASAP"
       },
       {
         "name": "JobType",
@@ -1893,7 +2817,7 @@
       },
       {
         "name": "DbrEndDate",
-        "value": "2026-06-27T12:00:00.000Z"
+        "value": "2026-05-06T15:22:26.400Z"
       }
     ]
   }

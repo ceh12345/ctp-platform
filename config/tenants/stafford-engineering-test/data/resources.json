@@ -6,7 +6,7 @@
     "class": "REUSABLE",
     "hourlyRate": 84,
     "efficiency": 75,
-    "parallelCapacity": 4,
+    "parallelCapacity": 3,
     "isFinite": false,
     "calendarCode": "Standard",
     "hierarchy": {
@@ -377,6 +377,21 @@
   {
     "key": "52",
     "name": "COOPER",
+    "type": "MACHINE",
+    "class": "REUSABLE",
+    "hourlyRate": 84,
+    "efficiency": 90,
+    "parallelCapacity": 1,
+    "isFinite": true,
+    "calendarCode": "Standard",
+    "hierarchy": {
+      "level1": "FAB",
+      "level2": "F"
+    }
+  },
+  {
+    "key": "53",
+    "name": "ELIJAH",
     "type": "MACHINE",
     "class": "REUSABLE",
     "hourlyRate": 84,
@@ -827,21 +842,6 @@
   {
     "key": "65",
     "name": "AUNG",
-    "type": "MACHINE",
-    "class": "REUSABLE",
-    "hourlyRate": 84,
-    "efficiency": 90,
-    "parallelCapacity": 1,
-    "isFinite": true,
-    "calendarCode": "Standard",
-    "hierarchy": {
-      "level1": "FAB",
-      "level2": "P"
-    }
-  },
-  {
-    "key": "69",
-    "name": "ELIJAH",
     "type": "MACHINE",
     "class": "REUSABLE",
     "hourlyRate": 84,
