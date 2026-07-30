@@ -82,22 +82,24 @@ export interface BumpEvent {
 
 export class ChainContextEngine {
 
-  // CODE-OPTIMIZATION-SPRINT Ticket 3 — temporary A/B flag during the bench
-  // window. When true, the 3 startTimes find-pattern helpers
-  // (isWithinStartTimeNode, getAssignedProcessChangeDuration,
-  // findStartTimeNode) use a typed-array cache on ScheduleContext + binary
-  // search instead of head-walking ctx.slot.startTimes. Cleanup commit will
-  // remove the flag and replace each helper's body with the fast path only.
-  public useStartTimesCache: boolean = false;
+  // CODE-OPTIMIZATION-SPRINT Ticket 3. When true, the 3 startTimes
+  // find-pattern helpers (isWithinStartTimeNode,
+  // getAssignedProcessChangeDuration, findStartTimeNode) use a typed-array
+  // cache on ScheduleContext + binary search instead of head-walking
+  // ctx.slot.startTimes. Benchmarked 1.82x (results/ticket-03.json,
+  // correctness PASS); enabled by default 2026-07-29 (solver-performance
+  // sprint) — the flag remains as a diagnostic kill-switch.
+  public useStartTimesCache: boolean = true;
 
-  // CODE-OPTIMIZATION-SPRINT Ticket 4 — temporary A/B flag during the bench
-  // window. When true, scoreChainCombos dispatches to a PATH-B implementation
-  // that scores raw rule values ONCE per unique context (across all combos)
-  // and blends per-combo. Preserves the existing per-combo min/max
-  // normalization semantics — the spec's "global normalization" variant was
-  // explicitly NOT used because it changed combo rankings. Cleanup commit
-  // will remove the flag and the original head-walk path.
-  public useUniqueContextScoring: boolean = false;
+  // CODE-OPTIMIZATION-SPRINT Ticket 4. When true, scoreChainCombos
+  // dispatches to a PATH-B implementation that scores raw rule values ONCE
+  // per unique context (across all combos) and blends per-combo. Preserves
+  // the existing per-combo min/max normalization semantics — the spec's
+  // "global normalization" variant was explicitly NOT used because it
+  // changed combo rankings. Benchmarked 20.86x (results/ticket-04.json,
+  // correctness PASS); enabled by default 2026-07-29 (solver-performance
+  // sprint) — the flag remains as a diagnostic kill-switch.
+  public useUniqueContextScoring: boolean = true;
 
   /**
    * Build (or return cached) the typed-array snapshot of ctx.slot.startTimes.
