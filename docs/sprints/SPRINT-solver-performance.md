@@ -3,7 +3,7 @@
 **Date opened:** 2026-07-29
 **Branch:** `feature/solver-performance` (worktree `ctp-platform-optimization`)
 **Baseline commit:** `225617a` (dispatch preference pass + July-16 data refresh)
-**Status:** ANALYSIS COMPLETE — tickets scoped, implementation not started
+**Status:** IN PROGRESS — P2 first cut + P1 landed 2026-07-29 (5.5× on slim-100); P3–P5 open
 
 ## Why now
 
@@ -52,9 +52,35 @@ landscape twice in-process: solve #1 10.6 s, solve #2 17.4 s (+65%). The API
 path re-hydrates per request and does not show this; something accumulates on
 the landscape between solves.
 
+## Results so far (2026-07-29, slim-100)
+
+| stage | solve (median of 3) | notes |
+| --- | --- | --- |
+| baseline (flags off) | 9.9 s | 324 assignStartTimes / 1.74M findEarliest / 1.83M getPCD |
+| + ticket-03/04 flags on (`fc1b7c9`) | 8.7 s | never-enabled CODE-OPTIMIZATION-SPRINT fast paths |
+| + P1 bound prune (`8be6ee6`) | **1.8 s** | 78 assignStartTimes (8-chain: 192→1 combo), 18K findEarliest (96×), 105K getPCD (17×) |
+
+Placement parity 118/118 identical at every stage; committed parity golden
+passes; full suite 1288 green each commit.
+
+P1 landed as an **admissible bound prune**, not the dedup/beam options
+below: `startTimes[0].eStartW` is a proven lower bound on a combo's
+assigned start (both placement passes floor at the propagated windows), so
+with score-ascending iteration, any candidate whose bound >= current best
+start can never win the final (assignedStart, chainScore) sort. Exact —
+no heuristic. Symmetric pools propagate identical bounds, so the first
+unconstrained placement prunes all sibling combos. `evaluateChainAll`
+(CTP Query top-K) deliberately untouched. Dedup/beam (below) remain
+available if heterogeneous pools ever blunt the bound prune.
+
+**Follow-up:** measure at Stafford scale — stafford-engineering-test is a
+REST tenant (needs mock-genius up + real SyncService; the standalone
+runner only hydrates file tenants) and solves at the optimizer tier
+(non-deterministic), so it's a timing measurement, not a parity gate.
+
 ## Tickets (ranked)
 
-### P1 — Combo symmetry pruning (changes the complexity class)
+### P1 — Combo symmetry pruning — ✅ DONE via bound prune (`8be6ee6`, see above)
 The 192 combos are mostly time-identical: pool members within a group share
 the same calendar (`Standard`) and efficiency (e.g. all 12 F-welders at 90%),
 so swapping members changes nothing about feasible timing — only existing
