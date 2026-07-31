@@ -3,9 +3,10 @@
 **Date opened:** 2026-07-29
 **Branch:** `feature/solver-performance` (worktree `ctp-platform-optimization`)
 **Baseline commit:** `225617a` (dispatch preference pass + July-16 data refresh)
-**Status:** P1–P5 COMPLETE (P1/P2/P3 landed — slim-100 9.9 s → 1.25 s, ~8×;
-P4 closed not-reproducible; P5 closed won't-fix). Open: scale measurement on
-stafford-engineering-test (needs mock-genius + real SyncService wiring).
+**Status:** P1–P5 COMPLETE + slim-500 scale round (2026-07-30/31).
+slim-100 9.9 s → ~1.1 s (9×); slim-500 301 s → ~46 s (6.5×). Open: scale
+measurement on stafford-engineering-test (needs mock-genius + real
+SyncService wiring); overlap-aware walker index (below).
 
 ## Why now
 
@@ -156,3 +157,38 @@ slicer stays as-is (data-driven).
 - ILS/Tabu optimizer tuning (that's the solver-comparison bake-off sprint).
 - Distribution *quality* (load balance across members) — this sprint is
   about time-to-solve at parity, not better schedules.
+
+## slim-500 scale round (2026-07-30/31)
+
+New 503-task fixture (426-day horizon) re-profiled the optimized build:
+`findLatestFeasibleStartForPred` had grown to **52.5% self-time** (3.5% at
+slim-100) — the backward pass max-scans the whole startTimes list, and
+longer horizons mean longer lists.
+
+- **`afe20b3` ordered fast path for findLatestFeasibleStartForPred:**
+  StartTimesCache gained `pcdUniform` / `lStartMonotone` flags; when both
+  hold, the first feasible candidate scanning from the last node down IS the
+  max (candidates are non-increasing). 53 s → 26 s at slim-500.
+- **`7418e9f` walker-index well-formedness guard:** full slim-500 placement
+  parity vs the flags-off baseline (301 s run) exposed ONE divergent task —
+  `CTPIntervals.add()` sorts by start only, and mid-solve subtract-engine
+  output can overlap, breaking the index's binary-search assumptions.
+  Guard verifies (start-sorted, endW monotone, non-overlapping) at build,
+  caches the verdict, falls back to the exact legacy walk otherwise.
+  Parity now 0 diffs on slim-100 (118) AND slim-500 (495).
+
+**Honest scoreboard:** slim-100 9.9 s → ~1.1 s (9×) · slim-500 301 s → ~46 s
+(6.5×) · both bit-for-bit placement-identical to the unoptimized engine.
+
+**Methodology lessons:** (1) differential fuzz only proves the shapes you
+generate — the fuzz passed 50k trials while real overlap-shaped lists
+diverged; full-dataset placement parity is the stronger gate and caught it.
+(2) A "faster" number obtained before the parity gate ran (26 s) can be
+partly an artifact of wrong answers — always land the parity verdict before
+quoting the speedup.
+
+**Future ticket — overlap-aware walker index:** the guard currently routes
+overlap-shaped lists (common in subtract-engine output) to the legacy walk,
+costing slim-500 ~20 s vs the unguarded (wrong) build. An index that
+handles straddling intervals (per-node clipped contributions or a segment
+structure) can reclaim most of that gap exactly.
