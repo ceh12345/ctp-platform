@@ -170,6 +170,10 @@ export function walkBackward(
 interface WalkerIndex {
   modCount: number;
   n: number;
+  /** False when the list is not well-formed (see build check below) — the
+   *  binary-search fast paths are invalid then and callers must take the
+   *  legacy walk. Cached so the verdict costs one scan per list version. */
+  valid: boolean;
   startW: Float64Array;
   endW: Float64Array;
   rr: Float64Array;      // runRate per interval; null runRate → 0
@@ -178,10 +182,11 @@ interface WalkerIndex {
 }
 
 const walkerIndexCache = new WeakMap<LinkedList<CTPInterval>, WalkerIndex>();
+const EMPTY_F64 = new Float64Array(0);
 
 function getWalkerIndex(list: LinkedList<CTPInterval>): WalkerIndex | null {
   const cached = walkerIndexCache.get(list);
-  if (cached && cached.modCount === list.modCount) return cached;
+  if (cached && cached.modCount === list.modCount) return cached.valid ? cached : null;
 
   let count = 0;
   for (let p = list.head; p; p = p.next) count++;
@@ -195,9 +200,20 @@ function getWalkerIndex(list: LinkedList<CTPInterval>): WalkerIndex | null {
   let i = 0;
   let sumDur = 0;
   let sumRR = 0;
+  // Well-formedness: sorted by start, endW monotone, non-overlapping
+  // (contiguous allowed). CTPIntervals.add() only sorts by START time, so
+  // overlap/containment CAN occur (observed on mid-solve subtract-engine
+  // output, slim-500 28641-OUT-3 divergence 2026-07-30) — and then endW is
+  // not monotone and every binary search below is invalid. Such lists take
+  // the legacy walk; the verdict is cached per (list, modCount).
+  let wellFormed = true;
   for (let p = list.head; p; p = p.next, i++) {
     startW[i] = p.data.startW;
     endW[i] = p.data.endW;
+    if (i > 0 && (startW[i] < startW[i - 1] || endW[i] < endW[i - 1] || startW[i] < endW[i - 1])) {
+      wellFormed = false;
+      break;
+    }
     const rate = p.data.runRate ?? 0;
     rr[i] = rate;
     const d = p.data.duration();
@@ -206,9 +222,11 @@ function getWalkerIndex(list: LinkedList<CTPInterval>): WalkerIndex | null {
     cumDur[i] = sumDur;
     cumRR[i] = sumRR;
   }
-  const idx: WalkerIndex = { modCount: list.modCount, n: count, startW, endW, rr, cumDur, cumRR };
+  const idx: WalkerIndex = wellFormed
+    ? { modCount: list.modCount, n: count, valid: true, startW, endW, rr, cumDur, cumRR }
+    : { modCount: list.modCount, n: 0, valid: false, startW: EMPTY_F64, endW: EMPTY_F64, rr: EMPTY_F64, cumDur: EMPTY_F64, cumRR: EMPTY_F64 };
   walkerIndexCache.set(list, idx);
-  return idx;
+  return idx.valid ? idx : null;
 }
 
 /**
