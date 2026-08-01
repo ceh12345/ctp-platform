@@ -197,3 +197,31 @@ regenerated with overlap shapes: 20k trials clean. slim-500 46 s → 31 s;
 parity 495/495 + 118/118. Reclaimed 15 of the ~20 s; the remaining gap vs
 the unguarded 26 s build is the price of per-node-correct accumulation on
 straddling intervals.
+
+## Scale curve (2026-07-31, slim-750 round)
+
+New slim-750 fixture (751 tasks / 223 orders / 177 groups, `--min-orders 1
+--max-group-tasks 100`, 426-day horizon; tenant scaffolded from slim-500).
+
+| fixture | tasks | baseline (flags-off) | optimized | speedup | parity |
+| --- | --- | --- | --- | --- | --- |
+| slim-100 | 118 | 9.9 s | ~1.0 s | 10× | 118/118 |
+| slim-500 | 495 | 301 s | ~31 s | 9.7× | 495/495 |
+| slim-750 | 741 | 532 s | ~109 s | 4.9× | **741/741** |
+
+Two readings:
+1. **The optimized curve is superlinear** (~0.009 → 0.063 → 0.147 s/task):
+   remaining cost is call VOLUME, not per-call cost. At 750 the profile is
+   assignStartTimes 47.5% self (candidate × context placement loop) +
+   workingEndForwardW 27% (overlap-tier walks over increasingly fragmented
+   availability as the schedule fills).
+2. **The speedup ratio narrows at scale** (10× → 9.7× → 4.9×) because the
+   dominant remaining term is paid by both builds — the per-call fixes are
+   exhausted where they apply.
+
+**Next ticket if Stafford scale demands it — candidate-set reduction in
+assignStartTimes:** dedupe/quantize candidate start times per combo, or cap
+them with P1-style admissible-bound reasoning. Attacks the 47.5% directly
+and flattens the curve instead of shaving constants. Extrapolation for
+engineering-test (~1,700 tasks): roughly 6–8 min optimized today —
+workable for a daily replan, not for interactive use.
