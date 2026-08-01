@@ -1232,8 +1232,17 @@ export class ChainContextEngine {
     const cadence = primaryCtx.task?.cadenceIntervalMinutes;
     const cadenceSec = cadence ? cadence * 60 : 0;
 
-    // For each primary candidate, simulate outward — collect all valid placements
-    const validPlacements: { start: number; end: number }[][] = [];
+    // For each primary candidate, simulate outward. Candidate-set reduction
+    // (solver-performance sprint): the final pick is the minimal-total-gap
+    // placement, ties keeping the FIRST in candidate order (ascending) — so
+    // the best placement is tracked incrementally and the loop EXITS as soon
+    // as a zero-gap placement appears: gaps are >= 0, later candidates can
+    // at best tie, and a tie would lose to the earlier placement anyway.
+    // Result-identical to simulating every candidate. Single-task combos
+    // (no chain edges → totalGap always 0) collapse to the first valid
+    // candidate, eliminating the entire remaining candidate sweep.
+    let bestPlacement: { start: number; end: number }[] | null = null;
+    let bestGap = Number.MAX_VALUE;
 
     for (const rawStart of candidates) {
       let pStart = rawStart;
@@ -1326,26 +1335,21 @@ export class ChainContextEngine {
       }
 
       if (feasible && trial.every(t => t !== null)) {
-        validPlacements.push(trial as { start: number; end: number }[]);
+        const placement = trial as { start: number; end: number }[];
+        let totalGap = 0;
+        for (let i = 1; i < placement.length; i++) {
+          const gap = placement[i].start - placement[i - 1].end;
+          if (gap > 0) totalGap += gap;
+        }
+        if (totalGap < bestGap) {
+          bestGap = totalGap;
+          bestPlacement = placement;
+        }
+        if (bestGap === 0) break; // exact early exit — see comment above
       }
     }
 
-    if (validPlacements.length === 0) return;
-
-    // Pick the placement with smallest total gap (tightest chain)
-    let bestPlacement = validPlacements[0];
-    let bestGap = Number.MAX_VALUE;
-    for (const placement of validPlacements) {
-      let totalGap = 0;
-      for (let i = 1; i < placement.length; i++) {
-        const gap = placement[i].start - placement[i - 1].end;
-        if (gap > 0) totalGap += gap;
-      }
-      if (totalGap < bestGap) {
-        bestGap = totalGap;
-        bestPlacement = placement;
-      }
-    }
+    if (!bestPlacement) return;
 
     for (let i = 0; i < bestPlacement.length; i++) {
       combo.startTimes[i].assignedStart = bestPlacement[i].start;
