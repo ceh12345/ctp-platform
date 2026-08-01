@@ -17,7 +17,8 @@
     "tasks":       { "path": "/productionTaskWithAdvancedInfoViewEntity?IsCompleted%3Dfalse%26JobCode%3CSYST",             "pageSize": 200, "_filter": "IsCompleted=false & JobCode<SYST" },
     "resources":   { "path": "/machineAndRessourceEntity?Active%3Dtrue",                                                   "pageSize": 100, "_filter": "Active=true" },
     "jobs":        { "path": "/JobEntity?Active%3Dtrue%26Job%3CSYST",                                                      "pageSize": 100, "_filter": "Active=true & Job<SYST" },
-    "operations":  { "path": "/operationEntity?Active%3Dtrue",                                                             "pageSize": 100, "_filter": "Active=true" }
+    "operations":  { "path": "/operationEntity?Active%3Dtrue",                                                             "pageSize": 100, "_filter": "Active=true" },
+    "salesOrderLines": { "path": "/salesOrderDetailEntity?ItemStatus%21%3DC",                                              "pageSize": 100, "_filter": "ItemStatus!=C" }
   },
   "responseEnvelope": {
     "resultPath": "Result",
