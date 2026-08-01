@@ -251,3 +251,26 @@ already-booked landscape is slower (38 s vs 17 s cold at 750) — bookings
 fragment availability and lengthen overlap-tier walks. The API path
 re-hydrates per request and always sees cold times; an in-process replan
 loop should re-hydrate or expect warm-solve costs.
+
+## Final scale table (2026-08-01, incl. full dataset)
+
+`stafford-all` = file-tenant clone of stafford-engineering-test data/ (full
+July-16 book, 1,722 mapped tasks / 1,660 in landscape) minus the REST
+adapter, so the standalone runner hydrates it directly.
+
+| dataset | tasks | baseline | optimized | speedup | parity |
+| --- | --- | --- | --- | --- | --- |
+| slim-100 | 118 | 9.9 s | 0.9 s | 11× | 118/118 |
+| slim-500 | 495 | 301 s | 8 s | 38× | 495/495 |
+| slim-750 | 741 | 532 s | 17 s | 31× | 741/741 |
+| slim-1000 | 1,002 | 513 s | 22.7 s | 22.6× | 1,002/1,002 |
+| **all (full book)** | **1,660** | **1,766 s (29.4 min)** | **107 s** | **16.5×** | **1,660/1,660** |
+
+Slices are near-linear (~0.023 s/task); the full book runs ~0.064 s/task —
+the monster groups every slice excluded (long chains → deep combos, more
+candidates, fewer zero-gap early exits). If a future round wants the full
+book under a minute, profile specifically long-chain candidate evaluation.
+
+**Cumulative parity evidence: 4,116 placements across five datasets,
+bit-identical to the unoptimized engine.** Daily-replan viability: the full
+book solves in <2 min on the optimized build vs ~30 min before the sprint.
