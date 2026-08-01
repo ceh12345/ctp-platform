@@ -5,6 +5,11 @@ export interface IRawDataPayload {
   // routing vocabulary consumed by the dispatch preference pass. Optional —
   // only REST tenants with an `operations` endpoint populate it.
   operations?: unknown[];
+  // Sales order lines (Genius salesOrderDetailEntity): source of the REAL
+  // customer promise date (DateCustomer), joined into order mapping via
+  // Job=JobCode. Optional — only REST tenants with a `salesOrderLines`
+  // endpoint populate it. NOT the same as `orders` (the WO endpoint).
+  salesOrderLines?: unknown[];
   calendars: unknown[];
   stateChanges: unknown[];
   products: unknown[];

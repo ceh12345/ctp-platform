@@ -648,3 +648,62 @@ describe('MappingEngine', () => {
     });
   });
 });
+
+describe('join rule — cross-endpoint lookup (customerDeliveryDate, 2026-08-01)', () => {
+  const engine = new MappingEngine();
+  const SO_LINES = [
+    { JobCode: 'PV-001', DateCustomer: '2026-08-15T00:00:00+12:00', DateDelivery: '2026-08-20T00:00:00+12:00' },
+    { JobCode: 'EQ-001', DateCustomer: '2026-09-01T00:00:00+12:00' },
+    { JobCode: 'PV-001', DateCustomer: '2026-12-31T00:00:00+12:00' }, // duplicate key — first wins
+  ];
+  const profile: IMappingProfile = {
+    orders: {
+      mappings: {
+        key: { from: 'JobCode' },
+        customerDeliveryDate: {
+          join: { endpoint: 'salesOrderLines', via: 'Job', foreignKey: 'JobCode', field: 'DateCustomer' },
+          toUTC: true,
+        },
+      },
+    },
+  };
+  const RAW_ORDERS = [
+    { JobCode: 'PV-001', Job: 'PV-001' },
+    { JobCode: 'MC-001', Job: 'MC-001' },   // no SO line — internal job
+    { JobCode: 'XX-001', Job: null },        // no join key at all
+  ];
+
+  it('joins the real customer date via Job=JobCode and applies toUTC', () => {
+    const result = engine.transform(
+      makePayload({ orders: RAW_ORDERS, salesOrderLines: SO_LINES }), profile);
+    const o: any = result.payload.orders[0];
+    expect(o.customerDeliveryDate).toBe('2026-08-14T12:00:00.000Z');
+  });
+
+  it('first record wins on duplicate join keys', () => {
+    const result = engine.transform(
+      makePayload({ orders: RAW_ORDERS, salesOrderLines: SO_LINES }), profile);
+    const o: any = result.payload.orders[0];
+    expect(o.customerDeliveryDate).not.toContain('2026-12-3');
+  });
+
+  it('no matching line -> field ABSENT (honest null downstream)', () => {
+    const result = engine.transform(
+      makePayload({ orders: RAW_ORDERS, salesOrderLines: SO_LINES }), profile);
+    const o: any = result.payload.orders[1];
+    expect('customerDeliveryDate' in o).toBe(false);
+  });
+
+  it('null join key -> field absent', () => {
+    const result = engine.transform(
+      makePayload({ orders: RAW_ORDERS, salesOrderLines: SO_LINES }), profile);
+    const o: any = result.payload.orders[2];
+    expect('customerDeliveryDate' in o).toBe(false);
+  });
+
+  it('endpoint missing from payload entirely -> field absent, no throw', () => {
+    const result = engine.transform(makePayload({ orders: RAW_ORDERS }), profile);
+    const o: any = result.payload.orders[0];
+    expect('customerDeliveryDate' in o).toBe(false);
+  });
+});
