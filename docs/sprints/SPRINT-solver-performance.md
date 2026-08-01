@@ -225,3 +225,29 @@ them with P1-style admissible-bound reasoning. Attacks the 47.5% directly
 and flattens the curve instead of shaving constants. Extrapolation for
 engineering-test (~1,700 tasks): roughly 6–8 min optimized today —
 workable for a daily replan, not for interactive use.
+
+## Candidate-set reduction (2026-07-31, `48f03db`)
+
+**Exact zero-gap early exit in the assignStartTimes candidate sweep.** The
+within-combo selection is minimal totalGap, ties keeping the FIRST placement
+in ascending-candidate order — so the sweep tracks the best incrementally
+and exits on the first zero-gap placement (gaps >= 0; a later tie loses to
+the earlier placement under the existing strict-< pick). Result-identical.
+Single-task combos (totalGap trivially 0) collapse to the first valid
+candidate — the dominant shape on min-orders-1 slices.
+
+| fixture | tasks | baseline | after this ticket | speedup | parity |
+| --- | --- | --- | --- | --- | --- |
+| slim-100 | 118 | 9.9 s | ~0.9 s | **11×** | 118/118 |
+| slim-500 | 495 | 301 s | ~8 s | **38×** | 495/495 |
+| slim-750 | 741 | 532 s | ~17 s | **31×** | 741/741 |
+
+The superlinear curve is broken: s/task is now ~0.008 / 0.016 / 0.023 —
+near-linear. Engineering-test (~1,700 tasks) extrapolates to well under a
+minute on the optimized build.
+
+Side observation (sprint-doc note, not a defect): in-process re-solve on an
+already-booked landscape is slower (38 s vs 17 s cold at 750) — bookings
+fragment availability and lengthen overlap-tier walks. The API path
+re-hydrates per request and always sees cold times; an in-process replan
+loop should re-hydrate or expect warm-solve costs.
