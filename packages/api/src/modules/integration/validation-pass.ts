@@ -1,4 +1,8 @@
-import { SchedulingLandscape, makeValidationError } from '@ctp/engine';
+import {
+  SchedulingLandscape,
+  makeValidationError,
+  CTPResourcePreferenceModeConstants,
+} from '@ctp/engine';
 
 // Cross-entity validation pass. Runs after entities have been hydrated into
 // instances but before the new landscape replaces the current one.
@@ -15,6 +19,53 @@ export function validateReferences(landscape: SchedulingLandscape): void {
   // can be O(1) per record instead of O(n) scans.
   const resourceKeys = new Set<string>();
   landscape.resources.forEach(r => resourceKeys.add(r.key));
+
+  // Calendar coverage (found via slim-500, 2026-07-30: curated calendars.json
+  // predated newly added Genius resources, and its fixed end date fell short
+  // of a data-driven horizon — both surfaced only as late solver
+  // infeasibilities). Both checks are severity:"warning": they annotate for
+  // early visibility without changing solve behavior — the solver still
+  // produces its precise per-task infeasibility report.
+  //
+  // Gated on the tenant supplying calendar data at all: these checks target
+  // PARTIAL coverage gaps (some resources covered, some not). A tenant with
+  // no calendars anywhere (synthetic fixtures, minimal test payloads) is a
+  // different setup, not a data gap — flagging every resource there is noise.
+  const horizonEnd = landscape.horizon?.endW;
+  const emptyCalendarResources = new Set<string>();
+  let anyCalendar = false;
+  landscape.resources.forEach(r => {
+    if (r.available?.staticAvailable?.head) anyCalendar = true;
+  });
+  if (anyCalendar) landscape.resources.forEach(r => {
+    const sa = r.available?.staticAvailable;
+    if (!sa?.head) {
+      emptyCalendarResources.add(r.key);
+      r.addValidationError(makeValidationError({
+        agent:    'CrossEntityValidation',
+        type:     'NO_CALENDAR',
+        reason:   `Resource '${r.key}' (${r.name ?? ''}) has no availability calendar — any task bound to it cannot schedule`,
+        severity: 'warning',
+        source:   'validation',
+        policy:   'annotate',
+        field:    'available.staticAvailable',
+      }));
+      return;
+    }
+    if (typeof horizonEnd === 'number' && horizonEnd > 0 && sa.tail
+        && sa.tail.data.endW < horizonEnd) {
+      r.addValidationError(makeValidationError({
+        agent:    'CrossEntityValidation',
+        type:     'CALENDAR_SHORTER_THAN_HORIZON',
+        reason:   `Resource '${r.key}' (${r.name ?? ''}) calendar ends before the horizon end — late-chain tasks can run out of availability`,
+        severity: 'warning',
+        source:   'validation',
+        policy:   'annotate',
+        field:    'available.staticAvailable',
+        rawValue: sa.tail.data.endW,
+      }));
+    }
+  });
 
   const orderKeys = new Set<string>();
   landscape.orders.forEach(o => orderKeys.add(o.key));
@@ -35,6 +86,39 @@ export function validateReferences(landscape: SchedulingLandscape): void {
           policy:   'annotate',
           field:    `capacityResources[${idx}].resource`,
           rawValue: cr.resource,
+        }));
+      }
+    });
+
+    // NO_CALENDAR_COVERAGE: every effective capacity candidate of a slot
+    // points at a resource with no availability calendar — the task can never
+    // place regardless of the schedule around it. Mirrors the engine's
+    // effective-preference semantics (EXCLUDED dropped; any REQUIRED masks
+    // the rest); a flat slot's single `resource` is its own candidate set.
+    task.capacityResources?.forEach((cr, idx) => {
+      let candidates: string[];
+      if (cr.preferences && cr.preferences.length > 0) {
+        const active = cr.preferences.filter(
+          p => p.mode !== CTPResourcePreferenceModeConstants.EXCLUDED);
+        const required = active.filter(
+          p => p.mode === CTPResourcePreferenceModeConstants.REQUIRED);
+        candidates = (required.length > 0 ? required : active)
+          .map(p => p.resourceKey)
+          .filter((k): k is string => !!k);
+      } else {
+        candidates = cr.resource ? [cr.resource] : [];
+      }
+      if (candidates.length === 0) return;
+      if (candidates.every(k => emptyCalendarResources.has(k))) {
+        task.addValidationError(makeValidationError({
+          agent:    'CrossEntityValidation',
+          type:     'NO_CALENDAR_COVERAGE',
+          reason:   `Task '${task.key}' capacity slot ${idx}: every effective candidate (${candidates.join(', ')}) has no availability calendar`,
+          severity: 'warning',
+          source:   'validation',
+          policy:   'annotate',
+          field:    `capacityResources[${idx}]`,
+          rawValue: candidates.join(','),
         }));
       }
     });
