@@ -3,10 +3,10 @@
 **Date opened:** 2026-07-29
 **Branch:** `feature/solver-performance` (worktree `ctp-platform-optimization`)
 **Baseline commit:** `225617a` (dispatch preference pass + July-16 data refresh)
-**Status:** P1–P5 COMPLETE + slim-500 scale round (2026-07-30/31).
-slim-100 9.9 s → ~1.1 s (9×); slim-500 301 s → ~46 s (6.5×). Open: scale
-measurement on stafford-engineering-test (needs mock-genius + real
-SyncService wiring); overlap-aware walker index (below).
+**Status:** P1–P5 + slim-500 round + overlap-aware index COMPLETE.
+slim-100 9.9 s → ~1.0 s (10×); slim-500 301 s → ~31 s (9.7×); placement
+parity 0 diffs on both. Open: scale measurement on
+stafford-engineering-test (needs mock-genius + real SyncService wiring).
 
 ## Why now
 
@@ -187,8 +187,13 @@ diverged; full-dataset placement parity is the stronger gate and caught it.
 partly an artifact of wrong answers — always land the parity verdict before
 quoting the speedup.
 
-**Future ticket — overlap-aware walker index:** the guard currently routes
-overlap-shaped lists (common in subtract-engine output) to the legacy walk,
-costing slim-500 ~20 s vs the unguarded (wrong) build. An index that
-handles straddling intervals (per-node clipped contributions or a segment
-structure) can reclaim most of that gap exactly.
+**Overlap-aware walker index — ✅ DONE (`1b82a89`):** two-tier design.
+`prefixMaxEnd` (monotone by construction) makes the legacy forward pre-scan
+binary-searchable for ANY list shape; well-formed lists keep the O(log n)
+prefix-sum tier; overlap/containment lists take an array-walk tier that
+replicates the legacy accumulation node-by-node over typed arrays
+(bit-exact, incl. negative contained-interval contributions). Fuzz
+regenerated with overlap shapes: 20k trials clean. slim-500 46 s → 31 s;
+parity 495/495 + 118/118. Reclaimed 15 of the ~20 s; the remaining gap vs
+the unguarded 26 s build is the price of per-node-correct accumulation on
+straddling intervals.
