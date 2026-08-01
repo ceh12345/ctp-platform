@@ -68,8 +68,9 @@
         "toUTC": true
       },
       "customerDeliveryDate": {
-        "from": "DeliveryDate",
-        "toUTC": true
+        "join": { "endpoint": "salesOrderLines", "via": "Job", "foreignKey": "JobCode", "field": "DateCustomer" },
+        "toUTC": true,
+        "_note": "REAL customer promise: salesOrderDetailEntity.DateCustomer joined via Job=JobCode. WO-level DeliveryDate is a Genius planning date populated on 100% of WOs incl. internal/rework (phantom-date tripwire) — verified 2026-08-01 on the 07-16 capture: DateCustomer is unique per job, covers customer-linked jobs only; internal/stock/rework orders stay honestly undated."
       },
       "priority": {
         "from": "Strategy",
