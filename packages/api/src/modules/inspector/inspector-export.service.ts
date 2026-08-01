@@ -444,10 +444,16 @@ export class InspectorExportService {
 
     const sources = this.stateService.getAttributeSources();
     const wogSources = sources.get('workOrderGroups') ?? new Map<string, string>();
+    // Task-level provenance (dispatch traceability attributes). Tasks also
+    // carry the group's mirrored attributes, so lookup falls back to the
+    // workOrderGroups sidecar.
+    const taskSources = sources.get('tasks') ?? new Map<string, string>();
 
     const emit = (entityType: string, key: string, name: string, attrs: Record<string, string>) => {
       for (const [attrName, attrValue] of Object.entries(attrs)) {
-        const sourcePath = wogSources.get(attrName) ?? '';
+        const sourcePath =
+          (entityType === 'Task' ? taskSources.get(attrName) : undefined) ??
+          wogSources.get(attrName) ?? '';
         sheet.addRow({
           entityType, entityKey: key, entityName: name,
           attrName, attrValue, sourcePath,

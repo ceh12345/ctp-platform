@@ -280,6 +280,7 @@ export class CTPTask extends CTPKeyEntity implements ITask {
   // Due date fields — hydrated from order at solve time, not persisted
   public dueDate: number = 0;         // epoch seconds, from order
   public lateDueDate: number = 0;     // epoch seconds, from order
+  public customerDeliveryDate: number | null = null; // epoch s, inherited from order.customerDeliveryDate (WorkOrder.DeliveryDate); null = no customer date
   public orderPriority: number = 0;   // from order priority
   public latenessPenaltyPerDay: number = 0;  // dollar cost per day late, from order
 

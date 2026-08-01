@@ -129,6 +129,7 @@ export interface IOrderData {
   demandQty: number;
   dueDate: string;
   lateDueDate?: string;
+  customerDeliveryDate?: string;   // inherited-not-authored customer promise date (WorkOrder.DeliveryDate); absent = no customer date (internal/stock WO)
   priority?: number;
   latenessPenaltyPerDay?: number;
   [key: string]: unknown;   // mapping engine may emit extra scalar fields (wostatus, customerName, etc.); hydrator stashes them on CTPOrder.rawFields
@@ -309,6 +310,16 @@ export interface IMappingProfile {
 
   /** Mapping block for WorkOrderGroup. Typed (EntityMapping) — sets the precedent for tightening other entities later. */
   workOrderGroups?: EntityMapping;
+
+  /**
+   * Dispatch preference pass (docs/Stafford/operation-group-preference-
+   * mapping-spec.md). Presence enables the pass: task capacityResources are
+   * built from the operations master (op → group) + resource group structure
+   * instead of the flat single-machine emit. Shape: IDispatchConfig in
+   * modules/integration/dispatch-preference.ts (kept loose here to avoid a
+   * config → integration import cycle).
+   */
+  dispatch?: Record<string, any>;
 
   /**
    * Cross-WO precedence derivation mode (Cross-WO Linking sprint).

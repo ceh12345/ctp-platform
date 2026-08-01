@@ -10,6 +10,13 @@ import {
 } from '../../config/interfaces/hierarchy-mapping.interface';
 import { IRawDataPayload } from './adapter.interface';
 import { MappingError } from './mapping-error';
+import {
+  buildDispatchContext,
+  buildTaskPreferences,
+  DispatchContext,
+  DispatchValidationReport,
+  IDispatchConfig,
+} from './dispatch-preference';
 
 // Detects whether an ISO 8601 string carries a timezone designator — either
 // trailing Z or a ±HH:MM offset at the end.
@@ -20,6 +27,10 @@ export interface MappingResult {
   workOrderGroups: IWorkOrderGroupData[];
   attributeSources: AttributeSourceMap;
   errors: MappingError[];
+  /** Present only when the profile has a `dispatch` block. Error-severity
+   *  findings are a promote gate (spec §4) — enforced by callers
+   *  (dump-ctp-shape writes the sidecar and exits non-zero). */
+  dispatchReport?: DispatchValidationReport;
 }
 
 /**
@@ -52,11 +63,18 @@ export class MappingEngine {
     const errors: MappingError[] = [];
     if (!profile) return { payload: raw, workOrderGroups: [], attributeSources: new Map(), errors };
     this.defaults = (profile.defaults as Record<string, unknown>) ?? {};
+    // Dispatch preference pass (docs/Stafford/operation-group-preference-
+    // mapping-spec.md) — opt-in via profile.dispatch. Context is built from
+    // RAW operations + resources because group resolution needs source-shape
+    // fields the entity mappings collapse away.
+    const dispatchCtx: DispatchContext | null = profile.dispatch
+      ? buildDispatchContext(raw.operations ?? [], raw.resources, profile.dispatch as IDispatchConfig)
+      : null;
     const payload: IRawDataPayload = {
       ...raw,
       orders:    this.mapEntities(raw.orders,    profile['orders'],    'orders',    errors),
       resources: this.mapEntities(raw.resources, profile['resources'], 'resources', errors),
-      tasks:     this.mapTasks(raw.tasks,        profile['tasks'],     errors),
+      tasks:     this.mapTasks(raw.tasks,        profile['tasks'],     errors, dispatchCtx),
     };
     // workOrderGroups are derived from the same raw records that feed orders
     // (one group per unique Job). Reads RAW orders, not the mapped output —
@@ -66,7 +84,10 @@ export class MappingEngine {
       ? this.mapWorkOrderGroups(raw.orders, profile.workOrderGroups, errors)
       : [];
     const attributeSources = this.buildAttributeSources(profile);
-    return { payload, workOrderGroups, attributeSources, errors };
+    return {
+      payload, workOrderGroups, attributeSources, errors,
+      ...(dispatchCtx ? { dispatchReport: dispatchCtx.report } : {}),
+    };
   }
 
   /**
@@ -84,6 +105,16 @@ export class MappingEngine {
     const out: AttributeSourceMap = new Map();
     if (profile.workOrderGroups) {
       out.set('workOrderGroups', this.entityAttributeSources(profile.workOrderGroups));
+    }
+    // Dispatch traceability attributes stamped on tasks (spec §3). Registered
+    // here so the inspector's Attributes sheet traces them to their source
+    // instead of flagging them engine-computed.
+    if (profile.dispatch) {
+      const opField = (profile.dispatch['operationCodeField'] as string) ?? 'OperationCode';
+      out.set('tasks', new Map([
+        ['OperationCode', opField],
+        ['GroupCode', `operations.GroupCode via ${opField}`],
+      ]));
     }
     return out;
   }
@@ -305,7 +336,12 @@ export class MappingEngine {
 
   // ── Task mapping (needs chain linkId post-processing) ────────────────────
 
-  private mapTasks(records: unknown[], spec: any, errors: MappingError[]): unknown[] {
+  private mapTasks(
+    records: unknown[],
+    spec: any,
+    errors: MappingError[],
+    dispatchCtx: DispatchContext | null = null,
+  ): unknown[] {
     if (!spec) return records;
     const recs = records as Record<string, any>[];
 
@@ -349,11 +385,25 @@ export class MappingEngine {
       // capacityResources — always coerce to string. Resource keys must
       // be strings to match CTPResource.key (engine uses string keys for
       // Map lookups). Source field may be numeric (e.g., MachineId).
+      //
+      // With a dispatch context (profile.dispatch), the flat single-resource
+      // emit is replaced by the grouped preference build (R1–R4). A null slot
+      // means the task didn't resolve (op code / group miss — already
+      // reported as an error on the dispatch report); fall back to the flat
+      // emit so the payload stays loadable while the report blocks promote.
       const machineCode = rec[capField];
-      if (machineCode !== undefined && machineCode !== null && machineCode !== '') {
+      const dispatchBuilt = dispatchCtx
+        ? buildTaskPreferences(dispatchCtx, rec, taskKey)
+        : null;
+      if (dispatchBuilt?.slot) {
+        result['capacityResources'] = [dispatchBuilt.slot];
+      } else if (machineCode !== undefined && machineCode !== null && machineCode !== '') {
         result['capacityResources'] = [{
           resource: String(machineCode), isPrimary: true, qty: 1, mode: 'ON',
         }];
+      }
+      if (dispatchBuilt && dispatchBuilt.attributes.length > 0) {
+        result['attributes'] = dispatchBuilt.attributes;
       }
 
       // linkId

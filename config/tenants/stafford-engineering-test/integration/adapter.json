@@ -12,11 +12,12 @@
     "pageNumberParam": "pageNumber"
   },
   "endpoints": {
-    "salesOrders": { "path": "/workOrderWithAdvancedInformationViewEntity?Wostatus%21%3DCLOSED%26Wostatus%21%3DCANCELLED", "pageSize": 100, "_filter": "Wostatus!=CLOSED & Wostatus!=CANCELLED" },
-    "workOrders":  { "path": "/workOrderWithAdvancedInformationViewEntity?Wostatus%21%3DCLOSED%26Wostatus%21%3DCANCELLED", "pageSize": 100, "_filter": "Wostatus!=CLOSED & Wostatus!=CANCELLED" },
-    "tasks":       { "path": "/productionTaskWithAdvancedInfoViewEntity?IsCompleted%3Dfalse",                              "pageSize": 200, "_filter": "IsCompleted=false" },
+    "salesOrders": { "path": "/workOrderWithAdvancedInformationViewEntity?Wostatus%21%3DCLOSED%26Wostatus%21%3DCANCELLED%26Job%3CSYST", "pageSize": 100, "_filter": "Wostatus!=CLOSED & Wostatus!=CANCELLED & Job<SYST" },
+    "workOrders":  { "path": "/workOrderWithAdvancedInformationViewEntity?Wostatus%21%3DCLOSED%26Wostatus%21%3DCANCELLED%26Job%3CSYST", "pageSize": 100, "_filter": "Wostatus!=CLOSED & Wostatus!=CANCELLED & Job<SYST" },
+    "tasks":       { "path": "/productionTaskWithAdvancedInfoViewEntity?IsCompleted%3Dfalse%26JobCode%3CSYST",             "pageSize": 200, "_filter": "IsCompleted=false & JobCode<SYST" },
     "resources":   { "path": "/machineAndRessourceEntity?Active%3Dtrue",                                                   "pageSize": 100, "_filter": "Active=true" },
-    "jobs":        { "path": "/JobEntity?Active%3Dtrue%26Job%3CSYST",                                                      "pageSize": 100, "_filter": "Active=true & Job<SYST" }
+    "jobs":        { "path": "/JobEntity?Active%3Dtrue%26Job%3CSYST",                                                      "pageSize": 100, "_filter": "Active=true & Job<SYST" },
+    "operations":  { "path": "/operationEntity?Active%3Dtrue",                                                             "pageSize": 100, "_filter": "Active=true" }
   },
   "responseEnvelope": {
     "resultPath": "Result",

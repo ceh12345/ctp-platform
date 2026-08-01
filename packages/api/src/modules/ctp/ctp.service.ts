@@ -3571,6 +3571,9 @@ export class CTPService {
         lateDueDate: order.lateDueDate > 0
           ? CTPDateTime.toDateTime(order.lateDueDate).toISO()
           : null,
+        customerDeliveryDate: order.customerDeliveryDate != null
+          ? CTPDateTime.toDateTime(order.customerDeliveryDate).toISO()
+          : null,
         priority: order.priority ?? 0,
         groupKey: order.groupKey,
         parentOrderKey: order.parentOrderKey,

@@ -92,14 +92,34 @@ for (const t of tasks) {
   tasksByGroup.get(o.groupKey).push(t);
 }
 
+// Effective resource keys of a task's capacity slots. Supports both formats:
+// FLAT    { resource: "41" }                          → that key
+// GROUPED { preferences: [{resource, mode}, ...] }    → REQUIRED prefs if any
+//                                                       (engine masks the rest),
+//                                                       else all preferences
+function taskResourceKeys(t) {
+  const keys = new Set();
+  for (const cr of (t.capacityResources ?? [])) {
+    const prefs = Array.isArray(cr.preferences) && typeof cr.preferences[0] === 'object'
+      ? cr.preferences : null;
+    if (prefs) {
+      const required = prefs.filter(p => p.mode === 'REQUIRED');
+      for (const p of (required.length > 0 ? required : prefs)) {
+        if (p.resource) keys.add(p.resource);
+      }
+    } else if (cr.resource) {
+      keys.add(cr.resource);
+    }
+  }
+  return keys;
+}
+
 // resources used by each group's tasks
 const groupResources = new Map();
 for (const [groupKey, gTasks] of tasksByGroup.entries()) {
   const set = new Set();
   for (const t of gTasks) {
-    for (const cr of (t.capacityResources ?? [])) {
-      if (cr.resource) set.add(cr.resource);
-    }
+    for (const k of taskResourceKeys(t)) set.add(k);
   }
   groupResources.set(groupKey, set);
 }
@@ -295,8 +315,8 @@ console.log('  by type used:   ', JSON.stringify(typeUsed));
 // Top 10 resources by task count
 const tasksPerRes = new Map();
 for (const t of sliceTasks) {
-  for (const cr of (t.capacityResources ?? [])) {
-    if (cr.resource) tasksPerRes.set(cr.resource, (tasksPerRes.get(cr.resource) ?? 0) + 1);
+  for (const k of taskResourceKeys(t)) {
+    tasksPerRes.set(k, (tasksPerRes.get(k) ?? 0) + 1);
   }
 }
 console.log();

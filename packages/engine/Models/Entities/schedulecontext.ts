@@ -28,6 +28,10 @@ export interface StartTimesCache {
   lStart: Float64Array;
   pcd: Float64Array; // processChangeDuration per node
   version: number;   // captured at build; compared against ctx._stCacheVersion
+  // P-slim500 (solver-performance sprint): structure flags computed once at
+  // build so iterate-all consumers can take ordered fast paths.
+  pcdUniform: boolean;     // every node has the same processChangeDuration
+  lStartMonotone: boolean; // lStart is non-decreasing in list order
 }
 
 export class ScheduleContext extends CTPEntityHashed {

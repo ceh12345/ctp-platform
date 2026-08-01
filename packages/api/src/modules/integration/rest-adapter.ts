@@ -20,11 +20,12 @@ export class RestAdapter implements IDataAdapter {
     // slot returns []; we do NOT fall back to fetching baseUrl bare (would 404).
     const buildUrl = (path: string | undefined) => (path ? `${baseUrl}${path}` : '');
 
-    const [salesOrders, tasks, resources, jobs] = await Promise.all([
+    const [salesOrders, tasks, resources, jobs, operations] = await Promise.all([
       this.fetchAllPages(buildUrl(endpoints.salesOrders?.path), endpoints.salesOrders?.pageSize ?? 100, timeout, retries, retryDelay, pageSizeParam, pageNumberParam),
       this.fetchAllPages(buildUrl(endpoints.tasks?.path),       endpoints.tasks?.pageSize       ?? 200, timeout, retries, retryDelay, pageSizeParam, pageNumberParam),
       this.fetchAllPages(buildUrl(endpoints.resources?.path),   endpoints.resources?.pageSize   ?? 100, timeout, retries, retryDelay, pageSizeParam, pageNumberParam),
       this.fetchAllPages(buildUrl(endpoints.jobs?.path),        endpoints.jobs?.pageSize        ?? 100, timeout, retries, retryDelay, pageSizeParam, pageNumberParam),
+      this.fetchAllPages(buildUrl(endpoints.operations?.path),  endpoints.operations?.pageSize  ?? 100, timeout, retries, retryDelay, pageSizeParam, pageNumberParam),
     ]);
 
     return {
@@ -32,6 +33,7 @@ export class RestAdapter implements IDataAdapter {
       tasks,
       resources,
       jobs,
+      operations,
       calendars:      [],
       stateChanges:   [],
       products:       [],

@@ -10,7 +10,8 @@ import { ScheduleConfigurationService } from '../../../config/schedule-configura
 import { LoggerService } from '../../../logging/logger.service';
 import {
   GreedyNeighborhood,
-  ChainNeighborhood,
+  DynamicNeighborhood,
+  StaticRankPriority,
   DueDateNeighborhood,
   ShortestFirstNeighborhood,
   ChainFirstFitNeighborhood,
@@ -151,7 +152,7 @@ async function solveWithStrategy(
 describe('Strategy Comparison — Healthcare', async () => {
   const strategies: INeighborhoodStrategy[] = [
     new GreedyNeighborhood(),
-    new ChainNeighborhood(),
+    new DynamicNeighborhood(new StaticRankPriority()),
     new DueDateNeighborhood(),
     new ShortestFirstNeighborhood(),
     new ChainFirstFitNeighborhood(),
@@ -208,7 +209,7 @@ describe('Strategy Comparison — Healthcare', async () => {
 describe('Strategy Comparison — Manufacturing', async () => {
   const strategies: INeighborhoodStrategy[] = [
     new GreedyNeighborhood(),
-    new ChainNeighborhood(),
+    new DynamicNeighborhood(new StaticRankPriority()),
     new DueDateNeighborhood(),
     new ShortestFirstNeighborhood(),
     new ChainFirstFitNeighborhood(),

@@ -11,8 +11,15 @@ So the default is a 5-day, 8-hour Mon-Fri shift. We use 07:00-15:00 NZ local
 (NZ early-shift convention). Subcontract resources (RessourceType='S') get a
 24/7 unlimited calendar since they're external.
 
-Coverage: 2026-01-01 → 2026-12-31. Handles NZDT↔NZST DST transitions via
-zoneinfo (Pacific/Auckland).
+Coverage: START_DATE → END_DATE (defaults 2026-01-01 → 2027-12-31; override
+with --end YYYY-MM-DD). Coverage must extend past every tenant horizon end —
+a calendar that stops short of the horizon strands late-chain tasks with
+"[HORIZON] partial" / "fully blocked" infeasibilities (found via slim-500,
+2026-07-30). Handles NZDT↔NZST DST transitions via zoneinfo
+(Pacific/Auckland) for any year.
+
+Usage:
+    python scripts/generate-stafford-calendar.py [--resources <capture.json>] [--end YYYY-MM-DD]
 
 Output: overwrites config/tenants/stafford-engineering-test/data/calendars.json
 """
@@ -26,24 +33,44 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
 REPO = Path(__file__).resolve().parents[1]
-RESOURCES_FILE = REPO / 'tools/mock-genius/recorded/stafford-work7-2026-04-23/machineAndRessourceEntity_page1.json'
+
+
+def arg_val(flag, default):
+    argv = sys.argv
+    return argv[argv.index(flag) + 1] if flag in argv and argv.index(flag) + 1 < len(argv) else default
+
+
+# Default to the newest full capture — an older capture misses recently added
+# resources, which then have NO calendar and are unschedulable (MIKE/COOPER,
+# found via slim-500 2026-07-30).
+RESOURCES_FILE = Path(arg_val(
+    '--resources',
+    REPO / 'tools/mock-genius/recorded/stafford-work7-2026-07-16/machineAndRessourceEntity_page1.json',
+))
 OUTPUT_FILE = REPO / 'config/tenants/stafford-engineering-test/data/calendars.json'
 
 START_DATE = date(2026, 1, 1)
-END_DATE   = date(2026, 12, 31)
+END_DATE   = date.fromisoformat(arg_val('--end', '2027-12-31'))
 SHIFT_START_HOUR = 7   # 07:00 NZ local
 SHIFT_END_HOUR   = 15  # 15:00 NZ local — 8-hour shift
 
-# NZ DST 2026 boundaries:
-#   - NZDT (+13) in effect Jan 1 → Apr 4 inclusive, and Sep 27 → Dec 31 inclusive
-#   - NZST (+12) in effect Apr 5 → Sep 26 inclusive
-DST_END   = date(2026, 4, 5)    # NZDT → NZST on this date at 03:00 NZDT
-DST_START = date(2026, 9, 27)   # NZST → NZDT on this date at 02:00 NZST
+# NZ DST rules (any year): NZDT (+13) ends the first Sunday of April and
+# begins the last Sunday of September; NZST (+12) between. Rule-based rather
+# than zoneinfo because Windows Python lacks the tzdata package by default.
+
+def _first_sunday(year, month):
+    d = date(year, month, 1)
+    return d + timedelta(days=(6 - d.weekday()) % 7)
+
+
+def _last_sunday(year, month):
+    d = (date(year, month, 28) + timedelta(days=7)).replace(day=1) - timedelta(days=1)
+    return d - timedelta(days=(d.weekday() + 1) % 7)
 
 
 def nz_offset_hours(d):
-    """Return NZ UTC offset in hours for a given date (13 in DST, 12 otherwise)."""
-    if d < DST_END or d >= DST_START:
+    """NZ UTC offset in hours for a given date (13 in NZDT, 12 in NZST)."""
+    if d < _first_sunday(d.year, 4) or d >= _last_sunday(d.year, 9):
         return 13
     return 12
 

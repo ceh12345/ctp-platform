@@ -712,6 +712,9 @@ export class StateHydratorService {
       if (dueDt) order.dueDate = CTPDateTime.fromDateTime(dueDt);
       const lateDt = this.parseIsoDateOrRecord(item.lateDueDate, order, 'lateDueDate');
       if (lateDt) order.lateDueDate = CTPDateTime.fromDateTime(lateDt);
+      // customerDeliveryDate — inherited-not-authored; stays null when absent (internal/stock WO).
+      const custDt = this.parseIsoDateOrRecord(item.customerDeliveryDate, order, 'customerDeliveryDate');
+      if (custDt) order.customerDeliveryDate = CTPDateTime.fromDateTime(custDt);
       order.priority = item.priority ?? 0;
       if (item.latenessPenaltyPerDay !== undefined) order.latenessPenaltyPerDay = item.latenessPenaltyPerDay;
 

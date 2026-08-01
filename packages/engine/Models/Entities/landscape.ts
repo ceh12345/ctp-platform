@@ -352,6 +352,7 @@ export class SchedulingLandscape implements ILandscape {
           if (task.succs.length === 0) {
             task.dueDate = order.dueDate;
             task.lateDueDate = order.lateDueDate;
+            task.customerDeliveryDate = order.customerDeliveryDate;
             if (order.latenessPenaltyPerDay > 0) {
               task.latenessPenaltyPerDay = order.latenessPenaltyPerDay;
             }

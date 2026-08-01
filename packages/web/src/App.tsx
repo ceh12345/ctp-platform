@@ -1921,12 +1921,12 @@ function SolvePreview({ orders, tasks, materials, resources,
 
           {/* Tier selector (always visible) */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
+            display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8,
             padding: '10px 12px', background: C.bg, borderRadius: 8,
             border: `1px solid ${C.border}`,
           }}>
-            <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600, whiteSpace: 'nowrap' }}>Solver:</span>
-            <div style={{ display: 'flex', gap: 4, flex: 1, justifyContent: 'center' }}>
+            <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 700, whiteSpace: 'nowrap', minWidth: 62 }}>Solver</span>
+            <div style={{ display: 'flex', gap: 4, flex: 1, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
               {tierOptions.map(t => {
                 const isActive = t.key === tier;
                 const tooltip = (
@@ -1960,56 +1960,66 @@ function SolvePreview({ orders, tasks, materials, resources,
           </div>
 
           {/* Dispatching strategy override (intermediate+) */}
-          {showAt(experienceLevel, 'intermediate') && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8,
-              padding: '8px 10px', background: C.bg, borderRadius: 8,
-              border: `1px solid ${C.border}`,
-            }}>
-              <span style={{ fontSize: 10, color: C.textDim, fontWeight: 600, whiteSpace: 'nowrap' }}>Dispatch:</span>
-              <div style={{ display: 'flex', gap: 2, flex: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
-                {strategyOptions.map(opt => {
-                  const isActive = opt.key === strategy;
-                  const tooltip = (
-                    <div style={{ maxWidth: 260 }}>
-                      <div style={{ fontWeight: 700, marginBottom: 4, color: C.text }}>{opt.icon} {opt.label}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 6 }}>{opt.short}</div>
-                      {opt.detail && <div style={{ fontSize: 11, color: C.textDim, lineHeight: 1.4, marginBottom: 6 }}>{opt.detail}</div>}
-                      {opt.bestFor && <div style={{ fontSize: 11, color: C.accent }}>Best for: {opt.bestFor}</div>}
-                    </div>
-                  );
-                  return (
-                    <HoverTooltip key={opt.key} content={tooltip}>
-                      <button onClick={() => onStrategyChange(opt.key)}
-                        style={{
-                          padding: '4px 7px', borderRadius: 5, cursor: 'pointer',
-                          fontSize: 10, fontWeight: 600, fontFamily: FONT,
-                          background: isActive ? C.accent + '22' : 'transparent',
-                          color: isActive ? C.accent : C.textMuted,
-                          border: isActive ? `1px solid ${C.accent}44` : `1px solid transparent`,
-                          display: 'flex', alignItems: 'center', gap: 3,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        <span style={{ fontSize: 10 }}>{opt.icon}</span>
-                        {opt.label}
-                      </button>
-                    </HoverTooltip>
-                  );
-                })}
+          {showAt(experienceLevel, 'intermediate') && (() => {
+            // Chain-aware seam plugs on the first line; legacy sorts on the second.
+            const CHAIN_KEYS = ['Chain', 'ATC', 'DBR', 'Slack'];
+            const chainPlugs = strategyOptions.filter(o => CHAIN_KEYS.includes(o.key));
+            const legacy = strategyOptions.filter(o => !CHAIN_KEYS.includes(o.key));
+            const renderStratBtn = (opt: StrategyOption) => {
+              const isActive = opt.key === strategy;
+              const tooltip = (
+                <div style={{ maxWidth: 260 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 4, color: C.text }}>{opt.icon} {opt.label}</div>
+                  <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 6 }}>{opt.short}</div>
+                  {opt.detail && <div style={{ fontSize: 11, color: C.textDim, lineHeight: 1.4, marginBottom: 6 }}>{opt.detail}</div>}
+                  {opt.bestFor && <div style={{ fontSize: 11, color: C.accent }}>Best for: {opt.bestFor}</div>}
+                </div>
+              );
+              return (
+                <HoverTooltip key={opt.key} content={tooltip}>
+                  <button onClick={() => onStrategyChange(opt.key)}
+                    style={{
+                      padding: '6px 11px', borderRadius: 6, cursor: 'pointer',
+                      fontSize: 12, fontWeight: 600, fontFamily: FONT,
+                      background: isActive ? C.accent + '22' : 'transparent',
+                      color: isActive ? C.accent : C.textMuted,
+                      border: isActive ? `1px solid ${C.accent}44` : `1px solid ${C.border}`,
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <span style={{ fontSize: 13 }}>{opt.icon}</span>
+                    {opt.label}
+                  </button>
+                </HoverTooltip>
+              );
+            };
+            return (
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8,
+                padding: '10px 12px', background: C.bg, borderRadius: 8,
+                border: `1px solid ${C.border}`,
+              }}>
+                <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 700, whiteSpace: 'nowrap', minWidth: 62, marginTop: 6 }}>Dispatch</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{chainPlugs.map(renderStratBtn)}</div>
+                  {legacy.length > 0 && (
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{legacy.map(renderStratBtn)}</div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Demand sort (processing sequence) — intermediate+ */}
           {showAt(experienceLevel, 'intermediate') && sequenceOptions.length > 0 && (
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8,
-              padding: '8px 10px', background: C.bg, borderRadius: 8,
+              display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8,
+              padding: '10px 12px', background: C.bg, borderRadius: 8,
               border: `1px solid ${C.border}`,
             }}>
-              <span style={{ fontSize: 10, color: C.textDim, fontWeight: 600, whiteSpace: 'nowrap' }}>Sort:</span>
-              <div style={{ display: 'flex', gap: 2, flex: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 700, whiteSpace: 'nowrap', minWidth: 62 }}>Sort</span>
+              <div style={{ display: 'flex', gap: 4, flex: 1, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
                 {sequenceOptions.map(opt => {
                   const isActive = opt.name === sequence;
                   const tooltip = (
@@ -2024,11 +2034,11 @@ function SolvePreview({ orders, tasks, materials, resources,
                     <HoverTooltip key={opt.name} content={tooltip}>
                       <button onClick={() => onSequenceChange(opt.name)}
                         style={{
-                          padding: '4px 7px', borderRadius: 5, cursor: 'pointer',
-                          fontSize: 10, fontWeight: 600, fontFamily: FONT,
+                          padding: '6px 11px', borderRadius: 6, cursor: 'pointer',
+                          fontSize: 12, fontWeight: 600, fontFamily: FONT,
                           background: isActive ? C.accent + '22' : 'transparent',
                           color: isActive ? C.accent : C.textMuted,
-                          border: isActive ? `1px solid ${C.accent}44` : `1px solid transparent`,
+                          border: isActive ? `1px solid ${C.accent}44` : `1px solid ${C.border}`,
                           whiteSpace: 'nowrap',
                         }}
                       >

@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "tenantId": "stafford-slim-2000",
+  "processingSequences": [
+    {
+      "name": "delivery-date-first",
+      "displayName": "Delivery Date Priority",
+      "criteria": [
+        {
+          "field": "group.promiseDate",
+          "direction": "asc",
+          "importance": "primary"
+        },
+        {
+          "field": "hierarchy.SalesOrder",
+          "direction": "asc",
+          "importance": "secondary"
+        }
+      ]
+    },
+    {
+      "name": "wo-priority",
+      "displayName": "Work Order Priority",
+      "criteria": [
+        {
+          "field": "order.priority",
+          "direction": "asc",
+          "importance": "primary"
+        }
+      ]
+    }
+  ],
+  "defaultSequence": "delivery-date-first"
+}

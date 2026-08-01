@@ -67,10 +67,17 @@ export * from './AI/Agents/timing';
 // AI - Neighborhoods
 export * from './AI/Neighborhoods/neighborhood';
 export * from './AI/Neighborhoods/greedyneighborhood';
-export * from './AI/Neighborhoods/chainneighborhood';
+export * from './AI/Neighborhoods/dynamicneighborhood';
 export * from './AI/Neighborhoods/duedateneighborhood';
 export * from './AI/Neighborhoods/shortestfirstneighborhood';
 export * from './AI/Neighborhoods/chainfirstfitneighborhood';
+// AI - Dispatch (pluggable selection rules)
+export * from './AI/Dispatch/dispatchstate';
+export * from './AI/Dispatch/dispatchpriority';
+export * from './AI/Dispatch/staticrankpriority';
+export * from './AI/Dispatch/atcdispatchpriority';
+export * from './AI/Dispatch/dbrdispatchpriority';
+export * from './AI/Dispatch/slackdispatchpriority';
 
 // AI - Schedulers
 export * from './AI/Schedulers/basescheduler';

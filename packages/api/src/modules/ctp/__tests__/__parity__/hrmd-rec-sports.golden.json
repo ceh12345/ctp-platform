@@ -1,0 +1,1204 @@
+[
+  {
+    "key": "GAME-BB-CP-W1-01-PLAY",
+    "start": "2026-06-06T08:00:00.000-06:00",
+    "end": "2026-06-06T09:15:00.000-06:00",
+    "resources": [
+      "EQ-PITCHMACHINE-2",
+      "FP-FIELD1",
+      "UMP-07"
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-01-PREP",
+    "start": "2026-06-06T07:45:00.000-06:00",
+    "end": "2026-06-06T08:00:00.000-06:00",
+    "resources": [
+      "EQ-BASES-B",
+      "EQ-PITCHMACHINE-1",
+      "FP-FIELD1",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-01-RESET",
+    "start": "2026-06-06T09:15:00.000-06:00",
+    "end": "2026-06-06T09:25:00.000-06:00",
+    "resources": [
+      "FP-FIELD1",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-02-PLAY",
+    "start": "2026-06-06T09:00:00.000-06:00",
+    "end": "2026-06-06T10:15:00.000-06:00",
+    "resources": [
+      "EQ-PITCHMACHINE-1",
+      "HH-FIELD1",
+      "UMP-08"
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-02-PREP",
+    "start": "2026-06-06T08:45:00.000-06:00",
+    "end": "2026-06-06T09:00:00.000-06:00",
+    "resources": [
+      "EQ-BASES-C",
+      "EQ-PITCHMACHINE-1",
+      "HH-FIELD1",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-02-RESET",
+    "start": "2026-06-06T10:15:00.000-06:00",
+    "end": "2026-06-06T10:25:00.000-06:00",
+    "resources": [
+      "HH-FIELD1",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-03-PLAY",
+    "start": "2026-06-06T10:00:00.000-06:00",
+    "end": "2026-06-06T11:15:00.000-06:00",
+    "resources": [
+      "EQ-PITCHMACHINE-2",
+      "RS-SOUTH-GREEN",
+      "UMP-02"
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-03-PREP",
+    "start": "2026-06-06T09:45:00.000-06:00",
+    "end": "2026-06-06T10:00:00.000-06:00",
+    "resources": [
+      "EQ-BASES-A",
+      "EQ-PITCHMACHINE-2",
+      "RS-SOUTH-GREEN",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-03-RESET",
+    "start": "2026-06-06T11:15:00.000-06:00",
+    "end": "2026-06-06T11:25:00.000-06:00",
+    "resources": [
+      "RS-SOUTH-GREEN",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-04-PLAY",
+    "start": "2026-06-06T10:30:00.000-06:00",
+    "end": "2026-06-06T11:45:00.000-06:00",
+    "resources": [
+      "EQ-PITCHMACHINE-1",
+      "FP-FIELD1",
+      "UMP-05"
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-04-PREP",
+    "start": "2026-06-06T10:15:00.000-06:00",
+    "end": "2026-06-06T10:30:00.000-06:00",
+    "resources": [
+      "EQ-BASES-A",
+      "EQ-PITCHMACHINE-1",
+      "FP-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-04-RESET",
+    "start": "2026-06-06T11:45:00.000-06:00",
+    "end": "2026-06-06T11:55:00.000-06:00",
+    "resources": [
+      "FP-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-05-PLAY",
+    "start": "2026-06-06T12:30:00.000-06:00",
+    "end": "2026-06-06T13:45:00.000-06:00",
+    "resources": [
+      "EQ-PITCHMACHINE-1",
+      "RS-SOUTH-GREEN",
+      "UMP-01"
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-05-PREP",
+    "start": "2026-06-06T12:15:00.000-06:00",
+    "end": "2026-06-06T12:30:00.000-06:00",
+    "resources": [
+      "EQ-BASES-A",
+      "EQ-PITCHMACHINE-2",
+      "RS-SOUTH-GREEN",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-CP-W1-05-RESET",
+    "start": "2026-06-06T13:45:00.000-06:00",
+    "end": "2026-06-06T13:55:00.000-06:00",
+    "resources": [
+      "RS-SOUTH-GREEN",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-MJ-W1-01-PLAY",
+    "start": "2026-06-06T13:00:00.000-06:00",
+    "end": "2026-06-06T15:00:00.000-06:00",
+    "resources": [
+      "EQ-SCOREBOARD",
+      "RS-ROXBOROUGH",
+      "UMP-03",
+      "UMP-04"
+    ]
+  },
+  {
+    "key": "GAME-BB-MJ-W1-01-PREP",
+    "start": "2026-06-06T12:40:00.000-06:00",
+    "end": "2026-06-06T13:00:00.000-06:00",
+    "resources": [
+      "EQ-BASES-B",
+      "EQ-SCOREBOARD",
+      "RS-ROXBOROUGH",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-MJ-W1-01-RESET",
+    "start": "2026-06-06T15:00:00.000-06:00",
+    "end": "2026-06-06T15:15:00.000-06:00",
+    "resources": [
+      "RS-ROXBOROUGH",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-MJ-W1-02-PLAY",
+    "start": "2026-06-06T15:30:00.000-06:00",
+    "end": "2026-06-06T17:30:00.000-06:00",
+    "resources": [
+      "EQ-SCOREBOARD",
+      "NR-FIELD1",
+      "UMP-01",
+      "UMP-07"
+    ]
+  },
+  {
+    "key": "GAME-BB-MJ-W1-02-PREP",
+    "start": "2026-06-06T15:10:00.000-06:00",
+    "end": "2026-06-06T15:30:00.000-06:00",
+    "resources": [
+      "EQ-BASES-B",
+      "EQ-SCOREBOARD",
+      "NR-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-MJ-W1-02-RESET",
+    "start": "2026-06-06T17:30:00.000-06:00",
+    "end": "2026-06-06T17:45:00.000-06:00",
+    "resources": [
+      "NR-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-MJ-W1-03-PLAY",
+    "start": "2026-06-06T18:00:00.000-06:00",
+    "end": "2026-06-06T20:00:00.000-06:00",
+    "resources": [
+      "EQ-SCOREBOARD",
+      "NR-FIELD1",
+      "UMP-01",
+      "UMP-07"
+    ]
+  },
+  {
+    "key": "GAME-BB-MJ-W1-03-PREP",
+    "start": "2026-06-06T08:00:00.000-06:00",
+    "end": "2026-06-06T08:20:00.000-06:00",
+    "resources": [
+      "EQ-BASES-B",
+      "EQ-SCOREBOARD",
+      "NR-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-MJ-W1-03-RESET",
+    "start": "2026-06-06T20:00:00.000-06:00",
+    "end": "2026-06-06T20:15:00.000-06:00",
+    "resources": [
+      "NR-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-MJ-W1-04-PLAY",
+    "start": "2026-06-07T12:00:00.000-06:00",
+    "end": "2026-06-07T14:00:00.000-06:00",
+    "resources": [
+      "EQ-SCOREBOARD",
+      "NR-FIELD1",
+      "UMP-01",
+      "UMP-02"
+    ]
+  },
+  {
+    "key": "GAME-BB-MJ-W1-04-PREP",
+    "start": "2026-06-06T20:40:00.000-06:00",
+    "end": "2026-06-06T21:00:00.000-06:00",
+    "resources": [
+      "EQ-BASES-A",
+      "EQ-SCOREBOARD",
+      "NR-FIELD1",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-MJ-W1-04-RESET",
+    "start": "2026-06-09T17:30:00.000-06:00",
+    "end": "2026-06-09T17:45:00.000-06:00",
+    "resources": [
+      "NR-FIELD1",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-MN-W1-01-PLAY",
+    "start": "2026-06-06T09:30:00.000-06:00",
+    "end": "2026-06-06T11:00:00.000-06:00",
+    "resources": [
+      "HH-FIELD2",
+      "UMP-01",
+      "UMP-03"
+    ]
+  },
+  {
+    "key": "GAME-BB-MN-W1-01-PREP",
+    "start": "2026-06-06T09:15:00.000-06:00",
+    "end": "2026-06-06T09:30:00.000-06:00",
+    "resources": [
+      "EQ-BASES-C",
+      "HH-FIELD2",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-MN-W1-01-RESET",
+    "start": "2026-06-06T11:00:00.000-06:00",
+    "end": "2026-06-06T11:15:00.000-06:00",
+    "resources": [
+      "HH-FIELD2",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-MN-W1-02-PLAY",
+    "start": "2026-06-06T10:00:00.000-06:00",
+    "end": "2026-06-06T11:30:00.000-06:00",
+    "resources": [
+      "NR-FIELD1",
+      "UMP-04",
+      "UMP-07"
+    ]
+  },
+  {
+    "key": "GAME-BB-MN-W1-02-PREP",
+    "start": "2026-06-06T09:45:00.000-06:00",
+    "end": "2026-06-06T10:00:00.000-06:00",
+    "resources": [
+      "EQ-BASES-C",
+      "NR-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-MN-W1-02-RESET",
+    "start": "2026-06-06T11:30:00.000-06:00",
+    "end": "2026-06-06T11:45:00.000-06:00",
+    "resources": [
+      "NR-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-MN-W1-03-PLAY",
+    "start": "2026-06-06T12:30:00.000-06:00",
+    "end": "2026-06-06T14:00:00.000-06:00",
+    "resources": [
+      "NR-FIELD1",
+      "UMP-06",
+      "UMP-08"
+    ]
+  },
+  {
+    "key": "GAME-BB-MN-W1-03-PREP",
+    "start": "2026-06-06T12:15:00.000-06:00",
+    "end": "2026-06-06T12:30:00.000-06:00",
+    "resources": [
+      "EQ-BASES-C",
+      "NR-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-MN-W1-03-RESET",
+    "start": "2026-06-06T14:00:00.000-06:00",
+    "end": "2026-06-06T14:15:00.000-06:00",
+    "resources": [
+      "NR-FIELD1",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-MN-W1-04-PLAY",
+    "start": "2026-06-06T13:00:00.000-06:00",
+    "end": "2026-06-06T14:30:00.000-06:00",
+    "resources": [
+      "NR-FIELD2",
+      "UMP-02",
+      "UMP-07"
+    ]
+  },
+  {
+    "key": "GAME-BB-MN-W1-04-PREP",
+    "start": "2026-06-06T12:45:00.000-06:00",
+    "end": "2026-06-06T13:00:00.000-06:00",
+    "resources": [
+      "EQ-BASES-A",
+      "NR-FIELD2",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-MN-W1-04-RESET",
+    "start": "2026-06-06T14:30:00.000-06:00",
+    "end": "2026-06-06T14:45:00.000-06:00",
+    "resources": [
+      "NR-FIELD2",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-01-PLAY",
+    "start": "2026-06-06T07:30:00.000-06:00",
+    "end": "2026-06-06T08:30:00.000-06:00",
+    "resources": [
+      "RS-FIELD5",
+      "UMP-01"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-01-PREP",
+    "start": "2026-06-06T07:20:00.000-06:00",
+    "end": "2026-06-06T07:30:00.000-06:00",
+    "resources": [
+      "EQ-BASES-A",
+      "RS-FIELD5",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-01-RESET",
+    "start": "2026-06-06T08:30:00.000-06:00",
+    "end": "2026-06-06T08:40:00.000-06:00",
+    "resources": [
+      "RS-FIELD5",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-02-PLAY",
+    "start": "2026-06-06T07:30:00.000-06:00",
+    "end": "2026-06-06T08:30:00.000-06:00",
+    "resources": [
+      "RS-FIELD6",
+      "UMP-02"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-02-PREP",
+    "start": "2026-06-06T07:20:00.000-06:00",
+    "end": "2026-06-06T07:30:00.000-06:00",
+    "resources": [
+      "EQ-BASES-B",
+      "RS-FIELD6",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-02-RESET",
+    "start": "2026-06-06T08:30:00.000-06:00",
+    "end": "2026-06-06T08:40:00.000-06:00",
+    "resources": [
+      "RS-FIELD6",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-03-PLAY",
+    "start": "2026-06-06T08:00:00.000-06:00",
+    "end": "2026-06-06T09:00:00.000-06:00",
+    "resources": [
+      "RS-SOUTH-GREEN",
+      "UMP-03"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-03-PREP",
+    "start": "2026-06-06T07:50:00.000-06:00",
+    "end": "2026-06-06T08:00:00.000-06:00",
+    "resources": [
+      "EQ-BASES-A",
+      "RS-SOUTH-GREEN",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-03-RESET",
+    "start": "2026-06-06T09:00:00.000-06:00",
+    "end": "2026-06-06T09:10:00.000-06:00",
+    "resources": [
+      "RS-SOUTH-GREEN",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-04-PLAY",
+    "start": "2026-06-06T08:30:00.000-06:00",
+    "end": "2026-06-06T09:30:00.000-06:00",
+    "resources": [
+      "TP-FIELD1",
+      "UMP-04"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-04-PREP",
+    "start": "2026-06-06T08:20:00.000-06:00",
+    "end": "2026-06-06T08:30:00.000-06:00",
+    "resources": [
+      "EQ-BASES-A",
+      "STAFF-FIELD-1",
+      "TP-FIELD1"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-04-RESET",
+    "start": "2026-06-06T09:30:00.000-06:00",
+    "end": "2026-06-06T09:40:00.000-06:00",
+    "resources": [
+      "STAFF-FIELD-1",
+      "TP-FIELD1"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-05-PLAY",
+    "start": "2026-06-06T08:30:00.000-06:00",
+    "end": "2026-06-06T09:30:00.000-06:00",
+    "resources": [
+      "CR-FIELD1",
+      "UMP-05"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-05-PREP",
+    "start": "2026-06-06T08:20:00.000-06:00",
+    "end": "2026-06-06T08:30:00.000-06:00",
+    "resources": [
+      "CR-FIELD1",
+      "EQ-BASES-B",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-05-RESET",
+    "start": "2026-06-06T09:30:00.000-06:00",
+    "end": "2026-06-06T09:40:00.000-06:00",
+    "resources": [
+      "CR-FIELD1",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-06-PLAY",
+    "start": "2026-06-06T09:00:00.000-06:00",
+    "end": "2026-06-06T10:00:00.000-06:00",
+    "resources": [
+      "BDC-FIELD1",
+      "UMP-06"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-06-PREP",
+    "start": "2026-06-06T08:50:00.000-06:00",
+    "end": "2026-06-06T09:00:00.000-06:00",
+    "resources": [
+      "BDC-FIELD1",
+      "EQ-BASES-A",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-BB-TB-W1-06-RESET",
+    "start": "2026-06-06T10:00:00.000-06:00",
+    "end": "2026-06-06T10:10:00.000-06:00",
+    "resources": [
+      "BDC-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-FF-35-W1-01-PLAY",
+    "start": "2026-06-06T11:00:00.000-06:00",
+    "end": "2026-06-06T12:00:00.000-06:00",
+    "resources": [
+      "REF-01",
+      "REF-03",
+      "TP-FIELD1"
+    ]
+  },
+  {
+    "key": "GAME-FF-35-W1-01-PREP",
+    "start": "2026-06-06T10:40:00.000-06:00",
+    "end": "2026-06-06T10:50:00.000-06:00",
+    "resources": [
+      "STAFF-FIELD-1",
+      "TP-FIELD1"
+    ]
+  },
+  {
+    "key": "GAME-FF-35-W1-01-RESET",
+    "start": "2026-06-06T12:00:00.000-06:00",
+    "end": "2026-06-06T12:10:00.000-06:00",
+    "resources": [
+      "STAFF-FIELD-1",
+      "TP-FIELD1"
+    ]
+  },
+  {
+    "key": "GAME-FF-35-W1-02-PLAY",
+    "start": "2026-06-06T11:00:00.000-06:00",
+    "end": "2026-06-06T12:00:00.000-06:00",
+    "resources": [
+      "CR-FIELD1",
+      "REF-04",
+      "REF-05"
+    ]
+  },
+  {
+    "key": "GAME-FF-35-W1-02-PREP",
+    "start": "2026-06-06T10:30:00.000-06:00",
+    "end": "2026-06-06T10:40:00.000-06:00",
+    "resources": [
+      "CR-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-FF-35-W1-02-RESET",
+    "start": "2026-06-06T12:00:00.000-06:00",
+    "end": "2026-06-06T12:10:00.000-06:00",
+    "resources": [
+      "CR-FIELD1",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-FF-35-W1-03-PLAY",
+    "start": "2026-06-06T13:00:00.000-06:00",
+    "end": "2026-06-06T14:00:00.000-06:00",
+    "resources": [
+      "BDC-FIELD1",
+      "REF-01",
+      "REF-05"
+    ]
+  },
+  {
+    "key": "GAME-FF-35-W1-03-PREP",
+    "start": "2026-06-06T12:35:00.000-06:00",
+    "end": "2026-06-06T12:45:00.000-06:00",
+    "resources": [
+      "BDC-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-FF-35-W1-03-RESET",
+    "start": "2026-06-06T14:00:00.000-06:00",
+    "end": "2026-06-06T14:10:00.000-06:00",
+    "resources": [
+      "BDC-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-FF-68-W1-01-PLAY",
+    "start": "2026-06-06T15:00:00.000-06:00",
+    "end": "2026-06-06T16:00:00.000-06:00",
+    "resources": [
+      "REF-01",
+      "REF-02",
+      "RS-STADIUM"
+    ]
+  },
+  {
+    "key": "GAME-FF-68-W1-01-PREP",
+    "start": "2026-06-06T14:50:00.000-06:00",
+    "end": "2026-06-06T15:00:00.000-06:00",
+    "resources": [
+      "RS-STADIUM",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-FF-68-W1-01-RESET",
+    "start": "2026-06-06T16:00:00.000-06:00",
+    "end": "2026-06-06T16:10:00.000-06:00",
+    "resources": [
+      "RS-STADIUM",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-FF-68-W1-02-PLAY",
+    "start": "2026-06-06T15:30:00.000-06:00",
+    "end": "2026-06-06T16:30:00.000-06:00",
+    "resources": [
+      "REF-03",
+      "REF-04",
+      "TP-FIELD1"
+    ]
+  },
+  {
+    "key": "GAME-FF-68-W1-02-PREP",
+    "start": "2026-06-06T15:00:00.000-06:00",
+    "end": "2026-06-06T15:10:00.000-06:00",
+    "resources": [
+      "STAFF-FIELD-1",
+      "TP-FIELD1"
+    ]
+  },
+  {
+    "key": "GAME-FF-68-W1-02-RESET",
+    "start": "2026-06-06T16:30:00.000-06:00",
+    "end": "2026-06-06T16:40:00.000-06:00",
+    "resources": [
+      "STAFF-FIELD-1",
+      "TP-FIELD1"
+    ]
+  },
+  {
+    "key": "GAME-FF-K2-W1-01-PLAY",
+    "start": "2026-06-06T11:00:00.000-06:00",
+    "end": "2026-06-06T11:45:00.000-06:00",
+    "resources": [
+      "BDC-FIELD1",
+      "REF-02"
+    ]
+  },
+  {
+    "key": "GAME-FF-K2-W1-01-PREP",
+    "start": "2026-06-06T10:50:00.000-06:00",
+    "end": "2026-06-06T11:00:00.000-06:00",
+    "resources": [
+      "BDC-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-FF-K2-W1-01-RESET",
+    "start": "2026-06-06T11:45:00.000-06:00",
+    "end": "2026-06-06T11:55:00.000-06:00",
+    "resources": [
+      "BDC-FIELD1",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-FF-K2-W1-02-PLAY",
+    "start": "2026-06-06T13:30:00.000-06:00",
+    "end": "2026-06-06T14:15:00.000-06:00",
+    "resources": [
+      "REF-03",
+      "TP-FIELD1"
+    ]
+  },
+  {
+    "key": "GAME-FF-K2-W1-02-PREP",
+    "start": "2026-06-06T13:20:00.000-06:00",
+    "end": "2026-06-06T13:30:00.000-06:00",
+    "resources": [
+      "STAFF-FIELD-1",
+      "TP-FIELD1"
+    ]
+  },
+  {
+    "key": "GAME-FF-K2-W1-02-RESET",
+    "start": "2026-06-06T14:15:00.000-06:00",
+    "end": "2026-06-06T14:25:00.000-06:00",
+    "resources": [
+      "STAFF-FIELD-2",
+      "TP-FIELD1"
+    ]
+  },
+  {
+    "key": "GAME-FF-K2-W1-03-PLAY",
+    "start": "2026-06-06T13:30:00.000-06:00",
+    "end": "2026-06-06T14:15:00.000-06:00",
+    "resources": [
+      "CR-FIELD1",
+      "REF-02"
+    ]
+  },
+  {
+    "key": "GAME-FF-K2-W1-03-PREP",
+    "start": "2026-06-06T13:20:00.000-06:00",
+    "end": "2026-06-06T13:30:00.000-06:00",
+    "resources": [
+      "CR-FIELD1",
+      "STAFF-FIELD-2"
+    ]
+  },
+  {
+    "key": "GAME-FF-K2-W1-03-RESET",
+    "start": "2026-06-06T14:15:00.000-06:00",
+    "end": "2026-06-06T14:25:00.000-06:00",
+    "resources": [
+      "CR-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-FF-K2-W1-04-PLAY",
+    "start": "2026-06-06T14:00:00.000-06:00",
+    "end": "2026-06-06T14:45:00.000-06:00",
+    "resources": [
+      "PV-FIELD1",
+      "REF-01"
+    ]
+  },
+  {
+    "key": "GAME-FF-K2-W1-04-PREP",
+    "start": "2026-06-06T13:50:00.000-06:00",
+    "end": "2026-06-06T14:00:00.000-06:00",
+    "resources": [
+      "PV-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-FF-K2-W1-04-RESET",
+    "start": "2026-06-06T14:45:00.000-06:00",
+    "end": "2026-06-06T14:55:00.000-06:00",
+    "resources": [
+      "PV-FIELD1",
+      "STAFF-FIELD-1"
+    ]
+  },
+  {
+    "key": "GAME-PB-W1-01-PLAY",
+    "start": "2026-06-06T07:00:00.000-06:00",
+    "end": "2026-06-06T08:00:00.000-06:00",
+    "resources": [
+      "SP-COURT11",
+      "STAFF-BRENDA"
+    ]
+  },
+  {
+    "key": "GAME-PB-W1-02-PLAY",
+    "start": "2026-06-06T07:00:00.000-06:00",
+    "end": "2026-06-06T08:00:00.000-06:00",
+    "resources": [
+      "SP-COURT12",
+      "STAFF-COLEEN"
+    ]
+  },
+  {
+    "key": "GAME-PB-W1-03-PLAY",
+    "start": "2026-06-06T08:00:00.000-06:00",
+    "end": "2026-06-06T09:30:00.000-06:00",
+    "resources": [
+      "SP-COURT11",
+      "STAFF-BRENDA"
+    ]
+  },
+  {
+    "key": "GAME-PB-W1-04-PLAY",
+    "start": "2026-06-06T08:00:00.000-06:00",
+    "end": "2026-06-06T10:00:00.000-06:00",
+    "resources": [
+      "SP-COURT12",
+      "STAFF-COLEEN"
+    ]
+  },
+  {
+    "key": "RES-PB-01-PLAY",
+    "start": "2026-06-06T07:00:00.000-06:00",
+    "end": "2026-06-06T07:30:00.000-06:00",
+    "resources": [
+      "SP-COURT13"
+    ]
+  },
+  {
+    "key": "RES-PB-02-PLAY",
+    "start": "2026-06-06T07:00:00.000-06:00",
+    "end": "2026-06-06T08:00:00.000-06:00",
+    "resources": [
+      "SP-COURT14"
+    ]
+  },
+  {
+    "key": "RES-PB-03-PLAY",
+    "start": "2026-06-06T07:00:00.000-06:00",
+    "end": "2026-06-06T08:30:00.000-06:00",
+    "resources": [
+      "SP-COURT15"
+    ]
+  },
+  {
+    "key": "RES-PB-04-PLAY",
+    "start": "2026-06-06T07:00:00.000-06:00",
+    "end": "2026-06-06T09:00:00.000-06:00",
+    "resources": [
+      "SP-COURT16"
+    ]
+  },
+  {
+    "key": "RES-PB-05-PLAY",
+    "start": "2026-06-06T07:00:00.000-06:00",
+    "end": "2026-06-06T07:30:00.000-06:00",
+    "resources": [
+      "SP-COURT17"
+    ]
+  },
+  {
+    "key": "RES-PB-06-PLAY",
+    "start": "2026-06-06T07:30:00.000-06:00",
+    "end": "2026-06-06T08:30:00.000-06:00",
+    "resources": [
+      "SP-COURT13"
+    ]
+  },
+  {
+    "key": "RES-PB-07-PLAY",
+    "start": "2026-06-06T07:30:00.000-06:00",
+    "end": "2026-06-06T09:00:00.000-06:00",
+    "resources": [
+      "SP-COURT17"
+    ]
+  },
+  {
+    "key": "RES-PB-08-PLAY",
+    "start": "2026-06-06T08:00:00.000-06:00",
+    "end": "2026-06-06T10:00:00.000-06:00",
+    "resources": [
+      "SP-COURT14"
+    ]
+  },
+  {
+    "key": "RES-PB-09-PLAY",
+    "start": "2026-06-06T08:30:00.000-06:00",
+    "end": "2026-06-06T09:00:00.000-06:00",
+    "resources": [
+      "SP-COURT13"
+    ]
+  },
+  {
+    "key": "RES-PB-10-PLAY",
+    "start": "2026-06-06T08:30:00.000-06:00",
+    "end": "2026-06-06T09:30:00.000-06:00",
+    "resources": [
+      "SP-COURT15"
+    ]
+  },
+  {
+    "key": "RES-PB-11-PLAY",
+    "start": "2026-06-06T09:00:00.000-06:00",
+    "end": "2026-06-06T10:30:00.000-06:00",
+    "resources": [
+      "SP-COURT13"
+    ]
+  },
+  {
+    "key": "RES-PB-12-PLAY",
+    "start": "2026-06-06T09:00:00.000-06:00",
+    "end": "2026-06-06T11:00:00.000-06:00",
+    "resources": [
+      "SP-COURT16"
+    ]
+  },
+  {
+    "key": "RES-PB-13-PLAY",
+    "start": "2026-06-06T09:00:00.000-06:00",
+    "end": "2026-06-06T09:30:00.000-06:00",
+    "resources": [
+      "SP-COURT17"
+    ]
+  },
+  {
+    "key": "RES-PB-14-PLAY",
+    "start": "2026-06-06T09:30:00.000-06:00",
+    "end": "2026-06-06T10:30:00.000-06:00",
+    "resources": [
+      "SP-COURT11"
+    ]
+  },
+  {
+    "key": "RES-PB-15-PLAY",
+    "start": "2026-06-06T09:30:00.000-06:00",
+    "end": "2026-06-06T11:00:00.000-06:00",
+    "resources": [
+      "SP-COURT15"
+    ]
+  },
+  {
+    "key": "RES-PB-16-PLAY",
+    "start": "2026-06-06T09:30:00.000-06:00",
+    "end": "2026-06-06T11:30:00.000-06:00",
+    "resources": [
+      "SP-COURT17"
+    ]
+  },
+  {
+    "key": "RES-PB-17-PLAY",
+    "start": "2026-06-06T10:00:00.000-06:00",
+    "end": "2026-06-06T10:30:00.000-06:00",
+    "resources": [
+      "SP-COURT12"
+    ]
+  },
+  {
+    "key": "RES-PB-18-PLAY",
+    "start": "2026-06-06T10:00:00.000-06:00",
+    "end": "2026-06-06T11:00:00.000-06:00",
+    "resources": [
+      "SP-COURT14"
+    ]
+  },
+  {
+    "key": "RES-PB-19-PLAY",
+    "start": "2026-06-06T10:30:00.000-06:00",
+    "end": "2026-06-06T12:00:00.000-06:00",
+    "resources": [
+      "SP-COURT11"
+    ]
+  },
+  {
+    "key": "RES-PB-20-PLAY",
+    "start": "2026-06-06T10:30:00.000-06:00",
+    "end": "2026-06-06T12:30:00.000-06:00",
+    "resources": [
+      "SP-COURT12"
+    ]
+  },
+  {
+    "key": "RES-PB-21-PLAY",
+    "start": "2026-06-06T10:30:00.000-06:00",
+    "end": "2026-06-06T11:00:00.000-06:00",
+    "resources": [
+      "SP-COURT13"
+    ]
+  },
+  {
+    "key": "RES-PB-22-PLAY",
+    "start": "2026-06-06T11:00:00.000-06:00",
+    "end": "2026-06-06T12:00:00.000-06:00",
+    "resources": [
+      "SP-COURT13"
+    ]
+  },
+  {
+    "key": "RES-PB-23-PLAY",
+    "start": "2026-06-06T11:00:00.000-06:00",
+    "end": "2026-06-06T12:30:00.000-06:00",
+    "resources": [
+      "SP-COURT14"
+    ]
+  },
+  {
+    "key": "RES-PB-24-PLAY",
+    "start": "2026-06-06T11:00:00.000-06:00",
+    "end": "2026-06-06T12:00:00.000-06:00",
+    "resources": [
+      "SP-COURT15"
+    ]
+  },
+  {
+    "key": "RES-PB-25-PLAY",
+    "start": "2026-06-06T11:00:00.000-06:00",
+    "end": "2026-06-06T11:30:00.000-06:00",
+    "resources": [
+      "SP-COURT16"
+    ]
+  },
+  {
+    "key": "RES-PB-26-PLAY",
+    "start": "2026-06-06T11:30:00.000-06:00",
+    "end": "2026-06-06T12:30:00.000-06:00",
+    "resources": [
+      "SP-COURT16"
+    ]
+  },
+  {
+    "key": "RES-PB-27-PLAY",
+    "start": "2026-06-06T11:30:00.000-06:00",
+    "end": "2026-06-06T13:00:00.000-06:00",
+    "resources": [
+      "SP-COURT17"
+    ]
+  },
+  {
+    "key": "RES-PB-28-PLAY",
+    "start": "2026-06-06T12:00:00.000-06:00",
+    "end": "2026-06-06T13:00:00.000-06:00",
+    "resources": [
+      "SP-COURT11"
+    ]
+  },
+  {
+    "key": "RES-PB-29-PLAY",
+    "start": "2026-06-06T12:00:00.000-06:00",
+    "end": "2026-06-06T12:30:00.000-06:00",
+    "resources": [
+      "SP-COURT13"
+    ]
+  },
+  {
+    "key": "RES-PB-30-PLAY",
+    "start": "2026-06-06T12:00:00.000-06:00",
+    "end": "2026-06-06T13:00:00.000-06:00",
+    "resources": [
+      "SP-COURT15"
+    ]
+  },
+  {
+    "key": "RES-PB-31-PLAY",
+    "start": "2026-06-06T07:00:00.000-06:00",
+    "end": "2026-06-06T07:30:00.000-06:00",
+    "resources": [
+      "SP-COURT18"
+    ]
+  },
+  {
+    "key": "RES-PB-32-PLAY",
+    "start": "2026-06-06T07:00:00.000-06:00",
+    "end": "2026-06-06T08:00:00.000-06:00",
+    "resources": [
+      "SP-COURT19"
+    ]
+  },
+  {
+    "key": "RES-PB-33-PLAY",
+    "start": "2026-06-06T07:30:00.000-06:00",
+    "end": "2026-06-06T09:00:00.000-06:00",
+    "resources": [
+      "SP-COURT18"
+    ]
+  },
+  {
+    "key": "RES-PB-34-PLAY",
+    "start": "2026-06-06T08:00:00.000-06:00",
+    "end": "2026-06-06T10:00:00.000-06:00",
+    "resources": [
+      "SP-COURT19"
+    ]
+  },
+  {
+    "key": "RES-PB-35-PLAY",
+    "start": "2026-06-06T09:00:00.000-06:00",
+    "end": "2026-06-06T09:30:00.000-06:00",
+    "resources": [
+      "SP-COURT18"
+    ]
+  },
+  {
+    "key": "RES-PB-36-PLAY",
+    "start": "2026-06-06T09:30:00.000-06:00",
+    "end": "2026-06-06T10:30:00.000-06:00",
+    "resources": [
+      "SP-COURT18"
+    ]
+  },
+  {
+    "key": "RES-PB-37-PLAY",
+    "start": "2026-06-06T10:00:00.000-06:00",
+    "end": "2026-06-06T11:30:00.000-06:00",
+    "resources": [
+      "SP-COURT19"
+    ]
+  },
+  {
+    "key": "RES-PB-38-PLAY",
+    "start": "2026-06-06T10:30:00.000-06:00",
+    "end": "2026-06-06T12:30:00.000-06:00",
+    "resources": [
+      "SP-COURT18"
+    ]
+  },
+  {
+    "key": "RES-PB-39-PLAY",
+    "start": "2026-06-06T11:30:00.000-06:00",
+    "end": "2026-06-06T12:00:00.000-06:00",
+    "resources": [
+      "SP-COURT19"
+    ]
+  },
+  {
+    "key": "RES-PB-40-PLAY",
+    "start": "2026-06-06T12:00:00.000-06:00",
+    "end": "2026-06-06T13:00:00.000-06:00",
+    "resources": [
+      "SP-COURT19"
+    ]
+  },
+  {
+    "key": "RES-PB-41-PLAY",
+    "start": "2026-06-06T07:00:00.000-06:00",
+    "end": "2026-06-06T07:30:00.000-06:00",
+    "resources": [
+      "TK-COURT1"
+    ]
+  },
+  {
+    "key": "RES-PB-42-PLAY",
+    "start": "2026-06-06T07:00:00.000-06:00",
+    "end": "2026-06-06T08:00:00.000-06:00",
+    "resources": [
+      "TK-COURT2"
+    ]
+  },
+  {
+    "key": "RES-PB-43-PLAY",
+    "start": "2026-06-06T07:00:00.000-06:00",
+    "end": "2026-06-06T08:30:00.000-06:00",
+    "resources": [
+      "TK-COURT3"
+    ]
+  },
+  {
+    "key": "RES-PB-44-PLAY",
+    "start": "2026-06-06T07:00:00.000-06:00",
+    "end": "2026-06-06T09:00:00.000-06:00",
+    "resources": [
+      "TK-COURT4"
+    ]
+  },
+  {
+    "key": "RES-PB-45-PLAY",
+    "start": "2026-06-06T07:30:00.000-06:00",
+    "end": "2026-06-06T08:30:00.000-06:00",
+    "resources": [
+      "TK-COURT1"
+    ]
+  }
+]

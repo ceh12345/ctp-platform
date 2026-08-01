@@ -6,6 +6,7 @@
     "demandQty": 6,
     "dueDate": "2026-06-27T12:00:00.000Z",
     "lateDueDate": "2026-06-29T12:00:00.000Z",
+    "customerDeliveryDate": "2026-06-29T12:00:00.000Z",
     "priority": 10,
     "groupKey": "18582",
     "parentOrderKey": "28482",

@@ -1,14 +1,3 @@
-/**
- * Chain Neighborhood Strategy
- *
- * Processes tasks chain-by-chain in priority order. Each chain completes
- * (Setup -> Procedure -> Recovery) before moving to the next chain.
- * Chains are sorted by the priority rank of their next unscheduled task.
- *
- * Best for: Healthcare, job shops, any scenario with linked activity chains.
- * Trade-off: Prioritizes chain integrity over individual task optimization.
- * Default for: hasChains = true
- */
 import { INeighborhoodStrategy } from "./neighborhood";
 import { CTPTaskStateConstants } from "../../Models/Core/constants";
 import { List } from "../../Models/Core/list";
@@ -16,12 +5,31 @@ import { CTPAppSettings } from "../../Models/Entities/appsettings";
 import { SchedulingLandscape } from "../../Models/Entities/landscape";
 import { CTPTask } from "../../Models/Entities/task";
 import { indexByKey } from "../../Models/Entities/adjacency";
+import { IDispatchPriority } from "../Dispatch/dispatchpriority";
+import { DispatchStateLens } from "../Dispatch/dispatchstate";
 
-export class ChainNeighborhood implements INeighborhoodStrategy {
-  public name: string = "Chain";
+/**
+ * Chain-safe neighborhood whose chain-head ordering is a pluggable dispatch rule
+ * (`IDispatchPriority`). Structurally identical to `ChainNeighborhood` — the ONLY
+ * difference is that the chain-head comparator is the injected rule instead of a
+ * hardcoded `(rank, window.startW)` sort. So `DynamicNeighborhood(StaticRankPriority)`
+ * reproduces `ChainNeighborhood` byte-for-byte (proven by `schedule-parity.spec.ts`),
+ * and ATC / DBR / Slack are additive plugs — one class + one registry line each.
+ *
+ * See docs/sprints/SPRINT-dispatch-strategy-seam.md.
+ */
+export class DynamicNeighborhood implements INeighborhoodStrategy {
+  public name: string;
   public chainCompatible: boolean = true;
 
-  protected greedySortFn: (n1: CTPTask, n2: CTPTask) => number = (n1, n2) => {
+  constructor(private readonly priority: IDispatchPriority) {
+    this.name = priority.name;
+  }
+
+  // Standalone (no-linkId) backfill order — identical to ChainNeighborhood's
+  // greedySortFn. No tenant currently has standalone tasks (Phase 0e), so this
+  // path is preserved for correctness but does not run in practice.
+  private greedySortFn = (n1: CTPTask, n2: CTPTask): number => {
     let n1et = n1.feasible ? n1.feasible.startW : n1.window?.startW;
     let n2et = n2.feasible ? n2.feasible.startW : n2.window?.startW;
 
@@ -48,18 +56,14 @@ export class ChainNeighborhood implements INeighborhoodStrategy {
     tasks: List<CTPTask>,
     numToProcess: number,
     settings: CTPAppSettings | null,
-    landscape: SchedulingLandscape | null
+    landscape: SchedulingLandscape | null,
   ): List<CTPTask> {
     let context = new List<CTPTask>();
     if (!tasks) return context;
 
-    // Find the next ready task per chain. Edge-list refactor: "ready" means every
-    // predecessor is scheduled (a missing/cross-set pred counts as satisfied).
-    // On a linear chain this is exactly the lowest-sequence unscheduled task — its
-    // single predecessor was scheduled in a prior round — so behavior is preserved;
-    // on a branched chain it correctly admits each ready head/branch. Lowest
-    // sequence is kept as the tiebreak among ready tasks.
-    const chainProgress: Map<string, { nextTask: CTPTask, chainRank: number }> = new Map();
+    // Next ready task per chain — every predecessor SCHEDULED (missing/cross-set
+    // pred counts as satisfied); lowest sequence is the within-chain tiebreak.
+    const chainProgress: Map<string, { nextTask: CTPTask }> = new Map();
     const byKey = indexByKey(tasks);
 
     tasks.forEach((task) => {
@@ -74,29 +78,28 @@ export class ChainNeighborhood implements INeighborhoodStrategy {
         const chainName = task.linkId.name;
         const existing = chainProgress.get(chainName);
         if (!existing || task.sequence < existing.nextTask.sequence) {
-          chainProgress.set(chainName, {
-            nextTask: task,
-            chainRank: task.rank
-          });
+          chainProgress.set(chainName, { nextTask: task });
         }
       }
     });
 
-    // Sort chains by rank (priority), then window start as tiebreaker
-    const sortedChains = Array.from(chainProgress.entries()).sort((a, b) => {
-      if (a[1].chainRank !== b[1].chainRank) return a[1].chainRank - b[1].chainRank;
-      const aStart = a[1].nextTask.window?.startW ?? Number.MAX_VALUE;
-      const bStart = b[1].nextTask.window?.startW ?? Number.MAX_VALUE;
-      return aStart - bStart;
-    });
+    // Build the read-only lens over this round's ready set (the chain heads), then
+    // let the plug precompute; now()/avgRemainingDuration() derive from these heads.
+    const readyHeads = Array.from(chainProgress.values()).map((v) => v.nextTask);
+    const state = new DispatchStateLens(landscape, settings, readyHeads);
+    this.priority.prepare?.(state);
 
-    // Add one task per chain up to numToProcess
-    for (const [chainName, info] of sortedChains) {
+    // The ONLY behavioral seam: order chain heads by the pluggable rule. Map
+    // iteration is insertion order and Array.sort is stable, so with
+    // StaticRankPriority this is identical to ChainNeighborhood's chain sort.
+    const sortedHeads = readyHeads.slice().sort((a, b) => this.priority.compare(a, b, state));
+
+    for (const nextTask of sortedHeads) {
       if (context.length >= numToProcess) break;
-      context.add(info.nextTask);
+      context.add(nextTask);
     }
 
-    // Fill remaining slots with standalone tasks (no linkId)
+    // Fill remaining slots with standalone tasks (no linkId).
     if (context.length < numToProcess) {
       const standalones: CTPTask[] = [];
       tasks.forEach((task) => {
