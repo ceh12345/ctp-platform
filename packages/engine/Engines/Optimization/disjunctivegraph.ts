@@ -172,6 +172,17 @@ export class DisjunctiveGraph {
       // (makespan 0 → optimizer bails with insufficient_critical_tasks).
       if (predIdx === i) continue;
 
+      // Time-contradicted precedence guard (2026-08-04 full-book finding):
+      // historical actuals can record a predecessor ENDING after its
+      // successor STARTED (overlapping completed/pinned pairs, e.g. Stafford
+      // 29634/29425 — the shop's own recorded reality). Such an arc runs
+      // backward against the time-oriented disjunctive chains; a handful of
+      // them cycle the graph and trapped 1,047 of 1,447 nodes, nulling the
+      // critical path and silently disabling the tabu/ILS tier. Recorded
+      // times win — skip the contradicted arc (feasibly-scheduled arcs
+      // always satisfy predEnd <= succStart, so live precedence is kept).
+      if (graph.nodes[predIdx].endW > node.startW) continue;
+
       // Legacy single-link fields
       node.conjunctivePred = predIdx;
       graph.nodes[predIdx].conjunctiveSucc = i;
