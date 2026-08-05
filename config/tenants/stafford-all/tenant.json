@@ -1,0 +1,8 @@
+{
+  "tenantId": "stafford-engineering-test",
+  "name": "Stafford Engineering (Test)",
+  "vertical": "manufacturing",
+  "createdAt": "2026-03-12T00:00:00Z",
+  "updatedAt": "2026-04-14T05:15:20.020Z",
+  "clonedFrom": "stafford-engineering"
+}

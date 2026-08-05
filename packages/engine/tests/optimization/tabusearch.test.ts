@@ -474,3 +474,57 @@ describe('tabuSearch', () => {
     expect(result.bestMakespan).toBeLessThanOrEqual(originalMakespan);
   });
 });
+
+describe('weightedTardiness objective', () => {
+  /** One resource, two 100s single-task chains. Current order B->A puts
+   *  chain A (due 100) at completion 200 -> tardiness 100; chain B (due
+   *  500) is safe either way. Swapping to A->B zeroes tardiness while the
+   *  MAKESPAN stays 200 in both orders — so the makespan objective sees no
+   *  strict improvement, the tardiness objective does. */
+  function buildTardyGraph(): DisjunctiveGraph {
+    const g = new DisjunctiveGraph();
+    g.nodes.push(makeNode('B1', 'R1', 0, 100));   // 0, chain B (loose due)
+    g.nodes.push(makeNode('A1', 'R1', 100, 100)); // 1, chain A (tight due)
+    g.nodes[0].chainKey = 'B';
+    g.nodes[1].chainKey = 'A';
+    g.nodes[0].disjSuccessors.push(1);
+    g.nodes[1].disjPredecessors.push(0);
+    g.resourceSequences.set('R1', [0, 1]);
+    g.edges.push({ from: 0, to: 1, type: 'disjunctive', weight: 100, resourceKey: 'R1' });
+    g.chainDues.set('A', 100);
+    g.chainDues.set('B', 500);
+    g.timeBase = 0;
+    g.recomputeCriticalPath();
+    return g;
+  }
+
+  it('computeWeightedTardiness reflects the current orientation', () => {
+    const g = buildTardyGraph();
+    expect(g.computeWeightedTardiness()).toBe(100); // A finishes 200, due 100
+  });
+
+  it('makespan objective finds no strict improvement (tie)', () => {
+    const g = buildTardyGraph();
+    const result = tabuSearch(g, { ...DEFAULT_CONFIG, objective: 'makespan' });
+    expect(result.improved).toBe(false);
+    expect(result.originalTardiness).toBeNull();
+  });
+
+  it('weightedTardiness objective rescues the tight-due chain', () => {
+    const g = buildTardyGraph();
+    const result = tabuSearch(g, { ...DEFAULT_CONFIG, objective: 'weightedTardiness' });
+    expect(result.originalTardiness).toBe(100);
+    expect(result.bestTardiness).toBe(0);
+    expect(result.improved).toBe(true);
+    // makespan unchanged — tardiness won on the lexicographic primary
+    expect(result.bestMakespan).toBe(result.originalMakespan);
+  });
+
+  it('graphs without due dates fall back to makespan (tardiness slots null)', () => {
+    const g = buildSuboptimalGraph();
+    const result = tabuSearch(g, { ...DEFAULT_CONFIG, objective: 'weightedTardiness' });
+    expect(result.originalTardiness).toBeNull();
+    expect(result.bestTardiness).toBeNull();
+    expect(result.bestMakespan).toBeLessThan(result.originalMakespan);
+  });
+});

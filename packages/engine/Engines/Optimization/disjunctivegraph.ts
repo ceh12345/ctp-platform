@@ -87,6 +87,16 @@ export class DisjunctiveGraph {
   public edges: DisjunctiveEdge[] = [];
   public criticalPath: CriticalPathResult | null = null;
 
+  /** Weighted-tardiness objective context (weightedTardiness objective only).
+   *  chainDues: chainKey → due in GRAPH-RELATIVE seconds (absolute promise W
+   *  minus timeBase, the min scheduled startW at build). Graph time is
+   *  calendar-blind and left-compressed, so this is an approximation — but a
+   *  CONSISTENT one across candidate orientations, which is all a comparative
+   *  objective needs; the translate-back re-imposes real calendars. Weight is
+   *  1.0 per chain (v1). Shared (not deep-copied) by clone(): immutable. */
+  public chainDues = new Map<string, number>();
+  public timeBase = 0;
+
   /** resourceKey → node indices in scheduled order */
   public resourceSequences = new Map<string, number[]>();
 
@@ -231,6 +241,26 @@ export class DisjunctiveGraph {
 
     // ─── 5. Identify critical blocks ───
     graph.identifyCriticalBlocks();
+
+    // ─── 6. Weighted-tardiness objective context ───
+    // Map each chain's customer promise into graph-relative time (see
+    // chainDues doc). Only chains whose order carries a real promise
+    // participate; internal/undated chains never contribute tardiness.
+    if (graph.nodes.length > 0) {
+      let base = Infinity;
+      for (const n of graph.nodes) if (n.startW < base) base = n.startW;
+      graph.timeBase = base;
+      const seen = new Set<string>();
+      for (const n of graph.nodes) {
+        if (!n.chainKey || seen.has(n.chainKey)) continue;
+        seen.add(n.chainKey);
+        const order = landscape.orders?.getEntity(n.chainKey);
+        const due = order?.customerDeliveryDate;
+        if (typeof due === 'number' && due > 0) {
+          graph.chainDues.set(n.chainKey, due - base);
+        }
+      }
+    }
 
     return graph;
   }
@@ -550,7 +580,35 @@ export class DisjunctiveGraph {
 
     c.criticalPath = this.criticalPath ? { ...this.criticalPath } : null;
 
+    // Objective context — immutable, shared by reference
+    c.chainDues = this.chainDues;
+    c.timeBase = this.timeBase;
+
     return c;
+  }
+
+  /**
+   * Weighted tardiness of the CURRENT orientation: Σ (weight=1) ×
+   * max(0, chainCompletion − chainDue) over chains present in chainDues.
+   * Uses per-node earliestStart from the last recomputeCriticalPath(), so
+   * call only when criticalPath is non-null. Returns null when the graph
+   * carries no due-date context (callers fall back to makespan).
+   */
+  public computeWeightedTardiness(): number | null {
+    if (this.chainDues.size === 0 || !this.criticalPath) return null;
+    const completion = new Map<string, number>();
+    for (const node of this.nodes) {
+      if (!node.chainKey || !this.chainDues.has(node.chainKey)) continue;
+      const end = node.earliestStart + node.duration;
+      const cur = completion.get(node.chainKey);
+      if (cur === undefined || end > cur) completion.set(node.chainKey, end);
+    }
+    let total = 0;
+    for (const [chain, due] of this.chainDues) {
+      const comp = completion.get(chain);
+      if (comp !== undefined && comp > due) total += comp - due;
+    }
+    return total;
   }
 
   // ─── Utility Methods ───

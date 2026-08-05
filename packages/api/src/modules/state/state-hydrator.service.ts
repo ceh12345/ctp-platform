@@ -806,6 +806,21 @@ export class StateHydratorService {
       settings.resetUageAfterProcessChange = config.resetUsageAfterProcessChange;
     if (config.solverStrategy !== undefined)
       settings.solverStrategy = config.solverStrategy;
+    // Optimizer tier settings — previously not whitelisted, so tenant
+    // settings for the tabu/ILS tiers silently no-oped (found 2026-08-05
+    // when optimizeObjective never reached the engine).
+    if (config.optimizeObjective !== undefined)
+      settings.optimizeObjective = config.optimizeObjective;
+    if (config.tabuIterations !== undefined)
+      settings.tabuIterations = config.tabuIterations;
+    if (config.tabuStagnation !== undefined)
+      settings.tabuStagnation = config.tabuStagnation;
+    if (config.tabuTimeBudgetMs !== undefined)
+      settings.tabuTimeBudgetMs = config.tabuTimeBudgetMs;
+    if (config.ilsPasses !== undefined)
+      (settings as any).ilsPasses = config.ilsPasses;
+    if (config.ilsTimeBudgetMs !== undefined)
+      (settings as any).ilsTimeBudgetMs = config.ilsTimeBudgetMs;
     return settings;
   }
 

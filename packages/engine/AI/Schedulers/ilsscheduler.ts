@@ -40,6 +40,16 @@ export class ILSScheduler extends TabuSearchScheduler {
     const originalMakespan = graph.criticalPath.makespan;
     let globalBest = graph.clone();
     let globalBestMakespan = originalMakespan;
+    // Objective-aware acceptance: lexicographic (tardiness, makespan) when
+    // the weightedTardiness objective is active (tabuSearch supplies the
+    // tardiness slots; null means makespan-only).
+    let globalBestTardiness: number | null = null;
+    let globalInitialized = false;
+    let improvedAny = false;
+    const betterPair = (tA: number | null, mA: number, tB: number | null, mB: number): boolean => {
+      if (tA !== null && tB !== null && tA !== tB) return tA < tB;
+      return mA < mB;
+    };
 
     const passResults: {
       pass: number;
@@ -77,10 +87,17 @@ export class ILSScheduler extends TabuSearchScheduler {
         iterations: result.totalIterations,
       });
 
-      // Accept if this pass found a new global best
-      if (result.bestMakespan < globalBestMakespan) {
+      // Accept if this pass found a new global best (active objective)
+      if (!globalInitialized) {
+        globalBestTardiness = result.originalTardiness;
+        globalInitialized = true;
+      }
+      if (betterPair(result.bestTardiness, result.bestMakespan,
+                     globalBestTardiness, globalBestMakespan)) {
         globalBestMakespan = result.bestMakespan;
+        globalBestTardiness = result.bestTardiness;
         globalBest = result.bestGraph;
+        improvedAny = true;
       }
 
       if (Date.now() - startMs > totalBudgetMs) break;
@@ -89,7 +106,7 @@ export class ILSScheduler extends TabuSearchScheduler {
     const elapsedMs = Date.now() - startMs;
 
     // Translate back if we found any improvement across all passes
-    if (globalBestMakespan < originalMakespan) {
+    if (improvedAny || globalBestMakespan < originalMakespan) {
       const translation = applyOptimizedGraph(
         globalBest,
         this.landscape,
