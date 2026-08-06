@@ -91,9 +91,27 @@ export class TabuList {
  *
  * At 1000 tasks with 8–15 critical blocks of 3–12 tasks each, expect 20–80 moves.
  */
-export function generateNeighborhood(graph: DisjunctiveGraph): NeighborhoodMove[] {
+export function generateNeighborhood(
+  graph: DisjunctiveGraph,
+  tardyChainLimit = 0,
+): NeighborhoodMove[] {
   const moves: NeighborhoodMove[] = [];
+  // Makespan-critical blocks always; under the weightedTardiness objective
+  // also blocks along the worst tardy chains' own paths (tardyChainLimit > 0),
+  // so late chains off the global critical path actually get moves proposed.
   const blocks = graph.identifyCriticalBlocks();
+  if (tardyChainLimit > 0) blocks.push(...graph.identifyTardyChainBlocks(tardyChainLimit));
+
+  // Blocks from the two sources overlap; dedupe so the same swap isn't
+  // evaluated twice (each evaluation is a full critical-path recompute).
+  const seen = new Set<string>();
+  const push = (m: NeighborhoodMove): void => {
+    const a = Math.min(m.nodeIdxA, m.nodeIdxB), b = Math.max(m.nodeIdxA, m.nodeIdxB);
+    const k = `${m.resourceKey}:${a}:${b}`;
+    if (seen.has(k)) return;
+    seen.add(k);
+    moves.push(m);
+  };
 
   for (const block of blocks) {
     const seq = graph.resourceSequences.get(block.resourceKey);
@@ -107,7 +125,7 @@ export function generateNeighborhood(graph: DisjunctiveGraph): NeighborhoodMove[
     if (firstPosInSeq > 0) {
       const predIdx = seq[firstPosInSeq - 1];
       if (!graph.nodes[predIdx].isFrozen && !graph.nodes[firstNodeIdx].isFrozen) {
-        moves.push({
+        push({
           resourceKey: block.resourceKey,
           nodeIdxA: predIdx,
           nodeIdxB: firstNodeIdx,
@@ -122,7 +140,7 @@ export function generateNeighborhood(graph: DisjunctiveGraph): NeighborhoodMove[
     if (lastPosInSeq < seq.length - 1) {
       const succIdx = seq[lastPosInSeq + 1];
       if (!graph.nodes[lastNodeIdx].isFrozen && !graph.nodes[succIdx].isFrozen) {
-        moves.push({
+        push({
           resourceKey: block.resourceKey,
           nodeIdxA: lastNodeIdx,
           nodeIdxB: succIdx,
@@ -137,7 +155,7 @@ export function generateNeighborhood(graph: DisjunctiveGraph): NeighborhoodMove[
       const a = block.nodeIndices[i];
       const b = block.nodeIndices[i + 1];
       if (!graph.nodes[a].isFrozen && !graph.nodes[b].isFrozen) {
-        moves.push({
+        push({
           resourceKey: block.resourceKey,
           nodeIdxA: a,
           nodeIdxB: b,
@@ -280,7 +298,7 @@ export function tabuSearch(
     if (Date.now() - startMs > config.timeBudgetMs) break;
 
     // ─── 1. Generate neighborhood from critical blocks ───
-    const moves = generateNeighborhood(graph);
+    const moves = generateNeighborhood(graph, useTardiness ? (config.tardyChainLimit ?? 20) : 0);
     if (moves.length === 0) break;
 
     // ─── 2. Evaluate all candidate moves ───

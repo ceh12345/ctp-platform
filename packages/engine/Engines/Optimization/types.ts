@@ -48,6 +48,13 @@ export interface TabuConfig {
   objective?: 'makespan' | 'weightedTardiness';
 
   /**
+   * weightedTardiness only: how many of the worst tardy chains contribute
+   * their own critical blocks to the neighborhood each iteration. Higher =
+   * broader search, more move evaluations per iteration. Default 20.
+   */
+  tardyChainLimit?: number;
+
+  /**
    * Optional per-iteration sampling callback for live convergence charts.
    * Called on every new global best, every `sampleEveryN` iterations as a heartbeat,
    * the first iteration, and the final iteration (on loop exit).

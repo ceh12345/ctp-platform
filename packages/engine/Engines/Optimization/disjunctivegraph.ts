@@ -367,6 +367,107 @@ export class DisjunctiveGraph {
    * Identify critical blocks (runs of ≥2 consecutive critical-path tasks on one resource).
    * Returns the blocks and sets criticalBlockId on each node.
    */
+  /**
+   * Critical blocks along the paths of the most-tardy chains — the
+   * neighborhood source for the weightedTardiness objective.
+   *
+   * identifyCriticalBlocks() only walks the GLOBAL critical path, so a late
+   * chain that isn't the longest path in the shop never has a move proposed
+   * for it. An objective can only rank the moves it is offered, which is why
+   * swapping the objective alone changed nothing on the full Stafford book
+   * (2026-08-05): the search was still being handed makespan moves.
+   *
+   * For each of the top-`limit` tardy chains (worst lateness first), walk
+   * back from that chain's last-finishing node through TIGHT predecessor
+   * edges — the ones that actually set the successor's start — and collect
+   * the nodes. Runs of >=2 such nodes consecutive on one resource become
+   * blocks, mirroring identifyCriticalBlocks' shape so the same move
+   * generator consumes them.
+   *
+   * Does NOT stamp node.criticalBlockId (that belongs to the global blocks).
+   */
+  public identifyTardyChainBlocks(limit = 20): CriticalBlock[] {
+    const blocks: CriticalBlock[] = [];
+    if (this.chainDues.size === 0 || !this.criticalPath) return blocks;
+
+    // Per-chain completion and the node that achieves it
+    const completion = new Map<string, number>();
+    const sink = new Map<string, number>();
+    for (let i = 0; i < this.nodes.length; i++) {
+      const node = this.nodes[i];
+      if (!node.chainKey || !this.chainDues.has(node.chainKey)) continue;
+      const end = node.earliestStart + node.duration;
+      const cur = completion.get(node.chainKey);
+      if (cur === undefined || end > cur) {
+        completion.set(node.chainKey, end);
+        sink.set(node.chainKey, i);
+      }
+    }
+
+    // Tardy chains, worst first, capped — bounds move-count growth and
+    // focuses the search where the objective has the most to gain.
+    const tardy: { chain: string; lateness: number }[] = [];
+    for (const [chain, due] of this.chainDues) {
+      const comp = completion.get(chain);
+      if (comp !== undefined && comp > due) tardy.push({ chain, lateness: comp - due });
+    }
+    if (tardy.length === 0) return blocks;
+    tardy.sort((a, b) => b.lateness - a.lateness);
+
+    // Union of tight-path nodes feeding the chosen chains' completions
+    const onPath = new Set<number>();
+    const stack: number[] = [];
+    for (const t of tardy.slice(0, limit)) {
+      const s = sink.get(t.chain);
+      if (s !== undefined && !onPath.has(s)) { onPath.add(s); stack.push(s); }
+    }
+    while (stack.length > 0) {
+      const idx = stack.pop()!;
+      const node = this.nodes[idx];
+      for (const p of node.conjPredecessors) {
+        const pred = this.nodes[p];
+        if (pred.earliestStart + pred.duration === node.earliestStart && !onPath.has(p)) {
+          onPath.add(p); stack.push(p);
+        }
+      }
+      for (const p of node.disjPredecessors) {
+        const pred = this.nodes[p];
+        if (pred.earliestStart + pred.duration + node.changeoverBefore === node.earliestStart
+            && !onPath.has(p)) {
+          onPath.add(p); stack.push(p);
+        }
+      }
+    }
+
+    const makespan = this.criticalPath.makespan;
+    let blockId = 1_000_000; // kept clear of identifyCriticalBlocks' ids
+    for (const [resourceKey, seq] of this.resourceSequences) {
+      let run: number[] = [];
+      const flush = () => {
+        if (run.length >= 2) {
+          blockId++;
+          const totalDuration = run.reduce((s, i) => s + this.nodes[i].duration, 0);
+          blocks.push({
+            id: blockId,
+            resourceKey,
+            resourceName: this.nodes[run[0]].resourceName,
+            nodeIndices: [...run],
+            firstIdx: run[0],
+            lastIdx: run[run.length - 1],
+            totalDuration,
+            percentOfMakespan: makespan > 0 ? Math.round((totalDuration / makespan) * 100) : 0,
+          });
+        }
+        run = [];
+      };
+      for (const idx of seq) {
+        if (onPath.has(idx)) run.push(idx); else flush();
+      }
+      flush();
+    }
+    return blocks;
+  }
+
   public identifyCriticalBlocks(): CriticalBlock[] {
     const blocks: CriticalBlock[] = [];
     if (!this.criticalPath) return blocks;

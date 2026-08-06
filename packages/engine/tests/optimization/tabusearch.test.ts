@@ -528,3 +528,70 @@ describe('weightedTardiness objective', () => {
     expect(result.bestMakespan).toBeLessThan(result.originalMakespan);
   });
 });
+
+describe('tardy-chain neighborhood (weightedTardiness)', () => {
+  /** Two independent resources.
+   *  R2 is the MAKESPAN-critical machine: L1 -> L2, 1000s each (span 2000).
+   *  R1 carries the tardy work but is nowhere near critical: chain B (loose
+   *  due 5000) sits before chain A (tight due 100), 100s each.
+   *  Swapping B1/A1 on R1 rescues chain A and cannot affect the makespan.
+   *  The old neighborhood only walked R2's critical block, so this move was
+   *  never even proposed — the regression this guards. */
+  function buildOffCriticalTardyGraph(): DisjunctiveGraph {
+    const g = new DisjunctiveGraph();
+    g.nodes.push(makeNode('B1', 'R1', 0, 100));     // 0 — chain B, loose due
+    g.nodes.push(makeNode('A1', 'R1', 100, 100));   // 1 — chain A, tight due
+    g.nodes.push(makeNode('L1', 'R2', 0, 1000));    // 2 — makespan critical
+    g.nodes.push(makeNode('L2', 'R2', 1000, 1000)); // 3 — makespan critical
+    g.nodes[0].chainKey = 'B';
+    g.nodes[1].chainKey = 'A';
+    g.nodes[2].chainKey = 'L';
+    g.nodes[3].chainKey = 'L';
+    g.nodes[0].disjSuccessors.push(1); g.nodes[1].disjPredecessors.push(0);
+    g.nodes[2].disjSuccessors.push(3); g.nodes[3].disjPredecessors.push(2);
+    g.resourceSequences.set('R1', [0, 1]);
+    g.resourceSequences.set('R2', [2, 3]);
+    g.edges.push({ from: 0, to: 1, type: 'disjunctive', weight: 100, resourceKey: 'R1' });
+    g.edges.push({ from: 2, to: 3, type: 'disjunctive', weight: 1000, resourceKey: 'R2' });
+    g.chainDues.set('A', 100);
+    g.chainDues.set('B', 5000);
+    g.timeBase = 0;
+    g.recomputeCriticalPath();
+    return g;
+  }
+
+  it('the tardy chain is NOT on the makespan-critical path (fixture sanity)', () => {
+    const g = buildOffCriticalTardyGraph();
+    const criticalKeys = new Set(g.criticalPath!.path.map(p => p.key));
+    expect(criticalKeys.has('L2')).toBe(true);   // R2 is critical
+    expect(criticalKeys.has('A1')).toBe(false);  // the tardy chain is not
+    expect(g.computeWeightedTardiness()).toBe(100); // A ends 200, due 100
+  });
+
+  it('makespan-only neighborhood never proposes the rescuing move', () => {
+    const g = buildOffCriticalTardyGraph();
+    const moves = generateNeighborhood(g); // no tardy blocks
+    expect(moves.some(m => m.resourceKey === 'R1')).toBe(false);
+  });
+
+  it('tardy-chain neighborhood proposes it', () => {
+    const g = buildOffCriticalTardyGraph();
+    const moves = generateNeighborhood(g, 20);
+    expect(moves.some(m => m.resourceKey === 'R1')).toBe(true);
+  });
+
+  it('moves are deduped across the two block sources', () => {
+    const g = buildOffCriticalTardyGraph();
+    const moves = generateNeighborhood(g, 20);
+    const keys = moves.map(m => `${m.resourceKey}:${Math.min(m.nodeIdxA, m.nodeIdxB)}:${Math.max(m.nodeIdxA, m.nodeIdxB)}`);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('end to end: tardiness objective now rescues the off-critical chain', () => {
+    const g = buildOffCriticalTardyGraph();
+    const result = tabuSearch(g, { ...DEFAULT_CONFIG, objective: 'weightedTardiness' });
+    expect(result.originalTardiness).toBe(100);
+    expect(result.bestTardiness).toBe(0);
+    expect(result.improved).toBe(true);
+  });
+});
