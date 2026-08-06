@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stafford Resource Utilization — July 16 book</title>
+<style>
+  .viz-root{
+    --surface-1:#fcfcfb; --surface-2:#f4f4f2; --border:#e3e2de;
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#8a897f;
+    --s1:#2a78d6; --s1-light:#9ec5f4;
+    color-scheme:light; background:var(--surface-1); color:var(--text-primary);
+    font:14px/1.45 "Segoe UI",system-ui,sans-serif; margin:0; padding:28px 32px 60px;
+  }
+  @media (prefers-color-scheme: dark){ :root:where(:not([data-theme="light"])) .viz-root{
+    color-scheme:dark; --surface-1:#1a1a19; --surface-2:#242422; --border:#3a3936;
+    --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#8a897f; --s1-light:#184f95; }}
+  h1{font-size:20px;margin:0 0 2px} .sub{color:var(--text-secondary);margin:0 0 22px;font-size:13px}
+  h2{font-size:15px;margin:26px 0 8px}
+  .note{font-size:12px;color:var(--text-secondary);margin:0 0 10px}
+  .gwrap{display:flex;flex-direction:column;gap:4px;max-width:760px}
+  .grow{display:grid;grid-template-columns:64px 1fr 170px;align-items:center;gap:10px;font-size:13px}
+  .bar{height:16px;border-radius:4px;background:var(--surface-2);border:1px solid var(--border);position:relative;overflow:hidden}
+  .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--s1);border-radius:3px}
+  .gl{color:var(--text-secondary);text-align:right}
+  .gv{color:var(--text-secondary);font-variant-numeric:tabular-nums}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 10px}
+  .controls select,.controls input{background:var(--surface-2);color:var(--text-primary);
+     border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:13px}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th{position:sticky;top:0;background:var(--surface-2);text-align:left;padding:7px 10px;cursor:pointer;
+     border-bottom:2px solid var(--border);white-space:nowrap;user-select:none}
+  th .arr{color:var(--text-muted);font-size:10px}
+  td{padding:5px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .meter{display:inline-block;width:130px;height:11px;border-radius:4px;background:var(--surface-2);
+     border:1px solid var(--border);vertical-align:middle;position:relative;overflow:hidden;margin-right:7px}
+  .meter i{position:absolute;left:0;top:0;bottom:0;background:var(--s1);border-radius:3px}
+  .muted{color:var(--text-muted)}
+  .count{color:var(--text-secondary);font-size:12px;margin:6px 0 10px}
+</style></head>
+<body><div class="viz-root">
+<h1>Stafford — Resource Utilization Profile</h1>
+<p class="sub">July 16, 2026 book · window Jul 16 2026 → Mar 13 2027 (anchored horizon, 240 days) ·
+assigned = working hours of scheduled open tasks · available = calendar capacity-hours in window (pool qty applied) ·
+subcontract (OUTWORK) is unbounded capacity — hours shown, % not meaningful</p>
+
+<h2>Utilization by work group</h2>
+<div class="note">Assigned working hours vs group capacity-hours; groups with no assigned load omitted</div>
+<div class="gwrap" id="groups"></div>
+
+<h2>By person / machine</h2>
+<div class="controls">
+  <input id="q" placeholder="Search resource…" size="24">
+  <select id="fGroup"><option value="">All groups</option></select>
+  <label style="font-size:13px;color:var(--text-secondary)"><input type="checkbox" id="fUsed" checked> only with load</label>
+</div>
+<table><thead><tr id="hdr"></tr></thead><tbody id="tb"></tbody></table>
+<div class="count" id="count"></div>
+<script>
+const DATA = [{"key":"2","name":"ASSEMBLY & FITTING","group":"A","dept":"FIT","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":4113,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0},{"key":"32","name":"HAYDEN","group":"A","dept":"FIT","type":"MACHINE","isFinite":true,"assignedH":259,"availH":1371,"unbounded":false,"util":18.9,"tasks":17,"pinned":6,"float":11},{"key":"34","name":"NICK C","group":"A","dept":"FIT","type":"MACHINE","isFinite":true,"assignedH":122,"availH":1371,"unbounded":false,"util":8.9,"tasks":17,"pinned":4,"float":13},{"key":"35","name":"KALEB M","group":"A","dept":"FIT","type":"MACHINE","isFinite":true,"assignedH":330,"availH":1371,"unbounded":false,"util":24,"tasks":18,"pinned":14,"float":4},{"key":"3","name":"CUTTING MATERIALS","group":"C","dept":"OTH","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":1371,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0},{"key":"74","name":"FELAYNE","group":"C","dept":"OTH","type":"WORK_CENTER","isFinite":true,"assignedH":324,"availH":1371,"unbounded":false,"util":23.6,"tasks":24,"pinned":8,"float":16},{"key":"4","name":"ENGINEERING DESIGN","group":"D","dept":"ENG","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":4113,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0},{"key":"36","name":"BRYAN","group":"D","dept":"ENG","type":"MACHINE","isFinite":true,"assignedH":22,"availH":1371,"unbounded":false,"util":1.6,"tasks":2,"pinned":1,"float":1},{"key":"37","name":"JAMES","group":"D","dept":"ENG","type":"MACHINE","isFinite":true,"assignedH":160,"availH":1371,"unbounded":false,"util":11.7,"tasks":3,"pinned":3,"float":0},{"key":"38","name":"KATHRYN","group":"D","dept":"ENG","type":"MACHINE","isFinite":true,"assignedH":14,"availH":1371,"unbounded":false,"util":1,"tasks":1,"pinned":1,"float":0},{"key":"70","name":"GRAEME","group":"D","dept":"ENG","type":"MACHINE","isFinite":true,"assignedH":160,"availH":1371,"unbounded":false,"util":11.7,"tasks":2,"pinned":2,"float":0},{"key":"71","name":"MAX","group":"D","dept":"ENG","type":"MACHINE","isFinite":true,"assignedH":40,"availH":1371,"unbounded":false,"util":2.9,"tasks":1,"pinned":1,"float":0},{"key":"78","name":"MIKE","group":"D","dept":"ENG","type":"MACHINE","isFinite":true,"assignedH":120,"availH":1371,"unbounded":false,"util":8.8,"tasks":3,"pinned":3,"float":0},{"key":"5","name":"DRAWING & DETAILING","group":"DR","dept":"ENG","type":"WORK_CENTER","isFinite":false,"assignedH":10,"availH":2742,"unbounded":false,"util":0.4,"tasks":5,"pinned":0,"float":5},{"key":"6","name":"FABRICATION & WELDING","group":"F","dept":"FAB","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":15081,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0},{"key":"41","name":"GRANT","group":"F","dept":"FAB","type":"MACHINE","isFinite":true,"assignedH":734,"availH":1371,"unbounded":false,"util":53.5,"tasks":20,"pinned":11,"float":9},{"key":"42","name":"ADRIAN","group":"F","dept":"FAB","type":"MACHINE","isFinite":true,"assignedH":210,"availH":1371,"unbounded":false,"util":15.3,"tasks":16,"pinned":1,"float":15},{"key":"43","name":"JACK P","group":"F","dept":"FAB","type":"MACHINE","isFinite":true,"assignedH":111,"availH":1371,"unbounded":false,"util":8.1,"tasks":20,"pinned":1,"float":19},{"key":"44","name":"DYLAN","group":"F","dept":"FAB","type":"MACHINE","isFinite":true,"assignedH":276,"availH":1371,"unbounded":false,"util":20.1,"tasks":20,"pinned":6,"float":14},{"key":"45","name":"LUKE","group":"F","dept":"FAB","type":"MACHINE","isFinite":true,"assignedH":91,"availH":1371,"unbounded":false,"util":6.7,"tasks":7,"pinned":1,"float":6},{"key":"46","name":"DWAYNE","group":"F","dept":"FAB","type":"MACHINE","isFinite":true,"assignedH":50,"availH":1371,"unbounded":false,"util":3.7,"tasks":7,"pinned":0,"float":7},{"key":"47","name":"JOSH","group":"F","dept":"FAB","type":"MACHINE","isFinite":true,"assignedH":120,"availH":1371,"unbounded":false,"util":8.7,"tasks":17,"pinned":4,"float":13},{"key":"48","name":"ADAM","group":"F","dept":"FAB","type":"MACHINE","isFinite":true,"assignedH":91,"availH":1371,"unbounded":false,"util":6.6,"tasks":13,"pinned":2,"float":11},{"key":"49","name":"JACK R","group":"F","dept":"FAB","type":"MACHINE","isFinite":true,"assignedH":248,"availH":1371,"unbounded":false,"util":18.1,"tasks":15,"pinned":13,"float":2},{"key":"51","name":"SAM O","group":"F","dept":"FAB","type":"MACHINE","isFinite":true,"assignedH":26,"availH":1371,"unbounded":false,"util":1.9,"tasks":8,"pinned":4,"float":4},{"key":"52","name":"COOPER","group":"F","dept":"FAB","type":"MACHINE","isFinite":true,"assignedH":47,"availH":1371,"unbounded":false,"util":3.4,"tasks":8,"pinned":0,"float":8},{"key":"53","name":"ELIJAH","group":"F","dept":"FAB","type":"MACHINE","isFinite":true,"assignedH":22,"availH":1371,"unbounded":false,"util":1.6,"tasks":11,"pinned":0,"float":11},{"key":"7","name":"NC FOLDING","group":"FO","dept":"PRE","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":1371,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0},{"key":"72","name":"NICK T","group":"FO","dept":"PRE","type":"WORK_CENTER","isFinite":true,"assignedH":29,"availH":1371,"unbounded":false,"util":2.2,"tasks":33,"pinned":5,"float":28},{"key":"8","name":"GENERAL ENGINEERING","group":"G","dept":"OTH","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":1371,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0},{"key":"75","name":"CONRAD","group":"G","dept":"OTH","type":"WORK_CENTER","isFinite":true,"assignedH":63,"availH":1371,"unbounded":false,"util":4.6,"tasks":24,"pinned":9,"float":15},{"key":"79","name":"COOPER","group":"G","dept":"OTH","type":"WORK_CENTER","isFinite":true,"assignedH":333,"availH":1371,"unbounded":false,"util":24.3,"tasks":14,"pinned":7,"float":7},{"key":"9","name":"NC KAOMING","group":"K","dept":"MAC","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":2742,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0},{"key":"56","name":"PHIL","group":"K","dept":"MAC","type":"WORK_CENTER","isFinite":true,"assignedH":207,"availH":1371,"unbounded":false,"util":15.1,"tasks":15,"pinned":2,"float":13},{"key":"57","name":"WERNER","group":"K","dept":"MAC","type":"WORK_CENTER","isFinite":true,"assignedH":250,"availH":1371,"unbounded":false,"util":18.2,"tasks":30,"pinned":14,"float":16},{"key":"10","name":"LASER CUTTING","group":"L","dept":"PRE","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":1371,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0},{"key":"73","name":"MUSTO","group":"L","dept":"PRE","type":"WORK_CENTER","isFinite":true,"assignedH":28,"availH":1371,"unbounded":false,"util":2.1,"tasks":31,"pinned":12,"float":19},{"key":"11","name":"LASER ETCHING","group":"LE","dept":"OTH","type":"WORK_CENTER","isFinite":false,"assignedH":6,"availH":1371,"unbounded":false,"util":0.4,"tasks":9,"pinned":0,"float":9},{"key":"12","name":"LASER PROGRAMMING","group":"LP","dept":"PRE","type":"WORK_CENTER","isFinite":false,"assignedH":3,"availH":1371,"unbounded":false,"util":0.2,"tasks":20,"pinned":0,"float":20},{"key":"13","name":"GENERAL MILLING","group":"M","dept":"MAC","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":1371,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0},{"key":"58","name":"ANDREW BARRY","group":"M","dept":"MAC","type":"MACHINE","isFinite":true,"assignedH":165,"availH":1371,"unbounded":false,"util":12.1,"tasks":94,"pinned":5,"float":89},{"key":"1","name":"NOT APPLICABLE","group":"NA","dept":"NA","type":"SUBCONTRACT","isFinite":false,"assignedH":0,"availH":5760000,"unbounded":true,"util":null,"tasks":0,"pinned":0,"float":0},{"key":"14","name":"NC MILLING","group":"NM","dept":"MAC","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":4113,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0},{"key":"26","name":"DARREN","group":"NM","dept":"MAC","type":"MACHINE","isFinite":true,"assignedH":81,"availH":1371,"unbounded":false,"util":5.9,"tasks":6,"pinned":0,"float":6},{"key":"27","name":"JORDYN","group":"NM","dept":"MAC","type":"MACHINE","isFinite":true,"assignedH":73,"availH":1371,"unbounded":false,"util":5.3,"tasks":19,"pinned":10,"float":9},{"key":"28","name":"MARK","group":"NM","dept":"MAC","type":"MACHINE","isFinite":true,"assignedH":49,"availH":1371,"unbounded":false,"util":3.6,"tasks":7,"pinned":3,"float":4},{"key":"76","name":"UNMANNED KITTY","group":"NM","dept":"MAC","type":"MACHINE","isFinite":true,"assignedH":46,"availH":1371,"unbounded":false,"util":3.3,"tasks":13,"pinned":0,"float":13},{"key":"15","name":"NC TURNING","group":"NT","dept":"MAC","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":4113,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0},{"key":"29","name":"DAVID","group":"NT","dept":"MAC","type":"MACHINE","isFinite":true,"assignedH":133,"availH":1371,"unbounded":false,"util":9.7,"tasks":33,"pinned":8,"float":25},{"key":"30","name":"NICK W","group":"NT","dept":"MAC","type":"MACHINE","isFinite":true,"assignedH":149,"availH":1371,"unbounded":false,"util":10.9,"tasks":36,"pinned":9,"float":27},{"key":"31","name":"PRATIK","group":"NT","dept":"MAC","type":"MACHINE","isFinite":true,"assignedH":96,"availH":1371,"unbounded":false,"util":7,"tasks":15,"pinned":3,"float":12},{"key":"25","name":"OUTWORK","group":"OUT","dept":"OTH","type":"SUBCONTRACT","isFinite":false,"assignedH":9864,"availH":5760000,"unbounded":true,"util":null,"tasks":71,"pinned":0,"float":71},{"key":"16","name":"POLISHING","group":"P","dept":"FAB","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":5484,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0},{"key":"62","name":"SAM R","group":"P","dept":"FAB","type":"MACHINE","isFinite":true,"assignedH":201,"availH":1371,"unbounded":false,"util":14.6,"tasks":33,"pinned":5,"float":28},{"key":"63","name":"PAUL","group":"P","dept":"FAB","type":"MACHINE","isFinite":true,"assignedH":163,"availH":1371,"unbounded":false,"util":11.9,"tasks":73,"pinned":9,"float":64},{"key":"64","name":"DEAN","group":"P","dept":"FAB","type":"MACHINE","isFinite":true,"assignedH":128,"availH":1371,"unbounded":false,"util":9.3,"tasks":40,"pinned":6,"float":34},{"key":"65","name":"AUNG","group":"P","dept":"FAB","type":"MACHINE","isFinite":true,"assignedH":164,"availH":1371,"unbounded":false,"util":12,"tasks":52,"pinned":14,"float":38},{"key":"17","name":"PROJECT MANAGEMENT","group":"PM","dept":"ENG","type":"WORK_CENTER","isFinite":false,"assignedH":26,"availH":1371,"unbounded":false,"util":1.9,"tasks":5,"pinned":0,"float":5},{"key":"18","name":"NC PROGRAMMING","group":"PR","dept":"MAC","type":"WORK_CENTER","isFinite":false,"assignedH":29,"availH":1371,"unbounded":false,"util":2.1,"tasks":58,"pinned":0,"float":58},{"key":"19","name":"QUALITY INSPECTION","group":"QC","dept":"QMS","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":1371,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0},{"key":"77","name":"MURRAY","group":"QC","dept":"QMS","type":"WORK_CENTER","isFinite":true,"assignedH":103,"availH":1371,"unbounded":false,"util":7.5,"tasks":396,"pinned":107,"float":289},{"key":"20","name":"REWORK OF PRODUCT","group":"R","dept":"QMS","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":1371,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0},{"key":"21","name":"SITE WORK","group":"S","dept":"ENG","type":"WORK_CENTER","isFinite":false,"assignedH":32,"availH":1371,"unbounded":false,"util":2.3,"tasks":4,"pinned":0,"float":4},{"key":"22","name":"GENERAL TURNING","group":"T","dept":"MAC","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":1371,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0},{"key":"66","name":"ANDY H","group":"T","dept":"MAC","type":"MACHINE","isFinite":true,"assignedH":45,"availH":1371,"unbounded":false,"util":3.3,"tasks":40,"pinned":11,"float":29},{"key":"23","name":"NC VICTOR","group":"V","dept":"MAC","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":1371,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0},{"key":"68","name":"JIMMY","group":"V","dept":"MAC","type":"WORK_CENTER","isFinite":true,"assignedH":107,"availH":1371,"unbounded":false,"util":7.8,"tasks":21,"pinned":9,"float":12},{"key":"24","name":"INDIRECT LABOUR","group":"ZIND","dept":"OTH","type":"WORK_CENTER","isFinite":false,"assignedH":0,"availH":1371,"unbounded":false,"util":0,"tasks":0,"pinned":0,"float":0}];
+const fin = DATA.filter(r=>!r.unbounded);
+// group rollup
+const groups = {};
+for (const r of DATA){
+  const g = groups[r.group] = groups[r.group]||{g:r.group, dept:r.dept, aH:0, vH:0, t:0, unb:false};
+  g.aH+=r.assignedH; g.t+=r.tasks; g.unb=g.unb||r.unbounded;
+  if(!r.unbounded) g.vH+=r.availH;
+}
+const glist = Object.values(groups).filter(g=>g.t>0)
+  .map(g=>({...g, util: g.unb? null : (g.vH>0? 100*g.aH/g.vH : null)}))
+  .sort((a,b)=>(b.util??-1)-(a.util??-1) || b.aH-a.aH);
+const gmax = Math.max(...glist.map(g=>g.util||0), 30);
+document.getElementById('groups').innerHTML = glist.map(g=>`
+ <div class="grow"><div class="gl">${g.g}</div>
+  <div class="bar" title="${g.g}"><i style="width:${g.util==null?0:Math.min(100*g.util/gmax,100)}%"></i></div>
+  <div class="gv">${g.util==null?'∞ cap':g.util.toFixed(1)+'%'} · ${g.aH.toLocaleString()}h / ${g.unb?'—':g.vH.toLocaleString()+'h'} · ${g.t} tasks</div></div>`).join('');
+// table
+const COLS=[['name','Resource'],['group','Group'],['dept','Dept'],['type','Type'],
+ ['util','Util %'],['assignedH','Assigned h'],['availH','Avail h'],['tasks','Tasks'],['pinned','Pinned'],['float','Float']];
+let sortK='util',sortDir=-1;
+const hdr=document.getElementById('hdr');
+hdr.innerHTML=COLS.map(c=>`<th data-k="${c[0]}">${c[1]} <span class="arr"></span></th>`).join('');
+function render(){
+ const q=document.getElementById('q').value.toLowerCase();
+ const fg=document.getElementById('fGroup').value;
+ const onlyUsed=document.getElementById('fUsed').checked;
+ let rows=DATA.filter(r=>(!q||r.name.toLowerCase().includes(q))&&(!fg||r.group===fg)&&(!onlyUsed||r.tasks>0));
+ rows.sort((a,b)=>{let x=a[sortK],y=b[sortK];
+  if(x==null)return 1;if(y==null)return -1;
+  return (typeof x==='number'? x-y : String(x).localeCompare(String(y)))*sortDir;});
+ document.getElementById('tb').innerHTML=rows.map(r=>`<tr>
+  <td>${r.name}${r.isFinite?'':' <span class="muted">(header)</span>'}</td>
+  <td>${r.group}</td><td>${r.dept}</td><td>${r.type}</td>
+  <td class="num"><span class="meter"><i style="width:${r.unbounded||r.util==null?0:Math.min(r.util,100)}%"></i></span>${r.unbounded?'∞':(r.util==null?'—':r.util.toFixed(1)+'%')}</td>
+  <td class="num">${r.assignedH.toLocaleString()}</td><td class="num">${r.unbounded?'—':r.availH.toLocaleString()}</td>
+  <td class="num">${r.tasks}</td><td class="num">${r.pinned}</td><td class="num">${r.float}</td></tr>`).join('');
+ document.getElementById('count').textContent=rows.length+' of '+DATA.length+' resources';
+ hdr.querySelectorAll('th').forEach(th=>th.querySelector('.arr').textContent=th.dataset.k===sortK?(sortDir>0?'▲':'▼'):'');
+}
+hdr.addEventListener('click',e=>{const th=e.target.closest('th');if(!th)return;
+ if(sortK===th.dataset.k)sortDir*=-1;else{sortK=th.dataset.k;sortDir=-1;}render();});
+(function(){const sel=document.getElementById('fGroup');
+ [...new Set(DATA.map(r=>r.group))].sort().forEach(v=>{const o=document.createElement('option');o.textContent=v;sel.appendChild(o);});})();
+['q','fGroup','fUsed'].forEach(id=>document.getElementById(id).addEventListener('input',render));
+render();
+</script></div></body></html>
