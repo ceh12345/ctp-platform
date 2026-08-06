@@ -1,4 +1,5 @@
 import { DisjunctiveGraph } from './disjunctivegraph';
+import { RandomSource, defaultRandom } from '../../Models/Core/rng';
 
 // ═══════════════════════════════════════════════════════════════
 //  ILS Perturbation
@@ -17,9 +18,15 @@ import { DisjunctiveGraph } from './disjunctivegraph';
  * @param graph     The graph to perturb (mutated).
  * @param strength  Fraction of swappable arcs to reverse. 0.07 = 7% (ILS default).
  *                  Higher values = more disruption = wider exploration but slower convergence.
+ * @param rng       Random source. Defaults to `Math.random`; pass a seeded source
+ *                  when the run must be reproducible (comparison harness).
  * @returns         The same graph reference (mutated).
  */
-export function perturbGraph(graph: DisjunctiveGraph, strength: number): DisjunctiveGraph {
+export function perturbGraph(
+  graph: DisjunctiveGraph,
+  strength: number,
+  rng: RandomSource = defaultRandom,
+): DisjunctiveGraph {
   // ─── 1. Collect all non-frozen adjacent pairs across all resources ───
   const swappableArcs: { resourceKey: string; nodeA: number; nodeB: number }[] = [];
 
@@ -37,7 +44,7 @@ export function perturbGraph(graph: DisjunctiveGraph, strength: number): Disjunc
 
   // ─── 2. Shuffle (Fisher-Yates, unbiased O(n)) and pick a fraction ───
   // Deliberately NOT using .sort(() => Math.random() - 0.5) — that's biased and O(n log n).
-  fisherYatesShuffle(swappableArcs);
+  fisherYatesShuffle(swappableArcs, rng);
   const count = Math.max(1, Math.ceil(swappableArcs.length * strength));
 
   // ─── 3. Apply swaps, reverting any that create cycles ───
@@ -74,9 +81,9 @@ export function perturbGraph(graph: DisjunctiveGraph, strength: number): Disjunc
 /**
  * Fisher-Yates in-place shuffle. Uniform random, O(n).
  */
-function fisherYatesShuffle<T>(arr: T[]): void {
+function fisherYatesShuffle<T>(arr: T[], rng: RandomSource): void {
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     const tmp = arr[i];
     arr[i] = arr[j];
     arr[j] = tmp;

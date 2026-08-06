@@ -12,6 +12,7 @@ export * from './Models/Core/linkid';
 export * from './Models/Core/linklist';
 export * from './Models/Core/list';
 export * from './Models/Core/namevalue';
+export * from './Models/Core/rng';
 export * from './Models/Core/preference';
 export * from './Models/Core/range';
 export * from './Models/Core/duration-policy';

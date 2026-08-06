@@ -35,6 +35,7 @@ Run in this order; specs downloaded one at a time for review.
 
 | Item | Summary | Date |
 |------|---------|------|
+| Job Shop Technique Bake-off v1 | `SPRINT-jobshop-technique-bakeoff.md`. Scheduler-seam comparison harness with three contracts (determinism via placement fingerprint, feasibility-as-gate, discrimination). 8 techniques × 3 tenants → **2 distinct outcomes everywhere**: ATC/DBR/Slack proven inert on chained data (`basescheduler.ts:884`). Chain-vs-task is data-dependent (task-level +4 placed on acme, −18 on stafford-slim-100). Found `IdFactory` nondeterminism (`Date.now()` + `Math.random()` in synthesized keys). Adds seeded RNG (`Models/Core/rng.ts`); no new algorithms | 2026-08-06 |
 | Range Refactor | 44 snapshot + 466 existing tests | — |
 | Unschedule Integration | 14 new tests, 480 total engine | — |
 | API test suite | 87 tests passing | — |
@@ -236,6 +237,7 @@ INFRA TRACK
   parking-lot.md                     ← Deferred items
 
   Engine Sprints:
+  SPRINT-jobshop-technique-bakeoff.md ← Job shop technique comparison harness (v1, measurement only)
   solver-1-ranked-contexts.md        ← Top-N ranked alternatives per task
   engine-scoring-rules-duedate.md    ← 3 new scoring rules + due date hydration (DueDate, ResourceUtilization, ResourcePreference)
   solver-2-snapshot-restore.md       ← Save/restore schedule state
