@@ -27,6 +27,7 @@
 
 import { describe, it, expect } from 'vitest';
 import * as path from 'path';
+import { existsSync } from 'fs';
 import { StateService } from '../../state/state.service';
 import { StateHydratorService } from '../../state/state-hydrator.service';
 import { ConfigService } from '../../../config/config.service';
@@ -112,6 +113,15 @@ describe('precedence violations — chain baseline', () => {
   const KNOWN_SELF_LOOPS = 3;
   const KNOWN_GENUINE = 4;
 
+  /**
+   * stafford-slim-500 has ZERO tracked files — it is a local-only slice, unlike
+   * stafford-slim-100 which is committed. Guard rather than assume, so a fresh
+   * clone does not fail on a tenant that was never in the repo. Announced, not
+   * silent: a skipped gate that looks like a pass is worse than a red one.
+   */
+  const hasTenant = (t: string) =>
+    existsSync(path.join(CONFIG_ROOT, 'tenants', t, 'data', 'tasks.json'));
+
   it('stafford-slim-100 has no genuine violations', async () => {
     const v = await findViolations('stafford-slim-100');
     const genuine = v.filter(x => !x.selfLoop);
@@ -122,6 +132,14 @@ describe('precedence violations — chain baseline', () => {
   }, 600_000);
 
   it('stafford-slim-500 stays at or below the known violation counts', async () => {
+    if (!hasTenant('stafford-slim-500')) {
+      console.log(
+        '\n[precedence] SKIPPED stafford-slim-500 — tenant not present. It is a ' +
+        'local-only slice with no tracked files, so this gate does not run on a ' +
+        'fresh clone.\n',
+      );
+      return;
+    }
     const v = await findViolations('stafford-slim-500');
     const selfLoops = v.filter(x => x.selfLoop);
     const genuine = v.filter(x => !x.selfLoop);
