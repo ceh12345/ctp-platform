@@ -22,6 +22,11 @@ export class LinkedList<T> implements ILinkedList<T> {
   public head: ListNode<T> | null = null;
   public tail: ListNode<T> | null = null;
   public mid: ListNode<T> | null = null;
+  // Structural mutation counter — bumped by every insert/delete. Lets
+  // consumers (interval-walker's calendar index) cache derived snapshots
+  // keyed on (list, modCount) and rebuild only when the list changed.
+  // NOTE: does not track in-place mutation of node.data.
+  public modCount: number = 0;
   public constructor() {}
 
   public clear(): void {
@@ -45,6 +50,7 @@ export class LinkedList<T> implements ILinkedList<T> {
   }
 
   public insertAtEnd(data: T): ListNode<T> {
+    this.modCount++;
     const node = new ListNode(data);
     if (!this.tail) {
       this.head = node;
@@ -69,6 +75,7 @@ export class LinkedList<T> implements ILinkedList<T> {
   }
 
   public insertAtBegin(data: T): ListNode<T> {
+    this.modCount++;
     const node = new ListNode(data);
     if (!this.head) {
       this.head = node;
@@ -82,6 +89,7 @@ export class LinkedList<T> implements ILinkedList<T> {
   }
 
   public insertBefore(data: T, node: ListNode<T>): ListNode<T> {
+    this.modCount++;
     const node1 = new ListNode(data);
 
     if (!this.head) {
@@ -108,6 +116,7 @@ export class LinkedList<T> implements ILinkedList<T> {
 
   public deleteNode(node: ListNode<T> | null): void {
     if (!node) return;
+    this.modCount++;
 
     if (!node.prev) {
       this.head = node.next;

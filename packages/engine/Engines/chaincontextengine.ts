@@ -82,22 +82,28 @@ export interface BumpEvent {
 
 export class ChainContextEngine {
 
-  // CODE-OPTIMIZATION-SPRINT Ticket 3 — temporary A/B flag during the bench
-  // window. When true, the 3 startTimes find-pattern helpers
-  // (isWithinStartTimeNode, getAssignedProcessChangeDuration,
-  // findStartTimeNode) use a typed-array cache on ScheduleContext + binary
-  // search instead of head-walking ctx.slot.startTimes. Cleanup commit will
-  // remove the flag and replace each helper's body with the fast path only.
-  public useStartTimesCache: boolean = false;
+  // CODE-OPTIMIZATION-SPRINT Ticket 3. When true, the 3 startTimes
+  // find-pattern helpers (isWithinStartTimeNode,
+  // getAssignedProcessChangeDuration, findStartTimeNode) use a typed-array
+  // cache on ScheduleContext + binary search instead of head-walking
+  // ctx.slot.startTimes. Benchmarked 1.82x (results/ticket-03.json,
+  // correctness PASS); enabled by default 2026-07-29 (solver-performance
+  // sprint) — the flag remains as a diagnostic kill-switch.
+  public useStartTimesCache: boolean = true;
 
-  // CODE-OPTIMIZATION-SPRINT Ticket 4 — temporary A/B flag during the bench
-  // window. When true, scoreChainCombos dispatches to a PATH-B implementation
-  // that scores raw rule values ONCE per unique context (across all combos)
-  // and blends per-combo. Preserves the existing per-combo min/max
-  // normalization semantics — the spec's "global normalization" variant was
-  // explicitly NOT used because it changed combo rankings. Cleanup commit
-  // will remove the flag and the original head-walk path.
-  public useUniqueContextScoring: boolean = false;
+  // CODE-OPTIMIZATION-SPRINT Ticket 4. When true, scoreChainCombos
+  // dispatches to a PATH-B implementation that scores raw rule values ONCE
+  // per unique context (across all combos) and blends per-combo. Preserves
+  // the existing per-combo min/max normalization semantics — the spec's
+  // "global normalization" variant was explicitly NOT used because it
+  // changed combo rankings. Benchmarked 20.86x (results/ticket-04.json,
+  // correctness PASS); enabled by default 2026-07-29 (solver-performance
+  // sprint) — the flag remains as a diagnostic kill-switch.
+  public useUniqueContextScoring: boolean = true;
+
+  // P1 (solver-performance sprint) observability: running count of combos
+  // skipped by the admissible bound prune in evaluateChain step 7.
+  public combosPruned: number = 0;
 
   /**
    * Build (or return cached) the typed-array snapshot of ctx.slot.startTimes.
@@ -122,17 +128,23 @@ export class ChainContextEngine {
     const eStart = new Float64Array(count);
     const lStart = new Float64Array(count);
     const pcd = new Float64Array(count);
+    let pcdUniform = true;
+    let lStartMonotone = true;
     n = st.head;
     let i = 0;
     while (n) {
       eStart[i] = n.data.eStartW;
       lStart[i] = n.data.lStartW;
       pcd[i] = n.data.processChangeDuration;
+      if (i > 0) {
+        if (pcd[i] !== pcd[0]) pcdUniform = false;
+        if (lStart[i] < lStart[i - 1]) lStartMonotone = false;
+      }
       i++;
       n = n.next;
     }
     ctx._stCache = {
-      count, eStart, lStart, pcd,
+      count, eStart, lStart, pcd, pcdUniform, lStartMonotone,
       version: ctx._stCacheVersion,
     };
     return ctx._stCache;
@@ -221,11 +233,30 @@ export class ChainContextEngine {
     // Step 6: Score surviving combos
     this.scoreChainCombos(feasible, landscape, scoring);
 
-    // Step 7: Try all combos — assign start times and collect valid placements
+    // Step 7: Try combos — assign start times and collect valid placements.
     feasible.sort((a, b) => a.chainScore - b.chainScore);
 
+    // P1 (solver-performance sprint): admissible bound prune. assignStartTimes
+    // can never place the first task earlier than its propagated eStartW —
+    // the primary's candidates are filtered to >= propagatedEStart, the
+    // backward pass is floor-bounded by startTimes[i].eStartW, and the forward
+    // pass floors at propagatedEStartI. So startTimes[0].eStartW is a true
+    // lower bound on the combo's assignedStart. Once some valid combo starts
+    // at bestStart, a candidate whose bound is >= bestStart can at best TIE on
+    // start with an equal-or-worse chainScore (iteration is score-ascending),
+    // and the final (assignedStart, chainScore) sort would never select it —
+    // skipping is result-identical. Under symmetric preference pools (group
+    // members sharing calendar+efficiency propagate identical bounds) this
+    // collapses the cross-product: the first unconstrained placement prunes
+    // every remaining sibling combo.
     const validCombos: ChainContextCombo[] = [];
+    let bestStart = Infinity;
     for (const candidate of feasible) {
+      const bound = candidate.startTimes[0]?.eStartW ?? -Infinity;
+      if (bound >= bestStart) {
+        this.combosPruned++;
+        continue;
+      }
       this.assignStartTimes(candidate);
 
       const allAssigned = candidate.startTimes.every(
@@ -233,6 +264,8 @@ export class ChainContextEngine {
       );
       if (!allAssigned) continue;
       validCombos.push(candidate);
+      const s0 = candidate.startTimes[0].assignedStart;
+      if (s0 < bestStart) bestStart = s0;
     }
 
     if (validCombos.length === 0) {
@@ -1199,8 +1232,17 @@ export class ChainContextEngine {
     const cadence = primaryCtx.task?.cadenceIntervalMinutes;
     const cadenceSec = cadence ? cadence * 60 : 0;
 
-    // For each primary candidate, simulate outward — collect all valid placements
-    const validPlacements: { start: number; end: number }[][] = [];
+    // For each primary candidate, simulate outward. Candidate-set reduction
+    // (solver-performance sprint): the final pick is the minimal-total-gap
+    // placement, ties keeping the FIRST in candidate order (ascending) — so
+    // the best placement is tracked incrementally and the loop EXITS as soon
+    // as a zero-gap placement appears: gaps are >= 0, later candidates can
+    // at best tie, and a tie would lose to the earlier placement anyway.
+    // Result-identical to simulating every candidate. Single-task combos
+    // (no chain edges → totalGap always 0) collapse to the first valid
+    // candidate, eliminating the entire remaining candidate sweep.
+    let bestPlacement: { start: number; end: number }[] | null = null;
+    let bestGap = Number.MAX_VALUE;
 
     for (const rawStart of candidates) {
       let pStart = rawStart;
@@ -1293,26 +1335,21 @@ export class ChainContextEngine {
       }
 
       if (feasible && trial.every(t => t !== null)) {
-        validPlacements.push(trial as { start: number; end: number }[]);
+        const placement = trial as { start: number; end: number }[];
+        let totalGap = 0;
+        for (let i = 1; i < placement.length; i++) {
+          const gap = placement[i].start - placement[i - 1].end;
+          if (gap > 0) totalGap += gap;
+        }
+        if (totalGap < bestGap) {
+          bestGap = totalGap;
+          bestPlacement = placement;
+        }
+        if (bestGap === 0) break; // exact early exit — see comment above
       }
     }
 
-    if (validPlacements.length === 0) return;
-
-    // Pick the placement with smallest total gap (tightest chain)
-    let bestPlacement = validPlacements[0];
-    let bestGap = Number.MAX_VALUE;
-    for (const placement of validPlacements) {
-      let totalGap = 0;
-      for (let i = 1; i < placement.length; i++) {
-        const gap = placement[i].start - placement[i - 1].end;
-        if (gap > 0) totalGap += gap;
-      }
-      if (totalGap < bestGap) {
-        bestGap = totalGap;
-        bestPlacement = placement;
-      }
-    }
+    if (!bestPlacement) return;
 
     for (let i = 0; i < bestPlacement.length; i++) {
       combo.startTimes[i].assignedStart = bestPlacement[i].start;
@@ -1403,9 +1440,38 @@ export class ChainContextEngine {
     const duration = ctx.task.duration?.duration() ?? 0;
     const cadence = ctx.task?.cadenceIntervalMinutes;
     const cadenceSec = cadence ? cadence * 60 : 0;
-    // T3 scope: iterate-all path stays on linked-list walk — see comment in
-    // computeContextFeasibleDuration for the narrowing rationale.
 
+    // P-slim500 fast path (52% self-time at slim-500 scale): when pcd is
+    // uniform across nodes and lStart is monotone (both true whenever no
+    // process changes fragment the windows — the overwhelmingly common
+    // shape), the per-node candidate min(latestBySucc, lStart[i], propLStart)
+    // is non-increasing scanning from the last node down, so the FIRST
+    // feasible candidate from the top is the max the full walk would find.
+    // Early-exits when the candidate falls below the floor (nothing lower
+    // can be feasible). Result-identical to the walk; non-uniform pcd falls
+    // through to the legacy full walk below.
+    if (this.useStartTimesCache) {
+      const c = this.getStCache(ctx);
+      if (c && c.pcdUniform && c.lStartMonotone) {
+        const pcd0 = c.pcd[0];
+        const latestBySucc = succStart - duration - pcd0;
+        let floor = propagatedEStart;
+        if (maxGap !== null) {
+          floor = Math.max(floor, succStart - maxGap - duration - pcd0);
+        }
+        for (let i = c.count - 1; i >= 0; i--) {
+          let candidateStart = Math.min(latestBySucc, c.lStart[i], propagatedLStart);
+          if (cadenceSec > 0 && candidateStart % cadenceSec !== 0) {
+            candidateStart = Math.floor(candidateStart / cadenceSec) * cadenceSec;
+          }
+          if (candidateStart < floor) return null; // shrinks monotonically — no lower node can pass
+          if (candidateStart >= Math.max(c.eStart[i], floor)) return candidateStart;
+        }
+        return null;
+      }
+    }
+
+    // Legacy full walk (also the non-uniform-pcd fallback).
     let best: number | null = null;
     let node = st.head;
     while (node) {
