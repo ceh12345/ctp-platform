@@ -73,6 +73,18 @@ export interface Technique {
   /** Value written to `appSettings.solverStrategy`. */
   solverStrategy: string;
   /**
+   * Value written to `appSettings.activeSequence` — the processing sequence
+   * that `getChainPriority` ranks chains by.
+   *
+   * Production sets this from the solve request or the tenant's
+   * `defaultSequence` (`ctp.service.ts:396`). The harness drives `CTPScheduler`
+   * directly, so it must set it explicitly or the engine falls back to
+   * `task.priority` — which on Stafford is a single value on 96% of orders,
+   * i.e. an arbitrary tie. Leave undefined to measure that fallback
+   * deliberately; set a name to measure a real sequence.
+   */
+  activeSequence?: string;
+  /**
    * Which decomposition the engine is EXPECTED to route this to.
    * `runTechnique` records what actually happened in `kpis.reportedStrategy`,
    * so a mismatch between expectation and reality is visible rather than
@@ -197,6 +209,9 @@ export async function runTechnique(
   // itself exactly as it would for a tenant configured this way.
   if (!landscape.appSettings) throw new Error('Landscape has no appSettings');
   landscape.appSettings.solverStrategy = technique.solverStrategy;
+  // Explicit on both branches: an unset sequence is a measured condition here,
+  // not an oversight. See the field docs on Technique.activeSequence.
+  (landscape.appSettings as any).activeSequence = technique.activeSequence;
 
   const scheduler = new CTPScheduler();
   scheduler.initLandscape(
@@ -461,18 +476,19 @@ export function renderComparison(cmp: Comparison): string {
   out.push('');
   out.push(`TENANT: ${cmp.tenantId}   (baseline: ${cmp.baselineKey})`);
   out.push(
-    pad('technique', 16) + pad('routed', 8) + padL('placed', 10) +
+    pad('technique', 16) + pad('sequence', 22) + pad('routed', 8) + padL('placed', 10) +
     padL('late', 7) + padL('lateTot(h)', 12) + padL('worst(h)', 10) +
     padL('slack(h)', 10) + padL('mkspan(h)', 11) + padL('viol', 6) +
     padL('ms', 8) + '  fingerprint',
   );
-  out.push('-'.repeat(110));
+  out.push('-'.repeat(132));
 
   for (const row of cmp.rows) {
     const k = row.kpis;
     const flag = row.disqualified ? ' DQ' : row.identicalToBaseline ? ' =base' : '';
     out.push(
       pad(row.technique.key, 16) +
+      pad(row.technique.activeSequence ?? '(none -> priority)', 22) +
       pad(k.reportedStrategy, 8) +
       padL(`${k.scheduled}/${k.totalTasks}`, 10) +
       padL(String(k.deliveryGapLateCount), 7) +
@@ -486,7 +502,7 @@ export function renderComparison(cmp: Comparison): string {
     );
   }
 
-  out.push('-'.repeat(110));
+  out.push('-'.repeat(132));
   out.push(
     `distinct outcomes: ${cmp.distinctOutcomes} of ${cmp.rows.length} techniques`,
   );

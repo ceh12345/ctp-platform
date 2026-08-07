@@ -97,7 +97,49 @@ export const TASK_TECHNIQUES: Technique[] = [
   },
 ];
 
-export const ALL_TECHNIQUES: Technique[] = [...CHAIN_TECHNIQUES, ...TASK_TECHNIQUES];
+/**
+ * Processing-sequence techniques — the OTHER selection axis.
+ *
+ * `scheduleChainPass` ignores the dispatch plug entirely, but it DOES consult
+ * `getChainPriority`, which reads `order.processingRanks[activeSequence]` when
+ * a sequence is active and falls back to `task.priority` otherwise. So this is
+ * the one selection lever that currently reaches the chain pass.
+ *
+ * It matters on Stafford because the fallback is degenerate: 160 of 166 orders
+ * at slim-500 carry priority 5, spanning due dates from 2026-02 to 2027-02.
+ * Ranking 96% of the book as a single tie means due dates play no part in what
+ * gets scheduled first.
+ *
+ * `stafford-slim-500` already defines `delivery-date-first` and sets it as
+ * `defaultSequence`, so PRODUCTION applies it via `ctp.service.ts:396`. The
+ * harness drives the scheduler directly and must set it explicitly — which is
+ * why the unsequenced `chain` baseline is not what a Stafford solve actually
+ * does today. Both are measured so the difference is visible.
+ */
+export const SEQUENCE_TECHNIQUES: Technique[] = [
+  {
+    key: 'chain-edd',
+    label: 'Chain + delivery-date-first',
+    solverStrategy: 'Chain',
+    activeSequence: 'delivery-date-first',
+    expectedDecomposition: 'chain',
+    note: "The tenant's own defaultSequence — what production actually runs.",
+  },
+  {
+    key: 'chain-woprio',
+    label: 'Chain + wo-priority',
+    solverStrategy: 'Chain',
+    activeSequence: 'wo-priority',
+    expectedDecomposition: 'chain',
+    note: 'Explicit order.priority ranking — the degenerate control (96% tie).',
+  },
+];
+
+export const ALL_TECHNIQUES: Technique[] = [
+  ...CHAIN_TECHNIQUES,
+  ...TASK_TECHNIQUES,
+  ...SEQUENCE_TECHNIQUES,
+];
 
 export const BASELINE_KEY = 'chain';
 
