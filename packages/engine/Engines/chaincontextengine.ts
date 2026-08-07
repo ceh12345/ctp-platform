@@ -1441,6 +1441,19 @@ export class ChainContextEngine {
     const cadence = ctx.task?.cadenceIntervalMinutes;
     const cadenceSec = cadence ? cadence * 60 : 0;
 
+    // `succStart - duration` is the inverse of `start + duration`, which is only
+    // how a FIXED task ends. A FLOAT task's end is where its calendar runs out
+    // of working time, so subtracting raw duration understates how early it must
+    // start by exactly the idle time inside its span — and the backward walk
+    // then places it too late, finishing after the successor it feeds.
+    // workingStartBackwardW is the true inverse and returns endW - duration for
+    // non-FLOAT, so it is correct for every duration type. Hoisted: hot path.
+    const calendar = ctx.slot.resources?.at(0)?.resource?.available?.staticAvailable;
+    const taskDuration = ctx.task.duration;
+    const latestStartEndingBy = (end: number): number => (
+      taskDuration ? workingStartBackwardW(calendar, end, taskDuration) : end - duration
+    );
+
     // P-slim500 fast path (52% self-time at slim-500 scale): when pcd is
     // uniform across nodes and lStart is monotone (both true whenever no
     // process changes fragment the windows — the overwhelmingly common
@@ -1454,9 +1467,12 @@ export class ChainContextEngine {
       const c = this.getStCache(ctx);
       if (c && c.pcdUniform && c.lStartMonotone) {
         const pcd0 = c.pcd[0];
-        const latestBySucc = succStart - duration - pcd0;
+        const latestBySucc = latestStartEndingBy(succStart - pcd0);
         let floor = propagatedEStart;
         if (maxGap !== null) {
+          // NOTE: still flat arithmetic for the maxGap floor. Every Stafford
+          // link has maxGap null (deliberately — see mapping.json), so this
+          // branch is untested here and is left alone rather than changed blind.
           floor = Math.max(floor, succStart - maxGap - duration - pcd0);
         }
         for (let i = c.count - 1; i >= 0; i--) {
@@ -1477,8 +1493,9 @@ export class ChainContextEngine {
     while (node) {
       const offset = node.data.processChangeDuration;
 
-      // Latest start: effective end (start + duration + offset) <= succStart
-      const latestBySucc = succStart - duration - offset;
+      // Latest start such that the task's true (calendar-walked) end + offset
+      // lands at or before succStart. See latestStartEndingBy above.
+      const latestBySucc = latestStartEndingBy(succStart - offset);
 
       // If maxGap is set: gap = succStart - effectiveEnd <= maxGap
       // → start >= succStart - maxGap - duration - offset
