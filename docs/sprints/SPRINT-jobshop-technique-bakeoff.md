@@ -77,18 +77,24 @@ All eight are production code paths reachable via `solverStrategy`.
 
 ## Results
 
+Measured after merging `main` (solver-performance) into this branch.
+
 ```
-TENANT: demo-manufacturing            placed   late  slack(h)  mkspan(h)     ms
-  chain / atc / dbr / slack / dd / cff  25/29      0    1466.0       21.3    2-4
-  task-greedy / task-shortest           25/29      0    1452.5       19.0      2
+TENANT: demo-manufacturing            placed  late  lateTot(h)  slack(h)  mkspan(h)  viol    ms
+  chain / atc / dbr / slack / dd / cff  25/29     0         0.0    1466.0      21.3     0   2-4
+  task-greedy / task-shortest           25/29     0         0.0    1452.5      19.0     0     2
 
 TENANT: acme-outpatient
-  chain / atc / dbr / slack / dd / cff  30/39      0     807.3      193.8  76-163
-  task-greedy / task-shortest           34/39      0     826.5      194.5    8-10
+  chain / atc / dbr / slack / dd / cff  30/39     0         0.0     807.3     193.8     0 25-90
+  task-greedy / task-shortest           34/39     0         0.0     826.5     194.5     0 11-12
 
 TENANT: stafford-slim-100
-  chain / atc / dbr / slack / dd / cff 115/118     5   57046.4     4582.8   8129+
-  task-greedy / task-shortest          97/118     4   45252.8     4836.0    ~390  DQ
+  chain / atc / dbr / slack / dd / cff 115/118    5      5196.2   57046.4    4582.8     1   470
+  task-greedy / task-shortest          97/118     4      4598.4   45252.8    4836.0     1   375  DQ
+
+TENANT: stafford-slim-500  (opt-in: HARNESS_SCALE=1)
+  chain / atc / dbr / slack / dd / cff 486/495   28     17438.0  483240.6    9511.0    13  5900
+  task-greedy / task-shortest          429/495   28     17438.0  397116.2    9511.0     3  1750  DQ
 ```
 
 **Every tenant: 2 distinct outcomes from 8 techniques.**
@@ -101,13 +107,17 @@ TENANT: stafford-slim-100
 
 4. **`IdFactory` is nondeterministic.** Synthesized task keys mix `Date.now()` with `Math.random()`, so solve results are not diffable run-to-run. Worked around in the fingerprint; the underlying issue is untouched and affects anything that wants to compare two landscapes (**open item** — likely relevant to the snapshot sprint).
 
+5. **The solver-performance work is behaviour-preserving — independently confirmed.** Re-running the harness after merging `main` produced *byte-identical fingerprints* on all three original tenants (`4a88073f8254`, `098a520849b4`, `7228c07fd2fd`). The perf branch claimed zero placement diffs; this is a second, independent check via a hash over every `(task, resource, start, end)`. Speed at slim-100 went ~8,500ms → ~470ms per technique (≈18×), which is what made the slim-500 rung practical.
+
+6. **The chain baseline carries 13 precedence violations at slim-500**, against 3 for task-level, both after excluding anchored pairs. Deterministic and identical across all six chain techniques, so structural rather than incidental. Not introduced by this work — surfaced by it (**open item**).
+
 ---
 
 ## Open items
 
 - **`IdFactory.generateUniqueKey()` nondeterminism** — worked around here, not fixed. Decide whether synthesized keys should be derived from the parent task + type + sequence instead.
 - **One genuine chain violation on `stafford-slim-100`**, present in every technique including the baseline. Not introduced by this work; surfaced by it.
-- **`stafford-slim-500` is in the ladder but not in the spec** — the branch does not carry the `feature/solver-performance` speedups, so slim-500 would dominate runtime. Add once that work lands, or run the harness from that branch.
+- ~~`stafford-slim-500` is in the ladder but not in the spec~~ **RESOLVED** — `main` (solver-performance) merged in; slim-500 now runs at ~6s/technique and is wired as an opt-in scale rung (`HARNESS_SCALE=1`), announced rather than silently skipped. `slim-1000` is the next rung to add.
 - Delivery-gap numbers on `stafford-slim-100` fall back to `lateDueDate`/`dueDate` where `customerDeliveryDate` is unmapped. The fallback chain is documented in `resolveCustomerDate`; commit `8654591` on `feature/solver-performance` re-points this and would change the measured date.
 
 ---

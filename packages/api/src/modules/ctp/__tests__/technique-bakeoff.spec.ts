@@ -178,3 +178,40 @@ describe('Technique bake-off — stafford-slim-100', () => {
     expect(baseline.kpis.ordersMeasured).toBeGreaterThan(0);
   }, 600_000);
 });
+
+// ═══════════════════════════════════════════════════════════════════
+//  SCALE RUNGS — opt-in
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * The larger rungs are minutes rather than seconds even after the
+ * solver-performance work, because each of the 8 techniques solves a fresh
+ * landscape. Running them on every `vitest run` would dominate the suite and
+ * CI, so they are opt-in:
+ *
+ *     HARNESS_SCALE=1 npx vitest run packages/api/.../technique-bakeoff.spec.ts
+ *
+ * Skipping is announced rather than silent — a suite that quietly drops its
+ * scale coverage reads as "we tested everything" when it did not.
+ */
+const SCALE = process.env.HARNESS_SCALE === '1';
+
+describe('Technique bake-off — scale rungs', () => {
+  it.skipIf(!SCALE)('stafford-slim-500', async () => {
+    const runs = await runAll('stafford-slim-500');
+    const cmp = compare('stafford-slim-500', runs, BASELINE_KEY);
+    console.log(renderComparison(cmp));
+    expect(cmp.rows.find((r) => r.technique.key === BASELINE_KEY)!.kpis.scheduled)
+      .toBeGreaterThan(0);
+  }, 1_800_000);
+
+  it('announces when scale rungs are skipped', () => {
+    if (!SCALE) {
+      console.log(
+        '\n[harness] scale rungs SKIPPED (stafford-slim-500). ' +
+        'Re-run with HARNESS_SCALE=1 to include them.\n',
+      );
+    }
+    expect(true).toBe(true);
+  });
+});
