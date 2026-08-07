@@ -92,12 +92,22 @@ TENANT: stafford-slim-100
   chain / atc / dbr / slack / dd / cff 115/118    5      5196.2   57046.4    4582.8     1   470
   task-greedy / task-shortest          97/118     4      4598.4   45252.8    4836.0     1   375  DQ
 
-TENANT: stafford-slim-500  (opt-in: HARNESS_SCALE=1)
-  chain / atc / dbr / slack / dd / cff 486/495   28     17438.0  483240.6    9511.0    13  5900
-  task-greedy / task-shortest          429/495   28     17438.0  397116.2    9511.0     3  1750  DQ
+TENANT: stafford-slim-500  (opt-in: HARNESS_SCALE=1)   — 10 techniques
+  chain + atc/dbr/slack/dd/cff + edd/woprio  486/495   28   17438.0  483240.6  9511.0  13  5900
+  task-greedy / task-shortest                429/495   28   17438.0  397116.2  9511.0   3  1750  DQ
+
+TENANT: stafford-slim-1000  (opt-in)                   — 10 techniques
+  chain + atc/dbr/slack/dd/cff + edd/woprio  959/1002  31   21213.9  867443.0  9511.0  27 36000
+  task-greedy / task-shortest                819/1002  31   21213.9  710151.2  9511.0   8  3950  DQ
 ```
 
-**Every tenant: 2 distinct outcomes from 8 techniques.**
+**Every tenant: 2 distinct outcomes, regardless of how many techniques are run.**
+
+The `chain-edd` / `chain-woprio` rows are the processing-sequence axis, the one
+selection lever that *does* reach `scheduleChainPass` (via `getChainPriority` →
+`order.processingRanks[activeSequence]`). Ranks are computed at hydrate and
+`group.promiseDate` is populated on every group — the sequence is genuinely
+applied, and it changes nothing.
 
 1. **The dispatch plugs are inert on chained data — confirmed on three tenants.** ATC, DBR and Slack produce byte-identical schedules to the baseline, and the engine reports all six as `'Chain'`. The seam sprint shipped a working plug architecture wired to a code path chained tenants never take.
 
@@ -117,7 +127,8 @@ TENANT: stafford-slim-500  (opt-in: HARNESS_SCALE=1)
 
 - **`IdFactory.generateUniqueKey()` nondeterminism** — worked around here, not fixed. Decide whether synthesized keys should be derived from the parent task + type + sequence instead.
 - **One genuine chain violation on `stafford-slim-100`**, present in every technique including the baseline. Not introduced by this work; surfaced by it.
-- ~~`stafford-slim-500` is in the ladder but not in the spec~~ **RESOLVED** — `main` (solver-performance) merged in; slim-500 now runs at ~6s/technique and is wired as an opt-in scale rung (`HARNESS_SCALE=1`), announced rather than silently skipped. `slim-1000` is the next rung to add.
+- ~~`stafford-slim-500` is in the ladder but not in the spec~~ **RESOLVED** — `main` (solver-performance) merged in. `slim-500` (~6s/technique) and `slim-1000` (~36s/technique) both run as opt-in scale rungs (`HARNESS_SCALE=1`), announced rather than silently skipped.
+- **`stafford-engineering-test` (1722 tasks) cannot run yet.** Its data arrives through a live adapter, so with the harness's stub sync it hydrates to ZERO tasks. Gated behind its own `HARNESS_LIVE=1` and left in the spec rather than deleted, so the ladder shows what it cannot yet cover. Needs mock-genius + the real `SyncService`.
 - Delivery-gap numbers on `stafford-slim-100` fall back to `lateDueDate`/`dueDate` where `customerDeliveryDate` is unmapped. The fallback chain is documented in `resolveCustomerDate`; commit `8654591` on `feature/solver-performance` re-points this and would change the measured date.
 
 ---

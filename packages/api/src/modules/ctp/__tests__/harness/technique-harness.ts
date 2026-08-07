@@ -170,6 +170,24 @@ async function loadLandscape(tenantId: string) {
   await stateService.syncFromAdapter();
   const landscape = stateService.getLandscape();
   if (!landscape) throw new Error(`Tenant '${tenantId}' produced no landscape`);
+
+  // An empty landscape is the harness's most dangerous failure mode: every
+  // technique "agrees", the discrimination check reports one distinct outcome,
+  // and the whole thing reads as a clean consensus run. It is not — it is a
+  // comparison of nothing against nothing. Fail loudly instead.
+  //
+  // The usual cause is a tenant whose data arrives through a live adapter
+  // rather than files: this harness passes a stub sync, so tenants backed by
+  // mock-genius (e.g. stafford-engineering-test) hydrate to zero tasks.
+  let taskCount = 0;
+  landscape.tasks.forEach(() => { taskCount++; });
+  if (taskCount === 0) {
+    throw new Error(
+      `Tenant '${tenantId}' hydrated to ZERO tasks — refusing to compare an ` +
+      `empty landscape. This tenant likely needs a live adapter (mock-genius) ` +
+      `rather than the stub sync this harness uses.`,
+    );
+  }
   return { landscape, configService };
 }
 

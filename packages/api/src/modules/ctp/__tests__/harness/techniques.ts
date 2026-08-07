@@ -155,4 +155,6 @@ export const INSTANCE_LADDER = [
   { tenantId: 'acme-outpatient', label: 'acme-outpatient (~39 tasks)' },
   { tenantId: 'stafford-slim-100', label: 'stafford-slim-100 (120 tasks)' },
   { tenantId: 'stafford-slim-500', label: 'stafford-slim-500 (503 tasks)' },
+  { tenantId: 'stafford-slim-1000', label: 'stafford-slim-1000 (1016 tasks)' },
+  { tenantId: 'stafford-engineering-test', label: 'stafford-engineering-test (1722 tasks)' },
 ];

@@ -205,11 +205,36 @@ describe('Technique bake-off — scale rungs', () => {
       .toBeGreaterThan(0);
   }, 1_800_000);
 
+  it.skipIf(!SCALE)('stafford-slim-1000', async () => {
+    const runs = await runAll('stafford-slim-1000');
+    const cmp = compare('stafford-slim-1000', runs, BASELINE_KEY);
+    console.log(renderComparison(cmp));
+    expect(cmp.rows.find((r) => r.technique.key === BASELINE_KEY)!.kpis.scheduled)
+      .toBeGreaterThan(0);
+  }, 1_800_000);
+
+  /**
+   * The full 1722-task book. Gated SEPARATELY from HARNESS_SCALE because it
+   * needs infrastructure the other rungs do not: this tenant's data arrives
+   * through a live adapter, so with the harness's stub sync it hydrates to
+   * ZERO tasks. Start mock-genius and use the real SyncService before enabling.
+   *
+   * Left in rather than deleted so the gap stays visible — the ladder should
+   * show what it cannot yet cover.
+   */
+  it.skipIf(process.env.HARNESS_LIVE !== '1')('stafford-engineering-test', async () => {
+    const runs = await runAll('stafford-engineering-test');
+    const cmp = compare('stafford-engineering-test', runs, BASELINE_KEY);
+    console.log(renderComparison(cmp));
+    expect(cmp.rows.find((r) => r.technique.key === BASELINE_KEY)!.kpis.scheduled)
+      .toBeGreaterThan(0);
+  }, 3_600_000);
+
   it('announces when scale rungs are skipped', () => {
     if (!SCALE) {
       console.log(
-        '\n[harness] scale rungs SKIPPED (stafford-slim-500). ' +
-        'Re-run with HARNESS_SCALE=1 to include them.\n',
+        '\n[harness] scale rungs SKIPPED (stafford-slim-500, slim-1000, ' +
+        'engineering-test). Re-run with HARNESS_SCALE=1 to include them.\n',
       );
     }
     expect(true).toBe(true);
