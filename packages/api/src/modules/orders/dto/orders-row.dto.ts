@@ -23,6 +23,13 @@ export class OrdersRowDto {
   @ApiProperty({ description: 'True when parentOrderKey === key (head of chain)' })
   isHead!: boolean;
   @ApiPropertyOptional({ nullable: true }) dueDate?: string | null;
+  /** Customer promise from the sales-order line — what a late-delivery
+   *  penalty is measured against. Null on internal / stock / rework work. */
+  @ApiPropertyOptional({ nullable: true }) customerDeliveryDate?: string | null;
+  /** Earliest scheduled start across the order's tasks (null before a solve). */
+  @ApiPropertyOptional({ nullable: true }) projectedStart?: string | null;
+  /** Latest scheduled end across the order's tasks (null before a solve). */
+  @ApiPropertyOptional({ nullable: true }) projectedEnd?: string | null;
   @ApiPropertyOptional({ nullable: true }) statusLabel?: string | null;
   @ApiPropertyOptional({ nullable: true }) quantityPlanned?: number | null;
   @ApiProperty({ type: [HierarchySlotDto] }) hierarchies!: HierarchySlotDto[];

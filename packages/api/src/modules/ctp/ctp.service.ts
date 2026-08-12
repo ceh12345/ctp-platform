@@ -3152,6 +3152,11 @@ export class CTPService {
 
     // Track scheduled output per order (orderKey → scheduledQty)
     const orderScheduledQty = new Map<string, number>();
+    // Projected span per order — earliest scheduled start / latest scheduled
+    // end across its tasks. Surfaced on the order DTO so clients show the
+    // real dates behind a late/on-time verdict instead of recomputing it.
+    const orderProjectedStart = new Map<string, number>();
+    const orderProjectedEnd = new Map<string, number>();
 
     // Track material consumption (materialKey → consumed qty)
     const materialConsumed = new Map<string, number>();
@@ -3252,6 +3257,20 @@ export class CTPService {
       if (isScheduled && orderRef && outputProductKey && task.outputQty > 0) {
         const existing = orderScheduledQty.get(orderRef) ?? 0;
         orderScheduledQty.set(orderRef, existing + task.netOutputQty());
+      }
+
+      // Projected span — every scheduled task counts, not just finished
+      // goods, so the window covers the whole order's work.
+      if (isScheduled && orderRef && task.scheduled) {
+        const st = task.scheduled.startW, en = task.scheduled.endW;
+        if (st > 0) {
+          const curStart = orderProjectedStart.get(orderRef);
+          if (curStart === undefined || st < curStart) orderProjectedStart.set(orderRef, st);
+        }
+        if (en > 0) {
+          const curEnd = orderProjectedEnd.get(orderRef);
+          if (curEnd === undefined || en > curEnd) orderProjectedEnd.set(orderRef, en);
+        }
       }
 
       const taskResult: TaskResultDto = {
@@ -3573,6 +3592,12 @@ export class CTPService {
           : null,
         customerDeliveryDate: order.customerDeliveryDate != null
           ? CTPDateTime.toDateTime(order.customerDeliveryDate).toISO()
+          : null,
+        projectedStart: orderProjectedStart.has(order.key)
+          ? CTPDateTime.toDateTime(orderProjectedStart.get(order.key)!).toISO()
+          : null,
+        projectedEnd: orderProjectedEnd.has(order.key)
+          ? CTPDateTime.toDateTime(orderProjectedEnd.get(order.key)!).toISO()
           : null,
         priority: order.priority ?? 0,
         groupKey: order.groupKey,

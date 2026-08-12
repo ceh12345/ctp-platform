@@ -2412,13 +2412,13 @@ function SolveResultsDialog({ result, previousSnapshot, experienceLevel, onClose
 
   // Derived data
   const infeasibleTasks = tasks.filter((t: any) => t.included && !t.feasible && t.type !== 'SET_UP' && t.type !== 'TEAR_DOWN');
-  const lateOrders = orders.filter((o: any) => {
-    if (!o.dueDate) return false;
-    const scheduledTasks = tasks.filter((t: any) => t.orderRef === o.orderKey && t.feasible && t.scheduledEnd);
-    if (scheduledTasks.length === 0) return false;
-    const lastEnd = scheduledTasks.map((t: any) => t.scheduledEnd).sort().pop();
-    return lastEnd && new Date(lastEnd) > new Date(o.dueDate);
-  });
+  // Delivery risk is measured against the CUSTOMER PROMISE
+  // (customerDeliveryDate, from the sales-order line), not order.dueDate —
+  // that maps from Genius JobEndDate, an internal production target that
+  // differs from the promise on ~87% of Stafford's orders and is populated
+  // even on internal/stock/rework work with no customer at all. Orders
+  // without a promise are not delivery-risk candidates.
+  const lateOrders = orders.filter((o: any) => orderDaysLate(o) !== null && orderDaysLate(o)! > 0);
   const shortages = materials.filter((m: any) => m.firstShortageDate);
   const lowFillOrders = orders.filter((o: any) => o.fillRate < 1 && o.fillRate > 0);
 
@@ -8706,6 +8706,10 @@ const ORDERS_COLUMNS: OrdersGridColumn[] = [
   { id: 'name',               label: 'Description',     filterable: false, sortable: true,  width: 280 },
   { id: 'statusLabel',        label: 'Status',           filterable: true,  sortable: true,  width: 110 },
   { id: 'dueDate',            label: 'Due Date',         filterable: true,  sortable: true,  width: 120 },
+  { id: 'customerDeliveryDate', label: 'Customer Promise', filterable: true, sortable: true,  width: 140 },
+  { id: 'projectedStart',     label: 'Projected Start',  filterable: false, sortable: true,  width: 130 },
+  { id: 'projectedEnd',       label: 'Projected End',    filterable: false, sortable: true,  width: 130 },
+  { id: 'daysLate',           label: 'Days Late',        filterable: false, sortable: true,  width: 100, align: 'right' },
   { id: 'quantityPlanned',    label: 'Qty Planned',      filterable: false, sortable: true,  width: 110, align: 'right' },
   { id: 'Strategy',           label: 'Strategy',         filterable: true,  sortable: true,  width: 100 },
   { id: 'CustomerSource',     label: 'Customer Source',  filterable: true,  sortable: true,  width: 150 },
@@ -8770,6 +8774,34 @@ function buildOrdersQuery(s: {
   p.set('page', String(s.page));
   p.set('pageSize', String(s.pageSize));
   return p.toString();
+}
+
+/**
+ * Days an order is projected to miss its CUSTOMER PROMISE.
+ * Positive = late, 0 or negative = on time, null = not a delivery-risk
+ * candidate (no customer promise, or nothing scheduled yet).
+ *
+ * Deliberately NOT order.dueDate: that maps from Genius JobEndDate, an
+ * internal production target which differs from the promise on ~87% of
+ * Stafford's orders and is populated on internal/stock/rework work that has
+ * no customer at all. The promise (sales-order DateCustomer) is what a
+ * late-delivery penalty is measured against.
+ */
+function orderDaysLate(order: any): number | null {
+  const promise = order?.customerDeliveryDate;
+  const projected = order?.projectedEnd;
+  if (!promise || !projected) return null;
+  const promiseMs = new Date(promise).getTime();
+  const projectedMs = new Date(projected).getTime();
+  if (Number.isNaN(promiseMs) || Number.isNaN(projectedMs)) return null;
+  // The promise is stored as MIDNIGHT AT THE START of the promised day
+  // (verified: 518 of 519 sales-order DateCustomer values are 00:00 NZ), so
+  // the deadline is the END of that day. Comparing against the raw timestamp
+  // would call anything finishing during the promised day late — it marked 8
+  // same-day completions "+1" before this was fixed.
+  const deadlineMs = promiseMs + 86400000;
+  const overrunMs = projectedMs - deadlineMs;
+  return overrunMs <= 0 ? 0 : Math.ceil(overrunMs / 86400000);
 }
 
 function fmtOrdersDate(iso: string | null | undefined): string {
@@ -8907,6 +8939,15 @@ function OrdersTab({ caseFilter, onClearCaseFilter, onNavigateToSchedule }: {
       case 'name':              return row.name ?? '';
       case 'groupKey':          return row.groupKey ?? '';
       case 'dueDate':           return fmtOrdersDate(row.dueDate);
+      // Customer promise (sales-order DateCustomer) — the commitment a late
+      // fee is measured against. Absent on internal / stock / rework orders.
+      case 'customerDeliveryDate': return fmtOrdersDate(row.customerDeliveryDate);
+      case 'projectedStart':    return fmtOrdersDate(row.projectedStart);
+      case 'projectedEnd':      return fmtOrdersDate(row.projectedEnd);
+      case 'daysLate': {
+        const d = orderDaysLate(row);
+        return d === null ? '' : (d > 0 ? `+${d}` : String(d));
+      }
       case 'statusLabel':       return row.statusLabel ?? '';
       case 'quantityPlanned':   return row.quantityPlanned != null ? String(row.quantityPlanned) : '';
     }
@@ -9011,7 +9052,12 @@ function OrdersTab({ caseFilter, onClearCaseFilter, onNavigateToSchedule }: {
         )}
 
         <div style={{ marginLeft: 'auto', fontSize: 12, color: C.textMuted }}>
-          {loading ? 'Loading…' : `Showing ${filteredCount} of ${totalCount} work orders`}
+          {/* Count the rows actually on screen, not the size of the result set.
+              The old label read "Showing 472 of 472" while the grid held one
+              100-row page, which reads as missing data rather than paging. */}
+          {loading ? 'Loading…' : rows.length === 0 ? 'No work orders'
+            : `Showing ${(page - 1) * pageSize + 1}–${(page - 1) * pageSize + rows.length} of ${filteredCount}`
+              + (filteredCount !== totalCount ? ` filtered work orders (${totalCount} total)` : ' work orders')}
         </div>
       </div>
 
