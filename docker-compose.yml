@@ -1,0 +1,35 @@
+# CTP Platform — client-run deployment.
+#
+#   docker compose up -d      start
+#   docker compose logs -f    tail logs
+#   docker compose down       stop
+#
+# The UI and API are one service on port 3000. There is no separate web
+# container — the API serves the built UI as static assets.
+
+services:
+  ctp:
+    image: ctp-platform:latest
+    build:
+      context: .
+      args:
+        GIT_HASH: ${GIT_HASH:-unknown}
+        GIT_BRANCH: ${GIT_BRANCH:-unknown}
+    container_name: ctp-platform
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      CONFIG_ROOT: /data/config
+      TELEMETRY_LOG_DIR: /data/logs
+      # Optional — without it the AI chat panel is unavailable, nothing else changes.
+      CTP_ANTHROPIC_API_KEY: ${CTP_ANTHROPIC_API_KEY:-}
+    volumes:
+      # Tenant data lives on the host, not in the image. MUST be writable:
+      # snapshot promotion writes into config/tenants/<tenant>/data/current.
+      - ./config:/data/config
+      - ctp-logs:/data/logs
+    restart: unless-stopped
+
+volumes:
+  ctp-logs:

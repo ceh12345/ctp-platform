@@ -1,0 +1,90 @@
+name: Build Container Image
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      save_artifact:
+        description: Upload ctp-platform.tar for offline transfer to a client
+        type: boolean
+        default: false
+
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build image
+        run: |
+          docker build \
+            --build-arg GIT_HASH=$(git rev-parse --short HEAD) \
+            --build-arg GIT_BRANCH=${GITHUB_REF_NAME} \
+            -t ctp-platform:latest .
+
+      # The image ships no tenant data — mount the repo's config/ the same way
+      # a client mounts theirs. Must be writable: snapshot promotion writes into
+      # config/tenants/<tenant>/data/current.
+      - name: Start container
+        run: |
+          docker run -d --name ctp-smoke \
+            -p 3000:3000 \
+            -v "$PWD/config:/data/config" \
+            ctp-platform:latest
+          for i in $(seq 1 30); do
+            if [ "$(docker inspect -f '{{.State.Health.Status}}' ctp-smoke)" = "healthy" ]; then
+              echo "healthy after ${i} checks"; exit 0
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' ctp-smoke)" != "true" ]; then
+              echo "container exited early"; docker logs ctp-smoke; exit 1
+            fi
+            sleep 5
+          done
+          echo "never became healthy"; docker logs ctp-smoke; exit 1
+
+      - name: Smoke test — version stamp is real
+        run: |
+          V=$(curl -fsS -H "X-Tenant-Id: demo-manufacturing" \
+                http://localhost:3000/v1/health/version)
+          echo "$V"
+          if echo "$V" | grep -q '"gitHash":"unknown"'; then
+            echo "::error::version stamp is 'unknown' — build args did not reach generate-version.js"
+            exit 1
+          fi
+
+      - name: Smoke test — UI and API respond
+        run: |
+          # UI served as static assets by the API (no separate web container)
+          curl -fsS -o /dev/null -w 'UI / -> %{http_code}\n' http://localhost:3000/
+          # Tenant data reached the container through the mount
+          curl -fsS -H "X-Tenant-Id: demo-manufacturing" \
+            http://localhost:3000/v1/state/summary | tee /dev/stderr | grep -q '"status"'
+
+      - name: Container logs
+        if: always()
+        run: docker logs ctp-smoke || true
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f ctp-smoke || true
+
+      - name: Save image for offline transfer
+        if: inputs.save_artifact
+        run: |
+          # Tag with the commit too, so a loaded archive is identifiable on the
+          # client. `docker load` restores every tag in the archive.
+          SHA=$(git rev-parse --short HEAD)
+          docker tag ctp-platform:latest ctp-platform:$SHA
+          docker save -o ctp-platform.tar ctp-platform:latest ctp-platform:$SHA
+          ls -lh ctp-platform.tar
+
+      - uses: actions/upload-artifact@v4
+        if: inputs.save_artifact
+        with:
+          name: ctp-platform-image
+          path: ctp-platform.tar
+          retention-days: 7

@@ -6,7 +6,7 @@
 
 This section covers deploying the CTP Platform to a client's Windows Server via Docker for QA review. The client machine only needs Docker Desktop installed — no Node.js, no Git, no build steps.
 
-> **Note:** The `Dockerfile` and `docker-compose.yml` are a pending sprint deliverable. This section documents the target workflow.
+The UI and the API run as **one service on one port (3000)**. The API serves the built web UI as static assets, so there is no separate web container.
 
 ---
 
@@ -41,51 +41,118 @@ docker load -i ctp-platform.tar
 
 ---
 
-## 3. Start the Application
+## 3. Provide Tenant Data
 
-```bash
-docker-compose up -d
+The image ships **no tenant data**. Tenant configuration lives on the host and is
+mounted into the container at `/data/config`.
+
+Place the tenant folder alongside `docker-compose.yml`:
+
+```
+C:\ctp\
+├── docker-compose.yml
+└── config\
+    └── tenants\
+        └── <tenant-id>\
 ```
 
-This starts both the API (port 3000) and Web UI (port 3001) as background services.
+> **The mount must be writable.** Snapshot promotion writes into
+> `config/tenants/<tenant-id>/data/current` at runtime. A read-only mount will
+> start cleanly and then fail on the first solve.
 
 ---
 
-## 4. Verify
+## 4. Start the Application
+
+```bash
+docker compose up -d
+```
+
+One container, `ctp-platform`, listening on port 3000. Check it reached a healthy state:
+
+```bash
+docker compose ps
+```
+
+---
+
+## 5. Verify
 
 Open a browser on the client machine:
 ```
-http://localhost:3001/?tenant=<tenant-id>
+http://localhost:3000/?tenant=<tenant-id>
 ```
 
-API health check:
+API health check — note the tenant header is **required**; without it the
+endpoint returns 404:
+
+```powershell
+curl.exe -H "X-Tenant-Id: <tenant-id>" http://localhost:3000/v1/health
+curl.exe -H "X-Tenant-Id: <tenant-id>" http://localhost:3000/v1/state/summary
 ```
-http://localhost:3000/v1/ctp/state
+
+Swagger docs: `http://localhost:3000/docs`
+
+---
+
+## 6. Updating Tenant Data
+
+To update tenant data (tasks, resources, orders, etc.), edit the JSON files under
+the mounted `config\tenants\` directory on the host, then reload:
+
+```bash
+docker compose restart
 ```
 
 ---
 
-## 5. Tenant Data
-
-Tenant configuration files are volume-mounted from the host into the container. The mount path will be defined in `docker-compose.yml`. To update tenant data (tasks, resources, orders, etc.), edit the JSON files in the mounted directory and restart:
+## 7. Updating the Application
 
 ```bash
-docker-compose restart
-```
-
----
-
-## 6. Updating the Application
-
-```bash
-docker-compose down
+docker compose down
 docker pull <registry>/ctp-platform:latest   # or docker load for offline
-docker-compose up -d
+docker compose up -d
+```
+
+Tenant data and logs survive the upgrade — they live in the host mount and a
+named volume, not in the image.
+
+---
+
+## Troubleshooting
+
+| Symptom | Cause |
+|---|---|
+| `Tenant '<id>' not found` | `config\tenants\<id>\` missing from the host mount, or the id is misspelled |
+| Container healthy, UI blank | Wrong port — the UI is on **3000**, not 3001 |
+| Solve fails after clean start | Config mount is read-only; snapshot promotion needs write access |
+| AI chat unavailable | `CTP_ANTHROPIC_API_KEY` not set — optional, nothing else is affected |
+
+---
+
+## Building & Shipping the Image (maintainer)
+
+The build context excludes `.git` and `config/`, so no tenant data ever lands in
+the image and the version stamp must be passed in explicitly:
+
+```bash
+docker build   --build-arg GIT_HASH=$(git rev-parse --short HEAD)   --build-arg GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)   -t ctp-platform:latest .
+```
+
+Confirm the stamp took (should not say `unknown`):
+
+```bash
+docker run --rm ctp-platform:latest node -e "console.log(require('./dist/src/version.json'))"
+```
+
+Save it for offline transfer:
+
+```bash
+docker save -o ctp-platform.tar ctp-platform:latest
 ```
 
 ---
 
----
 
 # Dev Setup — Local / Windows Server
 
