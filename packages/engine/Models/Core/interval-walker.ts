@@ -304,6 +304,17 @@ function lastIndexStartBefore(idx: WalkerIndex, q: number): number {
  * arithmetic — for FLOAT tasks that arithmetic is wrong because shift
  * gaps don't count as working time.
  */
+/**
+ * Boundary epsilon for accumulated-duration comparisons. When a required
+ * duration exactly exhausts an interval, the accumulated total and the target
+ * are the same quantity reached by different additions, so fractional seconds
+ * make them differ by ~1e-8. Without this the walk overshoots to the next
+ * interval with capacity — a 30-minute task consuming five days of shifts
+ * (30228-NT-1) or fourteen (30065-V-1). Durations are seconds; sub-microsecond
+ * precision is meaningless.
+ */
+const CUM_EPS = 1e-6;
+
 export function workingEndForwardW(
   list: LinkedList<CTPInterval> | null | undefined,
   startW: number,
@@ -336,10 +347,15 @@ export function workingEndForwardW(
 
       // Smallest j >= first with cum[j] - base >= required.
       const target = base + required;
+      // Epsilon on the boundary. When `required` exactly exhausts an interval,
+      // `target` and `cum[j]` are the same quantity reached by different
+      // additions, so fractional durations make them differ by ~1e-8 and the
+      // search skips to the NEXT interval with capacity — a 30-minute task
+      // consuming five days of shifts (30228-NT-1), or fourteen (30065-V-1).
       let lo = first, hi = idx.n - 1, j = idx.n - 1;
       while (lo <= hi) {
         const mid = (lo + hi) >> 1;
-        if (cum[mid] >= target) { j = mid; hi = mid - 1; }
+        if (cum[mid] >= target - CUM_EPS) { j = mid; hi = mid - 1; }
         else lo = mid + 1;
       }
       const more = cum[j] - base;
@@ -358,9 +374,9 @@ export function workingEndForwardW(
       if (useRunRate) d = idx.rrNull[k] === 1 ? 0 : d * idx.rr[k];
       more += d;
       end = idx.endW[k];
-      if (more >= required) break;
+      if (more >= required - CUM_EPS) break;
     }
-    if (more >= required && end) {
+    if (more >= required - CUM_EPS && end) {
       if (more > required) end -= more - required;
       return end;
     }
