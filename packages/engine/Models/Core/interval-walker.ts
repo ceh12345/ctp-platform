@@ -20,6 +20,13 @@ export function clipDuration(
   rangeEnd: number,
   useRunRate: boolean,
 ): number {
+  // qty <= 0 means the interval carries no capacity. The subtract engine
+  // represents a fully-consumed shift as qty=0 rather than removing the
+  // interval, and the walk was counting its span as free time. Partial fix for
+  // off-calendar placement — see SPRINT-subtract-engine-phantom-availability.md;
+  // the dominant case is an assignment emitted at qty=1 outside any shift,
+  // which this cannot catch.
+  if ((interval.qty ?? 1) <= 0) return 0;
   let d = interval.duration();
   if (interval.endW > rangeEnd) d -= interval.endW - rangeEnd;
   if (interval.startW < rangeStart) d -= rangeStart - interval.startW;
@@ -183,6 +190,7 @@ interface WalkerIndex {
   startW: Float64Array;
   endW: Float64Array;
   rr: Float64Array;           // runRate per interval; null runRate → 0
+  qty: Float64Array;          // capacity per interval; <= 0 means NO availability
   rrNull: Uint8Array;         // 1 when runRate was null (legacy: d = 0, not d*0 — same value, kept for clarity)
   cumDur: Float64Array;       // cumulative raw duration through interval i (wellFormed tier only)
   cumRR: Float64Array;        // cumulative runRate-weighted duration through i (wellFormed tier only)
@@ -208,6 +216,7 @@ function getWalkerIndex(list: LinkedList<CTPInterval>): WalkerIndex | null {
   const startW = new Float64Array(count);
   const endW = new Float64Array(count);
   const rr = new Float64Array(count);
+  const qty = new Float64Array(count);
   const rrNull = new Uint8Array(count);
   const cumDur = new Float64Array(count);
   const cumRR = new Float64Array(count);
@@ -230,7 +239,12 @@ function getWalkerIndex(list: LinkedList<CTPInterval>): WalkerIndex | null {
     const rate = p.data.runRate ?? 0;
     rr[i] = rate;
     rrNull[i] = p.data.runRate === null ? 1 : 0;
-    const d = p.data.duration();
+    // An interval with qty <= 0 is not available time. Excluded from the
+    // cumulative sums so the binary search over cumDur/cumRR cannot "find"
+    // capacity in a consumed shift.
+    const q = p.data.qty ?? 1;
+    qty[i] = q;
+    const d = q > 0 ? p.data.duration() : 0;
     sumDur += d;
     sumRR += d * rate;
     cumDur[i] = sumDur;
@@ -246,7 +260,7 @@ function getWalkerIndex(list: LinkedList<CTPInterval>): WalkerIndex | null {
   const idx: WalkerIndex = {
     modCount: list.modCount, n: count,
     wellFormed: wellFormed,
-    startW, endW, rr, rrNull, cumDur, cumRR, prefixMaxEnd,
+    startW, endW, rr, qty, rrNull, cumDur, cumRR, prefixMaxEnd,
   };
   walkerIndexCache.set(list, idx);
   return idx;
@@ -290,6 +304,17 @@ function lastIndexStartBefore(idx: WalkerIndex, q: number): number {
  * arithmetic — for FLOAT tasks that arithmetic is wrong because shift
  * gaps don't count as working time.
  */
+/**
+ * Boundary epsilon for accumulated-duration comparisons. When a required
+ * duration exactly exhausts an interval, the accumulated total and the target
+ * are the same quantity reached by different additions, so fractional seconds
+ * make them differ by ~1e-8. Without this the walk overshoots to the next
+ * interval with capacity — a 30-minute task consuming five days of shifts
+ * (30228-NT-1) or fourteen (30065-V-1). Durations are seconds; sub-microsecond
+ * precision is meaningless.
+ */
+const CUM_EPS = 1e-6;
+
 export function workingEndForwardW(
   list: LinkedList<CTPInterval> | null | undefined,
   startW: number,
@@ -322,10 +347,15 @@ export function workingEndForwardW(
 
       // Smallest j >= first with cum[j] - base >= required.
       const target = base + required;
+      // Epsilon on the boundary. When `required` exactly exhausts an interval,
+      // `target` and `cum[j]` are the same quantity reached by different
+      // additions, so fractional durations make them differ by ~1e-8 and the
+      // search skips to the NEXT interval with capacity — a 30-minute task
+      // consuming five days of shifts (30228-NT-1), or fourteen (30065-V-1).
       let lo = first, hi = idx.n - 1, j = idx.n - 1;
       while (lo <= hi) {
         const mid = (lo + hi) >> 1;
-        if (cum[mid] >= target) { j = mid; hi = mid - 1; }
+        if (cum[mid] >= target - CUM_EPS) { j = mid; hi = mid - 1; }
         else lo = mid + 1;
       }
       const more = cum[j] - base;
@@ -339,14 +369,14 @@ export function workingEndForwardW(
     let more = 0;
     let end = idx.endW[first];
     for (let k = first; k < idx.n; k++) {
-      let d = idx.endW[k] - idx.startW[k];
-      if (idx.startW[k] < startW) d -= startW - idx.startW[k];
+      let d = idx.qty[k] > 0 ? idx.endW[k] - idx.startW[k] : 0;
+      if (d > 0 && idx.startW[k] < startW) d -= startW - idx.startW[k];
       if (useRunRate) d = idx.rrNull[k] === 1 ? 0 : d * idx.rr[k];
       more += d;
       end = idx.endW[k];
-      if (more >= required) break;
+      if (more >= required - CUM_EPS) break;
     }
-    if (more >= required && end) {
+    if (more >= required - CUM_EPS && end) {
       if (more > required) end -= more - required;
       return end;
     }
