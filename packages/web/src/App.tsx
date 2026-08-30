@@ -116,6 +116,81 @@ async function api(path: string, options?: RequestInit) {
   return res.json();
 }
 
+/**
+ * Run a solve, surviving a dropped HTTP request.
+ *
+ * Azure App Service cuts inbound requests at ~230s, and the full Stafford book
+ * (1,660 tasks) can run past that on a small instance. The solve itself keeps
+ * going server-side and promotes a snapshot when it finishes, so a dead request
+ * says nothing about whether the work succeeded — a completed solve and a
+ * crashed process looked identical from the UI.
+ *
+ * So: note the snapshot id up front, and if the request dies, watch for a NEW
+ * snapshot written by a solve. Once one appears the work is done, and
+ * GET /ctp/results hands back the same object the POST would have returned.
+ *
+ * Interim measure. The real fix is making solve a job like /ctp/optimize —
+ * 202 + jobId + poll — which reports progress instead of inferring success.
+ */
+/**
+ * Standard progress messages for a solve that outlived its HTTP request.
+ * Speaks up the instant the connection drops — the gap between the drop and the
+ * first message is the window where a working solve looks like a hang.
+ */
+const solveWaitNotifier = (toast: (msg: string) => void) => (_sec: number) => {
+  // Fires once, when the connection drops. Deliberately no progress heartbeat:
+  // the engine solve is synchronous CPU work on Node's single thread, so while
+  // it runs the API cannot answer ANY request — a /v1/health poll measured a
+  // 51.6s wait mid-solve. Nothing can observe progress, and a countdown that
+  // only appears after the solve finishes would be worse than silence.
+  toast('Connection dropped — the solve is still running on the server. The schedule will appear when it finishes.');
+};
+
+async function solveWithRecovery(
+  body: any,
+  opts?: { onWaiting?: (elapsedSec: number) => void; maxWaitMs?: number },
+) {
+  const readSnapshot = async (): Promise<{ id: string | null; eventType: string | null }> => {
+    try {
+      const meta = await api('/snapshot/meta');
+      return {
+        id: meta?.snapshotId ?? meta?.data?.snapshotId ?? null,
+        eventType: meta?.data?.eventType ?? null,
+      };
+    } catch {
+      return { id: null, eventType: null };   // cold start — no snapshot yet
+    }
+  };
+
+  const before = await readSnapshot();
+  try {
+    return await api('/ctp/solve', { method: 'POST', body: JSON.stringify(body) });
+  } catch (err) {
+    const maxWaitMs = opts?.maxWaitMs ?? 15 * 60_000;
+    const startedAt = Date.now();
+    console.warn('[solve] request dropped — watching for the snapshot a completed solve writes', err);
+    // Speak up immediately. The gap between the connection dropping and the
+    // first status message is the window where this looks like a hang.
+    opts?.onWaiting?.(0);
+    while (Date.now() - startedAt < maxWaitMs) {
+      await new Promise(r => setTimeout(r, 5000));
+      // This poll blocks for the remainder of the solve — the server cannot
+      // answer while its event loop is busy. That is expected, not a hang: the
+      // request returns the moment solving stops, which is also when the
+      // snapshot we are waiting for exists.
+      const now = await readSnapshot();
+      if (now.id && now.id !== before.id && now.eventType === 'solve') {
+        const result = await api('/ctp/results');
+        if (result && result.status !== 'not_solved') {
+          console.info('[solve] completed server-side despite the dropped request', now.id);
+          return result;
+        }
+      }
+    }
+    throw err;   // it never landed — the original failure is the honest answer
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    TERMINOLOGY / LOCALE / ACTION HELPERS
    ═══════════════════════════════════════════════════════════════ */
@@ -15184,10 +15259,7 @@ export default function App() {
       if (activeConfigKey) body.configurationKey = activeConfigKey;
       if (scoringOverrides && scoringOverrides.length > 0) body.scoringOverrides = scoringOverrides;
 
-      const result = await api('/ctp/solve', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
+      const result = await solveWithRecovery(body, { onWaiting: solveWaitNotifier(showToast) });
       setSolveResult(result);
       setSolveStale(false);
       // A solve promotes a fresh snapshot — refresh the summary (clears the
@@ -15328,7 +15400,7 @@ export default function App() {
       if (Object.keys(materialModeOverrides).length > 0) body.materialModes = materialModeOverrides;
       if (scoringOverrides && scoringOverrides.length > 0) body.scoringOverrides = scoringOverrides;
 
-      const result = await api('/ctp/solve', { method: 'POST', body: JSON.stringify(body) });
+      const result = await solveWithRecovery(body, { onWaiting: solveWaitNotifier(showToast) });
       setSolveResult(result);
       setSolveStale(false);
 
@@ -15618,7 +15690,7 @@ export default function App() {
         recordSolveSteps: true,
       };
       if (scoringOverrides && scoringOverrides.length > 0) body.scoringOverrides = scoringOverrides;
-      const result = await api('/ctp/solve', { method: 'POST', body: JSON.stringify(body) });
+      const result = await solveWithRecovery(body, { onWaiting: solveWaitNotifier(showToast) });
       setSolveResult(result);
       setSolveStale(false);
 
