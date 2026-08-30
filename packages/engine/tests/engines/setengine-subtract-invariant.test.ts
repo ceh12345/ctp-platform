@@ -60,6 +60,24 @@ const cases: Array<{ name: string; a: Span[]; b: Span[] }> = [
     b: [{ s: 300, e: 400, q: 1 }, { s: 400, e: 900, q: 1 }] },
   { name: 'pooled shift (qty 2), single-unit booking adjacent after',
     a: [{ s: 100, e: 200, q: 2 }], b: [{ s: 200, e: 900, q: 1 }] },
+  // Overhang geometries — a booking that runs past a shift's end into the gap.
+  // The production signature of the remaining cases: tasks starting a few
+  // minutes AFTER a shift closes, at odd times that look like an assignment end.
+  { name: 'two shifts, B overhangs the first into the gap',
+    a: [{ s: 100, e: 200, q: 1 }, { s: 300, e: 400, q: 1 }],
+    b: [{ s: 190, e: 213, q: 1 }] },
+  { name: 'two shifts, B overhangs then a second B follows in the gap',
+    a: [{ s: 100, e: 200, q: 1 }, { s: 300, e: 400, q: 1 }],
+    b: [{ s: 190, e: 213, q: 1 }, { s: 213, e: 260, q: 1 }] },
+  { name: 'three shifts, B overhangs each',
+    a: [{ s: 100, e: 200, q: 1 }, { s: 300, e: 400, q: 1 }, { s: 500, e: 600, q: 1 }],
+    b: [{ s: 190, e: 213, q: 1 }, { s: 390, e: 415, q: 1 }] },
+  { name: 'B overhangs the only shift, then continues',
+    a: [{ s: 100, e: 200, q: 1 }],
+    b: [{ s: 150, e: 900, q: 1 }, { s: 900, e: 950, q: 1 }] },
+  { name: 'B wholly inside the gap between two shifts',
+    a: [{ s: 100, e: 200, q: 1 }, { s: 300, e: 400, q: 1 }],
+    b: [{ s: 220, e: 260, q: 1 }] },
 ];
 
 describe('CTPSubtractSetEngine — never fabricates capacity outside A', () => {

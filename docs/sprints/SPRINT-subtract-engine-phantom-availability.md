@@ -1,13 +1,14 @@
 # Sprint — Subtract Engine Fabricates Availability
 
-**Status:** root cause found and traced 2026-08-30. Partial fix landed (walker
-`qty` guard); the dominant defect is unfixed.
-**Severity:** the solver places work into hours a resource does not work.
+**Status:** FIXED 2026-08-30 on `feature/subtract-engine-fix`. Every off-calendar
+placement the solver was responsible for is gone, the suite is green, and the
+solve is ~30% faster than before the work started.
+**Severity (before):** the solver placed work into hours a resource does not work.
 
 ## Symptom
 
-26 tasks in `stafford-all` are scheduled entirely outside their resource's
-calendar. Most start at **21:00 — the exact minute a shift ends** — and run
+26 tasks in `stafford-all` were scheduled entirely outside their resource's
+calendar. Most started at **21:00 — the exact minute a shift ends** — and ran
 continuously through the night.
 
 ```
@@ -18,129 +19,161 @@ JACK R shifts:  19 Jul 13:00–21:00,  20 Jul 13:00–21:00
 28384-F-6   11.25h occupied   ON-SHIFT  0.00h   OFF-SHIFT 11.25h   ✗
 ```
 
-Spread across 9 resources; MURRAY carries 9 of them (all 15-minute QC checks
-chained behind a predecessor that ends at shift close).
-
-The engine already records the failure: these tasks come back with
+The engine already recorded the failure: those tasks came back with
 `segments: []`. `segmentsFromCalendar` intersects the placement with the real
-calendar and finds nothing. **An empty segments array is a ready-made detector
+calendar and found nothing. **An empty segments array is a ready-made detector
 for this class.**
 
 ## Root cause
 
-`setengine.ts:163` implements subtraction as *adding a negated quantity*:
+`setengine.ts` implements subtraction as *adding a negated quantity*
+(`if (mode == SUBTRACT_MODE && bq > 0) bq = bq * -1`). Two branches of
+`setOperation` then emitted A's positive quantity over spans A does not cover.
+
+Captured live at the moment `28372-F-2` was placed (resource 49 = JACK R):
+
+```
+original        : [522158400,522187200)q=1 [522244800,522273600)q=1 ...
+staticOriginal  : [522158400,522187200)q=1 [522244800,522273600)q=1 ...   (same object)
+staticAssign    : [522158400,522187200)q=1 [522187200,523548000)q=1
+staticAvailable : [522158400,522187200)q=0 [522187200,523548000)q=1 ...
+                   ^^^^^^^^^^ correct        ^^^^^^^^^^ FABRICATED
+```
+
+`[522187200,523548000)` is a **booking** — 15.7 days — appearing in
+`staticAvailable` at `q=1`. `original` has no shift there at all.
+`workingEndForwardW` walked it, found contiguous "working time", and returned an
+end straight through the night.
+
+### Defect 1 — adjacent-equal-quantity merge ran for SUBTRACT
+
+In the `A.endW == B.startW` branch:
 
 ```ts
-if (this.mode == this.SUBTRACT_MODE && bq > 0) bq = bq * -1;
+if (a.qty == b.qty && (mode == ADD_MODE || mode == SUBTRACT_MODE)) {
+  a.endW = b.endW;   // absorbs B's region into A as POSITIVE capacity
+  moveB();
+}
 ```
 
-Where an assignment overlaps a real shift, the arithmetic cancels correctly.
-Where it falls **outside any shift there is nothing to cancel against**, so the
-negated interval survives as positive capacity. Booking work *creates*
-availability that never existed.
+Merging adjacent equal-quantity intervals is correct for ADD, where both
+operands contribute positively. Under SUBTRACT it swallowed the subtrahend
+instead of negating it. **Restricted to `ADD_MODE`.**
 
-Captured live at the moment of placement (`28372-F-2`, resource 49 = JACK R,
-`st=522187200`, `required=54000`):
+### Defect 2 — A-only prefix emitted through B's end
 
-```
-original        : [522158400,522187200)q=1 [522244800,522273600)q=1 [522331200,522360000)q=1
-staticOriginal  : [522158400,522187200)q=1 [522244800,522273600)q=1 [522331200,522360000)q=1
-staticAssign    : [522158400,522187200)q=1 [522187200,523548000)q=1
-staticAvailable : [522158400,522187200)q=0 [522187200,523548000)q=1 [522244800,...)q=1 [...]
-                   ^^^^^^^^^^ correct        ^^^^^^^^^^ FABRICATED
-sameRef(original, staticOriginal) = true
+In the `B.endW >= A.endW && B.startW >= A.startW` branch:
+
+```ts
+updateResult(a.startW, b.endW, a.qty, 0);   // A's qty across the B-only tail
 ```
 
-`[522187200,523548000)` is a **booking** — 15.7 days, almost certainly
-`28371-F-4`'s 378-hour envelope — appearing in `staticAvailable` at `q=1`.
-`original` has no shift there at all.
+For `A=[100,200)`, `B=[150,300)` this produced `[100,300)q=1`. The two statements
+after it already handle the overlap (`q=0`) and the B-only remainder (negated),
+so the prefix emit must stop at `B.start`. **Changed to `b.startW`.**
 
-Tell-tale signs of the corruption elsewhere in the same dumps: intervals with
-non-shift boundaries (`522632247`, `522763200`), overlapping ranges, and blocks
-far longer than any shift. `original` is always clean 28,800s shifts.
+The two interact: fixing only the first left placements moving onto ground that
+was still wrong, which produced a precedence regression (4 → 5 on slim-500).
+With both fixed, that regression disappears.
 
-## How it produces the placement
-
-1. `scheduleengine.ts:56` → `computeFloatEndW` → `workingEndForwardW`, walking
-   **`available.staticAvailable`**
-2. The walk finds 15 contiguous hours inside the phantom block → returns
-   `st + 54000`
-3. `scheduleengine.ts:161` → `segmentsFromCalendar` checks the same span against
-   **`resource.original`** → zero overlap → `segments: []`
-4. Task is placed, `state = SCHEDULED`, `feasible: true`, errors cleared
-
-Note the two functions read **different structures** — the placement is decided
-against `staticAvailable` and validated against `original`.
-
-Self-reinforcing: the phantom is created *by* bookings, so the busier the
-resource the more fake capacity it accumulates.
-
-## What was ruled out along the way
-
-- **Not** the `startW + required` fallbacks in `workingEndForwardW`. Only path F
-  (`walkForward` infeasible) fires — 2,134 times per solve — and no fallback
-  event carries `required=54000`, so it does not explain these placements.
-  `envelope == duration` is *not* a reliable fingerprint of the fallback: a walk
-  that succeeds over contiguous availability produces the same equality.
-- **Not** FIXED-vs-FLOAT. These are FLOAT (the engine attempted segments).
-  `segments: null` (213 tasks) is the legitimate FIXED case.
-- **Not** the optimizer. The stack shows the normal path:
-  `CTPScheduler.scheduleTask → scheduleATask → ScheduleEngine.schedule →
-  addTaskToResource`.
-- **Not** `staticOriginal` corruption — it is the same object as
-  `resource.original` (`sameRef = true`) and is clean.
-
-## Landed: walker `qty` guard (partial)
+## Also landed — interval-walker `qty` guard
 
 `interval-walker.ts` never inspected `qty`, so a consumed shift at `q=0` still
-counted its full span as free. Now guarded in all three tiers: the index builder
-excludes `qty <= 0` from `cumDur`/`cumRR`, the overlap tier skips them, and
-`clipDuration` returns 0.
+counted its full span as free time. Guarded in all three tiers: the index
+builder excludes `qty <= 0` from `cumDur`/`cumRR`, the overlap tier skips them,
+and `clipDuration` returns 0.
 
-Measured effect on the full book:
+Correct and worth keeping, but **nearly inert on its own** (26 → 25) — the
+phantom carried `q=1`, not `q=0`.
 
-| | before | after |
-|---|---|---|
-| tasks with empty segments | 29 | **28** |
-| off-calendar placements caught | 21 | 20 |
-| scheduled / unscheduled / infeasible | 1660 / 0 / 0 | 1660 / 0 / 0 |
-| onTimeStarts | 17.1% | 17.4% |
-| solve time | ~50s | ~50s |
+## Results
 
-Tests: 1393 passed, 10 skipped, 0 failed.
+Full `stafford-all` book, 1,660 tasks:
 
-**It is nearly inert** — correct, safe, and it addresses only the minor half.
-The phantom interval carries `q=1`, not `q=0`, so the guard cannot suppress it.
+| | original | +qty guard | +defect 1 | **+defect 2** |
+|---|---|---|---|---|
+| Off-calendar placements (solver) | 26 | 25 | 21 | **0** |
+| Off-calendar (data-anchored, see below) | — | — | — | 5 |
+| Precedence violations (slim-500) | 4 | 4 | 5 ✗ | **4 ✓** |
+| Full suite | 1393 ✓ | 1393 ✓ | 1 failed | **1408 ✓** |
+| Scheduled / unscheduled / infeasible | 1660/0/0 | 1660/0/0 | 1660/0/0 | **1660/0/0** |
+| Solve time | ~50s | ~50s | ~62s | **~35s** |
 
-## The real fix (not attempted)
+The solve got **faster than before any of this** — the walker no longer searches
+fabricated capacity that can never yield a placement.
 
-**Subtraction must not emit intervals outside the minuend's support.**
-`A − B` should never produce a positive-quantity interval where `A` has none.
+## The 5 remaining are NOT an engine defect
 
-Not a quick patch. `CTPSubtractSetEngine` shares its accumulation with
-`CTPAddSetEngine` and siblings (`union`, `intersect`, `compliment`), and the
-result feeds `mergeAvailable`, `recomputeAvailable`, and every placement
-decision. Changing the interval algebra needs its own sprint plus the
-placement-parity harness from the solver-performance work to prove placements
-do not shift unexpectedly.
+All five are `wipState: IN_PROCESS`, anchored by `anchorCommittedTasks` at their
+`actualStart`. Running work cannot be rescheduled, so the engine correctly pins
+it where the data says it started.
 
-Worth adding regardless of the fix: a **post-solve assertion** that no scheduled
-task has `segments: []`. It is free, and it would have caught this class the day
-it appeared.
+```
+28260-F-1   actualStart 2026-07-21T03:13  == scheduledStart
+28346-NT-1  actualStart 2026-07-17T03:01  == scheduledStart
+28380-F-2   actualStart 2026-07-24T03:54  == scheduledStart
+29977-M-4   actualStart 2026-09-24T03:42  == scheduledStart
+30005-M-4   actualStart 2026-09-24T03:42  == scheduledStart
+```
+
+`actualStart == scheduledStart` on every one, because **both map from
+`TaskStartDate`** — Genius's *planned* date read as an actual. That anchors
+"running" work at 03:13 in the morning. Tracked in
+`docs/Stafford/QUESTIONS-actuals-mapping.md` (Q1–Q3); it needs Stafford's answer
+on which field carries a real actual start, not an engine change.
+
+Confirmed by instrumentation: the scheduling path produced **zero** empty-segment
+placements in the final run, and `workingEndForwardW` took **zero** fallbacks
+across the entire solve.
+
+## How it was found
+
+An invariant, not case-chasing: **no result interval with real duration may
+carry positive capacity outside A's support.**
+`setengine-subtract-invariant.test.ts` runs it over 20 geometries —
+before/after/adjacent/overlapping/containing, multi-interval B sequences, gap
+overhangs, pooled quantities. Fourteen passed after defect 1; the fifteenth
+pinned defect 2 exactly.
+
+Ruled out along the way, recorded so nobody re-treads it:
+
+- **Not** the `startW + required` fallbacks in `workingEndForwardW`. Before the
+  fix only path F fired (2,134× per solve) and never for the affected tasks;
+  after the fix, none fire at all. `envelope == duration` is *not* a reliable
+  fingerprint of the fallback — a successful walk over contiguous availability
+  produces the same equality.
+- **Not** FIXED-vs-FLOAT. These were FLOAT. `segments: null` (213 tasks) is the
+  legitimate FIXED case.
+- **Not** the optimizer — the stack showed the normal path
+  `CTPScheduler.scheduleTask → scheduleATask → ScheduleEngine.schedule`.
+- **Not** `staticOriginal` corruption — same object as `resource.original`.
+- **Not** multi-resource slots — every affected task had a single resource.
+
+## Recommended follow-up
+
+**Assert no scheduled task has `segments: []` after a solve.** It is free, uses
+the engine's own signal, and would have caught this class the day it appeared.
+It would also surface the `IN_PROCESS` anchoring cases as a data alert rather
+than a silent oddity.
+
+Before landing on the integration line, run the placement-parity harness from
+the solver-performance sprint: placements change (that is the point), and the
+harness is the tool for judging whether they change only where expected.
 
 ## Reproduce
 
 ```
-POST /v1/state/reload   { }        X-Tenant-Id: stafford-all
-POST /v1/ctp/solve      { }        X-Tenant-Id: stafford-all
+POST /v1/state/reload   { }   X-Tenant-Id: stafford-all
+POST /v1/ctp/solve      { }   X-Tenant-Id: stafford-all
 GET  /v1/ctp/results
 # tasks where segments !== null && segments.length === 0
 ```
 
 ## References
 
-- `packages/engine/Engines/setengine.ts:163` — the negated-quantity subtraction
-- `packages/engine/Engines/availableengine.ts:456` — `computeAvailable()`
-- `packages/engine/Engines/scheduleengine.ts:56,161` — the two-structure mismatch
+- `packages/engine/Engines/setengine.ts` — both fixed branches
 - `packages/engine/Models/Core/interval-walker.ts` — the `qty` guard
-- `packages/engine/Models/Core/window.ts:195` — `segmentsFromCalendar`
+- `packages/engine/tests/engines/setengine-subtract-invariant.test.ts` — 20 geometries
+- `packages/engine/tests/engines/setengine-phantom-availability.test.ts` — the production case
+- `packages/engine/AI/Schedulers/basescheduler.ts:1100` — `anchorCommittedTasks`, the remaining 5
+- `docs/Stafford/QUESTIONS-actuals-mapping.md` — the `actualStart` mapping defect
