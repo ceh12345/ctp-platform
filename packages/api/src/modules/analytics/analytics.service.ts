@@ -147,6 +147,92 @@ export class AnalyticsService {
     return buckets;
   }
 
+  /**
+   * Trim intervals to the scheduling horizon.
+   *
+   * Resource calendars are authored well beyond the horizon — stafford-all's
+   * calendars.json spans 2025-12-31..2027-12-31 (548 working days) against a
+   * 240-day horizon. Summing raw calendar availability made the denominator
+   * ~2.3x too large and deflated every utilization figure accordingly.
+   *
+   * Partially-overlapping intervals are trimmed and their durationSec scaled by
+   * the retained fraction; intervals wholly outside the horizon are dropped.
+   */
+  private clampToHorizon(
+    intervals: IntervalOut[],
+    startMs: number,
+    endMs: number,
+  ): IntervalOut[] {
+    const out: IntervalOut[] = [];
+    for (const iv of intervals) {
+      const s = new Date(iv.start).getTime();
+      const e = new Date(iv.end).getTime();
+      const clampedStart = Math.max(s, startMs);
+      const clampedEnd = Math.min(e, endMs);
+      if (clampedEnd <= clampedStart) continue;
+      const span = e - s;
+      const retained = span > 0 ? (clampedEnd - clampedStart) / span : 1;
+      out.push({
+        start: new Date(clampedStart).toISOString(),
+        end: new Date(clampedEnd).toISOString(),
+        durationSec: iv.durationSec * retained,
+        qty: iv.qty,
+      });
+    }
+    return out;
+  }
+
+  /**
+   * Bucket ASSIGNMENTS into daily totals.
+   *
+   * Assignments cannot use bucketByDate: that walks start→end wall-clock, but an
+   * assignment's real cost is workDuration() (segment-summed, excluding nights
+   * and weekends for FLOAT-spanning tasks). Spreading elapsed time made a 24h
+   * task spanning four days contribute 24h to EVERY day it touched — inflating
+   * the daily series ~4x against the header total and reporting days at 1200%
+   * utilization, including work on zero-availability weekends.
+   *
+   * Instead, distribute durationSec across the spanned days in proportion to how
+   * much the resource is actually available on each. Days with no availability
+   * receive nothing, and the daily totals sum back to totalAssigned.
+   */
+  private bucketAssignmentsByDate(
+    assignments: IntervalOut[],
+    availByDate: Map<string, number>,
+  ): Map<string, number> {
+    const buckets = new Map<string, number>();
+    for (const iv of assignments) {
+      // Elapsed slice per day the assignment spans.
+      const spanned = this.bucketByDate([iv]);
+      // Weight each day by the availability actually on offer that day.
+      const weights = new Map<string, number>();
+      let totalWeight = 0;
+      for (const [dayKey, elapsed] of spanned) {
+        const w = Math.min(elapsed, availByDate.get(dayKey) ?? 0);
+        if (w > 0) {
+          weights.set(dayKey, w);
+          totalWeight += w;
+        }
+      }
+      // No availability anywhere in the span (bad calendar data) — fall back to
+      // elapsed share so the work still appears somewhere rather than vanishing.
+      if (totalWeight === 0) {
+        let elapsedTotal = 0;
+        for (const e of spanned.values()) elapsedTotal += e;
+        if (elapsedTotal === 0) continue;
+        for (const [dayKey, elapsed] of spanned) {
+          weights.set(dayKey, elapsed);
+        }
+        totalWeight = elapsedTotal;
+      }
+      const scale = iv.durationSec / totalWeight;
+      for (const [dayKey, w] of weights) {
+        buckets.set(dayKey, (buckets.get(dayKey) ?? 0) + w * scale);
+      }
+    }
+    return buckets;
+  }
+
   // ── GET /analytics/utilization ────────────────────────────────────
 
   getUtilization(filters?: { hierarchy?: string; date?: string }) {
@@ -163,6 +249,10 @@ export class AnalyticsService {
     const resourceConfigs = this.configService.getResources();
     const configMap = new Map(resourceConfigs.map((r) => [r.key, r]));
 
+    // Utilization is measured against the horizon, not the whole calendar file.
+    const horizonStartMs = landscape.horizon.startDate.toMillis();
+    const horizonEndMs = landscape.horizon.endDate.toMillis();
+
     // Build per-resource data
     const groupMap = new Map<string, UtilizationResource[]>();
 
@@ -173,8 +263,16 @@ export class AnalyticsService {
       // Apply hierarchy filter
       if (filters?.hierarchy && hierarchy !== filters.hierarchy) return;
 
-      const availability = this.extractIntervals(resource.original);
-      const assignments = this.extractIntervals(resource.available.staticAssignments);
+      const availability = this.clampToHorizon(
+        this.extractIntervals(resource.original),
+        horizonStartMs,
+        horizonEndMs,
+      );
+      const assignments = this.clampToHorizon(
+        this.extractIntervals(resource.available.staticAssignments),
+        horizonStartMs,
+        horizonEndMs,
+      );
 
       let totalAvailable = 0;
       for (const iv of availability) totalAvailable += iv.durationSec;
@@ -183,7 +281,7 @@ export class AnalyticsService {
 
       // Daily breakdown
       const availByDate = this.bucketByDate(availability);
-      const assignByDate = this.bucketByDate(assignments);
+      const assignByDate = this.bucketAssignmentsByDate(assignments, availByDate);
       const allDates = new Set([...availByDate.keys(), ...assignByDate.keys()]);
       const daily: ResourceDaily[] = [...allDates].sort().map((date) => {
         const avail = availByDate.get(date) ?? 0;
@@ -256,7 +354,15 @@ export class AnalyticsService {
             reason: `Highest utilized resource across all groups`,
           }
         : null,
-      meta: { computedAt: new Date().toISOString(), resourceCount: landscape.resources.size() },
+      meta: {
+        computedAt: new Date().toISOString(),
+        resourceCount: landscape.resources.size(),
+        // The window utilization is measured over, so a % is interpretable.
+        horizon: {
+          start: landscape.horizon.startDate.toISO(),
+          end: landscape.horizon.endDate.toISO(),
+        },
+      },
     };
   }
 
