@@ -1,8 +1,10 @@
 # Sprint — Subtract Engine Fabricates Availability
 
-**Status:** FIXED 2026-08-30 on `feature/subtract-engine-fix`. Every off-calendar
-placement the solver was responsible for is gone, the suite is green, and the
-solve is ~30% faster than before the work started.
+**Status:** FIXED 2026-08-30 on `feature/subtract-engine-fix` (4 commits, pushed).
+Three engine defects: two in the subtract engine fabricating availability, one
+floating-point boundary in the walker. Every off-calendar placement the solver
+was responsible for is gone, JIMMY's 13 over-capacity days are gone, the suite is
+green and the parity gate shows 0 placement diffs.
 **Severity (before):** the solver placed work into hours a resource does not work.
 
 ## Symptom
@@ -86,21 +88,99 @@ and `clipDuration` returns 0.
 Correct and worth keeping, but **nearly inert on its own** (26 → 25) — the
 phantom carried `q=1`, not `q=0`.
 
+Measured again with the guard disabled once both subtract defects were fixed:
+the full book is **identical on every metric** (off-calendar 8, over-capacity
+resources 8, over-capacity days 11, placed 1636). It fixes nothing measurable
+today. Kept because `staticAvailable` still legitimately contains `q=0`
+intervals for fully-consumed shifts, and a walker that counts those as free time
+is wrong whether or not anything currently walks into them.
+
+It also **amplified defect 3 below** — flat `cum` across consumed shifts made
+that overshoot jump six intervals instead of one.
+
+### Defect 3 — floating-point boundary in the walker (`23b477b`)
+
+Separate bug, surfaced only once the phantoms were gone. A 30-minute task
+consumed five days of JIMMY's shifts; a 36-minute task consumed fourteen. Both
+claimed a full shift every day for the duration, which is what put JIMMY at 200%
+on 13 days.
+
+When `required` exactly exhausts the interval the walk starts in, `target`
+(`base + required`) and the cumulative total are the same quantity reached by
+different additions. With fractional seconds they differ:
+
+```
+base     = 4116945.600000024
+target   = base + 1814.4 = 4118760.000000024
+cum[160] =                 4118760.0          <- smaller by 2.4e-8
+```
+
+The `>=` test fails by 24 nanoseconds, so the walk skips to the next interval
+with capacity — and then genuinely consumes it. Guarded both comparison sites
+with `CUM_EPS = 1e-6`; durations are seconds, so sub-microsecond precision is
+meaningless.
+
+**Both sites were required.** The two production tasks take different tiers —
+`30228-NT-1` the well-formed binary search, `30065-V-1` the overlap-tier
+accumulation. Fixing one left the other untouched, which is how the second was
+found.
+
+Only **2 of 1,439** tasks hit it: the duration must *exactly* exhaust an interval
+AND carry fractional seconds. Integer durations land cleanly, which is why it
+survived this long.
+
+```
+tasks whose segments exceed their work    2 -> 0
+JIMMY days over capacity                 13 -> 0
+JIMMY reported utilization           13.38% -> 7.79%
+```
+
+`interval-walker-boundary.test.ts` covers both tiers, an integer control, and a
+genuine shortfall the epsilon must not swallow. That last case returns the
+walk's legacy `startW + required` fallback rather than spanning the gap —
+pre-existing behaviour, noted in the test, unrelated to this fix.
+
 ## Results
 
 Full `stafford-all` book, 1,660 tasks:
 
-| | original | +qty guard | +defect 1 | **+defect 2** |
-|---|---|---|---|---|
-| Off-calendar placements (solver) | 26 | 25 | 21 | **0** |
-| Off-calendar (data-anchored, see below) | — | — | — | 5 |
-| Precedence violations (slim-500) | 4 | 4 | 5 ✗ | **4 ✓** |
-| Full suite | 1393 ✓ | 1393 ✓ | 1 failed | **1408 ✓** |
-| Scheduled / unscheduled / infeasible | 1660/0/0 | 1660/0/0 | 1660/0/0 | **1660/0/0** |
-| Solve time | ~50s | ~50s | ~62s | **~35s** |
+| | original | +qty guard | +defect 1 | +defect 2 | **+defect 3** |
+|---|---|---|---|---|---|
+| Off-calendar placements (solver) | 26 | 25 | 21 | **0** | **0** |
+| Off-calendar (data-anchored, see below) | — | — | — | 5 | 5 |
+| Tasks whose segments exceed their work | 2 | 2 | 2 | 2 | **0** |
+| JIMMY days over capacity | 13 | 13 | 13 | 13 | **0** |
+| Precedence violations (slim-500) | 4 | 4 | 5 ✗ | **4 ✓** | **4 ✓** |
+| Full suite | 1393 ✓ | 1393 ✓ | 1 failed | 1408 ✓ | **1417 ✓** |
+| Placement parity (3 goldens) | — | — | — | 0 diffs | **0 diffs** |
+| Scheduled / unscheduled / infeasible | 1660/0/0 | 1660/0/0 | 1660/0/0 | 1660/0/0 | **1660/0/0** |
+| Solve time | ~50s | ~50s | ~62s | ~35s | **~35–40s** |
 
 The solve got **faster than before any of this** — the walker no longer searches
 fabricated capacity that can never yield a placement.
+
+### What it costs
+
+Placements move on **999 of 1,660 tasks** (60% of the book) — that is the point,
+not a side effect. The consequence to state plainly:
+
+| | before | after |
+|---|---|---|
+| Late orders | 128 (27.1%) | **144 (30.5%)** |
+| At-risk | 232 | 224 |
+| On-track | 112 | 104 |
+| Critical-path makespan | 42,931,501 | **40,993,261** (−4.5%) |
+| Schedule span | 225.3 days | 225.3 days |
+| On-time starts | 283 (17.1%) | 283 (17.1%) |
+
+**16 more orders read as late, and that is the honest number.** Those orders were
+never going to be on time; the schedule was hiding it by placing work in hours
+nobody works. This matters directly for Stafford, whose stated value driver is
+late-fee avoidance — a schedule under-reporting lateness by 12% produces
+confident commitments the floor cannot keep.
+
+Makespan improved 4.5% at the same time, so individual tasks move later while
+the critical path shortens.
 
 ## The 5 remaining are NOT an engine defect
 
@@ -134,6 +214,12 @@ carry positive capacity outside A's support.**
 before/after/adjacent/overlapping/containing, multi-interval B sequences, gap
 overhangs, pooled quantities. Fourteen passed after defect 1; the fifteenth
 pinned defect 2 exactly.
+
+Defect 3 was found differently — by instrumenting `workingEndForwardW` for the
+two affected durations and printing `first`, `j`, `base`, `total`, `more` and the
+computed answer. Two calls 1,094 seconds apart, same `required`, produced
+`j=160` (correct, span 1814.4) and `j=166` (wrong, span 414914.4). That pair made
+the boundary comparison the only possible culprit.
 
 Ruled out along the way, recorded so nobody re-treads it:
 
@@ -175,5 +261,6 @@ GET  /v1/ctp/results
 - `packages/engine/Models/Core/interval-walker.ts` — the `qty` guard
 - `packages/engine/tests/engines/setengine-subtract-invariant.test.ts` — 20 geometries
 - `packages/engine/tests/engines/setengine-phantom-availability.test.ts` — the production case
+- `packages/engine/tests/models/interval-walker-boundary.test.ts` — the float boundary, both tiers
 - `packages/engine/AI/Schedulers/basescheduler.ts:1100` — `anchorCommittedTasks`, the remaining 5
 - `docs/Stafford/QUESTIONS-actuals-mapping.md` — the `actualStart` mapping defect
