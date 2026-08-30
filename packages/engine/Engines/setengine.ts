@@ -564,23 +564,19 @@ export class CTPSetEngine extends CTPBaseEngine implements ISetEngine {
         return true;
       }
 
+      // A-only prefix: [A.start, B.start). This used to emit through
+      // B.endW, carrying A's quantity across the B-only tail and offering
+      // capacity beyond A's support — the second route by which subtraction
+      // fabricated availability. The overlap and the B-only remainder are
+      // handled by the statements below, so this emit must stop at B.start.
       this.updateResult(
         this.aPtr.data.startW,
-        this.bPtr.data.endW,
+        this.bPtr.data.startW,
         this.aPtr.data.qty,
         0,
       );
-      //this.updateResults(this.current);
 
-      // let q = 0;
-      // if (this.aPtr.data.qty && this.bPtr.data.qty) {
-      //   if (this.mode == this.ADD_MODE)
-      //     q = this.aPtr.data.qty + this.bPtr.data.qty;
-      //   else q = this.aPtr.data.qty - this.bPtr.data.qty;
-      // }
-      // this.current.set(this.bPtr.data.startW, this.aPtr.data.endW, q);
-      // this.updateResults(this.current);
-
+      // Overlap region: [B.start, A.end) carries both quantities.
       this.updateResult(
         this.bPtr.data.startW,
         this.aPtr.data.endW,
