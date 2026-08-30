@@ -5452,7 +5452,11 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                     // preserve the "this is one task" reading. FIXED tasks
                     // and single-shift FLOATs keep the original single-block
                     // visual (segments=null or length<=1).
-                    const hasSegments = Array.isArray(t.segments) && t.segments.length > 1;
+                    // `> 0`, not `> 1`: a single-segment task can still have an
+                    // envelope far longer than its work (25512-QC-2 is 0.25h of
+                    // work inside a 16.25h envelope) and drawing the envelope
+                    // paints 16h of occupancy that does not exist.
+                    const hasSegments = Array.isArray(t.segments) && t.segments.length > 0;
                     const blocks = hasSegments
                       ? t.segments.map((s: any, i: number) => {
                           const sl = toPct(s.start);
@@ -5465,6 +5469,13 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                           };
                         })
                       : [{ left, width: w, isFirst: true, isLast: true }];
+                    // The connector spans the WORK, not the envelope. Spanning
+                    // the envelope drew a line through dead space before the
+                    // first segment — 28371-F-4 starts its envelope 16h before
+                    // any work, so the line overlapped a task legitimately
+                    // scheduled in that gap and read as a double-booking.
+                    const connLeft = blocks[0].left;
+                    const connRight = blocks[blocks.length - 1].left + blocks[blocks.length - 1].width;
 
                     const sharedHandlers = {
                       onMouseEnter: (e: React.MouseEvent) => { setHovered(t); setTooltipPos({ x: e.clientX, y: e.clientY }); },
@@ -5482,10 +5493,10 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
 
                     return (
                       <Fragment key={t.key}>
-                        {hasSegments && (
+                        {blocks.length > 1 && (
                           <div style={{
                             position: 'absolute',
-                            left: `${left}%`, width: `${w}%`,
+                            left: `${connLeft}%`, width: `${Math.max(connRight - connLeft, 0.3)}%`,
                             top: '50%', height: 2,
                             background: barColor,
                             opacity: isDimmed ? 0.2 : 0.4,
