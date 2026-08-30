@@ -30,6 +30,10 @@ export interface UtilizationResource {
   totalAssigned: number;
   utilization: number;
   daily: ResourceDaily[];
+  /** Parallel slots (resources.json parallelCapacity). Denominator is scaled by this. */
+  capacity: number;
+  /** false for infinite-capacity pseudo-resources (resources.json isFinite:false). */
+  finite: boolean;
 }
 
 export interface UtilizationGroup {
@@ -259,6 +263,12 @@ export class AnalyticsService {
     landscape.resources.forEach((resource) => {
       const cfg = configMap.get(resource.key);
       const hierarchy = cfg?.hierarchy?.level1 ?? 'Other';
+      // A pooled resource runs `parallelCapacity` jobs at once, so an 8h day
+      // offers 8h * slots of capacity. FABRICATION & WELDING has 11 slots.
+      const capacity = Number(cfg?.parallelCapacity) > 0 ? Number(cfg?.parallelCapacity) : 1;
+      // isFinite:false marks department pseudo-resources that absorb unlimited
+      // work (OUTWORK, SITE WORK, ...). A ratio against them is not a constraint.
+      const finite = cfg?.isFinite !== false;
 
       // Apply hierarchy filter
       if (filters?.hierarchy && hierarchy !== filters.hierarchy) return;
@@ -276,11 +286,15 @@ export class AnalyticsService {
 
       let totalAvailable = 0;
       for (const iv of availability) totalAvailable += iv.durationSec;
+      totalAvailable *= capacity;
       let totalAssigned = 0;
       for (const iv of assignments) totalAssigned += iv.durationSec;
 
       // Daily breakdown
       const availByDate = this.bucketByDate(availability);
+      if (capacity !== 1) {
+        for (const [d, v] of availByDate) availByDate.set(d, v * capacity);
+      }
       const assignByDate = this.bucketAssignmentsByDate(assignments, availByDate);
       const allDates = new Set([...availByDate.keys(), ...assignByDate.keys()]);
       const daily: ResourceDaily[] = [...allDates].sort().map((date) => {
@@ -305,6 +319,8 @@ export class AnalyticsService {
         name: resource.name,
         totalAvailable: Math.round(totalAvailable),
         totalAssigned: Math.round(totalAssigned),
+        capacity,
+        finite,
         utilization:
           totalAvailable > 0
             ? Math.round((totalAssigned / totalAvailable) * 1000) / 10
@@ -321,17 +337,24 @@ export class AnalyticsService {
     let bottleneckGroup: { hierarchy: string; utilization: number; resource: string; resourceUtilization: number } | null = null;
 
     for (const [hierarchy, resources] of groupMap) {
+      // Infinite-capacity pseudo-resources absorb unlimited work, so their ratio
+      // is not a utilization figure. Averaging them in dragged group numbers
+      // down (they mostly carry no work at all) and letting them win the
+      // bottleneck made OUTWORK — a subcontract bucket — the reported
+      // constraint at 171%. They stay in `resources` for display, but they do
+      // not shape the average or the bottleneck.
+      const finiteResources = resources.filter((r) => r.finite);
       const avg =
-        resources.length > 0
+        finiteResources.length > 0
           ? Math.round(
-              (resources.reduce((s, r) => s + r.utilization, 0) /
-                resources.length) *
+              (finiteResources.reduce((s, r) => s + r.utilization, 0) /
+                finiteResources.length) *
                 10,
             ) / 10
           : 0;
       groups.push({ hierarchy, avgUtilization: avg, resources });
 
-      for (const r of resources) {
+      for (const r of finiteResources) {
         if (!bottleneckGroup || r.utilization > bottleneckGroup.resourceUtilization) {
           bottleneckGroup = {
             hierarchy,

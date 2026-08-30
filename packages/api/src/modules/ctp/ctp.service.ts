@@ -3415,17 +3415,49 @@ export class CTPService {
     const resourceConfigs = this.configService.getResources();
     const resourceConfigMap = new Map(resourceConfigs.map((r) => [r.key, r]));
     const resourceUtilization: any[] = [];
+    const INDEFINITE_W = 9_007_199_254_740_991;
+    const hStartW = landscape.horizon.startW;
+    const hEndW = landscape.horizon.endW;
+    /**
+     * Working seconds an interval contributes inside the planning horizon.
+     *
+     * duration() is elapsed wall-clock; workDuration() is segment-summed and
+     * excludes the nights and weekends a FLOAT-spanning task straddles. Using
+     * duration() inflated assigned time several-fold. Summing the raw calendar
+     * inflated available time the other way — stafford-all's calendars run
+     * 2025-12-31..2027-12-31 against a 240-day horizon. Both are corrected here,
+     * matching AnalyticsService.
+     */
+    const workInHorizon = (data: any): number => {
+      const start = data.startW;
+      const end = data.endW >= INDEFINITE_W ? hEndW : data.endW;
+      const clampedStart = Math.max(start, hStartW);
+      const clampedEnd = Math.min(end, hEndW);
+      if (clampedEnd <= clampedStart) return 0;
+      const work = typeof data.workDuration === 'function' ? data.workDuration() : data.duration();
+      const span = end - start;
+      return span > 0 ? work * ((clampedEnd - clampedStart) / span) : work;
+    };
+
     landscape.resources.forEach((resource) => {
+      const utilCfg = resourceConfigMap.get(resource.key);
+      // Pooled resources run parallelCapacity jobs at once; infinite ones
+      // (isFinite:false) absorb unlimited work, so a ratio against them is not
+      // a constraint — flagged so the UI can present them differently.
+      const capacity = Number(utilCfg?.parallelCapacity) > 0 ? Number(utilCfg?.parallelCapacity) : 1;
+      const finite = utilCfg?.isFinite !== false;
+
       let totalAvailable = 0;
       if (resource.original) {
         let node = resource.original.head;
-        while (node) { totalAvailable += node.data.duration(); node = node.next; }
+        while (node) { totalAvailable += workInHorizon(node.data); node = node.next; }
       }
+      totalAvailable *= capacity;
       let totalAssigned = 0;
       if (resource.assignments) {
         let node = resource.assignments.head;
         while (node) {
-          if (!node.data.name || !completedTaskKeys.has(node.data.name)) totalAssigned += node.data.duration();
+          if (!node.data.name || !completedTaskKeys.has(node.data.name)) totalAssigned += workInHorizon(node.data);
           node = node.next;
         }
       }
@@ -3539,6 +3571,8 @@ export class CTPService {
         resourceName: resource.name,
         totalAvailable,
         totalAssigned,
+        capacity,
+        finite,
         utilization: totalAvailable > 0
           ? Math.round((totalAssigned / totalAvailable) * 10000) / 100
           : 0,
