@@ -245,9 +245,16 @@ export class CTPSetEngine extends CTPBaseEngine implements ISetEngine {
         return true;
       }
 
+      // Adjacent equal-quantity merge is only valid for ADD, where both
+      // operands contribute positively. Under SUBTRACT it absorbed B's region
+      // into A as POSITIVE capacity instead of negating it — subtracting an
+      // assignment that starts exactly where a shift ends fabricated
+      // availability across the gap. That is what placed work at 21:00, the
+      // minute a shift closed. B must fall through to be negated normally.
+      // See docs/sprints/SPRINT-subtract-engine-phantom-availability.md
       if (
         this.aPtr.data.qty == this.bPtr.data.qty &&
-        (this.mode == this.ADD_MODE || this.mode == this.SUBTRACT_MODE)
+        this.mode == this.ADD_MODE
       ) {
         this.aPtr.data.endW = this.bPtr.data.endW;
         this.moveB();

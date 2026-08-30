@@ -20,6 +20,13 @@ export function clipDuration(
   rangeEnd: number,
   useRunRate: boolean,
 ): number {
+  // qty <= 0 means the interval carries no capacity. The subtract engine
+  // represents a fully-consumed shift as qty=0 rather than removing the
+  // interval, and the walk was counting its span as free time. Partial fix for
+  // off-calendar placement — see SPRINT-subtract-engine-phantom-availability.md;
+  // the dominant case is an assignment emitted at qty=1 outside any shift,
+  // which this cannot catch.
+  if ((interval.qty ?? 1) <= 0) return 0;
   let d = interval.duration();
   if (interval.endW > rangeEnd) d -= interval.endW - rangeEnd;
   if (interval.startW < rangeStart) d -= rangeStart - interval.startW;
@@ -183,6 +190,7 @@ interface WalkerIndex {
   startW: Float64Array;
   endW: Float64Array;
   rr: Float64Array;           // runRate per interval; null runRate → 0
+  qty: Float64Array;          // capacity per interval; <= 0 means NO availability
   rrNull: Uint8Array;         // 1 when runRate was null (legacy: d = 0, not d*0 — same value, kept for clarity)
   cumDur: Float64Array;       // cumulative raw duration through interval i (wellFormed tier only)
   cumRR: Float64Array;        // cumulative runRate-weighted duration through i (wellFormed tier only)
@@ -208,6 +216,7 @@ function getWalkerIndex(list: LinkedList<CTPInterval>): WalkerIndex | null {
   const startW = new Float64Array(count);
   const endW = new Float64Array(count);
   const rr = new Float64Array(count);
+  const qty = new Float64Array(count);
   const rrNull = new Uint8Array(count);
   const cumDur = new Float64Array(count);
   const cumRR = new Float64Array(count);
@@ -230,7 +239,12 @@ function getWalkerIndex(list: LinkedList<CTPInterval>): WalkerIndex | null {
     const rate = p.data.runRate ?? 0;
     rr[i] = rate;
     rrNull[i] = p.data.runRate === null ? 1 : 0;
-    const d = p.data.duration();
+    // An interval with qty <= 0 is not available time. Excluded from the
+    // cumulative sums so the binary search over cumDur/cumRR cannot "find"
+    // capacity in a consumed shift.
+    const q = p.data.qty ?? 1;
+    qty[i] = q;
+    const d = q > 0 ? p.data.duration() : 0;
     sumDur += d;
     sumRR += d * rate;
     cumDur[i] = sumDur;
@@ -246,7 +260,7 @@ function getWalkerIndex(list: LinkedList<CTPInterval>): WalkerIndex | null {
   const idx: WalkerIndex = {
     modCount: list.modCount, n: count,
     wellFormed: wellFormed,
-    startW, endW, rr, rrNull, cumDur, cumRR, prefixMaxEnd,
+    startW, endW, rr, qty, rrNull, cumDur, cumRR, prefixMaxEnd,
   };
   walkerIndexCache.set(list, idx);
   return idx;
@@ -339,8 +353,8 @@ export function workingEndForwardW(
     let more = 0;
     let end = idx.endW[first];
     for (let k = first; k < idx.n; k++) {
-      let d = idx.endW[k] - idx.startW[k];
-      if (idx.startW[k] < startW) d -= startW - idx.startW[k];
+      let d = idx.qty[k] > 0 ? idx.endW[k] - idx.startW[k] : 0;
+      if (d > 0 && idx.startW[k] < startW) d -= startW - idx.startW[k];
       if (useRunRate) d = idx.rrNull[k] === 1 ? 0 : d * idx.rr[k];
       more += d;
       end = idx.endW[k];
