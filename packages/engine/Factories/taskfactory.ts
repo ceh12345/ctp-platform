@@ -66,6 +66,8 @@ export class TaskFactory {
     resource.type = type;
     resource.process = res.process;
     resource.name = name;
+    // Solve-created task — no base row. The snapshot overlay must carry it whole.
+    resource.generated = true;
 
     resource.hashKey = resource.createhash();
     if (resource.duration) {

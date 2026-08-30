@@ -39,6 +39,22 @@ export interface TabuConfig {
   freezeHorizon: number;
 
   /**
+   * Optimization objective. 'makespan' (default, behavior-preserving) or
+   * 'weightedTardiness': Σ weight × max(0, chainCompletion − chainDue) over
+   * chains that carry a customer promise, compared lexicographically with
+   * makespan as the tiebreak. Falls back to makespan when the graph has no
+   * due dates.
+   */
+  objective?: 'makespan' | 'weightedTardiness';
+
+  /**
+   * weightedTardiness only: how many of the worst tardy chains contribute
+   * their own critical blocks to the neighborhood each iteration. Higher =
+   * broader search, more move evaluations per iteration. Default 20.
+   */
+  tardyChainLimit?: number;
+
+  /**
    * Optional per-iteration sampling callback for live convergence charts.
    * Called on every new global best, every `sampleEveryN` iterations as a heartbeat,
    * the first iteration, and the final iteration (on loop exit).
@@ -59,6 +75,14 @@ export interface TabuSearchResult {
   totalIterations: number;
   totalMovesEvaluated: number;
   convergenceReason: 'stagnation' | 'time_budget' | 'max_iterations';
+  /** True when the best found strictly beats the original under the active
+   *  objective (lexicographic for weightedTardiness). Callers gate the
+   *  translate-back on this rather than re-deriving the comparison. */
+  improved: boolean;
+  /** Weighted tardiness of original/best orientations; null when the
+   *  objective is makespan or the graph carries no due dates. */
+  originalTardiness: number | null;
+  bestTardiness: number | null;
 }
 
 // ─── Neighborhoods ───
@@ -81,6 +105,9 @@ export interface MoveEvaluation {
   /** Infinity if infeasible. */
   newMakespan: number;
   changeoverDelta: number;
+  /** Weighted tardiness under the trial orientation; null unless the search
+   *  runs the weightedTardiness objective and the graph has due dates. */
+  newTardiness: number | null;
 }
 
 // ─── Graph Structures ───

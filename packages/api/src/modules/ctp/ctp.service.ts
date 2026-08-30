@@ -44,6 +44,7 @@ import {
 import { ErrorCodes } from '../../common/error-codes';
 import { StateService } from '../state/state.service';
 import { WorkOrderGroupService } from '../state/workordergroup.service';
+import { SnapshotService } from '../snapshot/snapshot.service';
 import { ConfigService } from '../../config/config.service';
 import { StrategyConfigService } from '../../config/strategy-config.service';
 import { LoggerService } from '../../logging/logger.service';
@@ -147,6 +148,7 @@ export class CTPService {
   private results = new Map<string, CTPSolveResult>();
 
   private readonly workOrderGroupService: WorkOrderGroupService;
+  private readonly snapshotService: SnapshotService | null;
 
   constructor(
     private readonly stateService: StateService,
@@ -155,11 +157,31 @@ export class CTPService {
     private readonly logger: LoggerService,
     private readonly scheduleConfigService: ScheduleConfigurationService,
     workOrderGroupService?: WorkOrderGroupService,
+    snapshotService?: SnapshotService,
   ) {
     // Optional injection — Nest supplies it in production; tests that
     // don't touch group rollups can omit. Falls back to a service
     // built from the same configService.
     this.workOrderGroupService = workOrderGroupService ?? new WorkOrderGroupService(configService);
+    // Optional: when present (production / snapshot tests), every schedule-state
+    // mutation promotes a durable snapshot. Null in direct-construction unit
+    // tests → no snapshot side-effects.
+    this.snapshotService = snapshotService ?? null;
+  }
+
+  /**
+   * Promote a durable snapshot of the current landscape after a mutation.
+   * Best-effort: a snapshot-write failure must never break the user's action —
+   * the last good snapshot remains valid and the next mutation re-promotes.
+   */
+  private promoteSnapshot(eventType: 'solve' | 'mutation'): void {
+    if (!this.snapshotService) return;
+    try {
+      const landscape = this.stateService.getLandscape();
+      if (landscape) this.snapshotService.promote(landscape, eventType);
+    } catch {
+      // best-effort durability — swallow; observability hardening is a follow-on
+    }
   }
 
   // ═══════════════════════════════════════
@@ -502,6 +524,7 @@ export class CTPService {
     // injected service. Empty groups collection: this is a no-op.
     this.workOrderGroupService.refreshRollups(landscape, Math.floor(Date.now() / 1000));
 
+    this.promoteSnapshot('solve');
     return result;
   }
 
@@ -520,7 +543,9 @@ export class CTPService {
       landscape.horizon, landscape.tasks, landscape.resources,
       landscape.stateChanges, landscape.processes,
     );
-    return scheduler.unscheduleBulk(taskKeys);
+    const result = scheduler.unscheduleBulk(taskKeys);
+    this.promoteSnapshot('mutation');
+    return result;
   }
 
   // ═══════════════════════════════════════
@@ -562,6 +587,7 @@ export class CTPService {
     const result = scheduler.scheduleBulk(expansion.full);
     result.summary.requestedCount = expansion.requested.length;
     result.summary.expandedCount = expansion.expanded.length;
+    this.promoteSnapshot('mutation');
     return result;
   }
 
@@ -598,6 +624,7 @@ export class CTPService {
     const requiresResolve = previousMode !== mode &&
       (previousMode === CTPResourceModeConstants.REQUIRED || mode === CTPResourceModeConstants.REQUIRED);
 
+    this.promoteSnapshot('mutation');
     return { taskKey, resourceKey, mode, requiresResolve };
   }
 
@@ -647,6 +674,7 @@ export class CTPService {
     task.pinned = pinned;
     task.includeInSolve = !pinned;
 
+    this.promoteSnapshot('mutation');
     return { taskKey, pinned, requiresResolve: true };
   }
 
@@ -677,6 +705,23 @@ export class CTPService {
     landscape.tasks?.forEach(t => taskList.add(t));
 
     return this.extractResults(landscape, taskList, stats, detailLevel);
+  }
+
+  /**
+   * Read-only detail projection for the snapshot read surface (P8). Returns the
+   * full task shape WITHOUT solving:
+   *   - uptime: project the live in-memory landscape (current state).
+   *   - cold process: build base from config, then reconstruct the scheduled
+   *     state from the current snapshot (version-pinned) — no solve — then project.
+   * If no snapshot exists, the base is projected unsolved (cold-start).
+   */
+  async getDetailFromSnapshot(detailLevel: string = 'novice'): Promise<CTPSolveResult> {
+    if (!this.stateService.getLandscape()) {
+      await this.stateService.syncFromAdapter();        // build base from config/adapter
+      const base = this.stateService.getLandscape();
+      if (base && this.snapshotService) this.snapshotService.reconstruct(base); // apply overlay (no solve)
+    }
+    return this.getState(detailLevel);
   }
 
   // ═══════════════════════════════════════
@@ -836,6 +881,7 @@ export class CTPService {
       ? CTPDateTime.toDateTime(task.scheduled.endW).toISO()!
       : CTPDateTime.toDateTime(requestedStartW + (task.duration?.duration() ?? 0)).toISO()!;
 
+    this.promoteSnapshot('mutation');
     return {
       taskKey,
       success: true,
@@ -1460,6 +1506,7 @@ export class CTPService {
       task.includeInSolve = true;
     }
 
+    this.promoteSnapshot('mutation');
     return {
       taskKey,
       previousWindow: { start: previousStart, end: previousEnd },
@@ -1486,6 +1533,7 @@ export class CTPService {
     const previousPriority = task.priority;
     task.priority = priority;
 
+    this.promoteSnapshot('mutation');
     return {
       taskKey,
       previousPriority,
@@ -2318,6 +2366,7 @@ export class CTPService {
       task.commitmentLevel = 'dispatched';
       results.push({ taskKey: key, result: 'ok' });
     }
+    this.promoteSnapshot('mutation');
     return { status: 'ok', results };
   }
 
@@ -2336,6 +2385,7 @@ export class CTPService {
     }
     task.pinned = true;
     task.commitmentLevel = 'running';
+    this.promoteSnapshot('mutation');
     return { status: 'ok', taskKey, commitmentLevel: 'running', actualStart: task.actualStart };
   }
 
@@ -2349,6 +2399,7 @@ export class CTPService {
     task.holdStart = holdStart || new Date().toISOString();
     task.pinned = true;
     task.commitmentLevel = 'on_hold';
+    this.promoteSnapshot('mutation');
     return { status: 'ok', taskKey, commitmentLevel: 'on_hold', holdReason };
   }
 
@@ -2360,6 +2411,7 @@ export class CTPService {
     task.holdReason = null;
     task.estimatedResumeTime = null;
     task.commitmentLevel = 'running';
+    this.promoteSnapshot('mutation');
     return { status: 'ok', taskKey, commitmentLevel: 'running' };
   }
 
@@ -2371,6 +2423,7 @@ export class CTPService {
     task.actualEnd = actualEnd || new Date().toISOString();
     task.percentComplete = 100;
     task.includeInSolve = false;
+    this.promoteSnapshot('mutation');
     return { status: 'ok', taskKey, actualEnd: task.actualEnd };
   }
 
@@ -2391,6 +2444,7 @@ export class CTPService {
       task.pinned = true;
       results.push({ taskKey: key, result: 'ok' });
     }
+    this.promoteSnapshot('mutation');
     return { status: 'ok', results };
   }
 
@@ -2455,6 +2509,7 @@ export class CTPService {
       }
     });
 
+    this.promoteSnapshot('mutation');
     return {
       status: 'ok',
       resourceKey,
@@ -2515,6 +2570,7 @@ export class CTPService {
     }
 
     resource.recompute = true;
+    this.promoteSnapshot('mutation');
     return {
       status: 'ok',
       resourceKey,
@@ -2620,6 +2676,7 @@ export class CTPService {
     if (!task) throw new HttpException({ error: { code: ErrorCodes.TASK_NOT_FOUND, message: `Task ${taskKey} not found`, category: 'validation' } }, HttpStatus.NOT_FOUND);
     if (body.percentComplete != null) task.percentComplete = body.percentComplete;
     if (body.remainingDuration != null) task.remainingDuration = body.remainingDuration;
+    this.promoteSnapshot('mutation');
     return { status: 'ok', taskKey, percentComplete: task.percentComplete, remainingDuration: task.effectiveRemainingDuration() };
   }
 
@@ -3095,6 +3152,11 @@ export class CTPService {
 
     // Track scheduled output per order (orderKey → scheduledQty)
     const orderScheduledQty = new Map<string, number>();
+    // Projected span per order — earliest scheduled start / latest scheduled
+    // end across its tasks. Surfaced on the order DTO so clients show the
+    // real dates behind a late/on-time verdict instead of recomputing it.
+    const orderProjectedStart = new Map<string, number>();
+    const orderProjectedEnd = new Map<string, number>();
 
     // Track material consumption (materialKey → consumed qty)
     const materialConsumed = new Map<string, number>();
@@ -3195,6 +3257,20 @@ export class CTPService {
       if (isScheduled && orderRef && outputProductKey && task.outputQty > 0) {
         const existing = orderScheduledQty.get(orderRef) ?? 0;
         orderScheduledQty.set(orderRef, existing + task.netOutputQty());
+      }
+
+      // Projected span — every scheduled task counts, not just finished
+      // goods, so the window covers the whole order's work.
+      if (isScheduled && orderRef && task.scheduled) {
+        const st = task.scheduled.startW, en = task.scheduled.endW;
+        if (st > 0) {
+          const curStart = orderProjectedStart.get(orderRef);
+          if (curStart === undefined || st < curStart) orderProjectedStart.set(orderRef, st);
+        }
+        if (en > 0) {
+          const curEnd = orderProjectedEnd.get(orderRef);
+          if (curEnd === undefined || en > curEnd) orderProjectedEnd.set(orderRef, en);
+        }
       }
 
       const taskResult: TaskResultDto = {
@@ -3339,17 +3415,49 @@ export class CTPService {
     const resourceConfigs = this.configService.getResources();
     const resourceConfigMap = new Map(resourceConfigs.map((r) => [r.key, r]));
     const resourceUtilization: any[] = [];
+    const INDEFINITE_W = 9_007_199_254_740_991;
+    const hStartW = landscape.horizon.startW;
+    const hEndW = landscape.horizon.endW;
+    /**
+     * Working seconds an interval contributes inside the planning horizon.
+     *
+     * duration() is elapsed wall-clock; workDuration() is segment-summed and
+     * excludes the nights and weekends a FLOAT-spanning task straddles. Using
+     * duration() inflated assigned time several-fold. Summing the raw calendar
+     * inflated available time the other way — stafford-all's calendars run
+     * 2025-12-31..2027-12-31 against a 240-day horizon. Both are corrected here,
+     * matching AnalyticsService.
+     */
+    const workInHorizon = (data: any): number => {
+      const start = data.startW;
+      const end = data.endW >= INDEFINITE_W ? hEndW : data.endW;
+      const clampedStart = Math.max(start, hStartW);
+      const clampedEnd = Math.min(end, hEndW);
+      if (clampedEnd <= clampedStart) return 0;
+      const work = typeof data.workDuration === 'function' ? data.workDuration() : data.duration();
+      const span = end - start;
+      return span > 0 ? work * ((clampedEnd - clampedStart) / span) : work;
+    };
+
     landscape.resources.forEach((resource) => {
+      const utilCfg = resourceConfigMap.get(resource.key);
+      // Pooled resources run parallelCapacity jobs at once; infinite ones
+      // (isFinite:false) absorb unlimited work, so a ratio against them is not
+      // a constraint — flagged so the UI can present them differently.
+      const capacity = Number(utilCfg?.parallelCapacity) > 0 ? Number(utilCfg?.parallelCapacity) : 1;
+      const finite = utilCfg?.isFinite !== false;
+
       let totalAvailable = 0;
       if (resource.original) {
         let node = resource.original.head;
-        while (node) { totalAvailable += node.data.duration(); node = node.next; }
+        while (node) { totalAvailable += workInHorizon(node.data); node = node.next; }
       }
+      totalAvailable *= capacity;
       let totalAssigned = 0;
       if (resource.assignments) {
         let node = resource.assignments.head;
         while (node) {
-          if (!node.data.name || !completedTaskKeys.has(node.data.name)) totalAssigned += node.data.duration();
+          if (!node.data.name || !completedTaskKeys.has(node.data.name)) totalAssigned += workInHorizon(node.data);
           node = node.next;
         }
       }
@@ -3463,6 +3571,8 @@ export class CTPService {
         resourceName: resource.name,
         totalAvailable,
         totalAssigned,
+        capacity,
+        finite,
         utilization: totalAvailable > 0
           ? Math.round((totalAssigned / totalAvailable) * 10000) / 100
           : 0,
@@ -3516,6 +3626,12 @@ export class CTPService {
           : null,
         customerDeliveryDate: order.customerDeliveryDate != null
           ? CTPDateTime.toDateTime(order.customerDeliveryDate).toISO()
+          : null,
+        projectedStart: orderProjectedStart.has(order.key)
+          ? CTPDateTime.toDateTime(orderProjectedStart.get(order.key)!).toISO()
+          : null,
+        projectedEnd: orderProjectedEnd.has(order.key)
+          ? CTPDateTime.toDateTime(orderProjectedEnd.get(order.key)!).toISO()
           : null,
         priority: order.priority ?? 0,
         groupKey: order.groupKey,

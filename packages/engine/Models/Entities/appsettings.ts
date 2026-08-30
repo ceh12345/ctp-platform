@@ -20,6 +20,7 @@ export interface IAppSettings {
   tabuStagnation?: number;
   tabuTimeBudgetMs?: number;
   freezeHorizon?: number;
+  optimizeObjective?: 'makespan' | 'weightedTardiness';
   // ILS settings
   ilsPasses?: number;
   ilsPerturbStrength?: number;
@@ -48,6 +49,9 @@ export class CTPAppSettings implements IAppSettings {
   public tabuStagnation?: number;
   public tabuTimeBudgetMs?: number;
   public freezeHorizon?: number;
+  // Optimizer objective: 'makespan' (default) or 'weightedTardiness'
+  // (rank moves by customer-promise tardiness, makespan as tiebreak)
+  public optimizeObjective?: 'makespan' | 'weightedTardiness';
   // ILS settings (optional — defaults applied in ILSScheduler)
   public ilsPasses?: number;
   public ilsPerturbStrength?: number;

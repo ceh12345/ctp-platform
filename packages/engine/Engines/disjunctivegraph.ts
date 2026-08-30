@@ -123,6 +123,10 @@ export class DisjunctiveGraph {
 
       const predIdx = graph.nodeIndex.get(task.linkId.prevLink);
       if (predIdx === undefined) continue;
+      // Guard against a self-referential chain link (prevLink === own key), which
+      // would otherwise create a conjunctive self-loop and make the critical-path
+      // topological sort report a cycle (makespan 0).
+      if (predIdx === i) continue;
 
       node.conjunctivePred = predIdx;
       graph.nodes[predIdx].conjunctiveSucc = i;

@@ -263,6 +263,18 @@ export class OrderResultDto {
   @ApiPropertyOptional({ description: 'Customer promise date (ISO 8601), inherited-not-authored from WorkOrder.DeliveryDate. Null = no customer date (internal/stock).' })
   customerDeliveryDate!: string | null;
 
+  @ApiProperty({
+    description: 'Projected start of the order = earliest scheduled start across its tasks. Null when nothing is scheduled.',
+    nullable: true,
+  })
+  projectedStart!: string | null;
+
+  @ApiProperty({
+    description: 'Projected completion of the order = latest scheduled end across its tasks. Compare against customerDeliveryDate for delivery risk. Null when nothing is scheduled.',
+    nullable: true,
+  })
+  projectedEnd!: string | null;
+
   @ApiProperty({ description: 'Order priority' })
   priority!: number;
 

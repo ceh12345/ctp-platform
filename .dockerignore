@@ -1,0 +1,20 @@
+# Build context hygiene — without this the image build ships local scratch,
+# untracked tenant data, and multi-GB of node_modules.
+node_modules
+**/node_modules
+**/dist
+.git
+.github
+.claude
+.tmp
+docs
+# Tenant data is mounted at runtime, never built in.
+config
+logs
+**/logs
+*.log
+deploy
+deploy.zip
+*.tar
+D:
+backup.bat

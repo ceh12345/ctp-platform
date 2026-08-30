@@ -3,12 +3,16 @@ const pkg = require('../package.json');
 const fs = require('fs');
 const path = require('path');
 
-let gitHash = 'unknown';
-let gitBranch = 'unknown';
-try {
-  gitHash = execSync('git rev-parse --short HEAD').toString().trim();
-  gitBranch = execSync('git rev-parse --abbrev-ref HEAD').toString().trim();
-} catch { /* git not available */ }
+// Env overrides let git-less builds (e.g. the Docker image, whose context
+// excludes .git) still stamp a real hash via --build-arg.
+let gitHash = process.env.GIT_HASH || 'unknown';
+let gitBranch = process.env.GIT_BRANCH || 'unknown';
+if (!process.env.GIT_HASH) {
+  try {
+    gitHash = execSync('git rev-parse --short HEAD').toString().trim();
+    gitBranch = execSync('git rev-parse --abbrev-ref HEAD').toString().trim();
+  } catch { /* git not available */ }
+}
 
 const versionInfo = {
   version: pkg.version,

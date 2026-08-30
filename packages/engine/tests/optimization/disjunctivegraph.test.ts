@@ -212,6 +212,21 @@ describe('DisjunctiveGraph (Optimization) — Session 1', () => {
       expect(g.nodes[t2idx].conjPredecessors).toContain(t0idx);
     });
 
+    it('self-referential prevLink (prevLink === own key) is skipped — no self-loop, critical path survives', () => {
+      // Stafford 26761-OUT data artifact: a task whose prevLink is its own
+      // key. Without the guard this creates a self-loop, kills the topo
+      // sort, and silently disables the whole tabu/ILS tier (criticalPath
+      // null). Regression for the 2026-08-04 full-book finding.
+      const ls = buildLandscape();
+      const t3 = ls.tasks.getEntity('T3')!;
+      t3.linkId = new CTPLinkId('CHAIN-SELF', 'chain', 'T3'); // self-reference
+      const g = DisjunctiveGraph.buildFromLandscape(ls);
+      const t3idx = g.getNodeIndex('T3')!;
+      expect(g.nodes[t3idx].conjPredecessors).not.toContain(t3idx);
+      expect(g.criticalPath).not.toBeNull();
+      expect(g.criticalPath!.criticalTasks).toBeGreaterThanOrEqual(3);
+    });
+
     it('pinned task has isFrozen=true', () => {
       const g = DisjunctiveGraph.buildFromLandscape(buildLandscape());
       const t0idx = g.getNodeIndex('T0')!;

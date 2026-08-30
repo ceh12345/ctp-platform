@@ -1,0 +1,699 @@
+{
+  "summary": {
+    "tasks": 1722,
+    "pinned": 496,
+    "distributed": 1019,
+    "headerFallback": 207,
+    "machineFallback": 4,
+    "unresolved": 0,
+    "crossGroupPins": 71,
+    "pinnedHours": 4052.2019999999998,
+    "floatHours": 3280.749000999997
+  },
+  "errors": [],
+  "warnings": [
+    {
+      "code": "HEADER_CAPACITY_DRIFT",
+      "severity": "warn",
+      "group": "A",
+      "message": "Group 'A': header formula capacity 90 hrs/wk vs member sum 0 hrs/wk (100% drift)"
+    },
+    {
+      "code": "HEADER_CAPACITY_DRIFT",
+      "severity": "warn",
+      "group": "D",
+      "message": "Group 'D': header formula capacity 90 hrs/wk vs member sum 162 hrs/wk (44% drift)"
+    },
+    {
+      "code": "HEADER_CAPACITY_DRIFT",
+      "severity": "warn",
+      "group": "F",
+      "message": "Group 'F': header formula capacity 330 hrs/wk vs member sum 432 hrs/wk (24% drift)"
+    },
+    {
+      "code": "HEADER_CAPACITY_DRIFT",
+      "severity": "warn",
+      "group": "G",
+      "message": "Group 'G': header formula capacity 30 hrs/wk vs member sum 70 hrs/wk (57% drift)"
+    },
+    {
+      "code": "HEADER_CAPACITY_DRIFT",
+      "severity": "warn",
+      "group": "K",
+      "message": "Group 'K': header formula capacity 60 hrs/wk vs member sum 72 hrs/wk (17% drift)"
+    },
+    {
+      "code": "HEADER_CAPACITY_DRIFT",
+      "severity": "warn",
+      "group": "M",
+      "message": "Group 'M': header formula capacity 30 hrs/wk vs member sum 36 hrs/wk (17% drift)"
+    },
+    {
+      "code": "HEADER_CAPACITY_DRIFT",
+      "severity": "warn",
+      "group": "NM",
+      "message": "Group 'NM': header formula capacity 90 hrs/wk vs member sum 138 hrs/wk (35% drift)"
+    },
+    {
+      "code": "HEADER_CAPACITY_DRIFT",
+      "severity": "warn",
+      "group": "NT",
+      "message": "Group 'NT': header formula capacity 90 hrs/wk vs member sum 108 hrs/wk (17% drift)"
+    },
+    {
+      "code": "HEADER_CAPACITY_DRIFT",
+      "severity": "warn",
+      "group": "P",
+      "message": "Group 'P': header formula capacity 120 hrs/wk vs member sum 144 hrs/wk (17% drift)"
+    },
+    {
+      "code": "HEADER_CAPACITY_DRIFT",
+      "severity": "warn",
+      "group": "Q",
+      "message": "Group 'Q': header formula capacity 30 hrs/wk vs member sum 0 hrs/wk (100% drift)"
+    },
+    {
+      "code": "HEADER_CAPACITY_DRIFT",
+      "severity": "warn",
+      "group": "T",
+      "message": "Group 'T': header formula capacity 30 hrs/wk vs member sum 36 hrs/wk (17% drift)"
+    },
+    {
+      "code": "HEADER_CAPACITY_DRIFT",
+      "severity": "warn",
+      "group": "V",
+      "message": "Group 'V': header formula capacity 30 hrs/wk vs member sum 36 hrs/wk (17% drift)"
+    },
+    {
+      "code": "MACHINE_NOT_IN_MASTER",
+      "severity": "warn",
+      "taskKey": "28350-PBB-6",
+      "rawValue": 69,
+      "message": "Task '28350-PBB-6' references machine id '69' not present in the resource master — falling back to group 'P'"
+    },
+    {
+      "code": "MACHINE_NOT_IN_MASTER",
+      "severity": "warn",
+      "taskKey": "28353-P-6",
+      "rawValue": 69,
+      "message": "Task '28353-P-6' references machine id '69' not present in the resource master — falling back to group 'P'"
+    },
+    {
+      "code": "MACHINE_NOT_IN_MASTER",
+      "severity": "warn",
+      "taskKey": "29425-F-2",
+      "rawValue": 69,
+      "message": "Task '29425-F-2' references machine id '69' not present in the resource master — falling back to group 'F'"
+    },
+    {
+      "code": "MACHINE_NOT_IN_MASTER",
+      "severity": "warn",
+      "taskKey": "29425-P-3",
+      "rawValue": 69,
+      "message": "Task '29425-P-3' references machine id '69' not present in the resource master — falling back to group 'P'"
+    }
+  ],
+  "headerOnlyGroups": {
+    "PM": 11,
+    "OUT": 83,
+    "DR": 10,
+    "LE": 10,
+    "LP": 23,
+    "PR": 62,
+    "S": 4,
+    "R": 4
+  },
+  "crossGroupPins": [
+    {
+      "taskKey": "22869-DR-2",
+      "opCode": "DR",
+      "opGroup": "DR",
+      "machineCode": "D-04",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "22869-PM-3",
+      "opCode": "PM",
+      "opGroup": "PM",
+      "machineCode": "D-04",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "22969-DR-2",
+      "opCode": "DR",
+      "opGroup": "DR",
+      "machineCode": "D-04",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "22969-PM-3",
+      "opCode": "PM",
+      "opGroup": "PM",
+      "machineCode": "D-04",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "23492-DR-2",
+      "opCode": "DR",
+      "opGroup": "DR",
+      "machineCode": "D-03",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "23493-DR-2",
+      "opCode": "DR",
+      "opGroup": "DR",
+      "machineCode": "D-01",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "23493-PM-3",
+      "opCode": "PM",
+      "opGroup": "PM",
+      "machineCode": "D-01",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "23833-DR-2",
+      "opCode": "DR",
+      "opGroup": "DR",
+      "machineCode": "D-02",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "23833-PM-3",
+      "opCode": "PM",
+      "opGroup": "PM",
+      "machineCode": "D-02",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "24780-DR-2",
+      "opCode": "DR",
+      "opGroup": "DR",
+      "machineCode": "D-04",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "25504-LP-1",
+      "opCode": "LP",
+      "opGroup": "LP",
+      "machineCode": "L-01",
+      "machineGroup": "L"
+    },
+    {
+      "taskKey": "25505-M-2",
+      "opCode": "M",
+      "opGroup": "M",
+      "machineCode": "C-01",
+      "machineGroup": "C"
+    },
+    {
+      "taskKey": "25510-DR-1",
+      "opCode": "DR",
+      "opGroup": "DR",
+      "machineCode": "FB-04",
+      "machineGroup": "F"
+    },
+    {
+      "taskKey": "26002-PM-16",
+      "opCode": "PM",
+      "opGroup": "PM",
+      "machineCode": "D-06",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "29682-NT-1",
+      "opCode": "NT",
+      "opGroup": "NT",
+      "machineCode": "V-01",
+      "machineGroup": "V"
+    },
+    {
+      "taskKey": "29682-F-2",
+      "opCode": "F",
+      "opGroup": "F",
+      "machineCode": "V-01",
+      "machineGroup": "V"
+    },
+    {
+      "taskKey": "29682-NT-3",
+      "opCode": "NT",
+      "opGroup": "NT",
+      "machineCode": "V-01",
+      "machineGroup": "V"
+    },
+    {
+      "taskKey": "29737-PDA-3",
+      "opCode": "PDA",
+      "opGroup": "P",
+      "machineCode": "L-01",
+      "machineGroup": "L"
+    },
+    {
+      "taskKey": "29745-PDA-3",
+      "opCode": "PDA",
+      "opGroup": "P",
+      "machineCode": "L-01",
+      "machineGroup": "L"
+    },
+    {
+      "taskKey": "29756-PDA-6",
+      "opCode": "PDA",
+      "opGroup": "P",
+      "machineCode": "L-01",
+      "machineGroup": "L"
+    },
+    {
+      "taskKey": "28232-F-1",
+      "opCode": "F",
+      "opGroup": "F",
+      "machineCode": "C-01",
+      "machineGroup": "C"
+    },
+    {
+      "taskKey": "28235-F-1",
+      "opCode": "F",
+      "opGroup": "F",
+      "machineCode": "C-01",
+      "machineGroup": "C"
+    },
+    {
+      "taskKey": "28257-F-1",
+      "opCode": "F",
+      "opGroup": "F",
+      "machineCode": "C-01",
+      "machineGroup": "C"
+    },
+    {
+      "taskKey": "28260-F-1",
+      "opCode": "F",
+      "opGroup": "F",
+      "machineCode": "C-01",
+      "machineGroup": "C"
+    },
+    {
+      "taskKey": "28346-PR-2",
+      "opCode": "PR",
+      "opGroup": "PR",
+      "machineCode": "NM-02",
+      "machineGroup": "NM"
+    },
+    {
+      "taskKey": "28348-C-1",
+      "opCode": "C",
+      "opGroup": "C",
+      "machineCode": "G-01",
+      "machineGroup": "G"
+    },
+    {
+      "taskKey": "28350-PR-8",
+      "opCode": "PR",
+      "opGroup": "PR",
+      "machineCode": "NM-02",
+      "machineGroup": "NM"
+    },
+    {
+      "taskKey": "28351-LP-1",
+      "opCode": "LP",
+      "opGroup": "LP",
+      "machineCode": "L-01",
+      "machineGroup": "L"
+    },
+    {
+      "taskKey": "28351-PDS-3",
+      "opCode": "PDS",
+      "opGroup": "P",
+      "machineCode": "L-01",
+      "machineGroup": "L"
+    },
+    {
+      "taskKey": "28352-LP-1",
+      "opCode": "LP",
+      "opGroup": "LP",
+      "machineCode": "L-01",
+      "machineGroup": "L"
+    },
+    {
+      "taskKey": "28352-PDS-3",
+      "opCode": "PDS",
+      "opGroup": "P",
+      "machineCode": "L-01",
+      "machineGroup": "L"
+    },
+    {
+      "taskKey": "28368-DR-3",
+      "opCode": "DR",
+      "opGroup": "DR",
+      "machineCode": "D-03",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "28369-DR-5",
+      "opCode": "DR",
+      "opGroup": "DR",
+      "machineCode": "D-03",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "28378-PR-6",
+      "opCode": "PR",
+      "opGroup": "PR",
+      "machineCode": "K-02",
+      "machineGroup": "K"
+    },
+    {
+      "taskKey": "28378-PR-10",
+      "opCode": "PR",
+      "opGroup": "PR",
+      "machineCode": "K-02",
+      "machineGroup": "K"
+    },
+    {
+      "taskKey": "28378-PR-17",
+      "opCode": "PR",
+      "opGroup": "PR",
+      "machineCode": "K-02",
+      "machineGroup": "K"
+    },
+    {
+      "taskKey": "28380-F-2",
+      "opCode": "F",
+      "opGroup": "F",
+      "machineCode": "G-02",
+      "machineGroup": "G"
+    },
+    {
+      "taskKey": "28380-P-3",
+      "opCode": "P",
+      "opGroup": "P",
+      "machineCode": "G-02",
+      "machineGroup": "G"
+    },
+    {
+      "taskKey": "28384-M-5",
+      "opCode": "M",
+      "opGroup": "M",
+      "machineCode": "C-01",
+      "machineGroup": "C"
+    },
+    {
+      "taskKey": "28387-PR-6",
+      "opCode": "PR",
+      "opGroup": "PR",
+      "machineCode": "K-02",
+      "machineGroup": "K"
+    },
+    {
+      "taskKey": "28387-PR-10",
+      "opCode": "PR",
+      "opGroup": "PR",
+      "machineCode": "K-02",
+      "machineGroup": "K"
+    },
+    {
+      "taskKey": "28387-PR-17",
+      "opCode": "PR",
+      "opGroup": "PR",
+      "machineCode": "K-02",
+      "machineGroup": "K"
+    },
+    {
+      "taskKey": "28389-F-2",
+      "opCode": "F",
+      "opGroup": "F",
+      "machineCode": "G-02",
+      "machineGroup": "G"
+    },
+    {
+      "taskKey": "28389-P-3",
+      "opCode": "P",
+      "opGroup": "P",
+      "machineCode": "G-02",
+      "machineGroup": "G"
+    },
+    {
+      "taskKey": "28393-M-5",
+      "opCode": "M",
+      "opGroup": "M",
+      "machineCode": "G-01",
+      "machineGroup": "G"
+    },
+    {
+      "taskKey": "28482-NT-5",
+      "opCode": "NT",
+      "opGroup": "NT",
+      "machineCode": "T-01",
+      "machineGroup": "T"
+    },
+    {
+      "taskKey": "28488-LE-1",
+      "opCode": "LE",
+      "opGroup": "LE",
+      "machineCode": "A-04",
+      "machineGroup": "A"
+    },
+    {
+      "taskKey": "28491-LE-2",
+      "opCode": "LE",
+      "opGroup": "LE",
+      "machineCode": "A-04",
+      "machineGroup": "A"
+    },
+    {
+      "taskKey": "28492-NT-4",
+      "opCode": "NT",
+      "opGroup": "NT",
+      "machineCode": "T-01",
+      "machineGroup": "T"
+    },
+    {
+      "taskKey": "28494-LP-1",
+      "opCode": "LP",
+      "opGroup": "LP",
+      "machineCode": "L-01",
+      "machineGroup": "L"
+    },
+    {
+      "taskKey": "28494-PDS-3",
+      "opCode": "PDS",
+      "opGroup": "P",
+      "machineCode": "L-01",
+      "machineGroup": "L"
+    },
+    {
+      "taskKey": "29318-G-5",
+      "opCode": "G",
+      "opGroup": "G",
+      "machineCode": "A-04",
+      "machineGroup": "A"
+    },
+    {
+      "taskKey": "29428-LE-3",
+      "opCode": "LE",
+      "opGroup": "LE",
+      "machineCode": "A-04",
+      "machineGroup": "A"
+    },
+    {
+      "taskKey": "29607-PM-1",
+      "opCode": "PM",
+      "opGroup": "PM",
+      "machineCode": "D-05",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "29682-NT-1",
+      "opCode": "NT",
+      "opGroup": "NT",
+      "machineCode": "V-01",
+      "machineGroup": "V"
+    },
+    {
+      "taskKey": "29682-F-2",
+      "opCode": "F",
+      "opGroup": "F",
+      "machineCode": "V-01",
+      "machineGroup": "V"
+    },
+    {
+      "taskKey": "29682-NT-3",
+      "opCode": "NT",
+      "opGroup": "NT",
+      "machineCode": "V-01",
+      "machineGroup": "V"
+    },
+    {
+      "taskKey": "29737-PDA-3",
+      "opCode": "PDA",
+      "opGroup": "P",
+      "machineCode": "L-01",
+      "machineGroup": "L"
+    },
+    {
+      "taskKey": "29745-PDA-3",
+      "opCode": "PDA",
+      "opGroup": "P",
+      "machineCode": "L-01",
+      "machineGroup": "L"
+    },
+    {
+      "taskKey": "29756-PDA-6",
+      "opCode": "PDA",
+      "opGroup": "P",
+      "machineCode": "L-01",
+      "machineGroup": "L"
+    },
+    {
+      "taskKey": "28368-DR-3",
+      "opCode": "DR",
+      "opGroup": "DR",
+      "machineCode": "D-03",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "29955-S-1",
+      "opCode": "S",
+      "opGroup": "S",
+      "machineCode": "FB-03",
+      "machineGroup": "F"
+    },
+    {
+      "taskKey": "29956-NT-3",
+      "opCode": "NT",
+      "opGroup": "NT",
+      "machineCode": "T-01",
+      "machineGroup": "T"
+    },
+    {
+      "taskKey": "30033-DR-1",
+      "opCode": "DR",
+      "opGroup": "DR",
+      "machineCode": "D-05",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "30050-PR-2",
+      "opCode": "PR",
+      "opGroup": "PR",
+      "machineCode": "NM-03",
+      "machineGroup": "NM"
+    },
+    {
+      "taskKey": "28369-DR-5",
+      "opCode": "DR",
+      "opGroup": "DR",
+      "machineCode": "D-03",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "30091-DR-1",
+      "opCode": "DR",
+      "opGroup": "DR",
+      "machineCode": "D-05",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "30091-DR-2",
+      "opCode": "DR",
+      "opGroup": "DR",
+      "machineCode": "D-05",
+      "machineGroup": "D"
+    },
+    {
+      "taskKey": "30186-NT-3",
+      "opCode": "NT",
+      "opGroup": "NT",
+      "machineCode": "T-01",
+      "machineGroup": "T"
+    },
+    {
+      "taskKey": "30206-NT-1",
+      "opCode": "NT",
+      "opGroup": "NT",
+      "machineCode": "T-01",
+      "machineGroup": "T"
+    },
+    {
+      "taskKey": "30249-G-1",
+      "opCode": "G",
+      "opGroup": "G",
+      "machineCode": "FA-02",
+      "machineGroup": "F"
+    }
+  ],
+  "capacityDrift": [
+    {
+      "group": "A",
+      "headerHrsPerWeek": 90,
+      "memberHrsPerWeek": 0,
+      "driftPct": 1
+    },
+    {
+      "group": "D",
+      "headerHrsPerWeek": 90,
+      "memberHrsPerWeek": 162,
+      "driftPct": 0.444
+    },
+    {
+      "group": "F",
+      "headerHrsPerWeek": 330,
+      "memberHrsPerWeek": 432,
+      "driftPct": 0.236
+    },
+    {
+      "group": "G",
+      "headerHrsPerWeek": 30,
+      "memberHrsPerWeek": 70,
+      "driftPct": 0.571
+    },
+    {
+      "group": "K",
+      "headerHrsPerWeek": 60,
+      "memberHrsPerWeek": 72,
+      "driftPct": 0.167
+    },
+    {
+      "group": "M",
+      "headerHrsPerWeek": 30,
+      "memberHrsPerWeek": 36,
+      "driftPct": 0.167
+    },
+    {
+      "group": "NM",
+      "headerHrsPerWeek": 90,
+      "memberHrsPerWeek": 138,
+      "driftPct": 0.348
+    },
+    {
+      "group": "NT",
+      "headerHrsPerWeek": 90,
+      "memberHrsPerWeek": 108,
+      "driftPct": 0.167
+    },
+    {
+      "group": "P",
+      "headerHrsPerWeek": 120,
+      "memberHrsPerWeek": 144,
+      "driftPct": 0.167
+    },
+    {
+      "group": "Q",
+      "headerHrsPerWeek": 30,
+      "memberHrsPerWeek": 0,
+      "driftPct": 1
+    },
+    {
+      "group": "T",
+      "headerHrsPerWeek": 30,
+      "memberHrsPerWeek": 36,
+      "driftPct": 0.167
+    },
+    {
+      "group": "V",
+      "headerHrsPerWeek": 30,
+      "memberHrsPerWeek": 36,
+      "driftPct": 0.167
+    }
+  ]
+}

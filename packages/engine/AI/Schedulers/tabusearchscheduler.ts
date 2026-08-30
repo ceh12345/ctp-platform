@@ -33,6 +33,11 @@ export class TabuSearchScheduler extends CTPScheduler {
     elapsedMs: number;
     passes?: { pass: number; makespan: number; improvement: number; iterations: number }[];
     convergenceReason: string;
+    /** Active optimizer objective for this run. */
+    objective?: 'makespan' | 'weightedTardiness';
+    /** Weighted tardiness before/after; null when objective is makespan or no due dates. */
+    originalTardiness?: number | null;
+    optimizedTardiness?: number | null;
     tasksRescheduled: number;
     tasksFailed: number;
     diff: TaskDiff[];
@@ -68,8 +73,9 @@ export class TabuSearchScheduler extends CTPScheduler {
       convergenceReason: result.convergenceReason,
     };
 
-    // Only translate if we found an improvement
-    if (result.bestMakespan < originalMakespan) {
+    // Only translate if we found an improvement under the ACTIVE objective
+    // (lexicographic tardiness when configured — result.improved owns it)
+    if (result.improved) {
       const translation = applyOptimizedGraph(
         result.bestGraph,
         this.landscape,
@@ -86,6 +92,9 @@ export class TabuSearchScheduler extends CTPScheduler {
         movesEvaluated: result.totalMovesEvaluated,
         elapsedMs,
         convergenceReason: result.convergenceReason,
+        objective: this.settings?.optimizeObjective ?? 'makespan',
+        originalTardiness: result.originalTardiness,
+        optimizedTardiness: result.bestTardiness,
         tasksRescheduled: translation.tasksRescheduled,
         tasksFailed: translation.tasksFailed,
         diff: computeDiff(originalGraph, result.bestGraph),
@@ -105,6 +114,7 @@ export class TabuSearchScheduler extends CTPScheduler {
       stagnationLimit: this.settings?.tabuStagnation ?? 300,
       timeBudgetMs: this.settings?.tabuTimeBudgetMs ?? 30000,
       freezeHorizon: this.settings?.freezeHorizon ?? 0,
+      objective: this.settings?.optimizeObjective ?? 'makespan',
     };
   }
 

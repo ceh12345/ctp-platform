@@ -94,6 +94,15 @@ export interface ISettingsConfig {
   resetUsageAfterProcessChange: boolean;
   scheduleDirection: number;
   solverStrategy?: string;
+  /** Optimizer objective for tabu/ILS tiers: 'makespan' (default) or
+   *  'weightedTardiness' (rank by customer-promise tardiness). */
+  optimizeObjective?: 'makespan' | 'weightedTardiness';
+  // Tabu/ILS tuning (optional; engine defaults apply when unset)
+  tabuIterations?: number;
+  tabuStagnation?: number;
+  tabuTimeBudgetMs?: number;
+  ilsPasses?: number;
+  ilsTimeBudgetMs?: number;
 }
 
 // Tenant metadata

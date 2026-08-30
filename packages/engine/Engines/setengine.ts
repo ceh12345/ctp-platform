@@ -245,9 +245,16 @@ export class CTPSetEngine extends CTPBaseEngine implements ISetEngine {
         return true;
       }
 
+      // Adjacent equal-quantity merge is only valid for ADD, where both
+      // operands contribute positively. Under SUBTRACT it absorbed B's region
+      // into A as POSITIVE capacity instead of negating it — subtracting an
+      // assignment that starts exactly where a shift ends fabricated
+      // availability across the gap. That is what placed work at 21:00, the
+      // minute a shift closed. B must fall through to be negated normally.
+      // See docs/sprints/SPRINT-subtract-engine-phantom-availability.md
       if (
         this.aPtr.data.qty == this.bPtr.data.qty &&
-        (this.mode == this.ADD_MODE || this.mode == this.SUBTRACT_MODE)
+        this.mode == this.ADD_MODE
       ) {
         this.aPtr.data.endW = this.bPtr.data.endW;
         this.moveB();
@@ -557,23 +564,19 @@ export class CTPSetEngine extends CTPBaseEngine implements ISetEngine {
         return true;
       }
 
+      // A-only prefix: [A.start, B.start). This used to emit through
+      // B.endW, carrying A's quantity across the B-only tail and offering
+      // capacity beyond A's support — the second route by which subtraction
+      // fabricated availability. The overlap and the B-only remainder are
+      // handled by the statements below, so this emit must stop at B.start.
       this.updateResult(
         this.aPtr.data.startW,
-        this.bPtr.data.endW,
+        this.bPtr.data.startW,
         this.aPtr.data.qty,
         0,
       );
-      //this.updateResults(this.current);
 
-      // let q = 0;
-      // if (this.aPtr.data.qty && this.bPtr.data.qty) {
-      //   if (this.mode == this.ADD_MODE)
-      //     q = this.aPtr.data.qty + this.bPtr.data.qty;
-      //   else q = this.aPtr.data.qty - this.bPtr.data.qty;
-      // }
-      // this.current.set(this.bPtr.data.startW, this.aPtr.data.endW, q);
-      // this.updateResults(this.current);
-
+      // Overlap region: [B.start, A.end) carries both quantities.
       this.updateResult(
         this.bPtr.data.startW,
         this.aPtr.data.endW,

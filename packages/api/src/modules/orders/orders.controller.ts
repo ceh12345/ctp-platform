@@ -27,7 +27,11 @@ export class OrdersController {
     const filters  = extractFilters(query);
     const sortBy   = (asString(query['sortBy'])  || 'dueDate');
     const sortDir  = asString(query['sortDir']) === 'desc' ? 'desc' : 'asc';
-    const page     = clampPositiveInt(query['page'], 1, 1);
+    // No upper bound on the page number — the third argument is a MAX, and
+    // passing 1 here pinned every request to page 1, so Next/Prev in the grid
+    // silently re-served the first slice. Out-of-range pages fall out as an
+    // empty rows array, which is what the client already expects.
+    const page     = clampPositiveInt(query['page'], 1, Number.MAX_SAFE_INTEGER);
     const pageSize = clampPositiveInt(query['pageSize'], DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
     return this.ordersService.listOrders({ filters, sortBy, sortDir, page, pageSize });
   }

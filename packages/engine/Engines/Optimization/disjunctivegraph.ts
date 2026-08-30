@@ -87,6 +87,16 @@ export class DisjunctiveGraph {
   public edges: DisjunctiveEdge[] = [];
   public criticalPath: CriticalPathResult | null = null;
 
+  /** Weighted-tardiness objective context (weightedTardiness objective only).
+   *  chainDues: chainKey → due in GRAPH-RELATIVE seconds (absolute promise W
+   *  minus timeBase, the min scheduled startW at build). Graph time is
+   *  calendar-blind and left-compressed, so this is an approximation — but a
+   *  CONSISTENT one across candidate orientations, which is all a comparative
+   *  objective needs; the translate-back re-imposes real calendars. Weight is
+   *  1.0 per chain (v1). Shared (not deep-copied) by clone(): immutable. */
+  public chainDues = new Map<string, number>();
+  public timeBase = 0;
+
   /** resourceKey → node indices in scheduled order */
   public resourceSequences = new Map<string, number[]>();
 
@@ -165,6 +175,23 @@ export class DisjunctiveGraph {
 
       const predIdx = graph.nodeIndex.get(task.linkId.prevLink);
       if (predIdx === undefined) continue;
+      // Guard against a self-referential chain link (prevLink === own key). Some
+      // source feeds emit these on chain heads; left unguarded they create a
+      // conjunctive self-loop, which makes the topological sort in
+      // recomputeCriticalPath() report a cycle and null the entire critical path
+      // (makespan 0 → optimizer bails with insufficient_critical_tasks).
+      if (predIdx === i) continue;
+
+      // Time-contradicted precedence guard (2026-08-04 full-book finding):
+      // historical actuals can record a predecessor ENDING after its
+      // successor STARTED (overlapping completed/pinned pairs, e.g. Stafford
+      // 29634/29425 — the shop's own recorded reality). Such an arc runs
+      // backward against the time-oriented disjunctive chains; a handful of
+      // them cycle the graph and trapped 1,047 of 1,447 nodes, nulling the
+      // critical path and silently disabling the tabu/ILS tier. Recorded
+      // times win — skip the contradicted arc (feasibly-scheduled arcs
+      // always satisfy predEnd <= succStart, so live precedence is kept).
+      if (graph.nodes[predIdx].endW > node.startW) continue;
 
       // Legacy single-link fields
       node.conjunctivePred = predIdx;
@@ -214,6 +241,26 @@ export class DisjunctiveGraph {
 
     // ─── 5. Identify critical blocks ───
     graph.identifyCriticalBlocks();
+
+    // ─── 6. Weighted-tardiness objective context ───
+    // Map each chain's customer promise into graph-relative time (see
+    // chainDues doc). Only chains whose order carries a real promise
+    // participate; internal/undated chains never contribute tardiness.
+    if (graph.nodes.length > 0) {
+      let base = Infinity;
+      for (const n of graph.nodes) if (n.startW < base) base = n.startW;
+      graph.timeBase = base;
+      const seen = new Set<string>();
+      for (const n of graph.nodes) {
+        if (!n.chainKey || seen.has(n.chainKey)) continue;
+        seen.add(n.chainKey);
+        const order = landscape.orders?.getEntity(n.chainKey);
+        const due = order?.customerDeliveryDate;
+        if (typeof due === 'number' && due > 0) {
+          graph.chainDues.set(n.chainKey, due - base);
+        }
+      }
+    }
 
     return graph;
   }
@@ -320,6 +367,107 @@ export class DisjunctiveGraph {
    * Identify critical blocks (runs of ≥2 consecutive critical-path tasks on one resource).
    * Returns the blocks and sets criticalBlockId on each node.
    */
+  /**
+   * Critical blocks along the paths of the most-tardy chains — the
+   * neighborhood source for the weightedTardiness objective.
+   *
+   * identifyCriticalBlocks() only walks the GLOBAL critical path, so a late
+   * chain that isn't the longest path in the shop never has a move proposed
+   * for it. An objective can only rank the moves it is offered, which is why
+   * swapping the objective alone changed nothing on the full Stafford book
+   * (2026-08-05): the search was still being handed makespan moves.
+   *
+   * For each of the top-`limit` tardy chains (worst lateness first), walk
+   * back from that chain's last-finishing node through TIGHT predecessor
+   * edges — the ones that actually set the successor's start — and collect
+   * the nodes. Runs of >=2 such nodes consecutive on one resource become
+   * blocks, mirroring identifyCriticalBlocks' shape so the same move
+   * generator consumes them.
+   *
+   * Does NOT stamp node.criticalBlockId (that belongs to the global blocks).
+   */
+  public identifyTardyChainBlocks(limit = 20): CriticalBlock[] {
+    const blocks: CriticalBlock[] = [];
+    if (this.chainDues.size === 0 || !this.criticalPath) return blocks;
+
+    // Per-chain completion and the node that achieves it
+    const completion = new Map<string, number>();
+    const sink = new Map<string, number>();
+    for (let i = 0; i < this.nodes.length; i++) {
+      const node = this.nodes[i];
+      if (!node.chainKey || !this.chainDues.has(node.chainKey)) continue;
+      const end = node.earliestStart + node.duration;
+      const cur = completion.get(node.chainKey);
+      if (cur === undefined || end > cur) {
+        completion.set(node.chainKey, end);
+        sink.set(node.chainKey, i);
+      }
+    }
+
+    // Tardy chains, worst first, capped — bounds move-count growth and
+    // focuses the search where the objective has the most to gain.
+    const tardy: { chain: string; lateness: number }[] = [];
+    for (const [chain, due] of this.chainDues) {
+      const comp = completion.get(chain);
+      if (comp !== undefined && comp > due) tardy.push({ chain, lateness: comp - due });
+    }
+    if (tardy.length === 0) return blocks;
+    tardy.sort((a, b) => b.lateness - a.lateness);
+
+    // Union of tight-path nodes feeding the chosen chains' completions
+    const onPath = new Set<number>();
+    const stack: number[] = [];
+    for (const t of tardy.slice(0, limit)) {
+      const s = sink.get(t.chain);
+      if (s !== undefined && !onPath.has(s)) { onPath.add(s); stack.push(s); }
+    }
+    while (stack.length > 0) {
+      const idx = stack.pop()!;
+      const node = this.nodes[idx];
+      for (const p of node.conjPredecessors) {
+        const pred = this.nodes[p];
+        if (pred.earliestStart + pred.duration === node.earliestStart && !onPath.has(p)) {
+          onPath.add(p); stack.push(p);
+        }
+      }
+      for (const p of node.disjPredecessors) {
+        const pred = this.nodes[p];
+        if (pred.earliestStart + pred.duration + node.changeoverBefore === node.earliestStart
+            && !onPath.has(p)) {
+          onPath.add(p); stack.push(p);
+        }
+      }
+    }
+
+    const makespan = this.criticalPath.makespan;
+    let blockId = 1_000_000; // kept clear of identifyCriticalBlocks' ids
+    for (const [resourceKey, seq] of this.resourceSequences) {
+      let run: number[] = [];
+      const flush = () => {
+        if (run.length >= 2) {
+          blockId++;
+          const totalDuration = run.reduce((s, i) => s + this.nodes[i].duration, 0);
+          blocks.push({
+            id: blockId,
+            resourceKey,
+            resourceName: this.nodes[run[0]].resourceName,
+            nodeIndices: [...run],
+            firstIdx: run[0],
+            lastIdx: run[run.length - 1],
+            totalDuration,
+            percentOfMakespan: makespan > 0 ? Math.round((totalDuration / makespan) * 100) : 0,
+          });
+        }
+        run = [];
+      };
+      for (const idx of seq) {
+        if (onPath.has(idx)) run.push(idx); else flush();
+      }
+      flush();
+    }
+    return blocks;
+  }
+
   public identifyCriticalBlocks(): CriticalBlock[] {
     const blocks: CriticalBlock[] = [];
     if (!this.criticalPath) return blocks;
@@ -533,7 +681,35 @@ export class DisjunctiveGraph {
 
     c.criticalPath = this.criticalPath ? { ...this.criticalPath } : null;
 
+    // Objective context — immutable, shared by reference
+    c.chainDues = this.chainDues;
+    c.timeBase = this.timeBase;
+
     return c;
+  }
+
+  /**
+   * Weighted tardiness of the CURRENT orientation: Σ (weight=1) ×
+   * max(0, chainCompletion − chainDue) over chains present in chainDues.
+   * Uses per-node earliestStart from the last recomputeCriticalPath(), so
+   * call only when criticalPath is non-null. Returns null when the graph
+   * carries no due-date context (callers fall back to makespan).
+   */
+  public computeWeightedTardiness(): number | null {
+    if (this.chainDues.size === 0 || !this.criticalPath) return null;
+    const completion = new Map<string, number>();
+    for (const node of this.nodes) {
+      if (!node.chainKey || !this.chainDues.has(node.chainKey)) continue;
+      const end = node.earliestStart + node.duration;
+      const cur = completion.get(node.chainKey);
+      if (cur === undefined || end > cur) completion.set(node.chainKey, end);
+    }
+    let total = 0;
+    for (const [chain, due] of this.chainDues) {
+      const comp = completion.get(chain);
+      if (comp !== undefined && comp > due) total += comp - due;
+    }
+    return total;
   }
 
   // ─── Utility Methods ───

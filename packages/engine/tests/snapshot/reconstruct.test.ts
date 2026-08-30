@@ -1,0 +1,281 @@
+import { describe, it, expect } from 'vitest';
+import { SchedulingLandscape } from '../../Models/Entities/landscape';
+import {
+  CTPTask,
+  CTPTasks,
+  CTPTaskResource,
+  CTPTaskResourceList,
+} from '../../Models/Entities/task';
+import { CTPInterval } from '../../Models/Core/window';
+import { CTPLinkId } from '../../Models/Core/linkid';
+import { CTPResource } from '../../Models/Entities/resource';
+import { CTPAssignments } from '../../Models/Intervals/intervals';
+import { CTPAssignmentConstants } from '../../Models/Core/constants';
+import { TaskFactory } from '../../Factories/taskfactory';
+import { serializeOverlay } from '../../Snapshot/overlay';
+import { reconstructOverlay } from '../../Snapshot/reconstruct';
+import { InfeasibilityReport } from '../../Models/Entities/infeasibilityreport';
+import { makeDuration } from '../helpers/builders';
+
+/**
+ * P2 — reconstruct + round-trip identity (the go/no-go gate).
+ * Proves: serialize(reconstruct(base, serialize(L))) === serialize(L), i.e. the
+ * scheduled state is recreated EXACTLY from disk without solving.
+ */
+
+/** A solved, override-laden landscape: T1 placed + pinned + window-tightened +
+ *  in-process, with a generated CHANGEOVER task. */
+function makeSolvedLandscape(): SchedulingLandscape {
+  const t1 = new CTPTask('PROCESS', 'Mill Op', 'T1');
+  t1.duration = makeDuration(3600);
+  t1.state = 1;
+  t1.scheduled = new CTPInterval(1000, 4600);
+  const slots = new CTPTaskResourceList();
+  slots.add(new CTPTaskResource('R1', true, 0, 'R1', 'MONITORED'));
+  t1.capacityResources = slots;
+  t1.pinned = true;
+  t1.includeInSolve = false;
+  t1.window = new CTPInterval(500, 9000);
+  t1.window.startW = 600; // tightened by solve
+  t1.priority = 5;
+  t1.manualPriority = 5;
+  t1.commitmentLevel = 'running';
+  t1.wipstate = 1;
+  t1.dispatched = true;
+  t1.percentComplete = 40;
+  t1.remainingDuration = 2160;
+  t1.actualStart = '2026-06-27T10:05:00Z';
+  t1.actualResources = ['R1'];
+
+  const co = TaskFactory.createStateTask(t1, 'SETUP', 'Changeover', 900);
+  co.state = 1;
+  co.scheduled = new CTPInterval(100, 1000);
+  const coSlots = new CTPTaskResourceList();
+  coSlots.add(new CTPTaskResource('R1', true, 0, 'R1'));
+  co.capacityResources = coSlots;
+
+  const ls = new SchedulingLandscape();
+  ls.tasks = new CTPTasks();
+  ls.tasks.addEntity(t1);
+  ls.tasks.addEntity(co);
+  return ls;
+}
+
+/** A base landscape: T1's definition only (a slot to bind to), NO placement.
+ *  The generated CHANGEOVER task has no base row. */
+function makeBaseLandscape(): SchedulingLandscape {
+  const t1 = new CTPTask('PROCESS', 'Mill Op', 'T1');
+  t1.duration = makeDuration(3600);
+  const slots = new CTPTaskResourceList();
+  slots.add(new CTPTaskResource('R1', true, 0)); // definition: eligible R1, default mode, unscheduled
+  t1.capacityResources = slots;
+
+  const ls = new SchedulingLandscape();
+  ls.tasks = new CTPTasks();
+  ls.tasks.addEntity(t1);
+  return ls;
+}
+
+describe('reconstructOverlay (P2)', () => {
+  it('ROUND-TRIP IDENTITY: reconstruct onto a clean base reproduces the overlay exactly', () => {
+    const solved = makeSolvedLandscape();
+    const overlay1 = serializeOverlay(solved);
+
+    const base = makeBaseLandscape(); // no placement, no generated task
+    const rebuilt = reconstructOverlay(base, overlay1);
+    const overlay2 = serializeOverlay(rebuilt);
+
+    expect(overlay2).toEqual(overlay1);
+  });
+
+  it('omits default-valued fields — a plain planned task is a lean row that still round-trips', () => {
+    const ls = new SchedulingLandscape();
+    ls.tasks = new CTPTasks();
+    const t = new CTPTask('PROCESS', 'Plain Op', 'P1');
+    t.duration = makeDuration(3600);
+    t.state = 1;
+    t.scheduled = new CTPInterval(0, 3600);
+    const slots = new CTPTaskResourceList();
+    slots.add(new CTPTaskResource('R1', true, 0, 'R1'));
+    t.capacityResources = slots;
+    t.commitmentLevel = 'planned'; // realistic for a freshly scheduled task
+    ls.tasks.addEntity(t);
+
+    const row = serializeOverlay(ls).rows[0] as Record<string, unknown>;
+    // placement core present…
+    expect(row.taskKey).toBe('P1');
+    expect(row.state).toBe(1);
+    expect(row.scheduled).toEqual({ startW: 0, endW: 3600 });
+    // …default-valued planning/actuals fields omitted entirely
+    for (const k of ['pinned', 'includeInSolve', 'priority', 'manualPriority', 'dispatched',
+      'dispatchedAt', 'materialsPulled', 'percentComplete', 'remainingDuration', 'actualStart',
+      'actualEnd', 'actualResources', 'holdReason', 'holdStart', 'estimatedResumeTime', 'wipstate']) {
+      expect(row[k]).toBeUndefined();
+    }
+    expect(row.commitmentLevel).toBe('planned'); // != default 'unscheduled', so kept
+
+    // reconstruct restores the defaults, and re-serialize is byte-identical
+    const base = new SchedulingLandscape();
+    base.tasks = new CTPTasks();
+    const bp = new CTPTask('PROCESS', 'Plain Op', 'P1');
+    bp.duration = makeDuration(3600);
+    const bslots = new CTPTaskResourceList();
+    bslots.add(new CTPTaskResource('R1', true, 0));
+    bp.capacityResources = bslots;
+    base.tasks.addEntity(bp);
+
+    reconstructOverlay(base, serializeOverlay(ls));
+    const rt = base.tasks.getEntity('P1')!;
+    expect(rt.pinned).toBe(false);
+    expect(rt.includeInSolve).toBe(true);
+    expect(rt.priority).toBe(100);
+    expect(rt.dispatched).toBe(false);
+    expect(rt.actualResources).toEqual([]);
+    expect(serializeOverlay(base)).toEqual(serializeOverlay(ls));
+  });
+
+  it('round-trips an infeasible task’s report classification (solve output → overlay), dropping the fat slots', () => {
+    // The report is the solver's placement-attempt result; it cannot be recreated
+    // without re-solving, so the CLASSIFICATION must survive serialize → reconstruct
+    // (regression for cold-load losing horizon → dependency). The fat `slots`
+    // breakdown is intentionally dropped to keep the overlay lean.
+    const report: InfeasibilityReport = {
+      taskKey: 'X1',
+      chainKey: null,
+      reason: 'No feasible schedule within horizon',
+      bottleneckSlot: 'Mill',
+      conflictType: 'horizon',
+      conflictTypeReason: 'horizon-capped',
+      slots: [
+        { slotIndex: 0, slotLabel: 'Mill', isPrimary: true, status: 'blocked',
+          bestAvailableMinutes: 0, isBottleneck: true, resources: [] },
+      ],
+      combosGenerated: 0,
+      combosSurvivedPropagation: 0,
+      combosPassedAssignment: 0,
+    };
+    // What the overlay should persist: everything except the fat slots array.
+    const persisted: InfeasibilityReport = { ...report, slots: [] };
+
+    // Solved: X1 is included but unschedulable, carrying the report (state = NOT_SCHEDULED).
+    const solved = new SchedulingLandscape();
+    solved.tasks = new CTPTasks();
+    const x1 = new CTPTask('PROCESS', 'Blocked Op', 'X1');
+    x1.duration = makeDuration(3600);
+    x1.state = 0;
+    x1.includeInSolve = true;
+    const s = new CTPTaskResourceList();
+    s.add(new CTPTaskResource('R1', true, 0));
+    x1.capacityResources = s;
+    x1.infeasibilityReport = report;
+    solved.tasks.addEntity(x1);
+
+    const overlay = serializeOverlay(solved);
+    // Classification kept, slots stripped.
+    expect(overlay.rows[0].infeasibilityReport).toEqual(persisted);
+    expect(overlay.rows[0].infeasibilityReport!.conflictType).toBe('horizon');
+
+    // Base: X1's definition only — no placement, no report.
+    const base = new SchedulingLandscape();
+    base.tasks = new CTPTasks();
+    const bx1 = new CTPTask('PROCESS', 'Blocked Op', 'X1');
+    bx1.duration = makeDuration(3600);
+    const bs = new CTPTaskResourceList();
+    bs.add(new CTPTaskResource('R1', true, 0));
+    bx1.capacityResources = bs;
+    base.tasks.addEntity(bx1);
+
+    reconstructOverlay(base, overlay);
+
+    // Restored onto the task, and the round-trip is exact.
+    expect(base.tasks.getEntity('X1')!.infeasibilityReport).toEqual(persisted);
+    expect(serializeOverlay(base)).toEqual(overlay);
+  });
+
+  it('is idempotent: reconstructing a landscape from its own overlay is a no-op', () => {
+    const ls = makeSolvedLandscape();
+    const overlay1 = serializeOverlay(ls);
+    reconstructOverlay(ls, overlay1);
+    expect(serializeOverlay(ls)).toEqual(overlay1);
+  });
+
+  it('recreates the solve-generated task from the overlay (no base row)', () => {
+    const overlay = serializeOverlay(makeSolvedLandscape());
+    const base = makeBaseLandscape();
+    expect(base.tasks.size()).toBe(1); // only T1 in base
+
+    reconstructOverlay(base, overlay);
+
+    expect(base.tasks.size()).toBe(2); // changeover created
+    const gen = base.tasks.toArray().find(t => t.generated);
+    expect(gen).toBeDefined();
+    expect(gen!.type).toBe('SETUP');
+    expect(gen!.duration!.duration()).toBe(900);
+    expect(gen!.scheduled).not.toBeNull();
+  });
+
+  it('produces a behaviorally-usable landscape (overrides honored, adjacency re-derived)', () => {
+    const overlay = serializeOverlay(makeSolvedLandscape());
+    const base = makeBaseLandscape();
+    reconstructOverlay(base, overlay);
+
+    const t1 = base.tasks.getEntity('T1')!;
+    expect(t1.pinned).toBe(true);
+    expect(t1.canSolve()).toBe(false); // pinned ⇒ not solvable — override took effect
+    expect(t1.scheduled!.startW).toBe(1000);
+  });
+
+  it('round-trips resource downtime (MAINTENANCE intervals) through serialize/reconstruct', () => {
+    // landscape with a resource carrying a downtime interval
+    const res = new CTPResource('REUSABLE', 'Machine', 'M1', 'R1');
+    res.assignments = new CTPAssignments();
+    const dt = new CTPInterval(5000, 9000);
+    dt.name = 'Planned PM';
+    dt.type = CTPAssignmentConstants.MAINTENANCE;
+    res.assignments.add(dt);
+
+    const solved = new SchedulingLandscape();
+    solved.resources.addEntity(res);
+    const overlay1 = serializeOverlay(solved);
+    expect(overlay1.resourceDowntime).toEqual([
+      { resourceKey: 'R1', startW: 5000, endW: 9000, reason: 'Planned PM' },
+    ]);
+
+    // reconstruct onto a clean base resource (no downtime)
+    const baseRes = new CTPResource('REUSABLE', 'Machine', 'M1', 'R1');
+    baseRes.assignments = new CTPAssignments();
+    const base = new SchedulingLandscape();
+    base.resources.addEntity(baseRes);
+    reconstructOverlay(base, overlay1);
+
+    expect(serializeOverlay(base).resourceDowntime).toEqual(overlay1.resourceDowntime);
+  });
+
+  it('re-derives preds/succs adjacency from base precedence without solving', () => {
+    // base: T1 → T2 chain (linkId precedence is BASE, carried by reconstruct's buildAdjacency)
+    const a = new CTPTask('PROCESS', 'A', 'A');
+    a.duration = makeDuration(100);
+    a.linkId = new CTPLinkId('chain', 'ES', '', null);
+    const b = new CTPTask('PROCESS', 'B', 'B');
+    b.duration = makeDuration(100);
+    b.linkId = new CTPLinkId('chain', 'ES', 'A', null); // B's predecessor = A
+
+    const base = new SchedulingLandscape();
+    base.tasks = new CTPTasks();
+    base.tasks.addEntity(a);
+    base.tasks.addEntity(b);
+
+    // a minimal overlay that just places both
+    const solved = new SchedulingLandscape();
+    solved.tasks = new CTPTasks();
+    const a2 = new CTPTask('PROCESS', 'A', 'A'); a2.state = 1; a2.scheduled = new CTPInterval(0, 100);
+    const b2 = new CTPTask('PROCESS', 'B', 'B'); b2.state = 1; b2.scheduled = new CTPInterval(100, 200);
+    solved.tasks.addEntity(a2);
+    solved.tasks.addEntity(b2);
+
+    reconstructOverlay(base, serializeOverlay(solved));
+
+    expect(base.tasks.getEntity('B')!.preds).toContain('A');
+    expect(base.tasks.getEntity('A')!.succs).toContain('B');
+  });
+});

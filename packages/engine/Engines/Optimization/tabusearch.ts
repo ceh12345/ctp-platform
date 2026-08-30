@@ -91,9 +91,27 @@ export class TabuList {
  *
  * At 1000 tasks with 8–15 critical blocks of 3–12 tasks each, expect 20–80 moves.
  */
-export function generateNeighborhood(graph: DisjunctiveGraph): NeighborhoodMove[] {
+export function generateNeighborhood(
+  graph: DisjunctiveGraph,
+  tardyChainLimit = 0,
+): NeighborhoodMove[] {
   const moves: NeighborhoodMove[] = [];
+  // Makespan-critical blocks always; under the weightedTardiness objective
+  // also blocks along the worst tardy chains' own paths (tardyChainLimit > 0),
+  // so late chains off the global critical path actually get moves proposed.
   const blocks = graph.identifyCriticalBlocks();
+  if (tardyChainLimit > 0) blocks.push(...graph.identifyTardyChainBlocks(tardyChainLimit));
+
+  // Blocks from the two sources overlap; dedupe so the same swap isn't
+  // evaluated twice (each evaluation is a full critical-path recompute).
+  const seen = new Set<string>();
+  const push = (m: NeighborhoodMove): void => {
+    const a = Math.min(m.nodeIdxA, m.nodeIdxB), b = Math.max(m.nodeIdxA, m.nodeIdxB);
+    const k = `${m.resourceKey}:${a}:${b}`;
+    if (seen.has(k)) return;
+    seen.add(k);
+    moves.push(m);
+  };
 
   for (const block of blocks) {
     const seq = graph.resourceSequences.get(block.resourceKey);
@@ -107,7 +125,7 @@ export function generateNeighborhood(graph: DisjunctiveGraph): NeighborhoodMove[
     if (firstPosInSeq > 0) {
       const predIdx = seq[firstPosInSeq - 1];
       if (!graph.nodes[predIdx].isFrozen && !graph.nodes[firstNodeIdx].isFrozen) {
-        moves.push({
+        push({
           resourceKey: block.resourceKey,
           nodeIdxA: predIdx,
           nodeIdxB: firstNodeIdx,
@@ -122,7 +140,7 @@ export function generateNeighborhood(graph: DisjunctiveGraph): NeighborhoodMove[
     if (lastPosInSeq < seq.length - 1) {
       const succIdx = seq[lastPosInSeq + 1];
       if (!graph.nodes[lastNodeIdx].isFrozen && !graph.nodes[succIdx].isFrozen) {
-        moves.push({
+        push({
           resourceKey: block.resourceKey,
           nodeIdxA: lastNodeIdx,
           nodeIdxB: succIdx,
@@ -137,7 +155,7 @@ export function generateNeighborhood(graph: DisjunctiveGraph): NeighborhoodMove[
       const a = block.nodeIndices[i];
       const b = block.nodeIndices[i + 1];
       if (!graph.nodes[a].isFrozen && !graph.nodes[b].isFrozen) {
-        moves.push({
+        push({
           resourceKey: block.resourceKey,
           nodeIdxA: a,
           nodeIdxB: b,
@@ -167,6 +185,7 @@ export function evaluateMove(
   graph: DisjunctiveGraph,
   move: NeighborhoodMove,
   stateChanges?: CTPStateChanges,
+  wantTardiness = false,
 ): MoveEvaluation {
   // Capture pre-swap makespan for changeover delta calc
   const preMakespan = graph.criticalPath?.makespan ?? 0;
@@ -181,12 +200,15 @@ export function evaluateMove(
   if (graph.hasCycle()) {
     graph.reverseSwap({ resourceKey: move.resourceKey, nodeIdxA: move.nodeIdxA, nodeIdxB: move.nodeIdxB });
     graph.recomputeChangeovers(move.resourceKey, move.nodeIdxB, move.nodeIdxA, stateChanges);
-    return { move, feasible: false, newMakespan: Infinity, changeoverDelta: 0 };
+    return { move, feasible: false, newMakespan: Infinity, changeoverDelta: 0, newTardiness: null };
   }
 
-  // 4. Recompute critical path to get new makespan
+  // 4. Recompute critical path to get new makespan (and, when the search
+  //    runs the weightedTardiness objective, the trial tardiness — computed
+  //    here because it needs the trial orientation's earliestStart values)
   graph.recomputeCriticalPath();
   const newMakespan = graph.criticalPath?.makespan ?? Infinity;
+  const newTardiness = wantTardiness ? graph.computeWeightedTardiness() : null;
 
   // 5. Reverse everything — we're only evaluating, not committing
   graph.reverseSwap({ resourceKey: move.resourceKey, nodeIdxA: move.nodeIdxA, nodeIdxB: move.nodeIdxB });
@@ -197,6 +219,7 @@ export function evaluateMove(
     move,
     feasible: true,
     newMakespan,
+    newTardiness,
     changeoverDelta: newMakespan - preMakespan,
   };
 }
@@ -241,11 +264,27 @@ export function tabuSearch(
       totalIterations: 0,
       totalMovesEvaluated: 0,
       convergenceReason: 'stagnation',
+      improved: false,
+      originalTardiness: null,
+      bestTardiness: null,
     };
   }
 
+  // Objective: 'weightedTardiness' compares (tardiness, makespan)
+  // lexicographically — makespan alone when the graph has no due dates or
+  // the objective is 'makespan' (tardiness slot stays null).
+  const useTardiness =
+    config.objective === 'weightedTardiness' && graph.chainDues.size > 0;
+  // (tA, mA) strictly better than (tB, mB)?
+  const better = (tA: number | null, mA: number, tB: number | null, mB: number): boolean => {
+    if (useTardiness && tA !== null && tB !== null && tA !== tB) return tA < tB;
+    return mA < mB;
+  };
+
   const originalMakespan = graph.criticalPath.makespan;
+  const originalTardiness = useTardiness ? graph.computeWeightedTardiness() : null;
   let bestMakespan = originalMakespan;
+  let bestTardiness = originalTardiness;
   let bestGraph = graph.clone();
   let noImproveCount = 0;
   let totalMoves = 0;
@@ -259,26 +298,30 @@ export function tabuSearch(
     if (Date.now() - startMs > config.timeBudgetMs) break;
 
     // ─── 1. Generate neighborhood from critical blocks ───
-    const moves = generateNeighborhood(graph);
+    const moves = generateNeighborhood(graph, useTardiness ? (config.tardyChainLimit ?? 20) : 0);
     if (moves.length === 0) break;
 
     // ─── 2. Evaluate all candidate moves ───
     let bestMove: NeighborhoodMove | null = null;
     let bestMoveMakespan = Infinity;
+    let bestMoveTardiness: number | null = null;
 
     for (const move of moves) {
-      const evaluation = evaluateMove(graph, move, stateChanges);
+      const evaluation = evaluateMove(graph, move, stateChanges, useTardiness);
       totalMoves++;
 
       if (!evaluation.feasible) continue;
 
       const isTabu = tabu.isTabu(move, iter);
-      const aspirationMet = evaluation.newMakespan < bestMakespan;
+      const aspirationMet = better(
+        evaluation.newTardiness, evaluation.newMakespan, bestTardiness, bestMakespan);
 
       // Accept if not tabu, OR if aspiration criterion met (global best override)
       if (!isTabu || aspirationMet) {
-        if (evaluation.newMakespan < bestMoveMakespan) {
+        if (bestMove === null || better(
+          evaluation.newTardiness, evaluation.newMakespan, bestMoveTardiness, bestMoveMakespan)) {
           bestMoveMakespan = evaluation.newMakespan;
+          bestMoveTardiness = evaluation.newTardiness;
           bestMove = move;
         }
       }
@@ -298,9 +341,11 @@ export function tabuSearch(
 
       // ─── 4. Check for new global best ───
       currentMakespan = graph.criticalPath?.makespan ?? Infinity;
-      isNewBest = currentMakespan < bestMakespan;
+      const currentTardiness = useTardiness ? graph.computeWeightedTardiness() : null;
+      isNewBest = better(currentTardiness, currentMakespan, bestTardiness, bestMakespan);
       if (isNewBest) {
         bestMakespan = currentMakespan;
+        bestTardiness = currentTardiness;
         bestGraph = graph.clone();
         noImproveCount = 0;
       } else {
@@ -362,5 +407,8 @@ export function tabuSearch(
     totalIterations: iter,
     totalMovesEvaluated: totalMoves,
     convergenceReason,
+    improved: better(bestTardiness, bestMakespan, originalTardiness, originalMakespan),
+    originalTardiness,
+    bestTardiness,
   };
 }

@@ -116,6 +116,81 @@ async function api(path: string, options?: RequestInit) {
   return res.json();
 }
 
+/**
+ * Run a solve, surviving a dropped HTTP request.
+ *
+ * Azure App Service cuts inbound requests at ~230s, and the full Stafford book
+ * (1,660 tasks) can run past that on a small instance. The solve itself keeps
+ * going server-side and promotes a snapshot when it finishes, so a dead request
+ * says nothing about whether the work succeeded — a completed solve and a
+ * crashed process looked identical from the UI.
+ *
+ * So: note the snapshot id up front, and if the request dies, watch for a NEW
+ * snapshot written by a solve. Once one appears the work is done, and
+ * GET /ctp/results hands back the same object the POST would have returned.
+ *
+ * Interim measure. The real fix is making solve a job like /ctp/optimize —
+ * 202 + jobId + poll — which reports progress instead of inferring success.
+ */
+/**
+ * Standard progress messages for a solve that outlived its HTTP request.
+ * Speaks up the instant the connection drops — the gap between the drop and the
+ * first message is the window where a working solve looks like a hang.
+ */
+const solveWaitNotifier = (toast: (msg: string) => void) => (_sec: number) => {
+  // Fires once, when the connection drops. Deliberately no progress heartbeat:
+  // the engine solve is synchronous CPU work on Node's single thread, so while
+  // it runs the API cannot answer ANY request — a /v1/health poll measured a
+  // 51.6s wait mid-solve. Nothing can observe progress, and a countdown that
+  // only appears after the solve finishes would be worse than silence.
+  toast('Connection dropped — the solve is still running on the server. The schedule will appear when it finishes.');
+};
+
+async function solveWithRecovery(
+  body: any,
+  opts?: { onWaiting?: (elapsedSec: number) => void; maxWaitMs?: number },
+) {
+  const readSnapshot = async (): Promise<{ id: string | null; eventType: string | null }> => {
+    try {
+      const meta = await api('/snapshot/meta');
+      return {
+        id: meta?.snapshotId ?? meta?.data?.snapshotId ?? null,
+        eventType: meta?.data?.eventType ?? null,
+      };
+    } catch {
+      return { id: null, eventType: null };   // cold start — no snapshot yet
+    }
+  };
+
+  const before = await readSnapshot();
+  try {
+    return await api('/ctp/solve', { method: 'POST', body: JSON.stringify(body) });
+  } catch (err) {
+    const maxWaitMs = opts?.maxWaitMs ?? 15 * 60_000;
+    const startedAt = Date.now();
+    console.warn('[solve] request dropped — watching for the snapshot a completed solve writes', err);
+    // Speak up immediately. The gap between the connection dropping and the
+    // first status message is the window where this looks like a hang.
+    opts?.onWaiting?.(0);
+    while (Date.now() - startedAt < maxWaitMs) {
+      await new Promise(r => setTimeout(r, 5000));
+      // This poll blocks for the remainder of the solve — the server cannot
+      // answer while its event loop is busy. That is expected, not a hang: the
+      // request returns the moment solving stops, which is also when the
+      // snapshot we are waiting for exists.
+      const now = await readSnapshot();
+      if (now.id && now.id !== before.id && now.eventType === 'solve') {
+        const result = await api('/ctp/results');
+        if (result && result.status !== 'not_solved') {
+          console.info('[solve] completed server-side despite the dropped request', now.id);
+          return result;
+        }
+      }
+    }
+    throw err;   // it never landed — the original failure is the honest answer
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    TERMINOLOGY / LOCALE / ACTION HELPERS
    ═══════════════════════════════════════════════════════════════ */
@@ -366,34 +441,6 @@ function getHierarchyValue(group: any, name: string): string | null {
   const h = group?.hierarchies?.find((x: any) => x.name === name);
   const v = h?.value;
   return v == null || v === '' ? null : String(v);
-}
-
-function deriveOrderStatus(order: any, tasks?: any[]): string {
-  const raw = order.fillRate ?? 0;
-  // fillRate is a ratio (0.0–N) where 1.0 = 100%. Values > 1 mean overfilled.
-  const fillRate = raw > 100 ? raw / 100 : raw;
-  const due = order.dueDate ? new Date(order.dueDate).getTime() : 0;
-
-  // For single-unit orders (healthcare cases, etc.), derive fill from task feasibility
-  const effectiveFillRate = (order.demandQty ?? 0) <= 1 && tasks
-    ? (tasks.filter((tk: any) => tk.orderRef === order.orderKey).length > 0 &&
-       tasks.filter((tk: any) => tk.orderRef === order.orderKey).every((tk: any) => tk.feasible && tk.scheduledEnd)
-        ? 1.0 : 0)
-    : fillRate;
-
-  if (due > 0 && tasks) {
-    const orderTasks = tasks.filter((tk: any) => tk.orderRef === order.orderKey && tk.feasible && tk.scheduledEnd);
-    const lastEnd = orderTasks.length > 0
-      ? Math.max(...orderTasks.map((tk: any) => new Date(tk.scheduledEnd).getTime()))
-      : 0;
-    if (lastEnd > due) return 'late';
-    if (effectiveFillRate < 0.5) return 'at-risk';
-    if (lastEnd > 0 && due - lastEnd < 48 * 3600 * 1000) return 'at-risk';
-  } else {
-    if (effectiveFillRate < 0.5) return 'at-risk';
-  }
-  if (effectiveFillRate >= 0.99) return 'on-track';
-  return 'at-risk';
 }
 
 function deriveMaterialStatus(mat: any): string {
@@ -2440,13 +2487,13 @@ function SolveResultsDialog({ result, previousSnapshot, experienceLevel, onClose
 
   // Derived data
   const infeasibleTasks = tasks.filter((t: any) => t.included && !t.feasible && t.type !== 'SET_UP' && t.type !== 'TEAR_DOWN');
-  const lateOrders = orders.filter((o: any) => {
-    if (!o.dueDate) return false;
-    const scheduledTasks = tasks.filter((t: any) => t.orderRef === o.orderKey && t.feasible && t.scheduledEnd);
-    if (scheduledTasks.length === 0) return false;
-    const lastEnd = scheduledTasks.map((t: any) => t.scheduledEnd).sort().pop();
-    return lastEnd && new Date(lastEnd) > new Date(o.dueDate);
-  });
+  // Delivery risk is measured against the CUSTOMER PROMISE
+  // (customerDeliveryDate, from the sales-order line), not order.dueDate —
+  // that maps from Genius JobEndDate, an internal production target that
+  // differs from the promise on ~87% of Stafford's orders and is populated
+  // even on internal/stock/rework work with no customer at all. Orders
+  // without a promise are not delivery-risk candidates.
+  const lateOrders = orders.filter((o: any) => orderDaysLate(o) !== null && orderDaysLate(o)! > 0);
   const shortages = materials.filter((m: any) => m.firstShortageDate);
   const lowFillOrders = orders.filter((o: any) => o.fillRate < 1 && o.fillRate > 0);
 
@@ -5405,7 +5452,11 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                     // preserve the "this is one task" reading. FIXED tasks
                     // and single-shift FLOATs keep the original single-block
                     // visual (segments=null or length<=1).
-                    const hasSegments = Array.isArray(t.segments) && t.segments.length > 1;
+                    // `> 0`, not `> 1`: a single-segment task can still have an
+                    // envelope far longer than its work (25512-QC-2 is 0.25h of
+                    // work inside a 16.25h envelope) and drawing the envelope
+                    // paints 16h of occupancy that does not exist.
+                    const hasSegments = Array.isArray(t.segments) && t.segments.length > 0;
                     const blocks = hasSegments
                       ? t.segments.map((s: any, i: number) => {
                           const sl = toPct(s.start);
@@ -5418,6 +5469,13 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
                           };
                         })
                       : [{ left, width: w, isFirst: true, isLast: true }];
+                    // The connector spans the WORK, not the envelope. Spanning
+                    // the envelope drew a line through dead space before the
+                    // first segment — 28371-F-4 starts its envelope 16h before
+                    // any work, so the line overlapped a task legitimately
+                    // scheduled in that gap and read as a double-booking.
+                    const connLeft = blocks[0].left;
+                    const connRight = blocks[blocks.length - 1].left + blocks[blocks.length - 1].width;
 
                     const sharedHandlers = {
                       onMouseEnter: (e: React.MouseEvent) => { setHovered(t); setTooltipPos({ x: e.clientX, y: e.clientY }); },
@@ -5435,10 +5493,10 @@ function GanttChart({ tasks, resources, products, colors, onTaskClick, onResourc
 
                     return (
                       <Fragment key={t.key}>
-                        {hasSegments && (
+                        {blocks.length > 1 && (
                           <div style={{
                             position: 'absolute',
-                            left: `${left}%`, width: `${w}%`,
+                            left: `${connLeft}%`, width: `${Math.max(connRight - connLeft, 0.3)}%`,
                             top: '50%', height: 2,
                             background: barColor,
                             opacity: isDimmed ? 0.2 : 0.4,
@@ -8183,11 +8241,100 @@ function ConflictCards({ conflicts, onTaskClick }: { conflicts: any[]; onTaskCli
    TAB CONTENT — OVERVIEW
    ═══════════════════════════════════════════════════════════════ */
 
-function OverviewTab({ summary, tasks, resources, orders, materials, products, colors, onTabChange, onTaskClick, onResourceClick, experienceLevel = 'novice',
-  taskPins, taskExcludes, taskUnschedules, orderModes,
-  onPinTask, onExcludeTask, onUnscheduleTask, onWhereTo,
-  zoomLevel, setZoomLevel, scrollOffset, setScrollOffset, onViewAgenda, criticalPath }: {
-  summary: any; tasks: any[]; resources: any[]; orders: any[]; materials: any[];
+/**
+ * Landing utilization heatmap — rendered purely from the snapshot `summary`
+ * partition (pre-bucketed per-resource utilization), so the Overview needs no
+ * task array. Rows = resources, columns = weekly buckets indexed to bucketMeta.
+ */
+function SummaryHeatmap({ data, onResourceClick }: { data: any; onResourceClick?: (key: string) => void }) {
+  // 'overall' desc (bottlenecks on top) is the default; clicking the Overall
+  // header toggles direction, clicking Resource sorts by name. This absorbs the
+  // old resource-utilization list — Overall % is the first data column.
+  const [sortKey, setSortKey] = useState<'overall' | 'name'>('overall');
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
+  if (!data?.resourceLoad?.length) {
+    return <div style={{ color: C.textDim, fontSize: 13, padding: 16 }}>No utilization data in this snapshot.</div>;
+  }
+  const count: number = data.bucketMeta?.count ?? (data.resourceLoad[0]?.buckets?.length ?? 0);
+  // Columns carry real dates now — bucketMeta.startISO anchors bucket 0 and
+  // bucketSeconds is the step (daily). Falls back to an index label for older
+  // snapshots written before the anchors existed.
+  const bucketMs = (data.bucketMeta?.bucketSeconds ?? 86400) * 1000;
+  const startMs = data.bucketMeta?.startISO ? new Date(data.bucketMeta.startISO).getTime() : NaN;
+  const isDaily = (data.bucketMeta?.granularity ?? 'week') === 'day';
+  const colDate = (i: number) => Number.isNaN(startMs) ? null : new Date(startMs + i * bucketMs);
+  const colLabel = (i: number) => {
+    const d = colDate(i);
+    if (!d) return isDaily ? `D${i + 1}` : `W${i + 1}`;
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  };
+  const colTitle = (i: number) => {
+    const d = colDate(i);
+    return d ? d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : colLabel(i);
+  };
+  // 240 daily columns: label weekly so the header stays readable.
+  const labelEvery = isDaily ? 7 : 1;
+  const cellW = isDaily ? 13 : 38;
+  const dir = sortDir === 'desc' ? -1 : 1;
+  const rows = [...data.resourceLoad].sort((a: any, b: any) =>
+    sortKey === 'name'
+      ? dir * String(a.name).localeCompare(String(b.name))
+      : dir * ((a.overallUtilizationPct ?? 0) - (b.overallUtilizationPct ?? 0)));
+  const heat = (u: number) => {
+    if (!u || u <= 0) return C.surface2;
+    const p = Math.min(1, u);
+    return `hsl(${Math.round(120 * (1 - p))}, 62%, 42%)`; // green (idle) → red (full)
+  };
+  const utilColor = (u: number) => u >= 0.85 ? C.red : u >= 0.6 ? C.yellow : C.green;
+  const toggle = (k: 'overall' | 'name') => {
+    if (sortKey === k) setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+    else { setSortKey(k); setSortDir(k === 'overall' ? 'desc' : 'asc'); }
+  };
+  const caret = (k: 'overall' | 'name') => sortKey === k ? (sortDir === 'desc' ? ' ↓' : ' ↑') : '';
+  const thBase: CSSProperties = { padding: '4px 8px', color: C.textDim, cursor: 'pointer', userSelect: 'none' };
+  return (
+    <div style={{ overflow: 'auto', maxHeight: 560 }}>
+      <table style={{ borderCollapse: 'separate', borderSpacing: 0, fontSize: 11, fontFamily: FONT }}>
+        <thead>
+          <tr>
+            <th onClick={() => toggle('name')}
+              style={{ ...thBase, textAlign: 'left', position: 'sticky', left: 0, top: 0, zIndex: 3, background: C.surface }}>Resource{caret('name')}</th>
+            <th onClick={() => toggle('overall')}
+              style={{ ...thBase, textAlign: 'right', position: 'sticky', left: 160, top: 0, zIndex: 3, background: C.surface }}>Overall{caret('overall')}</th>
+            {Array.from({ length: count }).map((_, i) => (
+              <th key={i} title={colTitle(i)}
+                style={{ padding: '2px 3px', color: C.textDim, fontWeight: 500, position: 'sticky', top: 0, zIndex: 2, background: C.surface, whiteSpace: 'nowrap' }}>
+                {i % labelEvery === 0 ? colLabel(i) : ''}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r: any) => {
+            const o = r.overallUtilizationPct ?? 0;
+            return (
+              <tr key={r.resourceKey}>
+                <td
+                  onClick={() => onResourceClick?.(r.resourceKey)}
+                  style={{ padding: '2px 8px', whiteSpace: 'nowrap', position: 'sticky', left: 0, zIndex: 1, width: 160, minWidth: 160, maxWidth: 160, background: C.surface, color: r.finite === false ? C.textDim : C.text, fontStyle: r.finite === false ? 'italic' : 'normal', cursor: onResourceClick ? 'pointer' : 'default', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  title={`${r.name}${r.workCenter ? ` · ${r.workCenter}` : ''}${r.finite === false ? ' · infinite capacity (not a constraint)' : ''}`}
+                >{r.name}{r.workCenter ? <span style={{ color: C.textDim }}> · {r.workCenter}</span> : null}</td>
+                <td style={{ padding: '2px 8px', textAlign: 'right', position: 'sticky', left: 160, zIndex: 1, background: C.surface, color: r.finite === false ? C.textDim : utilColor(o), fontWeight: 700 }}>{Math.round(o * 100)}%</td>
+                {(r.buckets as number[]).map((u, i) => (
+                  <td key={i} title={`${r.name} · ${colTitle(i)}: ${Math.round(u * 100)}%`}
+                    style={{ width: cellW, minWidth: cellW, height: 22, background: heat(u), border: `1px solid ${C.bg}`, borderRadius: 2 }} />
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function OverviewTab({ heatmap, resources, products, onTabChange, onTaskClick, onResourceClick }: {
+  summary: any; heatmap?: any; tasks: any[]; resources: any[]; orders: any[]; materials: any[];
   products: any[]; colors: any; onTabChange: (t: string) => void;
   onTaskClick?: (t: any) => void; onResourceClick?: (r: any) => void;
   onViewAgenda?: (r: any) => void;
@@ -8204,133 +8351,107 @@ function OverviewTab({ summary, tasks, resources, orders, materials, products, c
   setScrollOffset?: (v: number | ((prev: number) => number)) => void;
   criticalPath?: any;
 }) {
-  const avgUtil = resources.length > 0
-    ? resources.reduce((s: number, r: any) => s + r.utilization, 0) / resources.length
-    : 0;
-  const lateOrders = orders.filter((o: any) => deriveOrderStatus(o, tasks) === 'late').length;
-  const conflicts = deriveConflicts(tasks, resources, materials);
-  const shortages = materials.filter((m: any) => deriveMaterialStatus(m) === 'shortage').length;
+  const h = heatmap?.headline ?? {};
+  const lateOrders = h.lateOrders ?? 0;
+  const conflicts = h.conflicts ?? 0;
+  const shortages = h.shortages ?? 0;
+  const feas = h.feasibilityRate ?? 0;
+  // Rails render from the summary partition (P9.2) — no task array needed.
+  const conflictList: any[] = heatmap?.conflicts ?? [];
+  const orderRank = (s: string) => s === 'late' ? 0 : s === 'at-risk' ? 1 : s === 'on-track' ? 2 : 3;
+  // summary.orders is columnar ({cols, rows}) to keep the landing payload small;
+  // expand to objects here. Tolerates a legacy array-of-objects payload.
+  const rawOrders: any = heatmap?.orders;
+  const decodedOrders: any[] = Array.isArray(rawOrders)
+    ? rawOrders
+    : (rawOrders?.rows ?? []).map((r: any[]) => {
+        const o: any = {};
+        (rawOrders?.cols ?? []).forEach((c: string, i: number) => { o[c] = r[i]; });
+        return o;
+      });
+  const orderRows = decodedOrders
+    .sort((a: any, b: any) => orderRank(a.status) - orderRank(b.status));
+  const pctFmt = (v: number | undefined) => v == null ? '—' : `${Math.round(v * 100)}%`;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* KPI Row */}
+      {/* KPI strip — the one-second "am I healthy" read, from the summary partition */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KPI icon="✓" label={t('feasibility', 'Feasibility')} value={fmtPctDirect(summary?.feasibilityRate)} color={
-          (summary?.feasibilityRate ?? 0) >= 90 ? C.green : (summary?.feasibilityRate ?? 0) >= 70 ? C.yellow : C.red
-        } sub={`${summary?.scheduledTasks ?? 0} of ${summary?.includedTasks ?? 0} ${t('tasks', 'tasks')}`
-          + (summary?.setupTasks && showAt(experienceLevel, 'intermediate') ? ` + ${summary.setupTasks} ${t('setup', 'setup')}s` : '')} />
-        <KPI icon="⚡" label={`Avg ${t('utilization', 'Utilization')}`} value={fmtPctDirect(avgUtil)} color={
-          avgUtil > 85 ? C.red : avgUtil > 60 ? C.yellow : C.green
-        } sub={`${resources.length} ${t('resources', 'resources')}`} />
-        <KPI icon="⏰" label={`Late ${t('orders', 'Orders')}`} value={lateOrders} color={lateOrders > 0 ? C.red : C.green}
-          sub={`of ${orders.length} total`} />
-        <KPI icon="⚠" label={t('conflicts', 'Conflicts')} value={conflicts.length}
-          color={conflicts.length > 0 ? C.red : C.green} sub={`${t('task', 'task')} + ${t('material', 'material')}`} />
-        <KPI icon="📦" label={`${t('shortage', 'Shortage')}s`} value={shortages} color={shortages > 0 ? C.red : C.green}
-          sub={`of ${materials.length} ${t('materials', 'materials')}`} />
-        {showAt(experienceLevel, 'expert') && summary?.makespan != null && (
-          <KPI icon="⏱" label={t('makespan', 'Makespan')} value={fmtDuration(summary.makespan)} color={C.text}
-            sub={`${fmtDateShort(summary.horizonStart)} – ${fmtDateShort(summary.horizonEnd)}`} />
-        )}
-        {criticalPath && (
-          <KPI icon={'\uD83D\uDD17'} label="Critical Path"
-            value={criticalPath.makespanFormatted}
-            color={C.text}
-            sub={`Bottleneck: ${criticalPath.bottleneckResource?.resourceName} (${criticalPath.bottleneckResource?.percentOfCriticalPath}%)`} />
-        )}
+        <KPI icon="✓" label={t('feasibility', 'Feasibility')} value={pctFmt(feas)}
+          color={feas >= 0.9 ? C.green : feas >= 0.7 ? C.yellow : C.red}
+          sub={`${h.scheduledTasks ?? 0} of ${h.includedTasks ?? 0} ${t('tasks', 'tasks')}`} />
+        <KPI icon="⏰" label={`Late ${t('orders', 'Orders')}`} value={lateOrders}
+          color={lateOrders > 0 ? C.red : C.green} sub={`of ${h.totalOrders ?? 0} total`} />
+        <KPI icon="⚠" label={t('conflicts', 'Conflicts')} value={conflicts}
+          color={conflicts > 0 ? C.red : C.green} />
+        <KPI icon="📦" label={`${t('shortage', 'Shortage')}s`} value={shortages}
+          color={shortages > 0 ? C.red : C.green} />
+        <KPI icon="⏱" label={t('makespan', 'Makespan')}
+          value={h.makespanSeconds ? fmtDuration(h.makespanSeconds) : '—'} color={C.text} />
+        <KPI icon="🔧" label="Bottleneck" value={h.bottleneck?.name ?? '—'}
+          color={(h.bottleneck?.pct ?? 0) >= 0.9 ? C.red : C.text}
+          sub={h.bottleneck ? `${pctFmt(h.bottleneck.pct)} utilized` : undefined} />
       </div>
 
-      {/* Gantt + Side panels */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16 }}>
-        <Card title={`${t('schedule', 'Schedule')} Overview`}>
-          <GanttChart tasks={tasks} resources={resources} products={products} colors={colors}
-            onTaskClick={onTaskClick} onResourceClick={onResourceClick}
-            taskPins={taskPins} taskExcludes={taskExcludes} taskUnschedules={taskUnschedules}
-            orderModes={orderModes}
-            onPinTask={onPinTask} onExcludeTask={onExcludeTask} onUnscheduleTask={onUnscheduleTask}
-            onWhereTo={onWhereTo}
-            zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
-            scrollOffset={scrollOffset} setScrollOffset={setScrollOffset}
-            onViewAgenda={onViewAgenda} />
+      {/* Three rails, all above the fold: capacity (heatmap) · demand (orders) · conflicts */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 380px 440px', gap: 16, alignItems: 'start' }}>
+        <Card title="Resource Utilization">
+          <SummaryHeatmap data={heatmap} onResourceClick={(key) => {
+            const r = resources.find((x: any) => x.resourceKey === key);
+            if (r) onResourceClick?.(r);
+          }} />
         </Card>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Card title={`${t('resource', 'Resource')} ${t('utilization', 'Utilization')}`}>
-            {(() => {
-              const wcGroups = new Map<string, any[]>();
-              resources.forEach((r: any) => {
-                const wc = r.workCenter || 'Other';
-                if (!wcGroups.has(wc)) wcGroups.set(wc, []);
-                wcGroups.get(wc)!.push(r);
-              });
-              return Array.from(wcGroups.entries()).map(([wcName, wcRes]) => (
-                <div key={wcName}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: C.textDim, marginTop: 12, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    {wcName}
-                  </div>
-                  {wcRes.map((r: any) => (
-                    <UtilBar key={r.resourceKey} pct={r.utilization} label={r.resourceName}
-                      onClick={() => onResourceClick?.(r)} />
-                  ))}
-                </div>
-              ));
-            })()}
-          </Card>
-          <Card title={`${t('order', 'Order')} Status`}>
-            {orders.map((o: any) => {
-              const status = deriveOrderStatus(o, tasks);
-              return (
-                <div key={o.orderKey} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '6px 0', borderBottom: `1px solid ${C.border}`,
-                }}>
-                  <div>
-                    <span style={{ fontWeight: 600, fontSize: 13 }}>{o.orderKey}</span>
-                    <span style={{ color: C.textDim, fontSize: 12, marginLeft: 8 }}>
-                      {products.find((p: any) => p.key === o.productKey)?.name || o.productKey}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Ring pct={o.fillRate} size={24} />
-                    <Badge label={status} />
-                  </div>
-                </div>
-              );
-            })}
-          </Card>
-        </div>
-      </div>
 
-      {/* Alert Banners */}
-      {conflicts.filter((c: any) => c.severity === 'critical').length > 0 && (
-        <div
-          onClick={() => onTabChange('Conflicts')}
-          style={{
-            background: C.redDim, border: `1px solid ${C.red}33`, borderRadius: 10,
-            padding: '12px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center',
-            justifyContent: 'space-between', fontFamily: FONT,
-          }}
-        >
-          <span style={{ color: C.red, fontWeight: 600, fontSize: 13 }}>
-            ⚠ {conflicts.filter((c: any) => c.severity === 'critical').length} critical {t('conflicts', 'conflicts')} detected
-          </span>
-          <span style={{ color: C.red, fontSize: 12 }}>View {t('conflicts', 'Conflicts')} →</span>
-        </div>
-      )}
-      {shortages > 0 && (
-        <div
-          onClick={() => onTabChange('Materials')}
-          style={{
-            background: C.yellowDim, border: `1px solid ${C.yellow}33`, borderRadius: 10,
-            padding: '12px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center',
-            justifyContent: 'space-between', fontFamily: FONT,
-          }}
-        >
-          <span style={{ color: C.yellow, fontWeight: 600, fontSize: 13 }}>
-            📦 {shortages} {t('material', 'material')} {t('shortage', 'shortage')}{shortages > 1 ? 's' : ''} — review inventory
-          </span>
-          <span style={{ color: C.yellow, fontSize: 12 }}>View {t('materials', 'Materials')} →</span>
-        </div>
-      )}
+        <Card title={`${t('order', 'Order')} Status`}>
+          <div style={{ maxHeight: 520, overflow: 'auto', paddingRight: 10 }}>
+            {orderRows.map((o: any) => (
+              <div key={o.orderKey} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '6px 0', borderBottom: `1px solid ${C.border}`,
+              }}>
+                <div>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{o.orderKey}</span>
+                  <span style={{ color: C.textDim, fontSize: 12, marginLeft: 8 }}>
+                    {products.find((p: any) => p.key === o.productKey)?.name || o.productKey}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Ring pct={o.fillRate} size={24} />
+                  <Badge label={o.status} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card title={`${t('conflicts', 'Conflicts')} (${conflictList.length})`}>
+          {conflictList.length === 0 ? (
+            <div style={{ color: C.textDim, fontSize: 13, padding: '8px 0' }}>No conflicts detected 🎉</div>
+          ) : (
+            <div style={{ maxHeight: 520, overflow: 'auto', paddingRight: 10 }}>
+              {conflictList.map((c: any) => {
+                const rc = c.reason === 'availability' ? '#9e9e9e'
+                  : c.reason === 'capacity' ? '#f44336'
+                  : c.reason === 'dependency' ? '#ff9800'
+                  : c.reason === 'material' ? C.cyan
+                  : c.reason === 'horizon' ? '#9c27b0' : C.orange;
+                return (
+                  <div key={c.taskKey}
+                    onClick={() => c.taskKey ? onTaskClick?.(c.taskKey) : onTabChange('Conflicts')}
+                    style={{ padding: '8px 0', borderBottom: `1px solid ${C.border}`, cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 600, fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.taskName || c.taskKey}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', padding: '2px 6px', borderRadius: 4, background: `${rc}22`, color: rc, whiteSpace: 'nowrap' }}>{c.reason}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: C.textDim, marginTop: 2 }}>{c.reasonDetail}</div>
+                    {c.orderKey && <div style={{ fontSize: 10, color: C.textMuted, marginTop: 1 }}>{c.orderKey}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
@@ -8694,6 +8815,10 @@ const ORDERS_COLUMNS: OrdersGridColumn[] = [
   { id: 'name',               label: 'Description',     filterable: false, sortable: true,  width: 280 },
   { id: 'statusLabel',        label: 'Status',           filterable: true,  sortable: true,  width: 110 },
   { id: 'dueDate',            label: 'Due Date',         filterable: true,  sortable: true,  width: 120 },
+  { id: 'customerDeliveryDate', label: 'Customer Promise', filterable: true, sortable: true,  width: 140 },
+  { id: 'projectedStart',     label: 'Projected Start',  filterable: false, sortable: true,  width: 130 },
+  { id: 'projectedEnd',       label: 'Projected End',    filterable: false, sortable: true,  width: 130 },
+  { id: 'daysLate',           label: 'Days Late',        filterable: false, sortable: true,  width: 100, align: 'right' },
   { id: 'quantityPlanned',    label: 'Qty Planned',      filterable: false, sortable: true,  width: 110, align: 'right' },
   { id: 'Strategy',           label: 'Strategy',         filterable: true,  sortable: true,  width: 100 },
   { id: 'CustomerSource',     label: 'Customer Source',  filterable: true,  sortable: true,  width: 150 },
@@ -8758,6 +8883,34 @@ function buildOrdersQuery(s: {
   p.set('page', String(s.page));
   p.set('pageSize', String(s.pageSize));
   return p.toString();
+}
+
+/**
+ * Days an order is projected to miss its CUSTOMER PROMISE.
+ * Positive = late, 0 or negative = on time, null = not a delivery-risk
+ * candidate (no customer promise, or nothing scheduled yet).
+ *
+ * Deliberately NOT order.dueDate: that maps from Genius JobEndDate, an
+ * internal production target which differs from the promise on ~87% of
+ * Stafford's orders and is populated on internal/stock/rework work that has
+ * no customer at all. The promise (sales-order DateCustomer) is what a
+ * late-delivery penalty is measured against.
+ */
+function orderDaysLate(order: any): number | null {
+  const promise = order?.customerDeliveryDate;
+  const projected = order?.projectedEnd;
+  if (!promise || !projected) return null;
+  const promiseMs = new Date(promise).getTime();
+  const projectedMs = new Date(projected).getTime();
+  if (Number.isNaN(promiseMs) || Number.isNaN(projectedMs)) return null;
+  // The promise is stored as MIDNIGHT AT THE START of the promised day
+  // (verified: 518 of 519 sales-order DateCustomer values are 00:00 NZ), so
+  // the deadline is the END of that day. Comparing against the raw timestamp
+  // would call anything finishing during the promised day late — it marked 8
+  // same-day completions "+1" before this was fixed.
+  const deadlineMs = promiseMs + 86400000;
+  const overrunMs = projectedMs - deadlineMs;
+  return overrunMs <= 0 ? 0 : Math.ceil(overrunMs / 86400000);
 }
 
 function fmtOrdersDate(iso: string | null | undefined): string {
@@ -8895,6 +9048,15 @@ function OrdersTab({ caseFilter, onClearCaseFilter, onNavigateToSchedule }: {
       case 'name':              return row.name ?? '';
       case 'groupKey':          return row.groupKey ?? '';
       case 'dueDate':           return fmtOrdersDate(row.dueDate);
+      // Customer promise (sales-order DateCustomer) — the commitment a late
+      // fee is measured against. Absent on internal / stock / rework orders.
+      case 'customerDeliveryDate': return fmtOrdersDate(row.customerDeliveryDate);
+      case 'projectedStart':    return fmtOrdersDate(row.projectedStart);
+      case 'projectedEnd':      return fmtOrdersDate(row.projectedEnd);
+      case 'daysLate': {
+        const d = orderDaysLate(row);
+        return d === null ? '' : (d > 0 ? `+${d}` : String(d));
+      }
       case 'statusLabel':       return row.statusLabel ?? '';
       case 'quantityPlanned':   return row.quantityPlanned != null ? String(row.quantityPlanned) : '';
     }
@@ -8999,7 +9161,12 @@ function OrdersTab({ caseFilter, onClearCaseFilter, onNavigateToSchedule }: {
         )}
 
         <div style={{ marginLeft: 'auto', fontSize: 12, color: C.textMuted }}>
-          {loading ? 'Loading…' : `Showing ${filteredCount} of ${totalCount} work orders`}
+          {/* Count the rows actually on screen, not the size of the result set.
+              The old label read "Showing 472 of 472" while the grid held one
+              100-row page, which reads as missing data rather than paging. */}
+          {loading ? 'Loading…' : rows.length === 0 ? 'No work orders'
+            : `Showing ${(page - 1) * pageSize + 1}–${(page - 1) * pageSize + rows.length} of ${filteredCount}`
+              + (filteredCount !== totalCount ? ` filtered work orders (${totalCount} total)` : ' work orders')}
         </div>
       </div>
 
@@ -13625,9 +13792,11 @@ interface ResourceProfileTabProps {
   tasks: any[];
   colors: any;
   onTaskClick?: (t: any) => void;
+  horizonStart?: string;
+  horizonEnd?: string;
 }
 
-function ResourceProfileTab({ resources, tasks, colors, onTaskClick }: ResourceProfileTabProps) {
+function ResourceProfileTab({ resources, tasks, colors, onTaskClick, horizonStart, horizonEnd }: ResourceProfileTabProps) {
   // View mode: heatmap (shop-wide overview), detail (per-resource skyscraper),
   // or histogram (per-resource binned load).
   const [mode, setMode] = useState<'heatmap' | 'detail' | 'histogram'>('heatmap');
@@ -13689,6 +13858,8 @@ function ResourceProfileTab({ resources, tasks, colors, onTaskClick }: ResourceP
         <ResourceHeatmap
           resources={resources}
           tasks={tasks}
+          horizonStart={horizonStart}
+          horizonEnd={horizonEnd}
           onCellClick={(resourceKey: string) => {
             setSelectedKey(resourceKey);
             setSelectedTaskKey(null);
@@ -13782,10 +13953,16 @@ function CapacityHistogram({ resource, tasks, onBinClick }: CapacityHistogramPro
     const used: { start: number; end: number; qty: number; taskKey: string }[] = [];
     for (const t of tasks) {
       if (!t.scheduledStart || !t.scheduledEnd) continue;
+      // Completed work is history, not committed load — matches the heatmap
+      // and the API's resourceUtilization.
+      if ((t.percentComplete ?? 0) >= 100) continue;
       const ar = t.assignedResources?.find((x: any) => x.resourceKey === resource.resourceKey);
       if (!ar) continue;
       const taskQty = ar.qty ?? 1;
-      const blocks = (Array.isArray(t.segments) && t.segments.length > 1)
+      // Segments are the on-shift working slices — use them whenever present.
+      // `> 1` sent single-segment tasks down the envelope fallback and charged
+      // off-shift gaps as work.
+      const blocks = (Array.isArray(t.segments) && t.segments.length > 0)
         ? t.segments
         : [{ start: t.scheduledStart, end: t.scheduledEnd }];
       for (const b of blocks) {
@@ -13909,7 +14086,7 @@ function CapacityHistogram({ resource, tasks, onBinClick }: CapacityHistogramPro
             const overloadTop = yToPct(b.util);
             const overloadHeight = hundredPct - overloadTop;
             return (
-              <div key={i} title={`${dayLabel(b.start)}\nUtil: ${(b.util * 100).toFixed(1)}%\nUsed: ${(b.used/3600).toFixed(1)}h of ${(b.cap/3600).toFixed(1)}h\nTasks: ${b.taskCount}`}>
+              <div key={i} title={`${dayLabel(b.start)}\nUtil: ${(b.util * 100).toFixed(1)}%\nUsed: ${(b.used/MS_PER_HOUR).toFixed(1)}h of ${(b.cap/MS_PER_HOUR).toFixed(1)}h\nTasks: ${b.taskCount}`}>
                 {/* Main bar (≤100% portion) */}
                 <div
                   onClick={() => onBinClick?.()}
@@ -13965,13 +14142,17 @@ function CapacityHistogram({ resource, tasks, onBinClick }: CapacityHistogramPro
 /* ResourceHeatmap — shop-wide utilization overview. Rows = resources,
    columns = day bins, cell color = utilization %. */
 
+const MS_PER_HOUR = 3_600_000;
+
 interface ResourceHeatmapProps {
   resources: any[];
   tasks: any[];
   onCellClick: (resourceKey: string) => void;
+  horizonStart?: string;
+  horizonEnd?: string;
 }
 
-function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps) {
+function ResourceHeatmap({ resources, tasks, onCellClick, horizonStart, horizonEnd }: ResourceHeatmapProps) {
   type SortKey = 'name' | 'peakUtil' | 'avgUtil';
   const [sortKey, setSortKey] = useState<SortKey>('peakUtil');
 
@@ -14022,14 +14203,21 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
       }
     }
     if (allStarts.length === 0) return { dayBins: [] };
-    const start = Math.floor(Math.min(...allStarts) / day) * day;
-    const end = Math.ceil(Math.max(...allEnds) / day) * day;
+    // Resource calendars are authored well past the horizon — stafford-all's run
+    // 2025-12-31..2027-12-31, which produced 731 columns starting seven months
+    // before the schedule does. Clamp to the planning horizon when we know it.
+    const hStart = horizonStart ? new Date(horizonStart).getTime() : NaN;
+    const hEnd = horizonEnd ? new Date(horizonEnd).getTime() : NaN;
+    const rawStart = Math.min(...allStarts);
+    const rawEnd = Math.max(...allEnds);
+    const start = Math.floor((Number.isNaN(hStart) ? rawStart : Math.max(rawStart, hStart)) / day) * day;
+    const end = Math.ceil((Number.isNaN(hEnd) ? rawEnd : Math.min(rawEnd, hEnd)) / day) * day;
     const bins: { start: number; end: number }[] = [];
     for (let ms = start; ms < end; ms += day) {
       bins.push({ start: ms, end: ms + day });
     }
     return { dayBins: bins };
-  }, [resources]);
+  }, [resources, horizonStart, horizonEnd]);
 
   // For each (resource, dayBin): compute utilization %.
   // - capacity in bin = Σ availability.qty × overlap_with_bin
@@ -14046,15 +14234,27 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
         qty: iv.qty ?? 1,
       }));
       // Build per-task usage blocks for tasks scheduled on this resource. For
-      // FLOAT (segments.length > 1), each segment is a usage block; otherwise
-      // the envelope is the single block.
+      // FLOAT, each segment is a usage block; tasks with no segments at all
+      // (FIXED / continuous) fall back to the envelope.
       const used: { start: number; end: number; qty: number }[] = [];
       for (const t of tasks) {
         if (!t.scheduledStart || !t.scheduledEnd) continue;
+        // Completed work is not current load. The engine pins finished tasks
+        // (pinned:true, percentComplete:100) and leaves them with long historic
+        // envelopes and no segments; counting them stacked JAMES to 900% on a
+        // day his real committed load is a fraction of that. The API's own
+        // resourceUtilization already excludes them (completedTaskKeys) — this
+        // brings the heatmap in line.
+        if ((t.percentComplete ?? 0) >= 100) continue;
         const ar = t.assignedResources?.find((x: any) => x.resourceKey === r.resourceKey);
         if (!ar) continue;
         const taskQty = ar.qty ?? 1;
-        const blocks = (Array.isArray(t.segments) && t.segments.length > 1)
+        // Any segment count is authoritative — segments are the on-shift working
+        // slices. The old `> 1` test sent single-segment tasks down the envelope
+        // fallback, counting off-shift gaps as work: 64 tasks here, one of them
+        // (25512-QC-2) charging 16.25h for 0.25h of work. Only tasks with no
+        // segments at all (FIXED / continuous) fall back to the envelope.
+        const blocks = (Array.isArray(t.segments) && t.segments.length > 0)
           ? t.segments
           : [{ start: t.scheduledStart, end: t.scheduledEnd }];
         for (const b of blocks) {
@@ -14066,11 +14266,14 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
         }
       }
       const cells = dayBins.map(bin => {
-        let cap = 0, usedSec = 0;
-        for (const a of avail) cap += a.qty * overlap(a.start, a.end, bin.start, bin.end);
-        for (const u of used) usedSec += u.qty * overlap(u.start, u.end, bin.start, bin.end);
-        const util = cap > 0 ? usedSec / cap : 0;
-        return { cap, usedSec, util, hasCap: cap > 0 };
+        // Milliseconds — every bound came from Date.getTime(). The ratio is
+        // unit-free, but anything rendering an absolute figure must divide by
+        // MS_PER_HOUR, not 3600.
+        let capMs = 0, usedMs = 0;
+        for (const a of avail) capMs += a.qty * overlap(a.start, a.end, bin.start, bin.end);
+        for (const u of used) usedMs += u.qty * overlap(u.start, u.end, bin.start, bin.end);
+        const util = capMs > 0 ? usedMs / capMs : 0;
+        return { capMs, usedMs, util, hasCap: capMs > 0 };
       });
       const peak = cells.reduce((m, c) => Math.max(m, c.util), 0);
       const validCells = cells.filter(c => c.hasCap);
@@ -14194,11 +14397,12 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
         <table style={{ borderCollapse: 'separate', borderSpacing: 2, fontSize: 10, width: '100%' }}>
           <thead>
             <tr>
-              <th style={{ textAlign: 'left', padding: '4px 8px', color: C.textDim, minWidth: 140, fontWeight: 500 }}>Resource</th>
-              <th style={{ padding: '4px 4px', color: C.textDim, fontWeight: 500, minWidth: 32 }}>Peak</th>
+              <th style={{ textAlign: 'left', padding: '4px 8px', color: C.textDim, width: 160, minWidth: 160, fontWeight: 500, position: 'sticky', left: 0, top: 0, zIndex: 4, background: C.surface }}>Resource</th>
+              <th style={{ padding: '4px 4px', color: C.textDim, fontWeight: 500, minWidth: 32, position: 'sticky', left: 164, top: 0, zIndex: 4, background: C.surface }}>Peak</th>
               {dayBins.map((b, i) => (
                 <th key={i} style={{
                   padding: '4px 2px', color: C.textDim, fontWeight: 500, minWidth: 40, fontSize: 9,
+                  position: 'sticky', top: 0, zIndex: 2, background: C.surface, whiteSpace: 'nowrap',
                 }}>{dayLabel(b.start)}</th>
               ))}
             </tr>
@@ -14219,6 +14423,7 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
                         padding: '6px 8px', cursor: 'pointer',
                         background: C.surface, color: C.text, fontSize: 11, fontWeight: 600,
                         borderTop: `1px solid ${C.border}`,
+                        position: 'sticky', left: 0, zIndex: 3, whiteSpace: 'nowrap',
                       }}
                     >
                       <span style={{ display: 'inline-block', width: 12, color: C.textDim }}>
@@ -14241,6 +14446,9 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
                         style={{
                           padding: '4px 8px 4px 24px', cursor: 'pointer',
                           color: C.text, fontSize: 11,
+                          position: 'sticky', left: 0, zIndex: 3, background: C.surface,
+                          width: 160, minWidth: 160, maxWidth: 160,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}
                       >
                         <div>{row.resource.resourceName}</div>
@@ -14251,13 +14459,14 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
                       <td style={{
                         padding: '4px 4px', textAlign: 'center', fontWeight: 600,
                         color: row.peak > 1 ? '#dc2626' : C.text,
+                        position: 'sticky', left: 164, zIndex: 3, background: C.surface,
                       }}>{(row.peak * 100).toFixed(0)}%</td>
                       {row.cells.map((cell, ci) => (
                         <td
                           key={ci}
                           onClick={() => onCellClick(row.resource.resourceKey)}
                           title={cell.hasCap
-                            ? `${row.resource.resourceName} · ${dayLabel(dayBins[ci].start)}\nUtil: ${(cell.util * 100).toFixed(1)}%\nUsed: ${(cell.usedSec / 3600).toFixed(1)}h of ${(cell.cap / 3600).toFixed(1)}h`
+                            ? `${row.resource.resourceName} · ${dayLabel(dayBins[ci].start)}\nUtil: ${(cell.util * 100).toFixed(1)}%\nUsed: ${(cell.usedMs / MS_PER_HOUR).toFixed(1)}h of ${(cell.capMs / MS_PER_HOUR).toFixed(1)}h`
                             : `${row.resource.resourceName} · ${dayLabel(dayBins[ci].start)}\nNo capacity`}
                           style={{
                             padding: '6px 2px', textAlign: 'center',
@@ -14618,6 +14827,17 @@ export default function App() {
   const [solving, setSolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [solveResult, setSolveResult] = useState<any>(null);
+  // Snapshot the landing read resolved to. null = cold-start: this tenant has
+  // never been solved (no snapshot), so there's no schedule yet to show.
+  const [currentSnapshotId, setCurrentSnapshotId] = useState<string | null>(null);
+  // The <100KB summary partition (headline + bucketed utilization + slim
+  // orders/conflicts) — drives the entire Overview without the task array.
+  const [snapshotSummary, setSnapshotSummary] = useState<any>(null);
+  // True while the detail partition is being lazily fetched (first detail-tab visit).
+  const [detailLoading, setDetailLoading] = useState(false);
+  // True when the current snapshot's base version no longer matches source
+  // config (base changed underneath it) — prompts a re-solve.
+  const [snapshotStale, setSnapshotStale] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('Overview');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -14805,17 +15025,21 @@ export default function App() {
   const resources = solveResult?.resourceUtilization || [];
   const orders = solveResult?.orders || [];
   const materials = solveResult?.materials || [];
+  // Tabs that need the detail partition. When one is active but detail hasn't
+  // loaded yet (summary-only landing, P9.2c), show a loader instead of empties.
+  const DETAIL_TABS = ['Schedule', 'Resources', 'Orders', 'Conflicts', 'Materials', 'Analytics'];
+  const detailPending = currentSnapshotId !== null && !solveResult && DETAIL_TABS.includes(activeTab);
   const workOrderGroups = solveResult?.workOrderGroups || [];
   const summary = solveResult?.summary || null;
 
   const loadData = useCallback(async () => {
     try {
       setError(null);
-      const [result, prods, colorsData, termData, localeData, strategiesData, versionData] = await Promise.all([
-        api('/ctp/solve-and-sync', {
-          method: 'POST',
-          body: JSON.stringify({ detailLevel: experienceLevel }),
-        }),
+      // Load never solves: read the durable snapshot's detail projection
+      // (server-side, no solve) instead of solve-and-sync. `detail` returns the
+      // same CTPSolveResult shape wrapped as { snapshotId, data }.
+      const [summaryEnv, prods, colorsData, termData, localeData, strategiesData, versionData] = await Promise.all([
+        api('/snapshot/summary').catch(() => null),
         api('/data/products'),
         api('/data/colors').catch(() => null),
         api('/data/terminology').catch(() => ({})),
@@ -14823,6 +15047,13 @@ export default function App() {
         api('/data/strategies').catch(() => null),
         api('/health/version').catch(() => null),
       ]);
+      // Landing is summary-only (P9.2c): the ~16.5MB detail partition is fetched
+      // lazily on first navigation to a detail tab (see ensureDetail), so
+      // solveResult stays null here. A null snapshotId is cold-start (never
+      // solved) — drives the "no schedule yet" empty state.
+      setCurrentSnapshotId(summaryEnv?.snapshotId ?? null);
+      setSnapshotSummary(summaryEnv?.data ?? null);
+      setSnapshotStale(!!summaryEnv?.staleFlag);
       if (versionData) setVersionInfo(versionData);
       // Load configurations
       try {
@@ -14840,11 +15071,10 @@ export default function App() {
           }
         }
       } catch { /* configurations endpoint optional */ }
-      setSolveResult(result);
       setProducts(prods);
-      setColors(result.colors || colorsData || {});
-      _terminology = result.terminology || termData || {};
-      _locale = result.locale || localeData || {};
+      setColors(colorsData || {});
+      _terminology = termData || {};
+      _locale = localeData || {};
       if (strategiesData?.strategies?.length > 0) {
         setStrategyOptions(strategiesData.strategies);
       }
@@ -14872,6 +15102,39 @@ export default function App() {
       setError(e.message || 'Failed to load data');
     }
   }, [experienceLevel]);
+
+  // Lazily fetch the full detail partition (the tabs beyond Overview need the
+  // task array). Called on first navigation away from Overview; no-ops once
+  // loaded or in flight. This is what makes the landing summary-only (P9.2c).
+  const ensureDetail = useCallback(async () => {
+    if (solveResult || detailLoading) return;
+    setDetailLoading(true);
+    try {
+      const env = await api(`/snapshot/detail?detailLevel=${encodeURIComponent(experienceLevel)}`);
+      if (env?.data) setSolveResult(env.data);
+    } catch (e: any) {
+      setError(e.message || 'Failed to load schedule detail');
+    } finally {
+      setDetailLoading(false);
+    }
+  }, [solveResult, detailLoading, experienceLevel]);
+
+  // Trigger the lazy detail load the moment the user leaves Overview.
+  useEffect(() => {
+    if (activeTab !== 'Overview') ensureDetail();
+  }, [activeTab, ensureDetail]);
+
+  // Re-read the summary partition after any schedule-state change (solve or
+  // mutation) so the summary-driven Overview stays fresh, and pick up the live
+  // staleness flag. Stable ([] deps) so callers can use it freely.
+  const refreshSummary = useCallback(async () => {
+    try {
+      const s = await api('/snapshot/summary');
+      if (s?.snapshotId) setCurrentSnapshotId(s.snapshotId);
+      setSnapshotSummary(s?.data ?? null);
+      setSnapshotStale(!!s?.staleFlag);
+    } catch { /* non-fatal */ }
+  }, []);
 
   // ─── Action Queue Helpers ───
   const addToQueue = useCallback((label: string, command: any) => {
@@ -14972,8 +15235,11 @@ export default function App() {
     try {
       setError(null);
 
-      // Build request body with all overrides
-      const body: any = { preserveLandscape: true };
+      // Build request body with all overrides. preserveLandscape only when the
+      // landscape is actually loaded (solveResult present) — on the summary-only
+      // landing (P9.2c) or a cold tenant it's null, so the solve must sync from
+      // the adapter first rather than assume an initialized landscape.
+      const body: any = { preserveLandscape: !!solveResult };
       const activeOrderModes = Object.fromEntries(
         Object.entries(orderModes).filter(([, v]) => v !== 'INCLUDE'),
       );
@@ -15004,12 +15270,12 @@ export default function App() {
       if (activeConfigKey) body.configurationKey = activeConfigKey;
       if (scoringOverrides && scoringOverrides.length > 0) body.scoringOverrides = scoringOverrides;
 
-      const result = await api('/ctp/solve', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
+      const result = await solveWithRecovery(body, { onWaiting: solveWaitNotifier(showToast) });
       setSolveResult(result);
       setSolveStale(false);
+      // A solve promotes a fresh snapshot — refresh the summary (clears the
+      // cold-start card + staleness, and updates the summary-driven Overview).
+      await refreshSummary();
 
       // Auto-fit Gantt zoom to the schedule's critical path span
       if (result.criticalPath?.makespan) {
@@ -15145,7 +15411,7 @@ export default function App() {
       if (Object.keys(materialModeOverrides).length > 0) body.materialModes = materialModeOverrides;
       if (scoringOverrides && scoringOverrides.length > 0) body.scoringOverrides = scoringOverrides;
 
-      const result = await api('/ctp/solve', { method: 'POST', body: JSON.stringify(body) });
+      const result = await solveWithRecovery(body, { onWaiting: solveWaitNotifier(showToast) });
       setSolveResult(result);
       setSolveStale(false);
 
@@ -15435,7 +15701,7 @@ export default function App() {
         recordSolveSteps: true,
       };
       if (scoringOverrides && scoringOverrides.length > 0) body.scoringOverrides = scoringOverrides;
-      const result = await api('/ctp/solve', { method: 'POST', body: JSON.stringify(body) });
+      const result = await solveWithRecovery(body, { onWaiting: solveWaitNotifier(showToast) });
       setSolveResult(result);
       setSolveStale(false);
 
@@ -15745,7 +16011,7 @@ export default function App() {
         body: JSON.stringify({ taskKeys: keys }),
       });
       const updated = await api('/ctp/state');
-      if (updated.tasks) setSolveResult(updated);
+      if (updated.tasks) { setSolveResult(updated); refreshSummary(); }
       setSelectedTasks(new Set());
       const s = res.summary;
       if (s) {
@@ -15784,7 +16050,7 @@ export default function App() {
         } catch { /* continue */ }
       }
       const updated = await api('/ctp/state');
-      if (updated.tasks) setSolveResult(updated);
+      if (updated.tasks) { setSolveResult(updated); refreshSummary(); }
       setTaskPins(prev => {
         const next = { ...prev };
         keys.forEach(k => { next[k] = pinned; });
@@ -15841,7 +16107,7 @@ export default function App() {
         body: JSON.stringify({ taskKeys: keys }),
       });
       const updated = await api('/ctp/state');
-      if (updated.tasks) setSolveResult(updated);
+      if (updated.tasks) { setSolveResult(updated); refreshSummary(); }
       setSelectedTasks(new Set());
       const s = res.summary;
       if (s) {
@@ -15902,7 +16168,7 @@ export default function App() {
         }),
       });
       const updated = await api('/ctp/state');
-      if (updated.tasks) setSolveResult(updated);
+      if (updated.tasks) { setSolveResult(updated); refreshSummary(); }
       showToast('Task put on hold');
     } catch (err: any) {
       showToast(err.message || 'Hold failed', 'error');
@@ -15946,7 +16212,7 @@ export default function App() {
         });
       }
       const updated = await api('/ctp/state');
-      if (updated.tasks) setSolveResult(updated);
+      if (updated.tasks) { setSolveResult(updated); refreshSummary(); }
       setSelectedTasks(new Set());
       showToast(`Window extended for ${taskKeys.length} task(s)`);
     } catch (err: any) {
@@ -16032,7 +16298,7 @@ export default function App() {
           body: JSON.stringify({ taskKeys }),
         });
         const updated = await api('/ctp/state');
-        if (updated.tasks) setSolveResult(updated);
+        if (updated.tasks) { setSolveResult(updated); refreshSummary(); }
         setSelectedTasks(new Set());
         showToast(`${taskKeys.length} task(s) reverted to pinned`);
       } catch (err: any) {
@@ -16052,7 +16318,7 @@ export default function App() {
         body: JSON.stringify({ commands, name: `${action} ${taskKeys.length} task(s)` }),
       });
       const updated = await api('/ctp/state');
-      if (updated.tasks) setSolveResult(updated);
+      if (updated.tasks) { setSolveResult(updated); refreshSummary(); }
       setSelectedTasks(new Set());
       const labels: Record<string, string> = {
         dispatch: 'dispatched', start: 'started', hold: 'put on hold', resume: 'resumed', complete: 'completed',
@@ -16684,8 +16950,62 @@ export default function App() {
       {/* Tab content */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
       <main style={{ padding: 24, flex: 1, overflow: 'auto' }}>
+        {/* Stale: source data changed since this schedule was solved → prompt re-solve. */}
+        {snapshotStale && currentSnapshotId !== null && (
+          <div
+            onClick={() => handleSolveConfirm()}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+              background: C.yellowDim, border: `1px solid ${C.yellow}55`, borderRadius: 10,
+              padding: '10px 16px', marginBottom: 16, cursor: solving ? 'default' : 'pointer', fontFamily: FONT,
+            }}
+          >
+            <span style={{ color: C.yellow, fontWeight: 600, fontSize: 13 }}>
+              ⚠ Source data changed since this schedule was solved — it may be out of date.
+            </span>
+            <span style={{ color: C.yellow, fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
+              {solving ? 'Solving…' : 'Re-solve →'}
+            </span>
+          </div>
+        )}
+        {/* Cold-start: tenant never solved (no snapshot) → guide the user to Solve. */}
+        {currentSnapshotId === null && !loading && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            textAlign: 'center', gap: 14, padding: '56px 24px', maxWidth: 520, margin: '32px auto',
+            background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
+          }}>
+            <div style={{ fontSize: 40 }}>📋</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: C.text }}>No schedule yet</div>
+            <div style={{ fontSize: 13, color: C.textDim, lineHeight: 1.5 }}>
+              This tenant hasn’t been solved. Click <strong>{t('solve', 'Solve')}</strong> to
+              generate a schedule from the current data — it’ll then load instantly on every visit.
+            </div>
+            <button
+              onClick={() => handleSolveConfirm()}
+              disabled={solving}
+              style={{
+                marginTop: 6, background: C.yellow, color: C.bg, border: 'none', borderRadius: 8,
+                padding: '10px 28px', fontSize: 14, fontWeight: 700,
+                cursor: solving ? 'default' : 'pointer', fontFamily: FONT, opacity: solving ? 0.6 : 1,
+              }}
+            >
+              {solving ? '⏳ Solving…' : `🚀 ${t('solve', 'Solve')}`}
+            </button>
+          </div>
+        )}
+        {detailPending && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: 12, padding: '64px 24px', color: C.textDim, fontFamily: FONT,
+          }}>
+            <div style={{ fontSize: 28 }}>⏳</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Loading schedule…</div>
+            <div style={{ fontSize: 12 }}>Fetching the full task detail for this view.</div>
+          </div>
+        )}
         {activeTab === 'Overview' && (
-          <OverviewTab summary={summary} tasks={tasks} resources={resources}
+          <OverviewTab summary={summary} heatmap={snapshotSummary} tasks={tasks} resources={resources}
             orders={orders} materials={materials} products={products} colors={colors} onTabChange={setActiveTab}
             onTaskClick={handleTaskClick} onResourceClick={handleResourceClick}
             experienceLevel={experienceLevel}
@@ -16715,7 +17035,7 @@ export default function App() {
             scrollOffset={ganttScrollOffset} setScrollOffset={setGanttScrollOffset}
             onViewAgenda={(r: any) => { setSelectedTask(null); setSelectedResource(null); setAgendaResource(r); }} />
         )}
-        {activeTab === 'Schedule' && (
+        {activeTab === 'Schedule' && solveResult && (
           <ScheduleTab tasks={tasks} resources={resources} products={products} colors={colors} workOrderGroups={workOrderGroups}
             orders={orders}
             onTaskClick={handleTaskClick} onResourceClick={handleResourceClick}
@@ -16815,20 +17135,22 @@ export default function App() {
             ctpGhostBars={ctpGhostBars} isQueuing={isQueuing}
             onToolbarAction={handleToolbarAction} />
         )}
-        {activeTab === 'Resources' && (
+        {activeTab === 'Resources' && solveResult && (
           <ResourceProfileTab
             resources={resources}
             tasks={tasks}
             colors={colors}
             onTaskClick={handleTaskClick}
+            horizonStart={summary?.horizonStart}
+            horizonEnd={summary?.horizonEnd}
           />
         )}
-        {activeTab === 'Orders' && <OrdersTab
+        {activeTab === 'Orders' && solveResult && <OrdersTab
           caseFilter={ordersCaseFilter} onClearCaseFilter={() => setOrdersCaseFilter(null)}
           onNavigateToSchedule={(orderKey) => { setScheduleCaseFilter(orderKey); setActiveTab('Schedule'); }} />}
-        {activeTab === 'Conflicts' && <ConflictsTab tasks={tasks} resources={resources} materials={materials}
+        {activeTab === 'Conflicts' && solveResult && <ConflictsTab tasks={tasks} resources={resources} materials={materials}
           onTaskClick={handleTaskClickByKey} />}
-        {activeTab === 'Materials' && <MaterialsTab materials={materials}
+        {activeTab === 'Materials' && solveResult && <MaterialsTab materials={materials}
           materialModes={materialModeOverrides}
           onMaterialModeChange={(key, mode) => { setMaterialModeOverrides(prev => ({ ...prev, [key]: mode })); setSolveStale(true); }} />}
         {activeTab === 'Configurations' && <ConfigurationsTab
@@ -16838,7 +17160,7 @@ export default function App() {
           onRename={handleConfigRename}
           isModified={isConfigModified} modifiedConfig={modifiedConfig} activeConfig={activeConfig}
           onSave={handleConfigSave} onSaveAs={handleConfigSaveAs} onReset={handleConfigReset} />}
-        {activeTab === 'Analytics' && <AnalyticsTab kpis={analyticsKpis} detail={analyticsDetail}
+        {activeTab === 'Analytics' && solveResult && <AnalyticsTab kpis={analyticsKpis} detail={analyticsDetail}
           selectedKpi={selectedKpi} onSelectKpi={handleSelectKpi} loading={analyticsLoading}
           experienceLevel={experienceLevel} onNavigateToCase={(caseKey) => { setScheduleCaseFilter(caseKey); setActiveTab('Schedule'); }}
           tasks={tasks} onNavigateToConflicts={() => setActiveTab('Conflicts')} />}
@@ -16911,56 +17233,8 @@ export default function App() {
           >
             {solving ? '⏳ Syncing...' : '🔄 Sync'}
           </button>
-          <button
-            onClick={async () => {
-              setUserOpen(false);
-              setSolving(true);
-              showToast('Syncing and solving...');
-              try {
-                setError(null);
-                const result = await api('/ctp/solve-and-sync', {
-                  method: 'POST',
-                  body: JSON.stringify({ detailLevel: experienceLevel }),
-                });
-                setSolveResult(result);
-                setSolveStale(false);
-                setResourcePreferenceOverrides({});
-                setPriorityOverrides({});
-                setWindowOverrides({});
-                setTaskUnschedules(new Set());
-                setTaskPins({});
-                setTaskExcludes({});
-                setOrderModes({});
-                setMaterialModeOverrides({});
-                setResourceModeOverrides({});
-                setSelectedTasks(new Set());
-                setSelectedTask(null);
-                setSelectedResource(null);
-                setWhereToTaskKey(null); setWhereToOptions([]); setWhereToCurrentAssignment(null);
-                setAnalyticsKpis([]); setAnalyticsDetail(null); setSelectedKpi(null);
-                if (result.colors) setColors(result.colors);
-                if (result.terminology) _terminology = result.terminology;
-                if (result.locale) _locale = result.locale;
-                showToast('Data reloaded and solved');
-              } catch (e: any) {
-                setError(e.message || 'Sync & Solve failed');
-                showToast('Sync & Solve failed');
-              } finally {
-                setSolving(false);
-              }
-            }}
-            disabled={solving}
-            style={{
-              width: '100%', padding: '10px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-              fontFamily: FONT, border: `1px solid ${C.border}`, background: C.surface2,
-              color: solving ? C.textDim : C.accent, cursor: solving ? 'default' : 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            }}
-          >
-            {solving ? '⏳ Solving...' : '🔄 Sync & Solve'}
-          </button>
           <div style={{ fontSize: 10, color: C.textDim, textAlign: 'center' }}>
-            Sync reloads config from disk. Sync & Solve also runs the scheduler.
+            Sync reloads config from disk (debug). Use Solve to schedule.
           </div>
         </div>
       </Modal>

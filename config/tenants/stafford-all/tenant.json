@@ -1,0 +1,8 @@
+{
+  "tenantId": "stafford-all",
+  "name": "Stafford All (Full Book)",
+  "vertical": "manufacturing",
+  "createdAt": "2026-03-12T00:00:00Z",
+  "updatedAt": "2026-08-30T01:01:22.687Z",
+  "clonedFrom": "stafford-engineering-test"
+}

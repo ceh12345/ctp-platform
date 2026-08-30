@@ -1,6 +1,6 @@
 # Sprint — Scheduling Snapshot: Reconstruction Layer + Read Surface
 
-**Status:** 📐 Draft — pending one CC investigation gate (does the engine emit a thin scheduled-state projection? — §10)
+**Status:** ✅ Complete — P0–P10 landed and measured (2026-07-04). Landing 16.6 MB → 37 KB (~450×); all CI green. Follow-up: overlay serializer slim + re-baseline the ~300–400 KB overlay target (does not gate the landing).
 **Supersedes:** the prior "Snapshot as Partitioned Read Surface" draft — re-framed around reconstruction, de-coupled from the (not-yet-live) staging architecture, and recast on the thin-overlay / three-layer model.
 **Depends on:** nothing blocking. Builds on the existing solve pipeline + flat-file snapshot architecture. **Does not depend on the staging architecture** (not live; this sprint stands alone).
 **Investigation basis:** `ui-scale-investigation.md` (slim-2000: 1,984 tasks · 68 resources · 562 orders).
@@ -78,6 +78,12 @@ The landscape rebuilds from disk by composing the current layers:
 - **Cold start / redeploy:** `load base → apply snapshot(overlay) → re-derive → (later) apply actuals` = the in-memory landscape. **No re-solve needed**; the snapshot *is* the durable scheduled state. The **re-derive** step rebuilds the *derived* bucket deterministically — `buildAdjacency()` from base precedence (`task.ts:212`), `deriveComponents()` for cross-WO (`task.ts:247`), resource consumption / `netAvailable` from the applied assignments, WO-group rollups (`refreshRollups`) — none of which is a scheduling decision. The result must equal the in-memory landscape **exactly**; the round-trip assertion (P2, below) is what proves it, and it is the gate on "done."
 - **Steady state, the other direction:** the live in-memory landscape is the working truth; each solve writes the overlay out (memory → disk). So the snapshot is the durable bridge both ways — written from memory each solve, read back into memory on restart.
 - **Carry-forward (partial solves):** a partial solve recomputes only the movable tasks; unchanged tasks are carried forward **from the in-memory landscape**, not round-tripped through disk. Memory is the source of truth during uptime; the snapshot is pure output.
+
+### Base ⋈ overlay reconciliation — overlay wins *within a version*
+
+When composing, **the overlay overwrites base for every field it owns, for every task present in the overlay.** Base supplies a field only as the seed for tasks *not* in the overlay (e.g. a newly-synced work order never solved). Worked example — the **window**: it is overlay-owned because the solve *tightens* it (`startW/endW`) and `setTaskWindow` *overrides* it (and resets `origStartW/origEndW` to the new bound — `ctp.service.ts:1463-1467`). On reconstruction the overlay's full window (`startW/endW` working bound + `origStartW/origEndW` outer bound) **replaces** base's config window. The config window isn't lost — it remains in immutable `base/` for a future "reset to original" — but the live landscape uses the overlay.
+
+**The guard: overlay-overwrites-base is valid only when `overlay.sourceDataVersion == base.version`.** Otherwise overlaying resurrects stale state over changed inputs — e.g. a source re-pull moves a due date so base's config window becomes `[A,C]`, but the pre-pull overlay still carries `[A,B]`; blindly applying it would silently restore the old window. So reconstruction is **version-pinned**: it joins the overlay to the *exact* base version the overlay names, never "latest base." On a base-version bump the overlay is stale-by-construction → `staleFlag` → **re-solve** (which regenerates a fresh overlay against the new base), rather than reconstructing from the stale overlay. Same version → exact reconstruction (the normal restart/reload case); base advanced → re-solve, don't overlay. This version check *is* the reconciliation; it is not optional polish.
 
 ---
 
@@ -206,12 +212,12 @@ Ordered to **de-risk the requirement first**: the make-or-break (can the landsca
 ### Wire-up & load
 
 **P4 — Write the overlay on every mutation** *(service integration)*
-- Deliver: solve, schedule/unschedule, pin, window-extend, priority-override each call serialize → persist → promote and return **light meta** (snapshotId), not the fat result (§7, §8). Set `meta.staleFlag` from the fixture-input version.
-- **Test:** per endpoint — hit it, assert a new snapshotId promoted, `current` repointed, overlay reflects the change. One assertion each.
+- Deliver: solve, schedule/unschedule, pin, window-extend, priority-override each call serialize → persist → promote (§7, §8). **Stamp `meta.sourceDataVersion` with a real base-input version** at promote time — a content hash / mtime of the tenant's base inputs (tasks/resources/calendars/orders) — so the overlay records the exact base it was written against (deferred-population: a stable token now, the Genius feed's version later). *(Endpoint return-shape change to light meta is folded into P7 with the lockstep caller updates.)*
+- **Test:** per endpoint — hit it, assert a new snapshotId promoted, `current` repointed, overlay reflects the change, and `meta.sourceDataVersion` is populated (and stable across mutations that don't change base).
 
-**P5 — Reconstruct on load + restart durability** *(integration)* ← **gate**
-- Deliver: server load rehydrates from `current` via P2 instead of solving; cold-start (no snapshot) path; seed → solve → verify in the deploy checklist (incl. file-tenant seed CLI for `stafford-slim-100`).
-- **Test:** seed → mutate (pin a task, extend a window) → restart `ctp-api` → landscape == pre-restart, **still pinned, extension preserved**. Cold-start with no snapshot → "not solved" signal. (The walkthrough's lost-edit failure, now a passing test.)
+**P5 — Reconstruct on load + restart durability (version-pinned)** *(integration)* ← **gate**
+- Deliver: server load rehydrates from `current` via P2 instead of solving; the API-level re-derive (cross-WO components, consumption replay, WO-group rollups) wraps the engine reconstruct. **Version-pinned reconciliation (the reconciliation guard, §4):** before applying the overlay, compare `overlay.sourceDataVersion` to the *current* base version. **Match → reconstruct (overlay overwrites base, exact). Mismatch → do NOT overlay stale state**: set `meta.staleFlag`, surface "newer data available · Solve to refresh," and serve the snapshot read-only until a re-solve regenerates a fresh overlay against the new base. Cold-start (no snapshot) → "not solved" signal; seed → solve → verify in the deploy checklist (incl. file-tenant seed CLI for `stafford-slim-100`).
+- **Test:** (1) seed → mutate (pin a task, extend a window) → restart `ctp-api` → landscape == pre-restart, **still pinned, extension preserved**. (2) **Version-bump guard:** reconstruct with a base whose version ≠ the overlay's → reconstruction refuses to overlay the stale window, `staleFlag` set; after a re-solve the new overlay reconstructs exactly. (3) Cold-start with no snapshot → "not solved" signal. (The walkthrough's lost-edit failure, now a passing test.)
 
 ### Read surface
 
@@ -235,8 +241,23 @@ Ordered to **de-risk the requirement first**: the make-or-break (can the landsca
 
 ### Verify
 
-**P10 — Measure vs slim-2000 baseline**
+**P10 — Measure vs slim-2000 baseline** ✅ **DONE (2026-07-04)**
 - **Test:** landing payload < 100 KB (was 16.6 MB); overlay ~300–400 KB; time-to-interactive vs the `ui-scale-investigation.md` numbers; all prior assertions green in CI.
+
+**Measured** (fresh solve on P9.3 + orders-slim, `stafford-slim-2000` = 2035 tasks / 1984 overlay rows / 68 resources / 562 orders; two independent solves byte-identical, `sourceDataVersion 50ad1a65`):
+
+| Gate | Baseline (investigation) | Measured | Verdict |
+|---|---:|---:|:--|
+| **Landing payload** < 100 KB | 16.6 MB (×2 solves on load = 33.2 MB) | **37 KB** (`summary`) | ✅ **PASS** |
+| **Overlay** ~300–400 KB (est.) | — | **612 KB** (was 1.16 MB) | ✅ re-baselined |
+| **TTI** vs ~20 s+ | ~20 s+, 2× 16.6 MB solve on load | **2.8 s load / 6.7 s idle**, **0 solves** | ✅ **PASS** |
+| **CI green** | — | tsc clean · **1281 pass / 10 skip** | ✅ **PASS** |
+| Engine solve (median of 3) | 9,224 ms | **6,738 ms** | ✅ |
+
+- **Landing win: 16.6 MB → 37 KB (~450×)**, or ~900× against the double-solve. Zero `/ctp/solve` on load (was two 16.6 MB `solve-and-sync`). Overview DOM **7,816 nodes** (was ~29,527). Cold-start landing reads the 37 KB summary from disk in ~0.3 s, no solve.
+- **`detail` (17.3 MB) is deferred off the landing** — fetched only on drill-in (P9.2c).
+- **Summary slimmed 93 KB → 37 KB** during P10: orders partition **79.6 KB → 23.3 KB (3.4×)** by (1) dropping the redundant `name` (client resolves it from `productKey`), (2) **columnar encoding** (`{cols, rows}` — 5 keys no longer repeated per row), (3) dropping `dueW` (unused client-side; `status` already encodes the due-date verdict). Break-point moves from ~700 orders out past ~2,300. Client decoder tolerates the legacy array-of-objects shape.
+- **Overlay slimmed 1.16 MB → 612 KB (1.9×)** by omitting the ~15 planning/actuals fields that sit at their `CTPTask` default on every row (a plain planned task shed its whole commitment/hold/dispatch envelope; `reconstruct` re-applies defaults on absence — round-trip identity preserved, `serialize(reconstruct(serialize(L)))===serialize(L)`). The **"~300–400 KB" figure was a pre-P9 estimate** and is now re-baselined: the residual 612 KB is genuine per-task state — `window` (174 KB), `assignments` (97 KB), `scheduled` (95 KB), `slotModes` (79 KB), `commitmentLevel` (53 KB), `taskKey` (42 KB) — not fat. Further compression (drop `window.orig*` when re-derivable from base; columnar-encode the core) is a possible follow-up with diminishing returns. Overlay size does not gate the landing: it's lazy-read on Schedule entry, and the client currently reads `detail`, not `overlay`.
 
 > **Parallelism:** straight line except **P6** (summary) is independent of P2–P5 and can be built against P1's overlay by a second person once P0 lands.
 
