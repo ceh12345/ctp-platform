@@ -41,20 +41,28 @@ docker load -i ctp-platform.tar
 
 ---
 
-## 3. Provide Tenant Data
+## 3. Tenant Data
 
-The image ships **no tenant data**. Tenant configuration lives on the host and is
-mounted into the container at `/data/config`.
+The image itself ships **no tenant data** — it is tenant-agnostic, and data is
+mounted into the container at `/data/config` from the host.
 
-Place the tenant folder alongside `docker-compose.yml`:
+Client sites have no ingest pipeline yet, so **the tenant data travels with the
+release**: the bundle produced by `build-image.yml` already contains it, and
+unzipping gives the layout below. Nothing to assemble by hand.
 
 ```
 C:\ctp\
+├── ctp-platform.tar        the image
 ├── docker-compose.yml
+├── README.md
 └── config\
     └── tenants\
-        └── <tenant-id>\
+        └── <tenant-id>\    data, shipped in the bundle
 ```
+
+Because the data sits on the host rather than inside the image, it survives
+upgrades, and it can later be replaced by a pipeline without rebuilding or
+reshipping the image.
 
 > **The mount must be writable.** Snapshot promotion writes into
 > `config/tenants/<tenant-id>/data/current` at runtime. A read-only mount will

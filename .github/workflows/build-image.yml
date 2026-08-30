@@ -8,9 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       save_artifact:
-        description: Upload ctp-platform.tar for offline transfer to a client
+        description: Build a client bundle (image + compose + tenant data) for offline transfer
         type: boolean
         default: false
+      tenant:
+        description: Tenant whose data travels with the bundle (client sites have no ingest pipeline yet)
+        type: string
+        default: stafford-all
 
 jobs:
   build-image:
@@ -72,19 +76,38 @@ jobs:
         if: always()
         run: docker rm -f ctp-smoke || true
 
-      - name: Save image for offline transfer
+      # A client site has no ingest pipeline yet, so tenant data has to travel
+      # with the release. It still ships BESIDE the image, never inside it: the
+      # image stays tenant-agnostic, and the data lands on their disk where a
+      # pipeline can later replace it without rebuilding anything.
+      - name: Assemble client bundle
         if: inputs.save_artifact
         run: |
+          TENANT='${{ inputs.tenant }}'
+          if [ ! -d "config/tenants/$TENANT" ]; then
+            echo "::error::tenant '$TENANT' not found under config/tenants/"
+            ls config/tenants/
+            exit 1
+          fi
           # Tag with the commit too, so a loaded archive is identifiable on the
           # client. `docker load` restores every tag in the archive.
           SHA=$(git rev-parse --short HEAD)
-          docker tag ctp-platform:latest ctp-platform:$SHA
-          docker save -o ctp-platform.tar ctp-platform:latest ctp-platform:$SHA
-          ls -lh ctp-platform.tar
+          docker tag ctp-platform:latest "ctp-platform:$SHA"
+          mkdir -p bundle/config/tenants
+          docker save -o bundle/ctp-platform.tar ctp-platform:latest "ctp-platform:$SHA"
+          cp -r "config/tenants/$TENANT" "bundle/config/tenants/$TENANT"
+          cp .github/client-bundle/docker-compose.yml bundle/docker-compose.yml
+          sed -e "s/__TENANT__/$TENANT/g" -e "s/__SHA__/$SHA/g" \
+            .github/client-bundle/README.md > bundle/README.md
+          zip -qr "ctp-platform-$TENANT.zip" bundle
+          echo "BUNDLE=ctp-platform-$TENANT.zip" >> "$GITHUB_ENV"
+          echo "--- bundle contents:"
+          du -sh bundle/*
+          ls -lh "ctp-platform-$TENANT.zip"
 
       - uses: actions/upload-artifact@v4
         if: inputs.save_artifact
         with:
-          name: ctp-platform-image
-          path: ctp-platform.tar
+          name: ctp-platform-client-bundle
+          path: ${{ env.BUNDLE }}
           retention-days: 7

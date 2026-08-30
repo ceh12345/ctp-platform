@@ -1,0 +1,29 @@
+# CTP Platform — client site.
+#
+# Copied verbatim into the client bundle by build-image.yml. Deliberately has
+# no `build:` key: the client has no source tree, so if `docker load` was
+# skipped or failed, compose must say "image not found" rather than trying to
+# build and failing with something unrecognisable.
+
+services:
+  ctp:
+    image: ctp-platform:latest
+    container_name: ctp-platform
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      CONFIG_ROOT: /data/config
+      TELEMETRY_LOG_DIR: /data/logs
+      # Optional. Without it the AI chat panel is unavailable; nothing else changes.
+      CTP_ANTHROPIC_API_KEY: ${CTP_ANTHROPIC_API_KEY:-}
+    volumes:
+      # Tenant data lives here on the host, not in the image. MUST stay
+      # writable: snapshot promotion writes into
+      # config/tenants/<tenant>/data/current on every solve.
+      - ./config:/data/config
+      - ctp-logs:/data/logs
+    restart: unless-stopped
+
+volumes:
+  ctp-logs:
