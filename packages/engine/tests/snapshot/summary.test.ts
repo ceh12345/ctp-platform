@@ -20,8 +20,8 @@ function scheduledTask(key: string, startW: number, endW: number, chain?: string
 }
 
 describe('summarizeLandscape (P6)', () => {
-  it('computes headline counts, weekly buckets, bottleneck, and injected shortages', () => {
-    const horizon = makeHorizon(14);          // 2 weeks → 2 buckets
+  it('computes headline counts, daily buckets, bottleneck, and injected shortages', () => {
+    const horizon = makeHorizon(14);          // 14 days → 14 daily buckets
     const s = horizon.startW;
     const wk = 7 * 86_400;
 
@@ -73,13 +73,15 @@ describe('summarizeLandscape (P6)', () => {
     expect(doc.headline.makespanSeconds).toBe(7200);
 
     // bucketMeta + bare-number buckets indexed to it
-    expect(doc.bucketMeta.granularity).toBe('week');
-    expect(doc.bucketMeta.count).toBe(2);
+    expect(doc.bucketMeta.granularity).toBe('day');
+    expect(doc.bucketMeta.count).toBe(14);
     const busyLoad = doc.resourceLoad.find(r => r.resourceKey === 'BUSY')!;
     expect(busyLoad.buckets).toHaveLength(doc.bucketMeta.count);
     expect(busyLoad.buckets.every(b => typeof b === 'number')).toBe(true);
-    expect(busyLoad.buckets[0]).toBeCloseTo(1, 4);   // fully booked week 1
-    expect(busyLoad.buckets[1]).toBeCloseTo(0, 4);   // idle week 2
+    expect(busyLoad.buckets[0]).toBeCloseTo(1, 4);   // day 1 — inside the booked week
+    expect(busyLoad.buckets[6]).toBeCloseTo(1, 4);   // day 7 — last booked day
+    expect(busyLoad.buckets[7]).toBeCloseTo(0, 4);   // day 8 — week 2, idle
+    expect(busyLoad.buckets[13]).toBeCloseTo(0, 4);
     expect(busyLoad.workCenter).toBe('Machining');
 
     // bottleneck = the most-utilized resource

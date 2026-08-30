@@ -8170,6 +8170,25 @@ function SummaryHeatmap({ data, onResourceClick }: { data: any; onResourceClick?
     return <div style={{ color: C.textDim, fontSize: 13, padding: 16 }}>No utilization data in this snapshot.</div>;
   }
   const count: number = data.bucketMeta?.count ?? (data.resourceLoad[0]?.buckets?.length ?? 0);
+  // Columns carry real dates now — bucketMeta.startISO anchors bucket 0 and
+  // bucketSeconds is the step (daily). Falls back to an index label for older
+  // snapshots written before the anchors existed.
+  const bucketMs = (data.bucketMeta?.bucketSeconds ?? 86400) * 1000;
+  const startMs = data.bucketMeta?.startISO ? new Date(data.bucketMeta.startISO).getTime() : NaN;
+  const isDaily = (data.bucketMeta?.granularity ?? 'week') === 'day';
+  const colDate = (i: number) => Number.isNaN(startMs) ? null : new Date(startMs + i * bucketMs);
+  const colLabel = (i: number) => {
+    const d = colDate(i);
+    if (!d) return isDaily ? `D${i + 1}` : `W${i + 1}`;
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  };
+  const colTitle = (i: number) => {
+    const d = colDate(i);
+    return d ? d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : colLabel(i);
+  };
+  // 240 daily columns: label weekly so the header stays readable.
+  const labelEvery = isDaily ? 7 : 1;
+  const cellW = isDaily ? 13 : 38;
   const dir = sortDir === 'desc' ? -1 : 1;
   const rows = [...data.resourceLoad].sort((a: any, b: any) =>
     sortKey === 'name'
@@ -8189,14 +8208,18 @@ function SummaryHeatmap({ data, onResourceClick }: { data: any; onResourceClick?
   const thBase: CSSProperties = { padding: '4px 8px', color: C.textDim, cursor: 'pointer', userSelect: 'none' };
   return (
     <div style={{ overflow: 'auto', maxHeight: 560 }}>
-      <table style={{ borderCollapse: 'collapse', fontSize: 11, fontFamily: FONT }}>
+      <table style={{ borderCollapse: 'separate', borderSpacing: 0, fontSize: 11, fontFamily: FONT }}>
         <thead>
           <tr>
             <th onClick={() => toggle('name')}
-              style={{ ...thBase, textAlign: 'left', position: 'sticky', left: 0, background: C.surface }}>Resource{caret('name')}</th>
-            <th onClick={() => toggle('overall')} style={{ ...thBase, textAlign: 'right' }}>Overall{caret('overall')}</th>
+              style={{ ...thBase, textAlign: 'left', position: 'sticky', left: 0, top: 0, zIndex: 3, background: C.surface }}>Resource{caret('name')}</th>
+            <th onClick={() => toggle('overall')}
+              style={{ ...thBase, textAlign: 'right', position: 'sticky', left: 160, top: 0, zIndex: 3, background: C.surface }}>Overall{caret('overall')}</th>
             {Array.from({ length: count }).map((_, i) => (
-              <th key={i} style={{ padding: '2px 3px', color: C.textDim, fontWeight: 500 }}>W{i + 1}</th>
+              <th key={i} title={colTitle(i)}
+                style={{ padding: '2px 3px', color: C.textDim, fontWeight: 500, position: 'sticky', top: 0, zIndex: 2, background: C.surface, whiteSpace: 'nowrap' }}>
+                {i % labelEvery === 0 ? colLabel(i) : ''}
+              </th>
             ))}
           </tr>
         </thead>
@@ -8207,13 +8230,13 @@ function SummaryHeatmap({ data, onResourceClick }: { data: any; onResourceClick?
               <tr key={r.resourceKey}>
                 <td
                   onClick={() => onResourceClick?.(r.resourceKey)}
-                  style={{ padding: '2px 8px', whiteSpace: 'nowrap', position: 'sticky', left: 0, background: C.surface, color: C.text, cursor: onResourceClick ? 'pointer' : 'default', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}
-                  title={r.workCenter ? `${r.name} · ${r.workCenter}` : r.name}
-                >{r.name}</td>
-                <td style={{ padding: '2px 8px', textAlign: 'right', color: utilColor(o), fontWeight: 700 }}>{Math.round(o * 100)}%</td>
+                  style={{ padding: '2px 8px', whiteSpace: 'nowrap', position: 'sticky', left: 0, zIndex: 1, width: 160, minWidth: 160, maxWidth: 160, background: C.surface, color: r.finite === false ? C.textDim : C.text, fontStyle: r.finite === false ? 'italic' : 'normal', cursor: onResourceClick ? 'pointer' : 'default', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  title={`${r.name}${r.workCenter ? ` · ${r.workCenter}` : ''}${r.finite === false ? ' · infinite capacity (not a constraint)' : ''}`}
+                >{r.name}{r.workCenter ? <span style={{ color: C.textDim }}> · {r.workCenter}</span> : null}</td>
+                <td style={{ padding: '2px 8px', textAlign: 'right', position: 'sticky', left: 160, zIndex: 1, background: C.surface, color: r.finite === false ? C.textDim : utilColor(o), fontWeight: 700 }}>{Math.round(o * 100)}%</td>
                 {(r.buckets as number[]).map((u, i) => (
-                  <td key={i} title={`${r.name} · W${i + 1}: ${Math.round(u * 100)}%`}
-                    style={{ width: 38, height: 26, background: heat(u), border: `2px solid ${C.bg}`, borderRadius: 3 }} />
+                  <td key={i} title={`${r.name} · ${colTitle(i)}: ${Math.round(u * 100)}%`}
+                    style={{ width: cellW, minWidth: cellW, height: 22, background: heat(u), border: `1px solid ${C.bg}`, borderRadius: 2 }} />
                 ))}
               </tr>
             );
@@ -13683,9 +13706,11 @@ interface ResourceProfileTabProps {
   tasks: any[];
   colors: any;
   onTaskClick?: (t: any) => void;
+  horizonStart?: string;
+  horizonEnd?: string;
 }
 
-function ResourceProfileTab({ resources, tasks, colors, onTaskClick }: ResourceProfileTabProps) {
+function ResourceProfileTab({ resources, tasks, colors, onTaskClick, horizonStart, horizonEnd }: ResourceProfileTabProps) {
   // View mode: heatmap (shop-wide overview), detail (per-resource skyscraper),
   // or histogram (per-resource binned load).
   const [mode, setMode] = useState<'heatmap' | 'detail' | 'histogram'>('heatmap');
@@ -13747,6 +13772,8 @@ function ResourceProfileTab({ resources, tasks, colors, onTaskClick }: ResourceP
         <ResourceHeatmap
           resources={resources}
           tasks={tasks}
+          horizonStart={horizonStart}
+          horizonEnd={horizonEnd}
           onCellClick={(resourceKey: string) => {
             setSelectedKey(resourceKey);
             setSelectedTaskKey(null);
@@ -13840,10 +13867,16 @@ function CapacityHistogram({ resource, tasks, onBinClick }: CapacityHistogramPro
     const used: { start: number; end: number; qty: number; taskKey: string }[] = [];
     for (const t of tasks) {
       if (!t.scheduledStart || !t.scheduledEnd) continue;
+      // Completed work is history, not committed load — matches the heatmap
+      // and the API's resourceUtilization.
+      if ((t.percentComplete ?? 0) >= 100) continue;
       const ar = t.assignedResources?.find((x: any) => x.resourceKey === resource.resourceKey);
       if (!ar) continue;
       const taskQty = ar.qty ?? 1;
-      const blocks = (Array.isArray(t.segments) && t.segments.length > 1)
+      // Segments are the on-shift working slices — use them whenever present.
+      // `> 1` sent single-segment tasks down the envelope fallback and charged
+      // off-shift gaps as work.
+      const blocks = (Array.isArray(t.segments) && t.segments.length > 0)
         ? t.segments
         : [{ start: t.scheduledStart, end: t.scheduledEnd }];
       for (const b of blocks) {
@@ -13967,7 +14000,7 @@ function CapacityHistogram({ resource, tasks, onBinClick }: CapacityHistogramPro
             const overloadTop = yToPct(b.util);
             const overloadHeight = hundredPct - overloadTop;
             return (
-              <div key={i} title={`${dayLabel(b.start)}\nUtil: ${(b.util * 100).toFixed(1)}%\nUsed: ${(b.used/3600).toFixed(1)}h of ${(b.cap/3600).toFixed(1)}h\nTasks: ${b.taskCount}`}>
+              <div key={i} title={`${dayLabel(b.start)}\nUtil: ${(b.util * 100).toFixed(1)}%\nUsed: ${(b.used/MS_PER_HOUR).toFixed(1)}h of ${(b.cap/MS_PER_HOUR).toFixed(1)}h\nTasks: ${b.taskCount}`}>
                 {/* Main bar (≤100% portion) */}
                 <div
                   onClick={() => onBinClick?.()}
@@ -14023,13 +14056,17 @@ function CapacityHistogram({ resource, tasks, onBinClick }: CapacityHistogramPro
 /* ResourceHeatmap — shop-wide utilization overview. Rows = resources,
    columns = day bins, cell color = utilization %. */
 
+const MS_PER_HOUR = 3_600_000;
+
 interface ResourceHeatmapProps {
   resources: any[];
   tasks: any[];
   onCellClick: (resourceKey: string) => void;
+  horizonStart?: string;
+  horizonEnd?: string;
 }
 
-function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps) {
+function ResourceHeatmap({ resources, tasks, onCellClick, horizonStart, horizonEnd }: ResourceHeatmapProps) {
   type SortKey = 'name' | 'peakUtil' | 'avgUtil';
   const [sortKey, setSortKey] = useState<SortKey>('peakUtil');
 
@@ -14080,14 +14117,21 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
       }
     }
     if (allStarts.length === 0) return { dayBins: [] };
-    const start = Math.floor(Math.min(...allStarts) / day) * day;
-    const end = Math.ceil(Math.max(...allEnds) / day) * day;
+    // Resource calendars are authored well past the horizon — stafford-all's run
+    // 2025-12-31..2027-12-31, which produced 731 columns starting seven months
+    // before the schedule does. Clamp to the planning horizon when we know it.
+    const hStart = horizonStart ? new Date(horizonStart).getTime() : NaN;
+    const hEnd = horizonEnd ? new Date(horizonEnd).getTime() : NaN;
+    const rawStart = Math.min(...allStarts);
+    const rawEnd = Math.max(...allEnds);
+    const start = Math.floor((Number.isNaN(hStart) ? rawStart : Math.max(rawStart, hStart)) / day) * day;
+    const end = Math.ceil((Number.isNaN(hEnd) ? rawEnd : Math.min(rawEnd, hEnd)) / day) * day;
     const bins: { start: number; end: number }[] = [];
     for (let ms = start; ms < end; ms += day) {
       bins.push({ start: ms, end: ms + day });
     }
     return { dayBins: bins };
-  }, [resources]);
+  }, [resources, horizonStart, horizonEnd]);
 
   // For each (resource, dayBin): compute utilization %.
   // - capacity in bin = Σ availability.qty × overlap_with_bin
@@ -14104,15 +14148,27 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
         qty: iv.qty ?? 1,
       }));
       // Build per-task usage blocks for tasks scheduled on this resource. For
-      // FLOAT (segments.length > 1), each segment is a usage block; otherwise
-      // the envelope is the single block.
+      // FLOAT, each segment is a usage block; tasks with no segments at all
+      // (FIXED / continuous) fall back to the envelope.
       const used: { start: number; end: number; qty: number }[] = [];
       for (const t of tasks) {
         if (!t.scheduledStart || !t.scheduledEnd) continue;
+        // Completed work is not current load. The engine pins finished tasks
+        // (pinned:true, percentComplete:100) and leaves them with long historic
+        // envelopes and no segments; counting them stacked JAMES to 900% on a
+        // day his real committed load is a fraction of that. The API's own
+        // resourceUtilization already excludes them (completedTaskKeys) — this
+        // brings the heatmap in line.
+        if ((t.percentComplete ?? 0) >= 100) continue;
         const ar = t.assignedResources?.find((x: any) => x.resourceKey === r.resourceKey);
         if (!ar) continue;
         const taskQty = ar.qty ?? 1;
-        const blocks = (Array.isArray(t.segments) && t.segments.length > 1)
+        // Any segment count is authoritative — segments are the on-shift working
+        // slices. The old `> 1` test sent single-segment tasks down the envelope
+        // fallback, counting off-shift gaps as work: 64 tasks here, one of them
+        // (25512-QC-2) charging 16.25h for 0.25h of work. Only tasks with no
+        // segments at all (FIXED / continuous) fall back to the envelope.
+        const blocks = (Array.isArray(t.segments) && t.segments.length > 0)
           ? t.segments
           : [{ start: t.scheduledStart, end: t.scheduledEnd }];
         for (const b of blocks) {
@@ -14124,11 +14180,14 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
         }
       }
       const cells = dayBins.map(bin => {
-        let cap = 0, usedSec = 0;
-        for (const a of avail) cap += a.qty * overlap(a.start, a.end, bin.start, bin.end);
-        for (const u of used) usedSec += u.qty * overlap(u.start, u.end, bin.start, bin.end);
-        const util = cap > 0 ? usedSec / cap : 0;
-        return { cap, usedSec, util, hasCap: cap > 0 };
+        // Milliseconds — every bound came from Date.getTime(). The ratio is
+        // unit-free, but anything rendering an absolute figure must divide by
+        // MS_PER_HOUR, not 3600.
+        let capMs = 0, usedMs = 0;
+        for (const a of avail) capMs += a.qty * overlap(a.start, a.end, bin.start, bin.end);
+        for (const u of used) usedMs += u.qty * overlap(u.start, u.end, bin.start, bin.end);
+        const util = capMs > 0 ? usedMs / capMs : 0;
+        return { capMs, usedMs, util, hasCap: capMs > 0 };
       });
       const peak = cells.reduce((m, c) => Math.max(m, c.util), 0);
       const validCells = cells.filter(c => c.hasCap);
@@ -14252,11 +14311,12 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
         <table style={{ borderCollapse: 'separate', borderSpacing: 2, fontSize: 10, width: '100%' }}>
           <thead>
             <tr>
-              <th style={{ textAlign: 'left', padding: '4px 8px', color: C.textDim, minWidth: 140, fontWeight: 500 }}>Resource</th>
-              <th style={{ padding: '4px 4px', color: C.textDim, fontWeight: 500, minWidth: 32 }}>Peak</th>
+              <th style={{ textAlign: 'left', padding: '4px 8px', color: C.textDim, width: 160, minWidth: 160, fontWeight: 500, position: 'sticky', left: 0, top: 0, zIndex: 4, background: C.surface }}>Resource</th>
+              <th style={{ padding: '4px 4px', color: C.textDim, fontWeight: 500, minWidth: 32, position: 'sticky', left: 164, top: 0, zIndex: 4, background: C.surface }}>Peak</th>
               {dayBins.map((b, i) => (
                 <th key={i} style={{
                   padding: '4px 2px', color: C.textDim, fontWeight: 500, minWidth: 40, fontSize: 9,
+                  position: 'sticky', top: 0, zIndex: 2, background: C.surface, whiteSpace: 'nowrap',
                 }}>{dayLabel(b.start)}</th>
               ))}
             </tr>
@@ -14277,6 +14337,7 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
                         padding: '6px 8px', cursor: 'pointer',
                         background: C.surface, color: C.text, fontSize: 11, fontWeight: 600,
                         borderTop: `1px solid ${C.border}`,
+                        position: 'sticky', left: 0, zIndex: 3, whiteSpace: 'nowrap',
                       }}
                     >
                       <span style={{ display: 'inline-block', width: 12, color: C.textDim }}>
@@ -14299,6 +14360,9 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
                         style={{
                           padding: '4px 8px 4px 24px', cursor: 'pointer',
                           color: C.text, fontSize: 11,
+                          position: 'sticky', left: 0, zIndex: 3, background: C.surface,
+                          width: 160, minWidth: 160, maxWidth: 160,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}
                       >
                         <div>{row.resource.resourceName}</div>
@@ -14309,13 +14373,14 @@ function ResourceHeatmap({ resources, tasks, onCellClick }: ResourceHeatmapProps
                       <td style={{
                         padding: '4px 4px', textAlign: 'center', fontWeight: 600,
                         color: row.peak > 1 ? '#dc2626' : C.text,
+                        position: 'sticky', left: 164, zIndex: 3, background: C.surface,
                       }}>{(row.peak * 100).toFixed(0)}%</td>
                       {row.cells.map((cell, ci) => (
                         <td
                           key={ci}
                           onClick={() => onCellClick(row.resource.resourceKey)}
                           title={cell.hasCap
-                            ? `${row.resource.resourceName} · ${dayLabel(dayBins[ci].start)}\nUtil: ${(cell.util * 100).toFixed(1)}%\nUsed: ${(cell.usedSec / 3600).toFixed(1)}h of ${(cell.cap / 3600).toFixed(1)}h`
+                            ? `${row.resource.resourceName} · ${dayLabel(dayBins[ci].start)}\nUtil: ${(cell.util * 100).toFixed(1)}%\nUsed: ${(cell.usedMs / MS_PER_HOUR).toFixed(1)}h of ${(cell.capMs / MS_PER_HOUR).toFixed(1)}h`
                             : `${row.resource.resourceName} · ${dayLabel(dayBins[ci].start)}\nNo capacity`}
                           style={{
                             padding: '6px 2px', textAlign: 'center',
@@ -16993,6 +17058,8 @@ export default function App() {
             tasks={tasks}
             colors={colors}
             onTaskClick={handleTaskClick}
+            horizonStart={summary?.horizonStart}
+            horizonEnd={summary?.horizonEnd}
           />
         )}
         {activeTab === 'Orders' && solveResult && <OrdersTab

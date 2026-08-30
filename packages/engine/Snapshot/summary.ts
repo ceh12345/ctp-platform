@@ -12,8 +12,9 @@
 import { SchedulingLandscape } from '../Models/Entities/landscape';
 import { CTPTask } from '../Models/Entities/task';
 import { CTPTaskStateConstants } from '../Models/Core/constants';
+import { CTPDateTime } from '../Models/Core/date';
 
-const WEEK_SECONDS = 7 * 86_400;
+const DAY_SECONDS = 86_400;
 
 export interface SummaryHeadline {
   feasibilityRate: number;     // scheduled / included, 0..1
@@ -31,20 +32,26 @@ export interface SummaryHeadline {
 }
 
 export interface SummaryBucketMeta {
-  granularity: 'week';
+  granularity: 'day';
   count: number;
   horizonStartW: number;
   horizonEndW: number;
   bucketSeconds: number;
+  /** Horizon bounds as ISO timestamps, so columns can carry real dates. */
+  startISO?: string | null;
+  endISO?: string | null;
 }
 
 export interface SummaryResourceLoad {
   resourceKey: string;
   name: string;
   workCenter: string | null;
-  overallUtilizationPct: number;   // 0..1
-  /** Per-bucket utilization (0..1), indexed against bucketMeta. Bare numbers — no timestamps. */
+  /** 0..1 nominally, but NOT capped — >1 means genuinely over capacity. */
+  overallUtilizationPct: number;
+  /** Per-bucket utilization indexed against bucketMeta. Uncapped; >1 is over capacity. */
   buckets: number[];
+  /** false for infinite-capacity pseudo-resources — excluded from bottleneck. */
+  finite?: boolean;
 }
 
 export interface SummaryAlert {
@@ -118,11 +125,37 @@ export interface SummaryDoc {
 export interface SummarizeOptions {
   /** Material shortages count — computed by the API from tenant config + consumption. */
   materialShortages?: number;
+  /**
+   * Per-resource capacity metadata, keyed by resource key. The engine's
+   * CTPResource does not carry parallelCapacity/isFinite (hydration never reads
+   * them), so the API supplies them from tenant config.
+   */
+  resourceCapacity?: Map<string, { capacity: number; finite: boolean }>;
 }
 
 /** Seconds of [startW,endW) that fall inside the bucket [bStart,bEnd). */
 function overlap(startW: number, endW: number, bStart: number, bEnd: number): number {
   return Math.max(0, Math.min(endW, bEnd) - Math.max(startW, bStart));
+}
+
+const INDEFINITE_W = 9_007_199_254_740_991;
+
+/**
+ * Fraction of an interval's elapsed span that is actual working time.
+ *
+ * overlap() measures wall-clock, so nights and weekends inside a FLOAT-spanning
+ * task counted as load: a 24h task across four days contributed ~96h. Nearly
+ * every bucket then exceeded 1.0 and the old Math.min(1, ...) clamp pinned it to
+ * exactly 100% — 41 of stafford-all's 68 resources showed a saturated row, and
+ * GRANT read 100% against a true 38.9%. Scaling overlap by this ratio spreads
+ * working time proportionally across the span, matching AnalyticsService.
+ */
+function workRatio(data: any): number {
+  const end = data.endW >= INDEFINITE_W ? data.startW : data.endW;
+  const span = end - data.startW;
+  if (span <= 0) return 1;
+  const work = typeof data.workDuration === 'function' ? data.workDuration() : span;
+  return work / span;
 }
 
 function round4(n: number): number {
@@ -136,7 +169,7 @@ export function summarizeLandscape(
   const horizonStartW = landscape.horizon?.startW ?? 0;
   const horizonEndW = landscape.horizon?.endW ?? 0;
   const span = Math.max(0, horizonEndW - horizonStartW);
-  const count = span > 0 ? Math.ceil(span / WEEK_SECONDS) : 0;
+  const count = span > 0 ? Math.ceil(span / DAY_SECONDS) : 0;
 
   // ── headline task counts + makespan ──
   let totalTasks = 0, scheduledTasks = 0, includedTasks = 0, conflicts = 0;
@@ -215,29 +248,38 @@ export function summarizeLandscape(
   let bottleneck: SummaryHeadline['bottleneck'] = null;
 
   landscape.resources?.forEach((res) => {
+    const cap = opts.resourceCapacity?.get(res.key);
+    const capacity = cap?.capacity && cap.capacity > 0 ? cap.capacity : 1;
+    const finite = cap?.finite !== false;
     const buckets = new Array<number>(count).fill(0);
     let totalAvail = 0, totalAssigned = 0;
 
     for (let b = 0; b < count; b++) {
-      const bStart = horizonStartW + b * WEEK_SECONDS;
-      const bEnd = Math.min(bStart + WEEK_SECONDS, horizonEndW);
+      const bStart = horizonStartW + b * DAY_SECONDS;
+      const bEnd = Math.min(bStart + DAY_SECONDS, horizonEndW);
       let avail = 0, assigned = 0;
       for (let n = res.original?.head ?? null; n; n = n.next) avail += overlap(n.data.startW, n.data.endW, bStart, bEnd);
-      for (let n = res.assignments?.head ?? null; n; n = n.next) assigned += overlap(n.data.startW, n.data.endW, bStart, bEnd);
-      buckets[b] = avail > 0 ? round4(Math.min(1, assigned / avail)) : 0;
+      for (let n = res.assignments?.head ?? null; n; n = n.next) {
+        assigned += overlap(n.data.startW, n.data.endW, bStart, bEnd) * workRatio(n.data);
+      }
+      avail *= capacity;
+      // Uncapped on purpose: >1 is over capacity and the reader needs to see it.
+      buckets[b] = avail > 0 ? round4(assigned / avail) : 0;
       totalAvail += avail;
       totalAssigned += assigned;
     }
 
-    const overallUtilizationPct = totalAvail > 0 ? round4(Math.min(1, totalAssigned / totalAvail)) : 0;
+    const overallUtilizationPct = totalAvail > 0 ? round4(totalAssigned / totalAvail) : 0;
     resourceLoad.push({
       resourceKey: res.key,
       name: res.name,
       workCenter: res.hierarchy?.first ?? null,
       overallUtilizationPct,
       buckets,
+      finite,
     });
-    if (!bottleneck || overallUtilizationPct > bottleneck.pct) {
+    // Infinite-capacity pseudo-resources absorb unlimited work — never the constraint.
+    if (finite && (!bottleneck || overallUtilizationPct > bottleneck.pct)) {
       bottleneck = { resourceKey: res.key, name: res.name, pct: overallUtilizationPct };
     }
   });
@@ -251,7 +293,17 @@ export function summarizeLandscape(
       conflicts, lateOrders, totalOrders, shortages,
       makespanSeconds, horizonStartW, horizonEndW, bottleneck,
     },
-    bucketMeta: { granularity: 'week', count, horizonStartW, horizonEndW, bucketSeconds: WEEK_SECONDS },
+    bucketMeta: {
+      granularity: 'day',
+      count,
+      horizonStartW,
+      horizonEndW,
+      bucketSeconds: DAY_SECONDS,
+      // ISO anchors so the UI can label columns with real dates instead of
+      // an opaque index — W-space seconds mean nothing to the client.
+      startISO: CTPDateTime.toDateTime(horizonStartW).toISO(),
+      endISO: CTPDateTime.toDateTime(horizonEndW).toISO(),
+    },
     resourceLoad,
     alerts: {
       conflicts: { count: conflicts, target: 'conflicts' },

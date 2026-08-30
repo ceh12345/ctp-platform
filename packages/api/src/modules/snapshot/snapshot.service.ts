@@ -95,8 +95,17 @@ export class SnapshotService {
    */
   promote(landscape: SchedulingLandscape, eventType: 'solve' | 'seed' | 'mutation'): string {
     const overlay = serializeOverlay(landscape);
+    // parallelCapacity/isFinite live in tenant config and never reach the
+    // engine's CTPResource, so hand them in — without them the heatmap divides
+    // by one slot's calendar and treats infinite pseudo-resources as bottlenecks.
+    const resourceCapacity = new Map<string, { capacity: number; finite: boolean }>();
+    for (const r of this.configService.getResources()) {
+      const capacity = Number((r as any).parallelCapacity) > 0 ? Number((r as any).parallelCapacity) : 1;
+      resourceCapacity.set(r.key, { capacity, finite: (r as any).isFinite !== false });
+    }
     const summary = summarizeLandscape(landscape, {
       materialShortages: this.computeMaterialShortages(landscape),
+      resourceCapacity,
     });
     const tenantId = this.configService.getTenantId();
     const meta: SnapshotMeta = {
